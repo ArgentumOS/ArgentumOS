@@ -33,8 +33,8 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1657	open	158	struck	399
-# property	shipped	704	open	60	struck	172
+# method	shipped	1662	open	153	struck	399
+# property	shipped	705	open	59	struck	172
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -2519,18 +2519,18 @@ property	shipped	secondsFromGMT	NSTimeZone	Fundamentals / Calendrical Calculatio
 property	shipped	systemTimeZone	NSTimeZone	Fundamentals / Calendrical Calculations / Working with System Time Zones	-	objc
 property	struck	timeZoneDataVersion	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information	other-framework	objc
 method	shipped	-fire	NSTimer	App Support / Scheduling / Firing a Timer	-	objc
-method	open	-initWithFireDate:interval:repeats:block:	NSTimer	App Support / Scheduling / Creating a Timer	-	objc
+method	shipped	-initWithFireDate:interval:repeats:block:	NSTimer	App Support / Scheduling / Creating a Timer	-	objc
 method	shipped	-initWithFireDate:interval:target:selector:userInfo:repeats:	NSTimer	App Support / Scheduling / Creating a Timer	-	objc
 method	shipped	-invalidate	NSTimer	App Support / Scheduling / Stopping a Timer	-	objc
-method	open	+scheduledTimerWithTimeInterval:invocation:repeats:	NSTimer	App Support / Scheduling / Creating a Timer	-	objc
-method	open	+scheduledTimerWithTimeInterval:repeats:block:	NSTimer	App Support / Scheduling / Creating a Timer	-	objc
+method	shipped	+scheduledTimerWithTimeInterval:invocation:repeats:	NSTimer	App Support / Scheduling / Creating a Timer	-	objc
+method	shipped	+scheduledTimerWithTimeInterval:repeats:block:	NSTimer	App Support / Scheduling / Creating a Timer	-	objc
 method	shipped	+scheduledTimerWithTimeInterval:target:selector:userInfo:repeats:	NSTimer	App Support / Scheduling / Creating a Timer	-	objc
-method	open	+timerWithTimeInterval:invocation:repeats:	NSTimer	App Support / Scheduling / Creating a Timer	-	objc
-method	open	+timerWithTimeInterval:repeats:block:	NSTimer	App Support / Scheduling / Creating a Timer	-	objc
+method	shipped	+timerWithTimeInterval:invocation:repeats:	NSTimer	App Support / Scheduling / Creating a Timer	-	objc
+method	shipped	+timerWithTimeInterval:repeats:block:	NSTimer	App Support / Scheduling / Creating a Timer	-	objc
 method	shipped	+timerWithTimeInterval:target:selector:userInfo:repeats:	NSTimer	App Support / Scheduling / Creating a Timer	-	objc
 property	shipped	fireDate	NSTimer	App Support / Scheduling / Retrieving Timer Information	-	objc
 property	shipped	timeInterval	NSTimer	App Support / Scheduling / Retrieving Timer Information	-	objc
-property	open	tolerance	NSTimer	App Support / Scheduling / Configuring Firing Tolerance	-	objc
+property	shipped	tolerance	NSTimer	App Support / Scheduling / Configuring Firing Tolerance	-	objc
 property	shipped	userInfo	NSTimer	App Support / Scheduling / Retrieving Timer Information	-	objc
 property	shipped	valid	NSTimer	App Support / Scheduling / Retrieving Timer Information	-	objc
 method	shipped	-URLByAppendingPathComponent:	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc

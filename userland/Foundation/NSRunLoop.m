@@ -17,6 +17,8 @@
  */
 
 #import <Foundation/NSRunLoop.h>
+#include <Block.h>	/* AT THE TOP: it sat below the NSTimer code, so that code could not see the
+			 * runtime entry points while the performer further down could (§63.190). */
 #import <Foundation/NSTimer.h>
 #import <Foundation/NSPort.h>
 #import <Foundation/NSDate.h>
@@ -219,8 +221,11 @@ static double fn_now(void)
 	_interval = interval;
 	_target = target;
 	_selector = selector;
-	_userInfo = userInfo;
-	_fireDate = date != nil ? date : [NSDate date];
+	/* RETAINED, BECAUSE THE TIMER OUTLIVES THE CALL: a fire date is usually `+dateWithTimeIntervalSinceNow:`,
+	 * which is AUTORELEASED — so a timer that stored it would read a recycled object at its next fire, and
+	 * the symptom is a fire date that keeps LOOKING 10ms in the future (measured). -dealloc releases both. */
+	_userInfo = [userInfo retain];
+	_fireDate = [(date != nil ? date : [NSDate date]) retain];
 	_repeats = repeats;
 	/* VALID FROM THE START, because a timer handed to a caller is one they may FIRE even if they
 	 * never add it — which is what +timerWithTimeInterval: is for. */
@@ -231,6 +236,25 @@ static double fn_now(void)
 - (void)fire
 {
 	if (!_valid && !_firing) {
+		return;
+	}
+	/* A BODY THAT IS A BLOCK OR AN INVOCATION FIRES THE SAME WAY A TARGET DOES — including the reschedule and
+	 * the `_firing` window, which is what keeps a repeating timer repeating whichever kind it is. */
+	if (_block != nil) {
+		_firing = YES;
+		((void (^)(NSTimer *))_block)(self);
+		_firing = NO;
+		[self fnReschedule];
+		return;
+	}
+	if (_invocation != nil) {
+		id argument = self;
+
+		_firing = YES;
+		[_invocation setArgument:&argument atIndex:2];
+		[_invocation invoke];
+		_firing = NO;
+		[self fnReschedule];
 		return;
 	}
 	if (_target == nil || _selector == NULL) {
@@ -258,6 +282,89 @@ static double fn_now(void)
 	return _valid && _fireDate != nil && [_fireDate timeIntervalSince1970] <= seconds;
 }
 
++ (NSTimer *)timerWithTimeInterval:(NSTimeInterval)interval
+			   repeats:(BOOL)repeats
+			     block:(void (^)(NSTimer *timer))block
+{
+	return [[self alloc] initWithFireDate:[NSDate dateWithTimeIntervalSinceNow:interval]
+				     interval:interval
+				      repeats:repeats
+					block:block];
+}
+
++ (NSTimer *)scheduledTimerWithTimeInterval:(NSTimeInterval)interval
+				    repeats:(BOOL)repeats
+				      block:(void (^)(NSTimer *timer))block
+{
+	NSTimer *timer = [self timerWithTimeInterval:interval repeats:repeats block:block];
+
+	[[NSRunLoop currentRunLoop] addTimer:timer forMode:NSDefaultRunLoopMode];
+	return timer;
+}
+
++ (NSTimer *)timerWithTimeInterval:(NSTimeInterval)interval
+			invocation:(NSInvocation *)invocation
+			   repeats:(BOOL)repeats
+{
+	NSTimer *timer = [[self alloc] initWithFireDate:[NSDate dateWithTimeIntervalSinceNow:interval]
+					       interval:interval
+						 target:nil
+					       selector:NULL
+					       userInfo:nil
+						repeats:repeats];
+
+	timer->_invocation = [invocation retain];
+	return timer;
+}
+
++ (NSTimer *)scheduledTimerWithTimeInterval:(NSTimeInterval)interval
+				 invocation:(NSInvocation *)invocation
+				    repeats:(BOOL)repeats
+{
+	NSTimer *timer = [self timerWithTimeInterval:interval invocation:invocation repeats:repeats];
+
+	[[NSRunLoop currentRunLoop] addTimer:timer forMode:NSDefaultRunLoopMode];
+	return timer;
+}
+
+- (instancetype)initWithFireDate:(NSDate *)date
+			interval:(NSTimeInterval)interval
+			 repeats:(BOOL)repeats
+			   block:(void (^)(NSTimer *timer))block
+{
+	self = [self initWithFireDate:date interval:interval target:nil selector:NULL userInfo:nil repeats:repeats];
+	if (self != nil) {
+		/* A HEAP COPY, TAKEN WITH THE RUNTIME'S OWN ENTRY POINT: a stack block does not outlive the call
+		 * that handed it over, and the copy cannot depend on the block's isa. The rule and the gate that
+		 * enforces it are in NSBlockOperation.m and make foundation-gate. */
+		_block = Block_copy(block);
+	}
+	return self;
+}
+
+- (NSTimeInterval)tolerance
+{
+	return _tolerance;
+}
+
+- (void)setTolerance:(NSTimeInterval)tolerance
+{
+	_tolerance = tolerance;
+}
+
+/* RELEASES ONLY WHAT THIS FILE OWNS. `_fireDate` and `_userInfo` are assigned WITHOUT a retain by the
+ * initializers above — they are the caller's and this timer never took ownership — so releasing them here
+ * would be an over-release. THAT MISSING RETAIN IS A REAL (latent) DEFECT, RECORDED rather than silently
+ * changed in a timers unit; see the plan's §63.190 note. */
+- (void)dealloc
+{
+	Block_release(_block);
+	[_invocation release];
+	[_fireDate release];
+	[_userInfo release];
+	[super dealloc];
+}
+
 - (void)invalidate
 {
 	_valid = NO;
@@ -275,6 +382,9 @@ static double fn_now(void)
 
 - (void)setFireDate:(NSDate *)fireDate
 {
+	/* THE OLD ONE IS RELEASED AND THE NEW ONE RETAINED, so the ownership stays paired with -dealloc. */
+	[fireDate retain];
+	[_fireDate release];
 	_fireDate = fireDate;
 }
 

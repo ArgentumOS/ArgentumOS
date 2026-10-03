@@ -71,7 +71,7 @@ CHECKS = ("timer-fires-once", "timer-repeats-until-invalidated", "timer-order-fo
           "perform-block-runs-on-the-loop",
           "perform-in-modes-block-waits-for-its-mode",
           "the-common-mode-carries-a-timer-in-any-mode",
-          "the-common-mode-carries-a-notification-in-any-mode")
+          "the-common-mode-carries-a-notification-in-any-mode", "timer-block-fires", "timer-invocation-fires", "timer-tolerance-round-trips", "timer-unscheduled-does-not-fire")
 
 
 class Case(BaseCase):

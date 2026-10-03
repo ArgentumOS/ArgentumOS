@@ -15962,6 +15962,42 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.190 — NSTimer: the four block/invocation pairs and tolerance, and the probe rule this unit's own timers taught
+
+Six rows: `method shipped 1657 → 1662, open 158 → 153` (`+timerWithTimeInterval:repeats:block:`,
+`+scheduledTimerWithTimeInterval:repeats:block:`, `+timerWithTimeInterval:invocation:repeats:`,
+`+scheduledTimerWithTimeInterval:invocation:repeats:`, `-initWithFireDate:interval:repeats:block:`);
+`property 704 → 705, open 60 → 59` (`tolerance`).
+
+**THEY ARE NOT A SECOND MECHANISM:** every pair is the target/selector core with a body that knows how to be
+called, and `-fire` gained the two branches — block, then invocation — INSIDE the existing validity and
+`_firing` discipline, so a repeating block timer repeats through the same `-fnReschedule` a target timer
+uses. The invocation convention is stated where it is implemented: the timer is the ARGUMENT at index 2,
+target and selector occupying 0 and 1. `tolerance` is stored and read back (Apple's contract is a hint to
+the run loop, not a promise to the caller), and the header's now-false note — *"this library has no blocks"* —
+is replaced.
+
+**A WAIT IS A LOOP, AND THIS UNIT LEARNED IT FROM ITS OWN PROBE.** The three firing checks first read
+`fires=0` while the timer was **valid**, in the **right mode**, in the **right run loop** — and the absolute
+epochs said why: `fireDate` was creation+0.01 and the check ran ~0.01 later, so the loop had returned at
+once. `-runMode:beforeDate:` is ONE PASS in this library — the probe's own `runmode-one-pass` check pins that
+— so waiting for a timer means running passes until a deadline. The measurement that settled it was three
+numbers in a detail line (`interval`, the fire date's epoch, now's epoch), not another theory.
+
+**AND THE CHECK THAT WOULD NOT FIRE FOUND A REAL OWNERSHIP DEFECT.** The timer stored `_fireDate` and
+`_userInfo` WITHOUT A RETAIN — a timer outlives the call that made it, and a fire date is usually
+`+dateWithTimeIntervalSinceNow:`, which is autoreleased. It is retained now, `-setFireDate:` releases the old
+one and retains the new, and `-dealloc` releases both. This was the item an earlier round chose to RECORD
+rather than change inside a timers unit; the probe then made it impossible to leave alone.
+
+**AND ONE GATE LESSON, MEASURED:** `make foundation-gate` refuses a block owned by a message send and is
+TEXT-BASED — it tripped on a COMMENT of mine that spelled the forbidden form out in prose while the code
+beside it was correct. Text-based checks in this tree read comments, in both directions.
+
+Acceptance: `make testimg` green (status-checked); `make test TESTS=foundation_runloop` → `TESTS-OK 1/1
+case(s)`, probe `FOUNDATION-RUNLOOP RESULT ok=26 fail=0`; `tools/foundation-sweep.py --check` consistent
+(`method 1662/153/399`, `property 705/59/172`).
+
 ## §63.189 — NSCharacterSet: the six URL component sets, and three harness facts that cost more than the code
 
 Six rows: `property shipped 698 → 704, open 66 → 60` — `URLUserAllowedCharacterSet`,

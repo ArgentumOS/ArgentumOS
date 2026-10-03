@@ -67,6 +67,38 @@
 - (void)setBlockRan:(BOOL)ran;
 @end
 
+
+/* §63.190: the TARGET for the invocation timer, so the invocation's selector has somewhere to land. */
+@interface FNTimerProbeTarget : NSObject
+- (void)timerFired:(NSTimer *)timer;
+@end
+
+static int fn_probe_invocation_fires = 0;
+static NSTimer *fn_probe_invocation_timer = nil;
+
+
+/* §63.190: A WAIT IS A LOOP IN THIS LIBRARY. `-runMode:beforeDate:` is documented as ONE PASS (the probe's
+ * own `runmode-one-pass` check pins that), so waiting for a timer to come due means running passes until a
+ * deadline — a single call returns immediately and the timer never gets its chance. That is exactly what
+ * made these checks read `fires=0` while the timer was valid, in the right mode, in the right loop. */
+static void fn_wait_seconds(double seconds)
+{
+	NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:seconds];
+
+	while ([deadline timeIntervalSinceNow] > 0) {
+		[[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode
+					 beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.02]];
+	}
+}
+
+@implementation FNTimerProbeTarget
+- (void)timerFired:(NSTimer *)timer
+{
+	fn_probe_invocation_fires++;
+	fn_probe_invocation_timer = timer;
+}
+@end
+
 @implementation LoopProbe
 
 - (instancetype)init
@@ -775,6 +807,72 @@ int main(void)
 		      [NSString stringWithFormat:@"notifications=%lu in RLProbeMode (was impossible before §62.62)",
 			(unsigned long)[probe notifications]]);
 		[[NSNotificationCenter defaultCenter] removeObserver:probe];
+	}
+
+
+	{
+		/* §63.190: THE BLOCK PAIR, plus a TEMPORARY DIAGNOSTIC. The loop skips a timer when the mode does not
+		 * fire for it, when it is not valid, or when it is not due — so the detail prints all three halves. */
+		__block int fires = 0;
+		__block NSTimer *seen = nil;
+		NSTimer *scheduled = [NSTimer scheduledTimerWithTimeInterval:0.01 repeats:NO block:^(NSTimer *t) {
+			fires++;
+			seen = t;
+		}];
+
+		fn_wait_seconds(0.3);
+		check("timer-block-fires", fires == 1 && seen == scheduled,
+		      [NSString stringWithFormat:@"fires=%d valid=%d interval=%g fireDate@%.3f now@%.3f due=%d dt=%g",
+			fires, [scheduled isValid], [scheduled timeInterval],
+			[[scheduled fireDate] timeIntervalSince1970], [[NSDate date] timeIntervalSince1970],
+			[[scheduled fireDate] timeIntervalSince1970] <= [[NSDate date] timeIntervalSince1970],
+			[[scheduled fireDate] timeIntervalSinceNow]]);
+	}
+	{
+		/* THE INVOCATION PAIR: the target and selector are the caller's and the TIMER supplies the argument at
+		 * index 2, which the check observes through the target's landing. */
+		FNTimerProbeTarget *target = [[FNTimerProbeTarget alloc] init];
+		NSMethodSignature *signature = [target methodSignatureForSelector:@selector(timerFired:)];
+		/* THE SIGNATURE DOOR IS NULLABLE AND THE INVOCATION DOOR IS NOT, so the nil case is HANDLED here
+		 * rather than asserted away: with no signature there is no invocation and nothing is scheduled,
+		 * which the check below then reports. */
+		NSInvocation *invocation = signature != nil
+			? [NSInvocation invocationWithMethodSignature:signature] : nil;
+
+		[invocation setTarget:target];
+		[invocation setSelector:@selector(timerFired:)];
+		if (invocation != nil) {
+			[NSTimer scheduledTimerWithTimeInterval:0.01 invocation:invocation repeats:NO];
+		}
+		fn_wait_seconds(0.3);
+		check("timer-invocation-fires", fn_probe_invocation_fires == 1 && fn_probe_invocation_timer != nil,
+		      [NSString stringWithFormat:@"fires=%d timer-handed-over=%d", fn_probe_invocation_fires,
+			fn_probe_invocation_timer != nil]);
+	}
+	{
+		/* TOLERANCE ROUND-TRIPS and a toleranced repeating timer still fires. */
+		__block int ticks = 0;
+		NSTimer *repeating = [NSTimer scheduledTimerWithTimeInterval:0.02 repeats:YES block:^(NSTimer *t) {
+			ticks++;
+		}];
+
+		[repeating setTolerance:0.005];
+		fn_wait_seconds(0.25);
+		[repeating invalidate];
+		check("timer-tolerance-round-trips", [repeating tolerance] == 0.005 && ticks >= 2,
+		      [NSString stringWithFormat:@"tolerance=%g ticks=%d", [repeating tolerance], ticks]);
+	}
+	{
+		/* AND THE UNSCHEDULED PAIR IS NOT SCHEDULED: the timer is VALID (Apple's rule: valid until
+		 * invalidated) and the loop never fires it, because only -addTimer: puts a timer in a loop. */
+		__block int never = 0;
+		NSTimer *loose = [NSTimer timerWithTimeInterval:0.01 repeats:NO block:^(NSTimer *t) {
+			never++;
+		}];
+
+		fn_wait_seconds(0.25);
+		check("timer-unscheduled-does-not-fire", never == 0 && [loose isValid],
+		      [NSString stringWithFormat:@"fired=%d still-valid=%d", never, [loose isValid]]);
 	}
 
 	printf("FOUNDATION-RUNLOOP RESULT ok=%d fail=%d\n", okc, failc);
