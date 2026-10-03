@@ -231,7 +231,58 @@ int main(void)
 		BOOL onMac = [info iOSAppOnMac];
 		BOOL onVision = [info iOSAppOnVision];
 
-		check("proc-platform-flags",
+		{
+		/* ACTIVITIES (§63.181). What a caller can measure with no system support to keep the promise: the
+		 * token exists, it is a DIFFERENT object per activity, the block runs exactly once, the expiring form
+		 * is asked with "not expired" (nothing is trying to suspend this process), and a foreign token is
+		 * ignored rather than fatal. */
+		NSProcessInfo *info = [NSProcessInfo processInfo];
+		id<NSObject> first = [info beginActivityWithOptions:NSActivityUserInitiated reason:@"probe"];
+		id<NSObject> second = [info beginActivityWithOptions:NSActivityBackground reason:@"probe"];
+		__block int ran = 0;
+		__block BOOL sawExpired = YES;
+
+		[info endActivity:first];
+		[info endActivity:[NSObject new]];
+		[info performActivityWithOptions:NSActivityIdleSystemSleepDisabled reason:@"block" usingBlock:^{
+			ran++;
+		}];
+		[info performExpiringActivityWithReason:@"expiring" usingBlock:^(BOOL expired) {
+			sawExpired = expired;
+		}];
+		check("proc-activities",
+		      first != nil && second != nil && first != second && ran == 1 && sawExpired == NO,
+		      [NSString stringWithFormat:@"first=%d second=%d distinct=%d ran=%d expired=%d",
+			first != nil, second != nil, first != second, ran, sawExpired]);
+	}
+
+	{
+		/* THE TERMINATION FLAGS AND THE TWO PLATFORM ANSWERS, asserted by the only parts that HAVE a
+		 * getter: the support flag must round-trip, and the enable doors must balance the disable ones
+		 * without disturbing it - including ONE MORE enable than disable, which must not underflow. */
+		NSProcessInfo *info = [NSProcessInfo processInfo];
+		BOOL before = [info automaticTerminationSupportEnabled];
+
+		[info setAutomaticTerminationSupportEnabled:!before];
+		[info disableAutomaticTermination:@"probe"];
+		[info disableAutomaticTermination:@"probe"];
+		[info enableAutomaticTermination:@"probe"];
+		[info enableAutomaticTermination:@"probe"];
+		[info enableAutomaticTermination:@"probe"];
+		[info disableSuddenTermination];
+		[info enableSuddenTermination];
+		[info enableSuddenTermination];
+		check("proc-termination-and-platform-flags",
+		      [info automaticTerminationSupportEnabled] == !before &&
+		      ![info hasPerformanceProfile:@"probe"] &&
+		      ![info isDeviceCertifiedFor:@"probe"],
+		      [NSString stringWithFormat:@"support=%d before=%d profile=%d certified=%d",
+			[info automaticTerminationSupportEnabled], before,
+			[info hasPerformanceProfile:@"probe"], [info isDeviceCertifiedFor:@"probe"]]);
+		[info setAutomaticTerminationSupportEnabled:before];	/* leave the flag as it was found */
+	}
+
+	check("proc-platform-flags",
 		      info != nil && !lowPower && !catalyst && !onMac && !onVision,
 		      [NSString stringWithFormat:@"lowPower=%d catalyst=%d onMac=%d onVision=%d",
 			(int)lowPower, (int)catalyst, (int)onMac, (int)onVision]);

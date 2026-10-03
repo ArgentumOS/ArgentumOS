@@ -15962,6 +15962,53 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.181 — NSProcessInfo: activities, the termination counters, the two hardware answers — and the type that was declared in the wrong place
+
+Eleven rows leave the work list: `method shipped 1624 → 1634, open 191 → 181`; `property shipped 684 → 685,
+open 80 → 79`. The twelve row — `-operatingSystem` — is DELIBERATELY LEFT OPEN, and the reason is worth the
+line: Apple's deprecated spelling answers a CONSTANT, this system's own name has no numeric constant, and
+the list it would come from (Mach, Windows NT, Solaris) names other machines. Declaring Apple's whole enum
+in order to answer one deprecated door with a number that would be a lie is worse than an unimplemented door
+with a reason — the same judgement `-operatingSystemName`'s own note already made about the STRING.
+
+**WHAT SHIPPED.** An activity is a promise — do not idle-sleep, do not terminate — and what a caller gets
+back is an opaque token: a private `FNActivity` carrying the options and the reason, recognised and released
+by `-endActivity:`, with a FOREIGN token ignored rather than fatal. `-performActivityWithOptions:reason:usingBlock:`
+makes one, runs the block, ends it; the expiring form asks the block with `NO`, because in a process nothing
+is trying to suspend, nothing has expired. Automatic and sudden termination keep COUNTS (per reason for the
+first, one counter for the second) so the enables balance the disables. The two hardware questions —
+`-hasPerformanceProfile:` and `-isDeviceCertifiedFor:` — answer NO: both ask about a Mac, and NO is an
+answer where the door exists. The class has no ivars (it is a static-backed singleton), so the new state is
+file-static like the shared instance.
+
+**THE ROOT CAUSE, AND IT WAS NOT THE INSTRUMENT.** The `NSActivityOptions` typedef sat AFTER the class's
+methods and OUTSIDE the `@interface` — so (a) clang refused every member naming it, correctly, as `expected
+a type` (C ordering: a type must be declared before the declaration that uses it), and (b) a member block
+inserted after that typedef belonged to NO class, which is exactly the "+0 members" measurement I got two
+turns ago and then WITHDREW. THE RETRACTION WAS WRONG AND THE ORIGINAL FINDING WAS RIGHT: both measurements
+were true and were about different positions — appending immediately before `@end` IS seen (26 → 27), and
+appending after a typedef that lies outside the class is NOT. I withdrew a true finding on the strength of a
+probe that answered a different question, which is its own lesson.
+
+**THE FIX IS THE HEADER'S OWN RECORDED STYLE.** `NSProcessInfoThermalState`'s note has said since §62.98
+that "THE THERMAL STATE BELONGS BEFORE THE CLASS ... Apple declares it before the class too" — and this
+header then declared `NSActivityOptions` after its methods, outside the class, in defiance of exactly that
+rule. Moving the typedef (seventeen lines, with its comment) above `@interface NSProcessInfo` fixes the
+compile error AND the invisible-member problem in one move, and leaves the header consistent with the rule
+it already states.
+
+**THE PROCESS THAT MADE THIS LANDING DIFFERENT.** The pre-flight — assert that `_declared_types()` sees all
+eleven selectors in `NSProcessInfo`'s member set, IN THE SAME ROUND as the header edit — is now step one.
+It reported 26 → 38 members, 11/11 visible before a line of `.m` was written (twice before, the header edit
+went out with the implementation and the flip, and the failure surfaced at the build). ⚠ AND IT IS
+NECESSARY, NOT SUFFICIENT: it passed on the very first attempt of this unit while the BUILD still failed,
+because membership in the class and declaration-order are different questions — the compile is the gate for
+ordering. Both belong in the loop.
+
+Acceptance: `make testimg` green; `make test TESTS=foundation_processinfo` → 1/1 case, 6/6 case checks, and
+the probe's own tally 13 → 15; `tools/foundation-sweep.py --check` consistent (`method 1634/181/399`,
+`property 685/79/172`), `--families --write` rc=0, `--unimplemented` 0 NEW.
+
 ## §63.180 — the ten deprecated NSFileHandle doors, implemented as the modern doors with the error dropped
 
 `method shipped 1616 → 1624, open 199 → 191`; `property shipped 682 → 684, open 82 → 80`. The ten are

@@ -30,6 +30,7 @@
 #import <Foundation/NSProcessInfo.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDictionary.h>
+#import <Foundation/NSNumber.h>	/* -unsignedIntegerValue: the termination counters' type (without it clang reads 'assigning to NSUInteger from id') */
 #import <Foundation/NSString.h>
 #include <unistd.h>
 #include <sys/sysinfo.h>
@@ -48,6 +49,12 @@
 extern char **environ;
 
 static NSProcessInfo *fn_shared_process_info = nil;
+
+/* THE ACTIVITY AND TERMINATION STATE, static for the same reason the shared instance is: this class is a
+ * singleton over process-wide facts, and what follows describes THE PROCESS rather than an object. */
+static NSMutableDictionary *fn_termination_reasons = nil;	/* reason -> count */
+static NSUInteger fn_sudden_termination_disabled = 0;		/* a count: enables balance disables */
+static BOOL fn_automatic_termination_support_enabled = NO;
 
 /*
  * ONE ENTRY OF THE PROCESS DIRECTORY, from the first path that HAS it.
@@ -108,7 +115,127 @@ static NSString *fn_trimmed_process_string(const char *leaf)
 	return end > 0 ? [NSString stringWithUTF8String:buffer] : nil;
 }
 
+/* THE ACTIVITY TOKEN, private: what a caller gets back is opaque by contract, and the only thing this
+ * library does with it is recognise it in -endActivity:. */
+@interface FNActivity : NSObject
+{
+@public
+	NSActivityOptions options;
+	NSString *reason;
+}
+@end
+
+@implementation FNActivity
+- (NSString *)description
+{
+	return [NSString stringWithFormat:@"<NSActivity: %lu %@>", (unsigned long)options, reason];
+}
+@end
+
 @implementation NSProcessInfo
+- (id<NSObject>)beginActivityWithOptions:(NSActivityOptions)options reason:(NSString *)reason
+{
+	FNActivity *activity = [[FNActivity alloc] init];
+
+	activity->options = options;
+	activity->reason = [reason copy];
+	return [activity autorelease];
+}
+
+- (void)endActivity:(id<NSObject>)activity
+{
+	/* A TOKEN THIS LIBRARY DID NOT HAND OUT IS IGNORED rather than fatal: the contract is that a caller
+	 * returns what it was given, and there is no state here whose bookkeeping a foreign object could break. */
+	if (![activity isKindOfClass:[FNActivity class]]) {
+		return;
+	}
+	[(FNActivity *)activity release];
+}
+
+- (void)performActivityWithOptions:(NSActivityOptions)options
+			    reason:(NSString *)reason
+			usingBlock:(void (^)(void))block
+{
+	id<NSObject> activity = [self beginActivityWithOptions:options reason:reason];
+
+	if (block != NULL) {
+		block();
+	}
+	[self endActivity:activity];
+}
+
+- (void)performExpiringActivityWithReason:(NSString *)reason usingBlock:(void (^)(BOOL expired))block
+{
+	id<NSObject> activity = [self beginActivityWithOptions:0 reason:reason];
+
+	if (block != NULL) {
+		block(NO);	/* nothing is trying to suspend this process, so nothing has expired */
+	}
+	[self endActivity:activity];
+}
+
+- (void)disableAutomaticTermination:(NSString *)reason
+{
+	NSUInteger count;
+
+	if (reason == nil) {
+		return;
+	}
+	if (fn_termination_reasons == nil) {
+		fn_termination_reasons = [[NSMutableDictionary alloc] init];
+	}
+	count = [[fn_termination_reasons objectForKey:reason] unsignedIntegerValue];
+	[fn_termination_reasons setObject:[NSNumber numberWithUnsignedInteger:count + 1] forKey:reason];
+}
+
+- (void)enableAutomaticTermination:(NSString *)reason
+{
+	NSUInteger count;
+
+	if (reason == nil) {
+		return;
+	}
+	count = [[fn_termination_reasons objectForKey:reason] unsignedIntegerValue];
+	if (count <= 1) {
+		[fn_termination_reasons removeObjectForKey:reason];
+	} else {
+		[fn_termination_reasons setObject:[NSNumber numberWithUnsignedInteger:count - 1] forKey:reason];
+	}
+}
+
+- (void)disableSuddenTermination
+{
+	fn_sudden_termination_disabled++;
+}
+
+- (void)enableSuddenTermination
+{
+	if (fn_sudden_termination_disabled > 0) {
+		fn_sudden_termination_disabled--;
+	}
+}
+
+- (BOOL)automaticTerminationSupportEnabled
+{
+	return fn_automatic_termination_support_enabled;
+}
+
+- (void)setAutomaticTerminationSupportEnabled:(BOOL)flag
+{
+	fn_automatic_termination_support_enabled = flag;
+}
+
+- (BOOL)hasPerformanceProfile:(NSString *)profile
+{
+	(void)profile;
+	return NO;	/* a performance profile is an Apple-silicon mode; nothing here offers one */
+}
+
+- (BOOL)isDeviceCertifiedFor:(NSString *)certificationType
+{
+	(void)certificationType;
+	return NO;	/* certification is Apple's, for named uses of a named device */
+}
 
 + (NSProcessInfo *)processInfo
 {

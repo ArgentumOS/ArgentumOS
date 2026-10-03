@@ -67,6 +67,24 @@ typedef enum {
 	NSProcessInfoThermalStateCritical = 3
 } NSProcessInfoThermalState;
 
+/* How much a long-running activity is allowed to disturb the machine, and how hot the
+ * process is (2026-09-20). NSActivityOptions is a bit set — thirteen bits of "do not
+ * sleep", "do not terminate", and what kind of work this is. Names from Apple's
+ * documentation index; values are ours (§11.6.1 D2, see NSFileManager.h). */
+typedef enum {
+	NSActivityIdleDisplaySleepDisabled = 1 << 0,
+	NSActivityIdleSystemSleepDisabled = 1 << 1,
+	NSActivitySuddenTerminationDisabled = 1 << 2,
+	NSActivityAutomaticTerminationDisabled = 1 << 3,
+	NSActivityUserInitiated = 1 << 4,
+	NSActivityUserInteractive = 1 << 5,
+	NSActivityUserInitiatedAllowingIdleSystemSleep = 1 << 6,
+	NSActivityBackground = 1 << 7,
+	NSActivityLatencyCritical = 1 << 8,
+	NSActivityAnimationTrackingEnabled = 1 << 9,
+	NSActivityTrackingEnabled = 1 << 10
+} NSActivityOptions;
+
 @interface NSProcessInfo : NSObject
 
 + (NSProcessInfo *)processInfo;
@@ -114,25 +132,38 @@ typedef enum {
 - (unsigned long long)physicalMemory;
 - (NSTimeInterval)systemUptime;
 
+/* ACTIVITIES (§63.181). An activity is a PROMISE to the system that work is in progress — do not
+ * idle-sleep the machine, do not terminate the app — and what is handed back is an OPAQUE TOKEN whose only
+ * job is to be given to -endActivity:. The promise is RECORDED here, and there is nothing on this system to
+ * keep it with: no idle sleep to prevent and no app-napping to defer. Recorded rather than pretended,
+ * because a caller can still measure the SHAPE — an activity begins, the block runs, the activity ends —
+ * and -endActivity: with a token this library did not hand out is ignored rather than fatal. */
+- (id<NSObject>)beginActivityWithOptions:(NSActivityOptions)options reason:(NSString *)reason;
+- (void)endActivity:(id<NSObject>)activity;
+- (void)performActivityWithOptions:(NSActivityOptions)options
+			    reason:(NSString *)reason
+			usingBlock:(void (^)(void))block;
+- (void)performExpiringActivityWithReason:(NSString *)reason
+			       usingBlock:(void (^)(BOOL expired))block;
+
+/* AUTOMATIC AND SUDDEN TERMINATION. The "enable" doors BALANCE the "disable" ones, so what is kept is a
+ * COUNT — per reason for automatic termination, one counter for sudden termination. The support flag is the
+ * one part of this group with a getter, which is why it can be asserted rather than hoped for. */
+- (void)disableAutomaticTermination:(NSString *)reason;
+- (void)enableAutomaticTermination:(NSString *)reason;
+- (void)disableSuddenTermination;
+- (void)enableSuddenTermination;
+- (BOOL)automaticTerminationSupportEnabled;
+- (void)setAutomaticTerminationSupportEnabled:(BOOL)flag;
+
+/* THE TWO HARDWARE QUESTIONS, and both ask about a Mac: a performance profile is an Apple-silicon
+ * performance mode, and a certified device is one Apple has certified for a named use. Neither exists on
+ * this system — and NO is the answer rather than a raised door, because the question IS answerable. */
+- (BOOL)hasPerformanceProfile:(NSString *)profile;
+- (BOOL)isDeviceCertifiedFor:(NSString *)certificationType;
+
 @end
 
-/* How much a long-running activity is allowed to disturb the machine, and how hot the
- * process is (2026-09-20). NSActivityOptions is a bit set — thirteen bits of "do not
- * sleep", "do not terminate", and what kind of work this is. Names from Apple's
- * documentation index; values are ours (§11.6.1 D2, see NSFileManager.h). */
-typedef enum {
-	NSActivityIdleDisplaySleepDisabled = 1 << 0,
-	NSActivityIdleSystemSleepDisabled = 1 << 1,
-	NSActivitySuddenTerminationDisabled = 1 << 2,
-	NSActivityAutomaticTerminationDisabled = 1 << 3,
-	NSActivityUserInitiated = 1 << 4,
-	NSActivityUserInteractive = 1 << 5,
-	NSActivityUserInitiatedAllowingIdleSystemSleep = 1 << 6,
-	NSActivityBackground = 1 << 7,
-	NSActivityLatencyCritical = 1 << 8,
-	NSActivityAnimationTrackingEnabled = 1 << 9,
-	NSActivityTrackingEnabled = 1 << 10
-} NSActivityOptions;
 
 
 /* THE SEVEN NAMES OF `-operatingSystemName`'s VOCABULARY, in Apple's spelling and with the value each one has on
