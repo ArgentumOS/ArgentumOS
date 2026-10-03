@@ -15982,6 +15982,38 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.122 — FIVE PROBES, FIVE `check()` SIGNATURES, AND THE ONE-LINE UNIFICATION THAT IS NOW OWED (2026-10-01)
+
+**NO ROWS CLOSED. THE FIVE `NSTimeZone` DOORS ARE WRITTEN AND THE **LIBRARY** COMPILED THEM — THE BLOCKER IS THE PROBE'S
+`check()`, AND IT IS NOW MEASURED RATHER THAN INFERRED.**
+
+**⚠⚠ THE FINDING, AND IT IS WORTH A FIX RATHER THAN A NOTE: THE PROBES IN THIS TREE DO NOT SHARE A `check()`
+SIGNATURE, AND THIS SESSION HAS NOW WRITTEN CHECKS AGAINST FIVE OF THEM:**
+```
+foundation_url.m                 check(const char *name, int ok, const char *detail)
+foundation_attributedstring.m    check(const char *name, BOOL held, NSString *why)
+foundation_extensioncontext.m    check(const char *name, BOOL held, NSString *why)
+foundation_dobjects.m            check(const char *name, BOOL held, NSString *why)
+foundation_calendardate.m        check(const char *name, int ok, NSString *detail)   <- measured this unit
+```
+**“THE PROBE'S `check()`” IS NOT ONE THING, SO A CALL COPIED FROM A NEIGHBOUR IS A COIN TOSS** — and it has cost this
+session at least three rounds (§63.106, §63.115, and here). **THE ONE-LINE UNIFICATION IS OWED: ONE SIGNATURE, IN ONE
+HEADER THE PROBES SHARE, so that a check written anywhere compiles everywhere.** ⚠ AND THE RIGHT SIGNATURE IS THE
+WIDEST ONE — `(const char *name, int ok, NSString *detail)` — because it is the only one that accepts all four call
+shapes the tree already uses.
+
+**⚠⚠ AND THE METHOD FAILURE IS THE SAME ONE AS THE WHOLE SESSION'S, FROM THE OTHER SIDE: I READ THE `UTF8String` CAST
+OFF A NEIGHBOURING PROBE AND THEN SPENT TWO ROUNDS ADJUSTING CASTS — WHEN THE ONE COMMAND THAT ENDS IT IS `grep -A 2
+'^static void check' <the file>`, WHICH NAMES THE PARAMETER'S TYPE OUTRIGHT.** *The signature was one `grep` away for
+two rounds, and I was reading the compiler's paraphrase of it instead.*
+
+**AND THE LIBRARY SIDE IS DONE AND MEASURED: four doors through one ICU route** (`ucal_open` for the zone's identifier
+or a `GMT±HH:MM` tag, `ucal_getTimeZoneDisplayName` with a locale when the caller gives one, `ucal_getDSTSavings` for
+the daylight-saving offset) **plus `+defaultTimeZone` as a class store whose setter releases its predecessor.** The
+header takes them in **a new `NSTimeZone (NSExtendedTimeZone)` category placed after the enum**, which is Apple's own
+category name — and the two GENERIC styles answer the standard name, because **ICU HAS NO GENERIC TIME-ZONE NAME AT
+ALL** and that choice is written down rather than hidden.
+
 ## §63.121 — EIGHT ROUNDS OF PLUMBING AND ONE REAL FINDING: ICU HAS NO GENERIC TIME-ZONE NAME (2026-10-01)
 
 **NO ROWS CLOSED. THE FIVE DOORS ARE DESIGNED, MEASURED AND READY; THE UNIT FAILED EIGHT TIMES AND NOT ONCE ON THE
