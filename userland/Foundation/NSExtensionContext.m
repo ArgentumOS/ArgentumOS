@@ -65,6 +65,19 @@ NSString * const NSExtensionItemsAndErrorsKey = @"NSExtensionItemsAndErrorsKey";
 	_endingError = [error retain];
 }
 
+
+/* ================== THE HOST DOOR (§63.114) ================== */
+- (void)openURL:(NSURL *)URL completionHandler:(void (^)(BOOL success))completionHandler
+{
+	/* ⚠ APPLE'S CONTRACT IS "ASKS THE HOST" AND THERE IS NO HOST HERE, SO THE REQUEST CANNOT BE HONOURED. THE DOOR DOES
+	 * NOT THROW AND DOES NOT PRETEND: **its completion takes `success`, and `NO` is what actually happened.** The
+	 * handler is optional in Apple's own declaration (`_Nullable`), so it is guarded rather than assumed. */
+	(void)URL;
+	if (completionHandler != NULL) {
+		completionHandler(NO);
+	}
+}
+
 @end
 
 @implementation NSExtensionContext (FNPrivate)

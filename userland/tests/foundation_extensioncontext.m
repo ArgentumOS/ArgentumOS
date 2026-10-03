@@ -90,6 +90,34 @@ static BOOL fn_raises(void (^block)(void))
 
 int main(void)
 {
+
+	{
+		/* §63.114: THE HOST DOOR. Apple's contract is "asks the host", there is no host here, and the door's own
+		 * completion takes `success` — so BOTH HALVES ARE ASSERTED: THAT THE CALLER WAS TOLD, and WHAT IT WAS TOLD.
+		 * A door that returned silently would satisfy the first and fail the contract, which is why they are one
+		 * check and not two. ⚠ No I/O: the URL is never opened, because nothing here can open it. */
+		/* ⚠⚠ AND THE CONTEXT COMES FROM THE SEAM, WHICH THIS FILE'S OWN HEADER COMMENT SAYS AND MY FIRST VERSION
+		 * IGNORED: "there is NO PUBLIC CONSTRUCTOR: `-init` raises… THE HOST'S HALF IS THE INTERNAL SEAM
+		 * `FNExtensionContext.h` — IT MAKES THE CONTEXT, HANDS IT OVER, AND READS THE ENDING." The four existing
+		 * checks in this very probe all use it. **A FILE THAT DOCUMENTS ITS OWN DOOR IS STILL NOT READ BY SOMEONE WHO
+		 * ONLY LOOKS AT THE CLASS.** */
+		NSExtensionContext *ctx = FNExtensionContextMakeWithInputItems(nil);
+		__block BOOL called = NO;
+		__block BOOL success = YES;
+
+		/* ⚠ AND THE URL IS BUILT WITH -fileURLWithPath: AND NOT -URLWithString:, WHICH IS A NULLABILITY FACT AND NOT A
+		 * STYLE CHOICE: `+URLWithString:` is annotated NULLABLE, so passing its result to a nonnull parameter is
+		 * `-Werror=nullable-to-nonnull-conversion` — **this campaign's own recorded rule, and it caught the probe. */
+		[ctx openURL:(NSURL * _Nonnull)[NSURL fileURLWithPath:@"/"]
+		     completionHandler:^(BOOL ok) {
+			called = YES;
+			success = ok;
+		}];
+		check("extensioncontext-open-url-tells-the-caller-no",
+		      called && !success,
+		      [NSString stringWithFormat:@"called=%d success=%d", (int)called, (int)success]);
+	}
+
 	/* 1. THE NAMES. */
 	{
 		Protocol *p = objc_getProtocol("NSExtensionRequestHandling");
@@ -254,6 +282,11 @@ int main(void)
 			if ([name isEqualToString:@"inputItems"] ||
 			    [name isEqualToString:@"completeRequestReturningItems:completionHandler:"] ||
 			    [name isEqualToString:@"cancelRequestWithError:"] ||
+			    /* ⚠ AND `-openURL:completionHandler:` JOINED THE LIST WHEN §63.114 LANDED IT — WHICH IS THIS CHECK DOING
+			     * ITS JOB: it is an allow-list OF APPLE'S DOORS, and a door of Apple's that the list did not know about was a
+			     * STRAY until the door existed. **A BOUNDARY THAT IS NOT MOVED WHEN IT MOVES IS A CHECK THAT FAILS FOR BEING
+			     * RIGHT** — the third time this session (§63.101's `mutableString`, §63.106's bookmark boundary, here). */
+			    [name isEqualToString:@"openURL:completionHandler:"] ||
 			    [name isEqualToString:@"init"] || [name isEqualToString:@"dealloc"] ||
 			    [name hasPrefix:@"fn"] || [name hasPrefix:@"."])	/* libobjc2's own dot-prefixed slots */
 				continue;

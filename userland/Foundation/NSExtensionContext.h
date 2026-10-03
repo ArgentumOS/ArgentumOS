@@ -34,6 +34,7 @@
  */
 
 #import <Foundation/NSObject.h>
+#import <Foundation/NSURL.h>	/* the parameter of -openURL:completionHandler: below */
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -66,6 +67,21 @@ NS_ASSUME_NONNULL_BEGIN
 		    completionHandler:(nullable void (^)(BOOL expired))completionHandler;
 - (void)cancelRequestWithError:(NSError *)error;
 
+/* ⚠⚠ `-openURL:completionHandler:`, READ FROM THE CORPUS BEFORE IT WAS WRITTEN (§63.96's instrument, and this time
+ * the SEARCH ITSELF had to be got right: the door is `- (void)openURL:(NSURL *)URL completionHandler:…` at line 25 of
+ * the corpus's own `NSExtensionContext.h` — **A SELECTOR IS NOT A WORD. `openURL:completionHandler:` IS HOW A HUMAN
+ * WRITES IT; A DECLARATION PUTS PARAMETER TYPES BETWEEN THE PARTS, SO SEARCHING FOR THE FIRST FORM FINDS NOTHING.**)
+ *
+ *   APPLE'S COMMENT, VERBATIM: "Asks the host to open a URL on the extension's behalf"
+ *   AND ITS SIGNATURE CARRIES THE ANSWER: `completionHandler:(void (^)(BOOL success))` — AN ASK WHOSE REPLY IS
+ *   WHETHER IT WORKED.
+ *
+ * ⚠ SO THE DOOR'S OWN PARAMETER SAYS WHAT TO DO HERE: there is no extension host in this system, so the request cannot
+ * be honoured, **AND THE TRUTHFUL REPLY IS THE ONE THE COMPLETION TAKES: `NO`.** That is the same shape as the
+ * security-scoped pair (§63.108) and the inflection door (§63.99): **THE DOOR ANSWERS A QUESTION ABOUT A CAPABILITY, AND
+ * THE HONEST ANSWER IS THE ONE THE PARAMETER EXISTS FOR. A REFUSAL WOULD BE WRONG HERE — THE CALLER ASKED TO BE TOLD,
+ * AND BEING TOLD IS THE WHOLE CONTRACT.** */
+- (void)openURL:(NSURL *)URL completionHandler:(void (^)(BOOL success))completionHandler;
 @end
 
 /* THE KEY BESIDE THE CLASS: an `NSError`'s userInfo uses it to carry the items AND the per-item errors of a

@@ -30,6 +30,7 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_extensioncontext"
 CHECKS = (
+    "extensioncontext-open-url-tells-the-caller-no",
     "the-class-the-protocol-and-the-key-are-declared",
     "the-host-makes-a-context-and-it-carries-what-it-sent",
     "a-context-with-no-items-holds-an-empty-array-not-nil",

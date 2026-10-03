@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2192   open  338   struck  398
+#   method     shipped 2193   open  337   struck  398
 #   property   shipped 1278   open  180   struck  178
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -1174,7 +1174,7 @@ method	struck	-interfaceParametersDescription	NSExtensionContext	App Support / E
 method	struck	-loadBroadcastingApplicationInfoWithCompletion:	NSExtensionContext	App Support / Extension Support / Supporting broadcasting	other-framework	objc
 method	struck	-mediaPlayingPaused	NSExtensionContext	App Support / Extension Support / Controlling media playback in notification content extensions	other-framework	objc
 method	struck	-mediaPlayingStarted	NSExtensionContext	App Support / Extension Support / Controlling media playback in notification content extensions	other-framework	objc
-method	open	-openURL:completionHandler:	NSExtensionContext	App Support / Extension Support / Opening URLs	-	objc
+method	shipped	-openURL:completionHandler:	NSExtensionContext	App Support / Extension Support / Opening URLs	-	objc
 method	struck	-performNotificationDefaultAction	NSExtensionContext	App Support / Extension Support / Handling notification actions	other-framework	objc
 method	struck	-widgetMaximumSizeForDisplayMode:	NSExtensionContext	App Support / Extension Support / Deprecated	other-framework	objc
 property	struck	hostedViewMaximumAllowedSize	NSExtensionContext	App Support / Extension Support / Getting Siri-related information	other-framework	objc

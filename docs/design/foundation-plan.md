@@ -15982,6 +15982,45 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.114 — THE HOST DOOR LANDS, `NSExtensionContext` IS DONE, AND A SELECTOR IS NOT A WORD (2026-10-01)
+
+**WHAT LANDED: `-openURL:completionHandler:`, THE LAST `NSExtensionContext` ROW — SO THE OWNER IS COMPLETE, having begun
+this pair of units at sixteen rows.**
+
+**MEASURED: `method shipped 2192 → 2193`, `open 338 → 337`; `--check` consistent; `make host-foundation` EXIT 0 with
+exactly the standing SIX warnings; `make testimg` EXIT 0; `make test TESTS='foundation_extensioncontext'` →
+`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s` with **`FOUNDATION-EXTENSIONCONTEXT 14/14`**.**
+
+**AND THE CONTRACT IS APPLE'S COMMENT, VERBATIM: “ASKS THE HOST TO OPEN A URL ON THE EXTENSION'S BEHALF” — AND ITS OWN
+SIGNATURE CARRIES THE ANSWER, `completionHandler:(void (^)(BOOL success))`.** There is no extension host in this
+system, so the request cannot be honoured, **and the truthful reply is the one that parameter exists for: `NO`. A
+REFUSAL WOULD BE WRONG HERE — THE CALLER ASKED TO BE TOLD, AND BEING TOLD IS THE WHOLE CONTRACT** (the shape of
+§63.99 and §63.108, where a parameter asks a question the system can answer honestly).
+
+**⚠⚠ AND THE ROUND'S REAL FINDING IS A NEW SPECIES OF THIS SESSION'S ONE MISTAKE: **A SELECTOR IS NOT A WORD.**
+I SEARCHED THE CORPUS FOR `openURL:completionHandler:` — HOW A HUMAN WRITES A SELECTOR — FOUND NOTHING, AND CONCLUDED
+THE DOOR WAS NOT FOUNDATION'S.** But the corpus declares it at line 25 of its own `NSExtensionContext.h` as
+`- (void)openURL:(NSURL *)URL completionHandler:…`: **A DECLARATION PUTS ITS PARAMETER TYPES BETWEEN THE PARTS, SO THE
+LITERAL STRING DOES NOT EXIST IN ANY HEADER.** ⚠⚠ **AND THE CLASSIFIER WAS RIGHT ALL ALONG: its pattern puts a wildcard
+between the parts, which is exactly what a declaration does. MY HAND-WRITTEN GREPS WERE THE INSTRUMENT THAT LIED, AND
+THE TOOL WAS FINE.** *Eight instances of this family now, and the first where the tool was the innocent party.*
+
+**AND THREE MORE LESSONS, EACH CHEAPER THAN THE LAST, ALL IN ONE UNIT:**
+ 1. **THE IMPORT, FOR THE SIXTH TIME** — `NSURL` is the door's parameter and this header did not import it
+    (‘expected a type’). *One line, and the omission costs a round every time it happens;*
+ 2. **A CHECK THAT IGNORED ITS OWN FILE'S DOCUMENTATION** — the probe's header comment says **“there is NO PUBLIC
+    CONSTRUCTOR: `-init` raises… THE HOST'S HALF IS THE INTERNAL SEAM `FNExtensionContext.h` — it MAKES the context,
+    hands it over, and reads the ending”**, and I instantiated the class anyway and aborted the probe. **THE ABORT
+    MESSAGE NAMED THE FACTORY** (“FNExtensionContext.h's factory is the host, in miniature”) — and the four existing
+    checks in that very probe already use `FNExtensionContextMakeWithInputItems()`;*
+ 3. **`-Werror=nullable-to-nonnull-conversion` CAUGHT THE PROBE**, exactly as this campaign's own recorded rule says it
+    should, and the fix is an explicit nonnull cast: *`+[NSURL fileURLWithPath:]` cannot fail for a literal path, and
+    saying so is what the cast is for.*
+
+**AND A BOUNDARY CHECK MOVED FOR THE THIRD TIME: the probe's public-surface allow-list refused the new door as a STRAY
+until it was added to Apple's list — which is the check doing its job.** *A boundary that is not moved when it moves
+is a check that fails for being right* (§63.101's `mutableString`, §63.106's bookmark boundary, and here).
+
 ## §63.113 — FIFTEEN ROWS LEAVE `NSExtensionContext`, AND THE SET IS THE CLEANEST EXAMPLE OF THE POSITIVE GROUND (2026-10-01)
 
 **WHAT LANDED: FIFTEEN ROWS STRUCK — `NSExtensionContext` CUT FROM SIXTEEN TO ONE — and every one of them is a
