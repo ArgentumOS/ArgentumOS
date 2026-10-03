@@ -15982,6 +15982,53 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.130 — §11.0 RETARGETED: THE SURFACE IS CUT TO A macOS BASELINE (2026-10-01, user decision dec-26854a2d2b84fa80)
+
+**THE USER'S INSTRUCTION: “We need to minimize our API surface, to maximize the time spent on perfecting the
+implementation.”** Everything not present in a chosen early Foundation is to be REMOVED — **classes AND members** —
+with Foundation reduced first and the consumers (Argentum UIKit, Kestrel, Weaver, the apps) repaired afterwards.
+
+**THE BASELINE IS TAKEN AS macOS 10.2, AND THAT CHOICE IS A ONE-WORD PARAMETER RATHER THAN A REBUILD.** It is the
+smallest cut that keeps the OS's own two load-bearing substrates — **`NSURLConnection`/`NSHTTPCookie`/`NSURLCache` (10.2)
+and `NSKeyedArchiver` (10.2), which §62.53 records as the distributed-objects wire** — and 10.2 vs 10.4 was measured to
+differ by only THREE classes (`NSValueTransformer` 10.3, `NSExpression` and `NSPredicate` 10.4), which is what makes the
+smaller cut the revertible one.
+
+**⚠⚠ THE GROUND IS OFFLINE AND ALREADY IN HAND: APPLE'S SDK HEADERS ANNOTATE EVERY DECLARATION THAT POST-DATES 10.0**
+(‘no annotation = original’ is the convention), per-member (`-containsString:` reads `macos(10.10)`) and per-class
+(`NSURLSession` reads `macos(10.9)`). No crawl of Apple's per-page availability JSON is needed — which matters, because
+`fetch_index()` only pulls the index and availability lives one level deeper.
+
+**MEASURED (report only — NOTHING HAS BEEN DELETED):**
+ * **classes to cut at 10.2: 48 of 221 headers**, and 45 at 10.4;
+ * **members to cut from the surviving classes: 575 of 3035 declarations on those with a corpus header — 19%**;
+ * correctly KEPT, verified by name: `NSString`, `NSArray`, `NSDictionary`, `NSData`, `NSDate`, `NSFileManager`,
+   `NSRunLoop`, `NSCoder`, `NSError`, `NSTask`, `NSFormatter`, `NSKeyedArchiver`;
+ * correctly CUT: the whole `NSURLSession` stack, `NSItemProvider`, `NSURLComponents`, `NSProgress`, `NSPredicate`,
+   `NSDataDetector`, `NSTextCheckingResult`, `NSJSONSerialization`, `NSRegularExpression`, `NSOrthography`,
+   `NSFileCoordinator`, `NSUserActivity`, the formatter family, `NSOperation`/`NSOperationQueue`, `NSMapTable`,
+   `NSHashTable`, `NSAttributeString`'s 12.0/14.0 doors.
+ ***THIS REMOVES MOST OF WHAT THIS SESSION BUILT, WHICH IS WORTH KNOWING BEFORE IT IS DELETED RATHER THAN AFTER.***
+
+**⚠⚠ AND THE RULER TOOK THREE ATTEMPTS, WITH BOTH FAILURES RECORDED BECAUSE THE THIRD VERSION'S RULE IS THE FINDING:
+APPLE PUTS NO AVAILABILITY ANNOTATION ON A CLASS THAT EXISTED AT 10.0, BUT IT DOES END THE CONSTRUCT BEFORE IT WITH
+ONE.** Attempt 1 read `NSString`, `NSData`, `NSCoder`, `NSFileManager`, `NSError` and `NSAttributedString` as post-10.0.
+Attempt 2 fixed the ‘category declaration’ confusion and STILL read `NSCoder` as 10.11, `NSRunLoop` as 10.5 and
+`NSFileManager` as 10.8 — because the nearest preceding non-blank line was `} API_AVAILABLE(macos(10.11), ...)` or a
+`FOUNDATION_EXPORT ... API_AVAILABLE(macos(10.5), ...)`, and a backward scan takes the version of whatever the annotation
+TERMINATES. **A CLASS'S OWN ANNOTATION IS A STANDALONE LINE, OR IT RIDES THE `@interface` LINE.**
+
+**⚠ AND THE THIRD VERSION UNDER-CUTS, WHICH IS STATED SO THE LIST IS READ AS A LOWER BOUND: `NSCalendar`, `NSLocale`
+and `NSDateComponents` (10.4) survive a 10.2 cut, and `NSMorphology`, `NSTermOfAddress` and `NSInflectionRule`
+(12.0/14.0) survive both, because their annotations are placed in a shape the standalone-line rule misses. ONE MORE PASS
+ON THE CLASSIFIER IS OWED BEFORE ANYTHING IS REMOVED.**
+
+**THE SEQUENCING, BECAUSE A DELETION IS NOT A LEDGER EDIT: (1) the classifier verifies clean; (2) the ledger gains an
+`era` column and the cut rows leave it — which needs the writer AND the reader, §62.110's own field-count lesson;
+(3) declarations AND definitions are removed together, since the standing rule forbids a declaration without one;
+(4) callers are repaired, probes and cases included; (5) §11.0's wording is amended to name the baseline. NOTHING IS
+DELETED UNTIL (1) HOLDS.**
+
 ## §63.129 — ‘SHIPPED’ IS THE SURFACE, NOT WIRING: MEASURED, DECIDED, AND THE RULER DID NOT SHIP (2026-10-01)
 
 **THE USER ASKED THE ONE QUESTION THE LEDGER CANNOT ANSWER: ARE THESE PROPERTIES ACTUALLY USED AS INTENDED? THE ANSWER
