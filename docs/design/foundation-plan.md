@@ -15982,6 +15982,42 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.107 — THE PROMISED-ITEM TRIO LANDS BY DELEGATING, AND APPLE'S COMMENT CORRECTED MY INSTINCT (2026-10-01)
+
+**WHAT LANDED: `NSURL (NSURLPromisedItems)` — `-getPromisedItemResourceValue:forKey:error:`,
+`-promisedItemResourceValuesForKeys:error:` and `-checkPromisedItemIsReachableAndReturnError:`.**
+
+**MEASURED: `method shipped 2184 → 2187`, `open 374 → 371`; `--check` consistent; `make host-foundation` EXIT 0 with
+exactly the standing SIX warnings; `make testimg` EXIT 0; `make test TESTS='foundation_url'` →
+`TESTS-OK 1/1 case(s), 6/6 check(s) in 12s` with **`FOUNDATION-URL 38/38`**.**
+
+**⚠⚠ AND APPLE'S OWN COMMENT BOTH SPECIFIED THE DOORS AND CORRECTED THE INSTINCT I BROUGHT TO THEM** (§63.96's
+instrument, read before a line was written): *"Most of the NSURL resource value keys will work with these APIs.
+However, there are some that are tied to the item's contents that will not work, such as NSURLContentAccessDateKey or
+NSURLGenerationIdentifierKey. **If one of these keys is used, the method will return YES, but the value for the key
+will be nil.**"*
+ * **MY INSTINCT WAS THAT "PROMISED ITEM" MEANT AN iCLOUD SPECIAL CASE — AND IT DOES NOT.** On a system with no
+   ubiquity a promised item is AN ORDINARY FILE, and the trio READS ITS RESOURCE VALUES. **So they DELEGATE to the
+   resource-value doors this library already ships, rather than growing a second reader free to disagree with the
+   first** — and the only reason they are three doors at all is the one published exception.
+ * **AND THAT EXCEPTION IS THE ONE PLACE THEY DO NOT DELEGATE:** the ordinary door FAILS for a key it cannot answer,
+   and Apple's contract here is to **answer YES WITH A NIL VALUE**. ⚠⚠ **THE TWO KEYS APPLE NAMES ARE THE WHOLE OF OUR
+   SET — generalising "such as" to "any key that fails" would hide EVERY real error behind a YES, which is the
+   opposite of what the sentence is for** (§11.6.1 D2, our reading, written down).
+ * And the bulk door OMITS a nil value rather than storing nil: **a dictionary of what it could read**, which is what
+   makes the per-key rule harmless there.
+
+**⚠ AND TWO APPLY FAILURES, BOTH CLERICAL AND BOTH THE SAME LESSON IN A NEW DRESS: the category block had an `@end`
+AND NO `@interface`** (‘missing context for method declaration’ — I copied §63.106's block and dropped its opening
+line), **and the declarations used PARAMETRISED GENERICS in a header that only FORWARD-DECLARES those classes**
+(‘type arguments cannot be applied to non-parameterized class’ — §63.75's rule, re-learned). **THE PROBE'S `check()`
+SIGNATURE WAS READ FIRST THIS TIME AND COST NOTHING** (§63.106's lesson applied), **which is exactly the difference:
+READ THE FILE YOU ARE EDITING, not only the file whose pattern you are copying.**
+
+**AND WHAT REMAINS ON `NSURL` IS SIX ROWS: the deprecated resource-data trio, the security-scoped pair (written and
+understood in §63.103), and the UTType pair** — the last of which is Foundation's and held back only by a corpus that
+does not carry their declarations.
+
 ## §63.106 — THE SEVEN BOOKMARK DOORS LAND AS REFUSALS, AND A FOURTH ABSENCE ASSERTION IS RETIRED (2026-10-01)
 
 **WHAT LANDED: `NSURL (NSURLBookmarks)` — SEVEN DOORS REFUSING BY NAME, ON THE USER'S DECISION

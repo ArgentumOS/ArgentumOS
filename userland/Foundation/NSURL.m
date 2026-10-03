@@ -2044,3 +2044,60 @@ static void fn_url_bookmark_unsupported(const char *selector)
 }
 
 @end
+
+
+/* ================== THE PROMISED-ITEM TRIO (§63.107) ================== */
+@implementation NSURL (NSURLPromisedItems)
+
+/* ⚠ AND THESE TWO ARE THE ONLY PART OF THE TRIO THAT DOES NOT DELEGATE — Apple's own comment names them, and the
+ * rule they carry is that the call ANSWERS YES WITH A NIL VALUE rather than failing. */
+static BOOL fn_url_key_is_tied_to_contents(NSURLResourceKey key)
+{
+	return [key isEqualToString:@"NSURLContentAccessDateKey"] ||
+	       [key isEqualToString:@"NSURLGenerationIdentifierKey"];
+}
+
+- (BOOL)getPromisedItemResourceValue:(id *)value forKey:(NSURLResourceKey)key error:(NSError **)error
+{
+	if (fn_url_key_is_tied_to_contents(key)) {
+		/* APPLE'S SENTENCE, EXACTLY: the call answers YES and the value is nil. An error, if the caller passed one,
+		 * is cleared — a successful call must not leave a stale error behind. */
+		if (value != NULL) {
+			*value = nil;
+		}
+		if (error != NULL) {
+			*error = nil;
+		}
+		return YES;
+	}
+	return [self getResourceValue:value forKey:key error:error];
+}
+
+- (NSDictionary *)promisedItemResourceValuesForKeys:(NSArray *)keys error:(NSError **)error
+{
+	NSMutableDictionary *found = [NSMutableDictionary dictionary];
+	NSUInteger i;
+
+	for (i = 0; i < [keys count]; i++) {
+		NSURLResourceKey key = [keys objectAtIndex:i];
+		id value = nil;
+
+		if ([self getPromisedItemResourceValue:&value forKey:key error:error]) {
+			/* ⚠ AND A NIL VALUE IS NOT ADDED: Apple's bulk door answers a DICTIONARY OF WHAT IT COULD READ, which
+			 * is what makes the per-key nil rule above harmless here — the key is simply absent. */
+			if (value != nil) {
+				[found setObject:value forKey:key];
+			}
+		} else {
+			return nil;
+		}
+	}
+	return found;
+}
+
+- (BOOL)checkPromisedItemIsReachableAndReturnError:(NSError **)error
+{
+	return [self checkResourceIsReachableAndReturnError:error];
+}
+
+@end

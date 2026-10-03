@@ -53,6 +53,40 @@ int main(void)
 {
 
 	{
+		/* §63.107: THE PROMISED-ITEM TRIO. On a system with no ubiquity a promised item is an ordinary file, so
+		 * what is asserted is THAT THEY AGREE WITH THE ORDINARY DOORS — and, for the one rule Apple publishes, that
+		 * a content-tied key ANSWERS YES WITH A NIL VALUE rather than failing. ⚠ The detail arguments are `const char *`
+		 * in THIS probe. */
+		NSURL *p = [NSURL fileURLWithPath:@"/System"];
+		id ordinary = nil;
+		id promised = nil;
+		NSError *e1 = nil;
+		NSError *e2 = nil;
+		BOOL gotOrdinary = [p getResourceValue:&ordinary forKey:NSURLIsDirectoryKey error:&e1];
+		BOOL gotPromised = [p getPromisedItemResourceValue:&promised forKey:NSURLIsDirectoryKey error:&e2];
+		id tied = @"not-nil";
+		NSError *e3 = nil;
+		BOOL tiedYes = [p getPromisedItemResourceValue:&tied forKey:@"NSURLContentAccessDateKey" error:&e3];
+		BOOL reachable = [p checkPromisedItemIsReachableAndReturnError:NULL];
+
+		check("url-promised-item-value-agrees-with-the-ordinary-door",
+		      gotOrdinary == gotPromised && gotOrdinary,
+		      [[NSString stringWithFormat:@"ordinary=%d promised=%d", (int)gotOrdinary, (int)gotPromised] UTF8String]);
+		check("url-promised-item-content-tied-key-answers-yes-with-nil",
+		      tiedYes == YES && tied == nil && e3 == nil,
+		      [[NSString stringWithFormat:@"yes=%d value=%@", (int)tiedYes, tied] UTF8String]);
+		check("url-promised-item-reachability-delegates",
+		      reachable == [p checkResourceIsReachableAndReturnError:NULL],
+		      [[NSString stringWithFormat:@"promised=%d ordinary=%d", (int)reachable,
+			(int)[p checkResourceIsReachableAndReturnError:NULL]] UTF8String]);
+		check("url-promised-item-bulk-read-answers-a-dictionary",
+		      [[p promisedItemResourceValuesForKeys:[NSArray arrayWithObject:NSURLIsDirectoryKey]
+						      error:NULL] isKindOfClass:[NSDictionary class]],
+		      "the bulk door answers a dictionary");
+	}
+
+
+	{
 		/* §63.106: THE SEVEN BOOKMARK DOORS REFUSE BY NAME (dec-412cc6306e238994), EACH ASSERTED ALONE — one check
 		 * over seven doors says only that SOMETHING raised, and a door that stopped raising would hide behind its
 		 * siblings. ⚠ The probe is ARC. */

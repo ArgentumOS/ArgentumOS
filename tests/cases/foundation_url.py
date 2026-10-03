@@ -29,6 +29,10 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_url"
 CHECKS = (
+    "url-promised-item-bulk-read-answers-a-dictionary",
+    "url-promised-item-reachability-delegates",
+    "url-promised-item-content-tied-key-answers-yes-with-nil",
+    "url-promised-item-value-agrees-with-the-ordinary-door",
     "url-bookmark-init-by-resolving-refuses",
     "url-bookmark-creation-refuses",
     "url-bookmark-write-refuses",

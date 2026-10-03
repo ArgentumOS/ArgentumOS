@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2184   open  374   struck  370
+#   method     shipped 2187   open  371   struck  370
 #   property   shipped 1278   open  186   struck  172
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -3370,7 +3370,7 @@ method	shipped	+URLWithString:relativeToURL:	NSURL	Fundamentals / URLs / Creatin
 method	shipped	+absoluteURLWithDataRepresentation:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	shipped	+bookmarkDataWithContentsOfURL:error:	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
 method	shipped	-bookmarkDataWithOptions:includingResourceValuesForKeys:relativeToURL:error:	NSURL	Fundamentals / URLs / Working with Bookmark Data	-	objc
-method	open	-checkPromisedItemIsReachableAndReturnError:	NSURL	Fundamentals / URLs / Working with Promised Items	-	objc
+method	shipped	-checkPromisedItemIsReachableAndReturnError:	NSURL	Fundamentals / URLs / Working with Promised Items	-	objc
 method	shipped	-checkResourceIsReachableAndReturnError:	NSURL	Fundamentals / URLs / Querying an NSURL	-	objc
 method	open	-fileReferenceURL	NSURL	Fundamentals / URLs / Modifying and Converting a File URL	-	objc
 method	shipped	+fileURLWithFileSystemRepresentation:isDirectory:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
@@ -3380,7 +3380,7 @@ method	shipped	+fileURLWithPath:isDirectory:relativeToURL:	NSURL	Fundamentals / 
 method	shipped	+fileURLWithPath:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	shipped	+fileURLWithPathComponents:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	shipped	-getFileSystemRepresentation:maxLength:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
-method	open	-getPromisedItemResourceValue:forKey:error:	NSURL	Fundamentals / URLs / Working with Promised Items	-	objc
+method	shipped	-getPromisedItemResourceValue:forKey:error:	NSURL	Fundamentals / URLs / Working with Promised Items	-	objc
 method	shipped	-getResourceValue:forKey:error:	NSURL	Fundamentals / URLs / Accessing Resource Values	-	objc
 method	shipped	-initAbsoluteURLWithDataRepresentation:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	shipped	-initByResolvingBookmarkData:options:relativeToURL:bookmarkDataIsStale:error:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
@@ -3396,7 +3396,7 @@ method	shipped	-initWithString:encodingInvalidCharacters:	NSURL	Fundamentals / U
 method	shipped	-initWithString:relativeToURL:	NSURL	Fundamentals / URLs / Creating a URL object	-	objc
 method	shipped	-isFileReferenceURL	NSURL	Fundamentals / URLs / Querying an NSURL	-	objc
 method	open	-loadResourceDataNotifyingClient:usingCache:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
-method	open	-promisedItemResourceValuesForKeys:error:	NSURL	Fundamentals / URLs / Working with Promised Items	-	objc
+method	shipped	-promisedItemResourceValuesForKeys:error:	NSURL	Fundamentals / URLs / Working with Promised Items	-	objc
 method	shipped	-propertyForKey:	NSURL	Fundamentals / URLs / Deprecated	deprecated	objc
 method	shipped	-removeAllCachedResourceValues	NSURL	Fundamentals / URLs / Accessing Resource Values	-	objc
 method	shipped	-removeCachedResourceValueForKey:	NSURL	Fundamentals / URLs / Accessing Resource Values	-	objc

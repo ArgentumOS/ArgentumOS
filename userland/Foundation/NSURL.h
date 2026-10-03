@@ -642,6 +642,29 @@ extern NSURLResourceKey NSURLVolumeUUIDStringKey;
 					      error:(NSError **)error;
 @end
 
+/* ⚠⚠ THE PROMISED-ITEM TRIO, AND APPLE'S OWN COMMENTS FULLY SPECIFY THEM (§63.96's instrument, read from the
+ * corpus before a line was written): "Most of the NSURL resource value keys will work with these APIs. However, there
+ * are some that are tied to the item's contents that will not work, such as NSURLContentAccessDateKey or
+ * NSURLGenerationIdentifierKey. **IF ONE OF THESE KEYS IS USED, THE METHOD WILL RETURN YES, BUT THE VALUE FOR THE KEY
+ * WILL BE NIL.**"
+ *
+ * ⚠ SO THIS IS **NOT** A SPECIAL CASE FOR iCLOUD: on a system with no ubiquity, a "promised item" is an ordinary file
+ * and the trio READS ITS RESOURCE VALUES — which is why they DELEGATE to the resource-value doors this library
+ * already ships, rather than growing a second reader that could disagree with the first.
+ *
+ * ⚠ AND THE NIL-KEY RULE IS THE ONE PLACE THEY DO NOT DELEGATE: the ordinary door FAILS for a key it cannot answer,
+ * and Apple's contract here is to answer YES WITH A NIL VALUE for the content-tied keys. **The two keys Apple NAMES
+ * are the whole of our set — generalising "such as" to "any key that fails" would hide every real error behind a
+ * YES, which is the opposite of what the sentence is for (§11.6.1 D2, our reading, written down).** */
+@interface NSURL (NSURLPromisedItems)
+- (BOOL)getPromisedItemResourceValue:(id _Nullable * _Nonnull)value
+			      forKey:(NSURLResourceKey)key
+			       error:(NSError **)error;
+- (nullable NSDictionary *)promisedItemResourceValuesForKeys:(NSArray *)keys
+									    error:(NSError **)error;
+- (BOOL)checkPromisedItemIsReachableAndReturnError:(NSError **)error;
+@end
+
 NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSURL_H */
