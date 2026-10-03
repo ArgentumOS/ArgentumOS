@@ -1099,7 +1099,7 @@ mv MacOSX10.2.8.sdk /home/kyle/Development/Fiwix/.tmp/mac102/
 |---|---|
 | instrument | `tools/appkit-102-sweep.py` |
 | artefact | `docs/reference/appkit-102-worklist.txt` — **5,338 rows, 5,262 open** (see §8h: this ledger was regenerated the same day its sibling was written, after an audit found a reader defect) |
-| modes | `--refresh` (the only mode that reads the corpus) · `--check` (offline gate) · `--work-list [kind\|cluster]` · `--families [--write]` · `--order` |
+| modes | `--refresh` (the only mode that reads the corpus) · `--check` (offline gate) · `--audit` (parse-accounting, §8h's rule) · `--work-list [kind\|cluster]` · `--families [--write]` · `--order` |
 
 **It is a fourth sweep rather than a mode of `tools/appkit-sweep.py`, and the
 reason is the ground.** That file reads `developer.apple.com/tutorials/data/index/appkit`
@@ -1307,7 +1307,7 @@ mv MacOSX10.5.sdk /home/kyle/Development/Fiwix/.tmp/mac105/
 |---|---|
 | instrument | `tools/appkit-105-sweep.py` — a CLONE of §7b's, and separate for the same reason `appkit-sweep.py` is separate from `foundation-sweep.py`: the ground differs |
 | artefact | `docs/reference/appkit-105-worklist.txt` — **7,816 rows, 7,738 open** |
-| modes | `--refresh` · `--check` (offline) · `--work-list [kind\|cluster]` · `--families [--write]` · `--order` · **`--delta`** (10.5 against 10.2, offline, from the two ledgers) |
+| modes | `--refresh` · `--check` (offline) · `--audit` (parse-accounting, §8h's rule) · `--work-list [kind\|cluster]` · `--families [--write]` · `--order` · **`--delta`** (10.5 against 10.2, offline, from the two ledgers) |
 
 `--delta` is this era's new mode and it needs no SDK: its second ground is §7's
 **committed** artefact. It compares row identity — `(kind, name, owner)` for the
@@ -1528,10 +1528,17 @@ short, 61 declarations missing**.
 
 The lesson is the one this tree keeps re-learning in a different costume: **the
 check that was run was true and too narrow, and the artefact it blessed was wrong
-in a way only a per-file rule could see.** Both instruments now pass the audit
-over their whole corpus (0 files different), and `--delta`'s numbers moved with it
-— 10.2's short methods had been reported as "gone by 10.5", which is exactly the
-kind of false story the drift section exists to prevent.
+in a way only a per-file rule could see.** All three instruments now pass the
+audit over their whole corpus (0 files different), and `--delta`'s numbers moved
+with it — 10.2's short methods had been reported as "gone by 10.5", which is
+exactly the kind of false story the drift section exists to prevent.
+
+**AND THE RULE IS NOW A MODE IN EACH INSTRUMENT (`--audit`), because §9 needed it
+again.** A scratch script is a check somebody has to remember to write; `--audit`
+is one the tool carries, and the 10.6 instrument's parser was extended to property
+syntax *after* it passed — so the extension was verified by a rule that already
+existed rather than by a new improvisation. It needs the corpus, so it is
+deliberately not part of `--check`.
 
 ## 9. The 10.6 era ground — the third pin, and the era where the SHAPE changes (2026-10-03)
 

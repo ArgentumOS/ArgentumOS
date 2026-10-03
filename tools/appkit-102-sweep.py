@@ -55,6 +55,7 @@ USAGE
 
   tools/appkit-102-sweep.py --refresh            re-read the 10.2 corpus and rewrite the work list
   tools/appkit-102-sweep.py --check              verify the artefact against our headers (offline)
+  tools/appkit-102-sweep.py --audit              parse-accounting over the whole corpus (§8h's rule)
   tools/appkit-102-sweep.py --work-list [KIND]   print the open rows — the work list itself
   tools/appkit-102-sweep.py --families [--write] print (or rewrite into the plan) the family table
   tools/appkit-102-sweep.py --order              classes by superclass depth: the build order
@@ -1033,6 +1034,8 @@ def main(argv):
         return families("--write" in argv)
     if mode == "--order":
         return order()
+    if mode == "--audit":
+        return audit()
     print(__doc__)
     return 2
 

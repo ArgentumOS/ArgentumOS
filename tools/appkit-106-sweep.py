@@ -1,57 +1,60 @@
 #!/usr/bin/env python3
 # Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
 # SPDX-License-Identifier: MIT
-"""THE APPLICATION KIT AS IT WAS AT 10.5 — a work list pinned to an SDK, not to today.
+"""THE APPLICATION KIT AS IT WAS AT 10.6 — a work list pinned to an SDK, not to today.
 
-A CLONE OF `tools/appkit-102-sweep.py`, AND THE TWO ARE SEPARATE FILES BECAUSE THE GROUND IS: each is
-pinned to one SDK's headers, and 10.2 → 10.5 moves the frame enough that one instrument would have to
-carry a branch for every finding below. They keep the SAME ROW SHAPE (kind, status, name, owner,
-family, why, src), the same three statuses, the same `--refresh` (the only mode that reads a corpus) /
-`--check` (offline) split, and the same inconsistency classes — `coregraphics-sweep.py` says why: "two
-sweeps that disagree about what a ledger row IS would be worse than one".
+THE THIRD ERA INSTRUMENT, cloned from `tools/appkit-105-sweep.py` (which was cloned from the 10.2 one).
+They are separate files because the ground is: each is pinned to one SDK's headers, they keep the SAME
+ROW SHAPE (kind, status, name, owner, family, why, src), the same three statuses, the same
+`--refresh`/`--check` split and the same inconsistency classes, and each carries the branches its own era
+forces. `coregraphics-sweep.py` says why sharing is not the answer: "two sweeps that disagree about what
+a ledger row IS would be worse than one".
 
-WHAT IS ACTUALLY DIFFERENT AT 10.5, MEASURED OVER THIS CORPUS BEFORE A LINE OF PARSER WAS WRITTEN — and
-the first one FALSIFIED the assumption this file was commissioned on:
+10.6 IS WHERE THE SHAPE OF THE FRAMEWORK CHANGES, AND THE CENSUS SAID SO BEFORE ANY CODE WAS WRITTEN:
 
-  * STILL NO `@property`. 177 AppKit headers, ZERO `@property` declarations: Leopard's brand-new
-    `NSViewController` declares `-setRepresentedObject:`/`-representedObject` like everything else. The
-    accessor-pair shape of 10.2 survived the whole 10.5 line, so this ledger, like the 10.2 one, has no
-    `property` kind. (The assumption was that Objective-C 2.0's properties had arrived in the headers
-    with 10.5. They had not — and a parser written from the assumption would have reported zero rows of
-    a kind it never looked for. It now GUARDS the assumption instead: `@property` occurrences are
-    counted, reported in the artefact header and warned about on stdout, because the honest answer to
-    "this instrument cannot read that shape" is to say so rather than to under-report.)
+  * `@property` ARRIVES — 27 declarations, in exactly four headers, all of them NEW at 10.6
+    (`NSTextInputContext.h`, `NSTouch.h`, `NSRunningApplication.h`, `NSOpenGLLayer.h`). This is the
+    difference from 10.5, where the language had properties and the AppKit did not use them: here a
+    HANDFUL of new classes are declared in the new style and every older header stays accessor-based.
+    So this ledger has a `property` KIND — the first of the three, and `parse()` reads the syntax
+    properly rather than counting it — and the artefact's header records that 0 properties were skipped.
+    (10.5's instrument GUARDED this shape: it counted `@property` and reported what it could not read.
+    10.6 is the era where the guard would have fired, which is why the guard was worth writing.)
 
-  * AVAILABILITY IS IN THE HEADERS, INLINE. 10.5's headers carry
-    `AVAILABLE_MAC_OS_X_VERSION_10_5_AND_LATER` (131 occurrences) and
-    `DEPRECATED_IN_MAC_OS_X_VERSION_…_AND_LATER` (18), attached to the END of a declaration — or on the
-    line after it, which is why the parser joins a declaration before reading it. 10.2 had nothing like
-    this. The annotations become the `why` column: `introduced 10.5` for API new in this era,
-    `deprecated 10.4` for API the era still ships and marks. A DEPRECATED ROW IS OWED, NOT STRUCK (the
-    user's policy, 2026-09-26), so `struck` is 0 here for the same reason it is 0 in the 10.2 ledger.
+  * THE DELEGATE PATTERN BECOMES PROTOCOLS — THIS IS THE ERA'S HEADLINE. 10.2 and 10.5 express every
+    delegate, data source and notification surface as `@interface NSObject (NSXxxDelegate)`; 10.6
+    declares them as formal `@protocol`s with `@optional` members. Measured: **57 protocols against
+    18** (39 new: NSApplicationDelegate, NSTableViewDelegate, NSTableViewDataSource, NSWindowDelegate,
+    NSTextViewDelegate, …) and **25 `NSObject` categories against 58**. Nothing was deleted: the same
+    selectors changed the shape of the thing that declares them, which is exactly the point the 10.2 and
+    10.5 sections make in the other direction ("a clone that reaches for formal protocols would be
+    building 10.15's AppKit") — AND 10.6 IS WHERE THAT STOPPED BEING TRUE.
 
-  * `NSInteger`/`CGFloat` REPLACED `int`/`float` ACROSS THE FRAMEWORK. 10.2's AppKit has no uses of
-    either (one string coincidence, `kCGFloatingWindowLevel`); 10.5's has 739 + 445. A method row that
-    looks identical in both ledgers often is not — the SIGNATURE is the 10.5 work, and the plan's
-    section records how many rows are re-typed rather than new.
+  * `@optional` GOES FROM RARE TO THE NORM: 43 occurrences (10.5: 4), and `@required` appears 8 times,
+    because a protocol in this era marks which half a conforming class must implement.
 
-  * `@optional` ARRIVED, AND WAS USED SPARINGLY: 4 occurrences, in four NEW protocols
-    (`NSPathCellDelegate`, `NSPathControlDelegate`, `NSPrintPanelAccessorizing`, `NSTextInputClient`).
-    Every other protocol is still all-required AND THE DELEGATE PATTERN IS STILL A CATEGORY ON
-    `NSObject` — 58 of them. A member after `@optional` carries `optional` in `why`: it is real work (it
-    must be supported) and it is not required work, a distinction 10.2 could not express at all.
+  * AVAILABILITY DEEPENS: 1,027 `AVAILABLE_MAC_OS_X_VERSION_…_AND_LATER` and 215
+    `DEPRECATED_IN_…_AND_LATER` against 10.5's 131 and 18, with 319 of the AVAILABLE annotations
+    naming 10.6 itself. The annotations stay the `why` column, and a deprecated row is OWED, not struck.
 
-  * CATEGORIES STILL OUTNUMBER PROTOCOLS: 172 category rows against 18 protocols. The delegate,
-    data-source and notification surfaces are categories at BOTH eras, which is the most misread fact
-    about "modern" Cocoa in this range.
+  * `NSInteger`/`CGFloat` REACH 1,268 uses (10.5: 1,184) — the signature modernization continues rather
+    than completing.
 
-  * `#if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5` GUARDS ARE IGNORED, DELIBERATELY. The
-    question this ledger answers is "is this declared in the 10.5 headers", and a declaration inside a
-    version guard is declared. The guards are how 10.5 expresses a CLASS's introduction (10.2 used
-    nothing at all), so ignoring them is what makes the two ledgers comparable.
+  * STILL NO `NS_ENUM`/`NS_OPTIONS` (0 occurrences): the typed-enum macros arrive later, so this era's
+    enumerations are read the 10.2 way.
 
-  * A ROW'S `src` IS A FILE, NOT A URL, AND MEMBERS ARE OWNER-SCOPED — identical to the 10.2 ledger,
-    and for the same reasons that file states at length.
+  * BLOCKS REACH THE HEADERS BUT NOT THE PROPERTIES: 9 `(^)` occurrences, none of them a property type.
+
+  * `#if MAC_OS_X_VERSION_MAX_ALLOWED >= …` GUARDS ARE IGNORED, DELIBERATELY — 10.6 uses them the way
+    10.5 did, including the repeated `@interface … {` line that cost the 10.5 instrument a whole file's
+    members (§8h of the plan). This instrument reads them correctly from the start.
+
+`--audit` IS THIS ERA'S OTHER ADDITION, AND IT IS THE RULE §8h SAYS WAS MISSING: for every file, the raw
+`@interface`/`@protocol` lines and raw method/property lines must equal what the parser produced. It is a
+MODE rather than a scratch script because it caught two real defects in the earlier instruments, one of
+which had already shipped a short ledger. Two accounting rules are stated in it, each of which cost a
+false alarm once: a declaration with no return type is a member line, and a DUPLICATED container line is
+one container.
 
 THE CORPUS IS NOT IN THIS TREE AND MUST NOT BE (Apple's SDK is not redistributable; the same rule
 `tools/foundation-sdk-subset.py` states). `.tmp/` is gitignored for exactly this reason, the fetch is
@@ -60,13 +63,13 @@ does not.
 
 USAGE
 
-  tools/appkit-105-sweep.py --refresh            re-read the 10.5 corpus and rewrite the work list
-  tools/appkit-105-sweep.py --check              verify the artefact against our headers (offline)
-  tools/appkit-105-sweep.py --audit              parse-accounting over the whole corpus (§8h's rule)
-  tools/appkit-105-sweep.py --work-list [KIND]   print the open rows — the work list itself
-  tools/appkit-105-sweep.py --families [--write] print (or rewrite into the plan) the family table
-  tools/appkit-105-sweep.py --order              classes by superclass depth: the build order
-  tools/appkit-105-sweep.py --delta              what 10.5 has that 10.2 does not, and the reverse
+  tools/appkit-106-sweep.py --refresh            re-read the 10.6 corpus and rewrite the work list
+  tools/appkit-106-sweep.py --check              verify the artefact against our headers (offline)
+  tools/appkit-106-sweep.py --audit              parse-accounting over the whole corpus (needs it)
+  tools/appkit-106-sweep.py --work-list [KIND]   print the open rows — the work list itself
+  tools/appkit-106-sweep.py --families [--write] print (or rewrite into the plan) the family table
+  tools/appkit-106-sweep.py --order              classes by superclass depth: the build order
+  tools/appkit-106-sweep.py --delta              what 10.6 has that 10.5 does not, and the reverse
 """
 
 import glob
@@ -75,33 +78,42 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SURFACE = os.path.join(ROOT, "docs/reference/appkit-105-worklist.txt")
+SURFACE = os.path.join(ROOT, "docs/reference/appkit-106-worklist.txt")
 PLAN = os.path.join(ROOT, "docs/design/cocoa-parity-plan.md")
 OURS = os.path.join(ROOT, "userland/AppKit/*.h")
-TOOL = "tools/appkit-105-sweep.py"
+TOOL = "tools/appkit-106-sweep.py"
 
-# THE 10.2 ARTEFACT IS THIS FILE'S SECOND GROUND, and only `--delta` reads it: the difference between
-# the two eras is a row-set difference, so it is computed from the two LEDGERS rather than from the two
-# corpora (one of which a reader of this file may not have).
-SURFACE_102 = os.path.join(ROOT, "docs/reference/appkit-102-worklist.txt")
+# THE PREVIOUS ERA'S ARTEFACT IS THIS FILE'S SECOND GROUND, and only `--delta` reads it: the difference
+# between two eras is a row-set difference, so it is computed from the two LEDGERS rather than from the
+# two corpora (one of which a reader of this file may not have). For this instrument that previous era
+# is 10.5, and the name is a constant so the delta's prose cannot drift from its ground.
+SURFACE_PREV = os.path.join(ROOT, "docs/reference/appkit-105-worklist.txt")
+PREV_ERA = "10.5"
 
-# The corpus: an SDK mirror checked out by hand, never committed. APPKIT105_SDK overrides the path so
+# The corpus: an SDK mirror checked out by hand, never committed. APPKIT106_SDK overrides the path so
 # the instrument is not welded to one checkout (the .tmp/ tree is mine; someone else's may differ).
 CORPUS = os.environ.get(
-    "APPKIT105_SDK",
-    os.path.join(ROOT, ".tmp/mac105/MacOSX10.5.sdk/System/Library/Frameworks/AppKit.framework/Headers"))
-SDK_NAME = "MacOSX10.5.sdk"
+    "APPKIT106_SDK",
+    os.path.join(ROOT, ".tmp/mac106/MacOSX10.6.sdk/System/Library/Frameworks/AppKit.framework/Headers"))
+SDK_NAME = "MacOSX10.6.sdk"
 SDK_SOURCE = "https://github.com/phracker/MacOSX-SDKs (published mirror; Apple's SDK is not redistributable)"
 
 STATUS_SHIPPED = "shipped"
 STATUS_OPEN = "open"
 STATUS_STRUCK = "struck"   # never assigned here — see the docstring
 
-# THE KINDS THAT ARE API. `property` is absent from the extraction because THIS ERA HAS NONE EITHER
-# (measured: 0 in 177 headers) — `refresh()` counts any it finds and reports them rather than pretending.
-# `category` is a kind no other ledger carries; the docstring says why.
-KINDS = ("category", "class", "protocol", "method", "enum", "case", "typealias", "struct",
+# THE KINDS THAT ARE API. `property` IS IN THIS LIST FOR THE FIRST TIME IN THE FAMILY: 10.6 declares 27
+# of them, in the four headers that are new at this era. `category` is a kind no other ledger carries.
+KINDS = ("category", "class", "protocol", "method", "property", "enum", "case", "typealias", "struct",
          "func", "var", "macro")
+
+# THE PLAN'S FAMILY BLOCK IS IDENTIFIED BY THIS MARKER, AND IT MUST BE THE CLONE'S OWN. A clone that
+# forgets to change it is not a cosmetic slip: `--families --write` rewrites the FIRST marker in the
+# plan, so a 10.6 instrument carrying 10.5's name OVERWRITES THE 10.5 TABLE IN §8c — measured, exactly
+# once, while this file was being written. `--check` still passed, because the tool and the block it had
+# just rewritten agreed with each other; the OTHER instrument's check is what caught it. Hence one named
+# constant instead of two literals in two functions.
+PLAN_MARKER = "appkit-106-families"
 
 # THE FAMILY TABLE IS OURS AND IS STATED AS A RULE, not read from the corpus: a 10.2 SDK carries no
 # taxonomy (the live ledger's `family` column is Apple's documentation's, and there is no equivalent).
@@ -218,6 +230,11 @@ CLUSTERS = {
     "NSCollectionViewItem": "containers", "NSViewAnimation": "animation",
     "NSOpenGLPixelBuffer": "opengl",
     "NSTextBlock": "text", "NSTextTableBlock": "text",
+    # ---- 10.6'S OWN CLASSES, the same way: its six new headers carry these, and four of the six are
+    # ---- also where this era's properties live.
+    "NSOpenGLLayer": "opengl", "NSPasteboardItem": "pasteboard-drag",
+    "NSRunningApplication": "app", "NSTextInputContext": "text",
+    "NSTouch": "responder",       # touch is INPUT, and NSTouchPhase lives in its file
 }
 
 # CLUSTER_ORDER is the BUILD ORDER of the clusters, and it is a claim: the bases have to exist before
@@ -252,6 +269,13 @@ CATEGORY_CLUSTERS = {
     "NSDraggingSource": "pasteboard-drag",
     "NSPasteboardOwner": "pasteboard-drag",
     "NSAppKitAdditions": "graphics",
+    # 10.6's two odd PROTOCOLS, which the prefix rule cannot place for the same reason it could not place
+    # the categories above: `NSOpenSavePanelDelegate` does not begin with the name of any class
+    # (`NSOpenPanel` and `NSSavePanel` both fall short of it), and `NSUserInterfaceItemSearching` names no
+    # class at all. The first is the open/save panel's delegate, the second is what NSHelpManager
+    # searches — both are placed by what they SERVE, which is the rule the whole table follows.
+    "NSOpenSavePanelDelegate": "panels",
+    "NSUserInterfaceItemSearching": "app",
 }
 
 # THE COMPLETENESS INSTRUMENT. An incomplete corpus turns "we misspelled it" into "Apple does not have
@@ -287,15 +311,26 @@ CORPUS_MUST_DECLARE = (
     "NSPathControl", "NSPersistentDocument", "NSPredicateEditor", "NSRuleEditor", "NSSearchField",
     "NSSegmentedControl", "NSShadow", "NSSpeechSynthesizer", "NSTextInputClient", "NSTextList",
     "NSTextTable", "NSTokenField", "NSToolbarItemGroup", "NSTrackingArea", "NSTreeController",
-    "NSViewController")
+    "NSViewController",
+    # NEW AT 10.6 — the six classes whose headers this era adds, four of which are also the four
+    # headers that declare properties
+    "NSOpenGLLayer", "NSPasteboardItem", "NSRunningApplication", "NSTextInputContext", "NSTouch",
+    "NSUserInterfaceItemSearching")
 
 # ...and the categories that MUST be there, checked the same way. NSAccessibility is the one that
-# matters (it is the accessibility surface at BOTH eras), the two dragging ones are the whole
-# drag-and-drop contract, and the last two are the proof that THE DELEGATE PATTERN IS STILL A CATEGORY
-# AT 10.5 — the most misread fact about this range, since a clone that modelled those two as protocols
-# would be building 10.15's AppKit rather than this one.
-CORPUS_MUST_CATEGORIZE = ("NSAccessibility", "NSDraggingDestination", "NSDraggingSource",
-                          "NSApplicationDelegate", "NSTableViewDelegate")
+# matters (it is the accessibility surface at every era in this range) and the two dragging ones are the
+# whole drag-and-drop contract.
+#
+# THE LAST TWO NAMES MOVED LISTS AT 10.6, WHICH IS THE POINT: `NSApplicationDelegate` and
+# `NSTableViewDelegate` are CATEGORIES at 10.2 and 10.5 — asserted there — and PROTOCOLS here. Keeping
+# them in this list would make the completeness check fail on a corpus that is perfectly correct, and
+# moving them is how the era's headline change is expressed in the instrument rather than in prose.
+CORPUS_MUST_CATEGORIZE = ("NSAccessibility", "NSDraggingDestination", "NSDraggingSource")
+
+# ...AND THE PROTOCOLS THAT MUST BE THERE, for the same reason: 10.6 declares the delegate surface
+# formally, so a 10.6 corpus without these is not a 10.6 corpus.
+CORPUS_MUST_PROTOCOLIZE = ("NSApplicationDelegate", "NSTableViewDelegate", "NSTableViewDataSource",
+                           "NSWindowDelegate", "NSTextViewDelegate", "NSOutlineViewDelegate")
 
 # THE HEADERS THAT DECLARE NO CLASS AND NO PROTOCOL, and therefore cannot be clustered by what they
 # declare: the kit's own macro header, the drawing FUNCTIONS, the error strings, and the Interface
@@ -532,12 +567,17 @@ def strip_availability(decl):
     return AVAIL_RX.sub(" ", DEPR_RX.sub(" ", decl))
 
 
-def why_of(base, intro, dep, optional=False):
+def why_of(base, intro, dep, optional=False, getter=None):
     """The `why` column: WHAT KIND OF WORK a row is.
 
     An era note is worth a reader's attention only when it is unusual, so `introduced 10.0` (the baseline
     everything already has) is dropped, and a deprecation REPLACES its introduction — the deprecated half
-    is the half that changes what a caller must do."""
+    is the half that changes what a caller must do.
+
+    `getter` IS THE ONE PROPERTY ATTRIBUTE THAT CHANGES THE ROW'S 10.6 CONTRACT: three of the four
+    headers that declare properties use `getter=isTerminated`, `getter=isHidden`, `getter=isActive`,
+    so the accessor a conforming class must implement is NOT the property's name. It travels in `why`
+    (the row keeps the property's name, as the live ledger's `property` rows do)."""
     bits = []
     if base and base != "-":
         bits.append(base)
@@ -547,7 +587,37 @@ def why_of(base, intro, dep, optional=False):
         bits.append("deprecated " + dep)
     elif intro and intro != "10.0":
         bits.append("introduced " + intro)
+    if getter:
+        bits.append("getter " + getter)
     return ", ".join(bits) or "-"
+
+
+def property_of(decl):
+    """(name, getter) for a `@property` declaration.
+
+    THE ATTRIBUTE GROUP IS DROPPED BY BALANCE, NOT BY REGEX: `@property (readonly, getter=isTerminated)
+    BOOL terminated;` has one balanced group, and a regex that removed "anything in parens" would ALSO
+    eat a parenthesised TYPE (`@property (copy) void (^handler)(void);`, which this corpus does not have
+    but 10.8's does). The name is then the last identifier before the `;` — the same rule every other
+    declaration kind in this file uses."""
+    d = decl.strip()
+    if d.startswith("@property"):
+        d = d[len("@property"):].strip()
+    getter = None
+    if d.startswith("("):
+        depth = 0
+        for k, ch in enumerate(d):
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth == 0:
+                    gm = re.search(r"getter\s*=\s*([A-Za-z_]\w*)", d[1:k])
+                    if gm:
+                        getter = gm.group(1)
+                    d = d[k + 1:]
+                    break
+    return tail_name(d), getter
 
 
 def parse(text):
@@ -560,13 +630,14 @@ def parse(text):
     blocks contain nested `struct … { … }` definitions and bitfields whose `}` would otherwise read as
     `@end`.
 
-    A FOURTH PIECE OF STATE IS 10.5'S OWN: whether a PROTOCOL's members are currently optional, set by
-    `@optional`/`@required`. 10.2 had neither keyword — every protocol member was required — so this is
-    a distinction only the later era can express, and a member's `why` carries it.
+    A FOURTH PIECE OF STATE CAME WITH THE PROTOCOLS: whether a member is currently optional, set by
+    `@optional`/`@required`. It matters more at 10.6 than at 10.5 — 43 `@optional` against 4 — because
+    that is how a delegate protocol says which half a conforming class must implement.
 
-    `@property`, `@synthesize` AND `@dynamic` ARE SKIPPED, AND THE CORPUS HAS NONE OF THEM (measured: 0
-    `@property` in 177 headers). `refresh()` counts them itself and reports them, so an instrument
-    pointed at a later SDK says "I cannot read this shape" instead of quietly dropping rows."""
+    `@property` IS READ AS A ROW HERE. It could not be at 10.2 or 10.5 (both corpora have zero), so this
+    is the era where the shape arrives and the parser learns it: name, owner, availability and the
+    `getter=` attribute, in the same vocabulary as every other kind. `@synthesize`/`@dynamic` are
+    implementation-side and appear in no header of this corpus (measured: 0)."""
     rows = []
     lines = strip_comments(text).splitlines()
     n = len(lines)
@@ -649,6 +720,20 @@ def parse(text):
             i += 1
             continue
         if cur is not None:
+            if s.startswith("@property"):
+                # THE ONE SHAPE 10.6 ADDED TO THE MEMBER GRAMMAR. It is tested BEFORE the `+`/`-` check
+                # because a property line starts with `@`; its owner and attribute rules are the
+                # method's, and `getter=` travels in `why` (see why_of/property_of).
+                decl, i = join_decl(lines, i)
+                intro, dep = availability(decl)
+                name, getter = property_of(strip_availability(decl))
+                if name:
+                    owner = cur["name"] if cur["kind"] in ("class", "protocol") else cur["cls"]
+                    base = ("category %s" % cur["name"]) if cur["kind"] == "category" else "-"
+                    rows.append({"kind": "property", "name": name, "owner": owner,
+                                 "why": why_of(base, intro, dep, optional, getter),
+                                 "getter": getter, "container": cur["name"]})
+                continue
             if s[0] in "+-":
                 decl, i = join_decl(lines, i)
                 intro, dep = availability(decl)
@@ -746,26 +831,36 @@ def our_names():
 
 def our_surface():
     """What our AppKit actually declares, in the SAME row vocabulary as the corpus:
-    (kind, name, owner) for containers and (owner, selector) for methods."""
-    containers, methods = set(), set()
+    (kind, name, owner) for containers, (owner, selector) for methods, and (owner, name) for
+    properties — the third is 10.6's addition, and it is what lets a property row be credited from
+    either the property itself or the accessors a method-shaped surface declares."""
+    containers, methods, properties = set(), set(), set()
     for path in sorted(glob.glob(OURS)):
         for rd in parse(open(path, encoding="utf-8", errors="replace").read()):
             if rd["kind"] in ("class", "protocol", "category"):
                 containers.add((rd["kind"], rd["name"], rd["owner"]))
             elif rd["kind"] == "method":
                 methods.add((rd["owner"], rd["name"]))
-    return containers, methods
+            elif rd["kind"] == "property":
+                properties.add((rd["owner"], rd["name"]))
+    return containers, methods, properties
 
 
 def cluster_of(kind, name, owner):
-    """A row's cluster. Classes and protocols are looked up; a CATEGORY is placed by the longest
-    class-name prefix in its own name (so `NSTableViewDelegate` lands with `NSTableView`), then by
-    the class it extends, then by the Foundation bucket. `unassigned` is a FAILURE, not a bucket —
-    that is how the table is kept complete as the corpus is re-read."""
+    """A row's cluster. Classes and protocols are looked up by name; a CATEGORY **or a PROTOCOL** is
+    placed by the longest class-name prefix in its own name (so `NSTableViewDelegate` lands with
+    `NSTableView`), then by the class it extends, then by the Foundation bucket. `unassigned` is a
+    FAILURE, not a bucket — that is how the table is kept complete as the corpus is re-read.
+
+    THE PREFIX RULE WAS EXTENDED TO PROTOCOLS AT 10.6 AND THAT IS A MEASURED DECISION: 10.5 has 18
+    protocols, so they could be listed by hand; 10.6 has 57, and 39 of them are new delegates whose
+    names are the class they serve plus `Delegate`/`DataSource`. Hand-listing 39 entries would have to
+    be redone at the next era, and the rule's justification is already written for categories: THE SDK
+    NAMES A DELEGATE AFTER THE CLASS IT SERVES."""
     c = CLUSTERS.get(name)
     if c:
         return c
-    if kind == "category":
+    if kind in ("category", "protocol"):
         best = None
         for cls in CLUSTERS:
             if name.startswith(cls) and (best is None or len(cls) > len(best)):
@@ -782,12 +877,14 @@ def cluster_of(kind, name, owner):
     return "unassigned"
 
 
-def status_of(row, names, containers, methods):
+def status_of(row, names, containers, methods, properties=()):
     """Shipped or open, decided by FORM:
       * a container is shipped when we declare it as ANYTHING (the other sweeps' rule) — and a
         category, when we declare that category on that class;
       * a method is shipped when its OWNER declares that whole selector — the owner-scoped test the
         live ledger says it cannot do;
+      * a PROPERTY is shipped when our surface declares the property itself, OR the accessor pair a
+        method-shaped surface would carry (`-name` and `-setName:`, or the `getter=` selector);
       * every other kind is a name-in-our-headers test.
     """
     kind, name, owner = row["kind"], row["name"], row["owner"]
@@ -800,6 +897,14 @@ def status_of(row, names, containers, methods):
                 or any(k == "category" and nm == name for k, nm, _ in containers))
     if kind == "method":
         return (owner, name) in methods
+    if kind == "property":
+        # OUR APPKIT IS METHOD-SHAPED (it was built against the 10.2 and 10.5 pins), so a property is
+        # satisfied either way — as a `@property`, or as the accessors it would synthesize.
+        if (owner, name) in properties:
+            return True
+        if (owner, "- " + (row.get("getter") or name)) in methods:
+            return True
+        return (owner, "- set" + name[0].upper() + name[1:] + ":") in methods
     return name in names
 
 
@@ -811,8 +916,8 @@ def refresh():
         shown = os.path.relpath(CORPUS, ROOT)
         if shown.startswith(".."):
             shown = CORPUS
-        print("appkit-105-sweep: no corpus at %s" % shown)
-        print("  Fetch the SDK first (the recipe is in docs/design/cocoa-parity-plan.md §8a); the")
+        print("appkit-106-sweep: no corpus at %s" % shown)
+        print("  Fetch the SDK first (the recipe is in docs/design/cocoa-parity-plan.md §9a); the")
         print("  corpus is Apple's and is NOT in this tree.")
         return 1
 
@@ -822,14 +927,17 @@ def refresh():
                if not re.search(r"@(?:interface|protocol)\s+%s\b" % re.escape(n), declared)]
     missing += [n for n in CORPUS_MUST_CATEGORIZE
                 if not re.search(r"@interface\s+\w+\s*\(\s*%s\s*\)" % re.escape(n), declared)]
+    missing += [n for n in CORPUS_MUST_PROTOCOLIZE
+                if not re.search(r"@protocol\s+[^;]*\b%s\b" % re.escape(n), declared)]
     # and the umbrella's imports must all resolve, or a header the SDK ships is not being read
     wanted = set(re.findall(r"#import\s+<AppKit/([A-Za-z_]\w*)\.h>", corpus.get("AppKit.h", "")))
     unresolved = sorted(w for w in wanted if (w + ".h") not in corpus)
 
-    # THE GUARD ON THE SHAPE THIS INSTRUMENT DOES NOT READ. `@property` is 10.5's headline language
-    # feature and the AppKit headers do not use it (measured: 0), so nothing is lost — but the count is
-    # taken and REPORTED, because the failure this guards against is not "a property was dropped" but
-    # "a later corpus was read by this instrument and under-reported in silence".
+    # THE GUARD IS NOW A MEASUREMENT. 10.5's instrument counted `@property` occurrences it could not
+    # read and said so; 10.6 is the era where the shape arrives, so this instrument READS them (27 rows,
+    # in the four headers that are new at this era) and the count below is the CROSS-CHECK that the
+    # parser saw every one: a declaration the reader missed would show up here as a mismatch, not as a
+    # silent hole.
     props = sum(len(re.findall(r"^\s*@property\b", strip_comments(t), re.M))
                 for t in corpus.values())
 
@@ -840,12 +948,14 @@ def refresh():
             rd["file"] = "AppKit/" + fname
             rd["fname"] = fname
             rows.append(rd)
-    intro_n = sum(1 for r in rows if r["why"].startswith("introduced 10.5")
-                  or r["why"].endswith(", introduced 10.5"))
+    prop_rows = sum(1 for r in rows if r["kind"] == "property")
+    intro_n = sum(1 for r in rows if r["why"].startswith("introduced 10.6")
+                  or r["why"].endswith(", introduced 10.6"))
     dep_n = sum(1 for r in rows if "deprecated " in r["why"])
     opt_n = sum(1 for r in rows if "optional" in r["why"])
+    getter_n = sum(1 for r in rows if "getter " in r["why"])
 
-    containers, methods = our_surface()
+    containers, methods, properties = our_surface()
     names = our_names()
     fclusters = file_clusters(parsed)
 
@@ -883,7 +993,7 @@ def refresh():
         if rd["kind"] in ("class", "protocol", "category"):
             seen[rd["name"]] = cluster_of(rd["kind"], rd["name"], rd["owner"])
     for r in rows:
-        if r["kind"] == "method":
+        if r["kind"] in ("method", "property"):
             r["cluster"] = seen.get(r["container"]) or "unassigned"
         elif r["kind"] in ("class", "protocol", "category"):
             r["cluster"] = cluster_of(r["kind"], r["name"], r["owner"])
@@ -892,7 +1002,8 @@ def refresh():
         if r["name"].startswith("_"):
             r["why"] = ("private (underscore-prefixed in the header)" if r["why"] == "-"
                         else r["why"] + ", private (underscore-prefixed in the header)")
-        r["status"] = STATUS_SHIPPED if status_of(r, names, containers, methods) else STATUS_OPEN
+        r["status"] = (STATUS_SHIPPED
+                       if status_of(r, names, containers, methods, properties) else STATUS_OPEN)
 
     rows.sort(key=lambda r: (r["kind"], r["name"], r["owner"]))
     counts, fams = {}, {}
@@ -906,7 +1017,7 @@ def refresh():
     total = len(rows)
     open_ = sum(c for (k, s), c in counts.items() if s == STATUS_OPEN)
     header = [
-        "# The Application Kit AT 10.2, against this tree — the era-pinned work list.",
+        "# The Application Kit AT 10.6, against this tree — the era-pinned work list.",
         "# GENERATED by %s --refresh — do not hand-edit the" % TOOL,
         "# status column; --check fails when it drifts from the headers.",
         "#",
@@ -920,27 +1031,26 @@ def refresh():
         "# %d API rows, %d open. THE GROUND IS AN SDK, NOT A DOCUMENTATION INDEX, and that is the"
         % (total, open_),
         "# whole point of this file: tools/appkit-sweep.py ledgers the AppKit Apple documents TODAY",
-        "# (12,475 rows, 10.15-era), and this one ledgers the AppKit 10.5's own headers declare.",
-        "# ITS SIBLING docs/reference/appkit-102-worklist.txt is the same instrument on the previous",
-        "# era's SDK; `%s --delta` prints the difference between the two." % TOOL,
+        "# (12,475 rows, 10.15-era), and this one ledgers the AppKit 10.6's own headers declare.",
+        "# ITS SIBLINGS docs/reference/appkit-10{2,5}-worklist.txt are the same instrument on the",
+        "# earlier SDKs; `%s --delta` prints the difference against 10.5." % TOOL,
         "#",
         "# THE ERA, IN THE DATA (verified over this corpus, not assumed):",
-        "#   property rows 0 — AND THIS IS THE MEASUREMENT THAT MATTERED MOST: 10.5 introduced",
-        "#                     Objective-C 2.0, and Apple did NOT rewrite the AppKit headers in property",
-        "#                     syntax (0 `@property` in %d headers; NSViewController, new in this era," % len(corpus),
-        "#                     declares `-setRepresentedObject:`/`-representedObject` like everything",
-        "#                     else). Accessors are METHODS here, every `-setX:`/`-x` pair is TWO rows,",
-        "#                     and this instrument READS %d such declaration(s) — reported rather than" % props,
-        "#                     dropped, because a shape the parser cannot read must say so.",
-        "#   %d row(s) are NEW IN THIS ERA (`introduced 10.5`) and %d were already deprecated by it —" % (intro_n, dep_n),
-        "#                     the availability macros 10.2 did not have at all, carried in `why`.",
-        "#   %d protocol member(s) are `optional` — @optional arrived with this era, and a member that" % opt_n,
-        "#                     must be supported without being required is a different piece of work.",
-        "#   DELEGATES ARE STILL CATEGORIES (`@interface NSObject (NSXxxDelegate)`), not protocols:",
-        "#                     a clone that reaches for protocols builds 10.15's AppKit, not this one.",
-        "#   struck rows %d — NOT by construction this time: 10.5 DOES carry a deprecation ground" % sum(c for (k, s), c in counts.items() if s == STATUS_STRUCK),
-        "#                     (the macros above), and a deprecated row is still OWED rather than struck",
-        "#                     (the user's policy, 2026-09-26), so the status column never says `struck`.",
+        "#   property rows %d — THE SHAPE ARRIVES HERE. 10.5's corpus had zero `@property` and this" % prop_rows,
+        "#                     one has %d, all in FOUR HEADERS THAT ARE NEW AT THIS ERA" % props,
+        "#                     (NSTextInputContext, NSTouch, NSRunningApplication, NSOpenGLLayer): a",
+        "#                     handful of new classes are declared in the new style while every older",
+        "#                     header stays accessor-based. %d of the rows carry a `getter=` attribute," % getter_n,
+        "#                     so the accessor a conforming class implements is not the property's name.",
+        "#   %d protocol row(s) DECLARE THE DELEGATE SURFACE THAT THE EARLIER ERAS EXPRESS AS" % sum(1 for r in rows if r["kind"] == "protocol"),
+        "#                     `@interface NSObject (NSXxxDelegate)` CATEGORIES. This is the era's real",
+        "#                     change and it is the one a clone must plan for: the same selectors, declared",
+        "#                     by a formal protocol with `@optional` members instead of an informal",
+        "#                     category (%d protocol member(s) carry `optional`)." % opt_n,
+        "#   %d row(s) are NEW IN THIS ERA (`introduced 10.6`) and %d were already deprecated by it —" % (intro_n, dep_n),
+        "#                     the availability macros, carried in `why`.",
+        "#   struck rows %d — 10.6 carries a deprecation ground (the macros above) and a deprecated" % sum(c for (k, s), c in counts.items() if s == STATUS_STRUCK),
+        "#                     row is still OWED rather than struck (the user's policy, 2026-09-26).",
         "#   %d plumbing macro(s) DROPPED before the rows — a `#define` named `_…` or `APPKIT_…` is an"
         % len(plumbing),
         "#                     include guard, a DLL goop or the kit's own extern marker, none of which a",
@@ -961,12 +1071,13 @@ def refresh():
         s = fams.get((cl, STATUS_SHIPPED), 0)
         if o or s:
             header.append("#   %-20s open %5d   shipped %5d" % (cl, o, s))
-    if missing or unresolved or unassigned or props:
+    if missing or unresolved or unassigned or prop_rows != props:
         header.append("#")
-    if props:
-        header.append("# ⚠⚠ %d `@property` DECLARATION(S) IN THIS CORPUS ARE NOT READ — this instrument" % props)
-        header.append("#     does not parse property syntax (the era it was written for has none). The counts")
-        header.append("#     above are therefore BELOW the framework's real surface; teach the parser first.")
+    if prop_rows != props:
+        header.append("# ⚠⚠ %d `@property` DECLARATION(S) IN THE CORPUS BUT %d PROPERTY ROW(S) PARSED —"
+                      % (props, prop_rows))
+        header.append("#     the reader and the corpus disagree; the counts below are BELOW the")
+        header.append("#     framework's real surface until that is fixed.")
     if missing:
         header.append("# ⚠⚠ CORPUS INCOMPLETE: %d name(s) that MUST exist are absent — %s"
                       % (len(missing), ", ".join(missing)))
@@ -982,12 +1093,13 @@ def refresh():
     open(SURFACE, "w", encoding="utf-8").write("\n".join(header + out) + "\n")
     for (kind, st), c in sorted(counts.items()):
         print("  %-10s %-8s %5d" % (kind, st, c))
-    print("appkit-105-sweep: %d rows (%d open) from %d header(s) -> %s"
+    print("appkit-106-sweep: %d rows (%d open) from %d header(s) -> %s"
           % (total, open_, len(corpus), os.path.relpath(SURFACE, ROOT)))
-    print("  introduced-10.5 rows %d, deprecated rows %d, optional members %d"
-          % (intro_n, dep_n, opt_n))
-    if props:
-        print("  ⚠⚠ %d @property declaration(s) are NOT READ by this instrument — see the header" % props)
+    print("  property rows %d of %d @property declaration(s); introduced-10.6 rows %d, "
+          "deprecated rows %d, optional members %d" % (prop_rows, props, intro_n, dep_n, opt_n))
+    if prop_rows != props:
+        print("  ⚠⚠ %d @property declaration(s) in the corpus, %d parsed — see the header"
+              % (props, prop_rows))
     if missing:
         print("  ⚠⚠ corpus incomplete: %s" % ", ".join(missing))
     if unresolved:
@@ -1012,27 +1124,31 @@ def check():
     """INCONSISTENCIES are facts this tree has and the artefact has out of date — they FAIL, and no
     one has to decide anything: a `shipped` row our headers no longer declare, an `open` row they now
     do, a row with no cluster, and a plan family table that has drifted. There is no POLICY class
-    here: the era ground cannot strike a row, so there is nothing for `--strict` to be about (the
-    other ledgers' policy class is their deprecation ground, and this one has none by construction)."""
+    here: this instrument's `struck` is never assigned, so there is nothing for `--strict` to be about
+    (the other ledgers' policy class is their deprecation ground, which for the era ledgers is OWED)."""
     try:
         rows = read_surface()
     except FileNotFoundError:
-        print("appkit-105-sweep: no %s yet — run --refresh" % os.path.relpath(SURFACE, ROOT))
+        print("appkit-106-sweep: no %s yet — run --refresh" % os.path.relpath(SURFACE, ROOT))
         return 1
-    containers, methods = our_surface()
+    containers, methods, properties = our_surface()
     names = our_names()
     bad, counts, fams = [], {}, {}
     for kind, status, name, owner, family, why, src in rows:
         counts[(kind, status)] = counts.get((kind, status), 0) + 1
         fams[(family, status)] = fams.get((family, status), 0) + 1
-        found = status_of({"kind": kind, "name": name, "owner": owner}, names, containers, methods)
+        # the ledger does not carry `getter`, and it does not need to: a property whose getter is not
+        # the property's name is credited by the property or by `-setName:` as well, and the row's
+        # memory of the attribute lives in `why`.
+        found = status_of({"kind": kind, "name": name, "owner": owner}, names, containers, methods,
+                          properties)
         if status == STATUS_SHIPPED and not found:
             bad.append("STALE SHIPPED CLAIM    %-9s %s [%s] — the file says we ship it and our "
                        "headers do not declare it" % (kind, name, owner))
         elif status == STATUS_OPEN and found:
             bad.append("PRESENT BUT LISTED OPEN %-8s %s [%s] — our headers now declare it; flip "
                        "the row" % (kind, name, owner))
-    print("appkit-105-sweep: %d symbols in the work list" % len(rows))
+    print("appkit-106-sweep: %d symbols in the work list" % len(rows))
     for kind in sorted({k for k, _ in counts}):
         print("  %-10s shipped %4d   open %4d" % (
             kind, counts.get((kind, STATUS_SHIPPED), 0), counts.get((kind, STATUS_OPEN), 0)))
@@ -1055,7 +1171,7 @@ def check():
         bad.append("plan family table")
     if bad or unassigned:
         return 1
-    print("appkit-105-sweep: consistent — every shipped name is declared, every open name is absent, "
+    print("appkit-106-sweep: consistent — every shipped name is declared, every open name is absent, "
           "every row has a cluster, and the plan's family table matches")
     return 0
 
@@ -1069,7 +1185,7 @@ def families_block():
         if kind in a:
             a[kind] += 1
         a["open" if status == STATUS_OPEN else "shipped"] += 1
-    out = ["<!-- BEGIN appkit-105-families (generated by %s --families; do not hand-edit) -->" % TOOL,
+    out = ["<!-- BEGIN %s (generated by %s --families; do not hand-edit) -->" % (PLAN_MARKER, TOOL),
            "| # | cluster | classes | protocols | categories | methods | open | shipped |",
            "|---|---|---:|---:|---:|---:|---:|---:|"]
     for i, cl in enumerate(CLUSTER_ORDER, 1):
@@ -1086,7 +1202,7 @@ def families_block():
     out.append("| | **total** | **%d** | **%d** | **%d** | **%d** | **%d** | **%d** |"
                % (tot["class"], tot["protocol"], tot["category"], tot["method"], tot["open"],
                   tot["shipped"]))
-    out.append("<!-- END appkit-105-families -->")
+    out.append("<!-- END %s -->" % PLAN_MARKER)
     return "\n".join(out)
 
 
@@ -1096,25 +1212,25 @@ def families(write=False):
         print(block)
         return 0
     doc = open(PLAN, encoding="utf-8").read()
-    begin = "<!-- BEGIN appkit-105-families"
-    end = "<!-- END appkit-105-families -->"
+    begin = "<!-- BEGIN %s" % PLAN_MARKER
+    end = "<!-- END %s -->" % PLAN_MARKER
     b = doc.find(begin)
     if b < 0:
-        print("appkit-105-sweep: no family block in %s — add the markers first"
+        print("appkit-106-sweep: no family block in %s — add the markers first"
               % os.path.relpath(PLAN, ROOT))
         return 1
     e = doc.find(end, b)
     if e < 0:
-        print("appkit-105-sweep: the family block's END marker is missing")
+        print("appkit-106-sweep: the family block's END marker is missing")
         return 1
     open(PLAN, "w", encoding="utf-8").write(doc[:b] + block + doc[e + len(end):])
-    print("appkit-105-sweep: rewrote the family block in %s" % os.path.relpath(PLAN, ROOT))
+    print("appkit-106-sweep: rewrote the family block in %s" % os.path.relpath(PLAN, ROOT))
     return 0
 
 
 def read_other_surface(path=None):
     """The 10.2 artefact, in the same row vocabulary — `--delta`'s other side."""
-    path = path or SURFACE_102
+    path = path or SURFACE_PREV
     rows = []
     for line in open(path, encoding="utf-8"):
         if line.startswith("#") or not line.strip():
@@ -1124,33 +1240,33 @@ def read_other_surface(path=None):
 
 
 def delta(other=None):
-    """WHAT 10.5 HAS THAT 10.2 DOES NOT, AND THE REVERSE — computed from the two LEDGERS.
+    """WHAT 10.6 HAS THAT 10.5 DOES NOT, AND THE REVERSE — computed from the two LEDGERS.
 
     A ROW'S IDENTITY IS (kind, name, owner) FOR THE KINDS WHOSE OWNER IS A CLASS (class, protocol,
-    category, method), and (kind, name) FOR THE KINDS THAT HAVE NO CLASS OWNER AT ALL (case, var, func,
-    struct, typealias, macro) — MEASURED, not tidiness: 10.5 rewrote the era's enumerations from
-    `typedef enum _NSBorderType { … } NSBorderType;` to `typedef NSUInteger NSBorderType;` plus a
+    category, method, property), and (kind, name) FOR THE KINDS THAT HAVE NO CLASS OWNER AT ALL (case,
+    var, func, struct, typealias, macro) — MEASURED, not tidiness: 10.5 rewrote the era's enumerations
+    from `typedef enum _NSBorderType { … } NSBorderType;` to `typedef NSUInteger NSBorderType;` plus a
     separate ANONYMOUS `enum { … };`, so the SAME enumerator's owner column changes from the enum's name
-    to `-` between the two ledgers. Comparing those on the owner would report ~600 enumerators as
+    to `-` between the ledgers. Comparing those on the owner would report ~600 enumerators as
     simultaneously removed and added, which is the instrument lying about the framework.
 
     THE STATUS COLUMN IS NOT PART OF A ROW'S IDENTITY here either: the question is what the FRAMEWORK
     declares, and what this tree implements is what the two files' status columns are for.
 
-    THE SECOND GROUND IS A FILE THIS TREE COMMITS (docs/reference/appkit-102-worklist.txt), so this mode
+    THE SECOND GROUND IS A FILE THIS TREE COMMITS (docs/reference/appkit-105-worklist.txt), so this mode
     needs no SDK and no network: it is offline like `--check`, and when the file is missing it says so
     rather than reporting an empty difference."""
-    other = other or SURFACE_102
+    other = other or SURFACE_PREV
     try:
         theirs = read_other_surface(other)
     except FileNotFoundError:
-        print("appkit-105-sweep: no %s — the 10.2 ledger is this mode's other ground"
-              % os.path.relpath(other, ROOT))
+        print("appkit-106-sweep: no %s — the %s ledger is this mode's other ground"
+              % (os.path.relpath(other, ROOT), PREV_ERA))
         print("  It is committed; if it is gone, restore it before asking for a delta.")
         return 1
     mine = read_surface()
 
-    OWNED = ("class", "protocol", "category", "method")
+    OWNED = ("class", "protocol", "category", "method", "property")
 
     def key(r):
         return (r[0], r[2], r[3]) if r[0] in OWNED else (r[0], r[2])
@@ -1166,17 +1282,18 @@ def delta(other=None):
             out[r[0]] = out.get(r[0], 0) + 1
         return out
 
-    print("appkit-105-sweep --delta: 10.5 (%d rows) against 10.2 (%d rows)" % (len(b), len(a)))
-    for label, rows in (("ONLY IN 10.5 — new work", added), ("ONLY IN 10.2 — gone by 10.5", gone)):
+    print("appkit-106-sweep --delta: 10.6 (%d rows) against %s (%d rows)" % (len(b), PREV_ERA, len(a)))
+    for label, rows in (("ONLY IN 10.6 — new work", added),
+                        ("ONLY IN %s — gone by 10.6" % PREV_ERA, gone)):
         print("\n# %s: %d row(s)" % (label, len(rows)))
         for kind, n in sorted(by_kind(rows).items()):
             print("   %-10s %5d" % (kind, n))
     new_classes = sorted(r[2] for r in added if r[0] == "class")
     gone_classes = sorted(r[2] for r in gone if r[0] == "class")
-    print("\n# CLASSES ADDED BY 10.5 (%d)" % len(new_classes))
+    print("\n# CLASSES ADDED BY 10.6 (%d)" % len(new_classes))
     for n in new_classes:
         print("   " + n)
-    print("\n# CLASSES GONE BY 10.5 (%d)" % len(gone_classes))
+    print("\n# CLASSES GONE BY 10.6 (%d)" % len(gone_classes))
     for n in gone_classes:
         print("   " + n)
     print("\n# ADDED ROWS BY CLUSTER:")
@@ -1199,21 +1316,95 @@ def delta(other=None):
     # `typedef NSUInteger NSBorderType;` plus an anonymous `enum { … };`, so `NSBorderType` is an `enum`
     # row at 10.2 and a `typealias` row at 10.5. Without this section the delta would read as "Apple
     # removed 73 enums and added 121 typedefs", which is a true pair of counts and a false story.
-    k102, k105 = {}, {}
+    kprev, khere = {}, {}
     for r in theirs:
-        k102.setdefault(r[2], set()).add(r[0])
+        kprev.setdefault(r[2], set()).add(r[0])
     for r in mine:
-        k105.setdefault(r[2], set()).add(r[0])
+        khere.setdefault(r[2], set()).add(r[0])
     shapes = {}
-    for name in k102:
-        if name in k105 and k102[name] != k105[name]:
-            shapes.setdefault((tuple(sorted(k102[name])), tuple(sorted(k105[name]))), []).append(name)
+    for name in kprev:
+        if name in khere and kprev[name] != khere[name]:
+            shapes.setdefault((tuple(sorted(kprev[name])), tuple(sorted(khere[name]))), []).append(name)
     print("\n# REPRESENTATION DRIFT — names in BOTH ledgers whose KIND changed (%d name(s)):"
           % sum(len(v) for v in shapes.values()))
     for (old, new), names in sorted(shapes.items(), key=lambda kv: -len(kv[1])):
         print("   %-28s -> %-28s %5d   e.g. %s"
               % ("/".join(old), "/".join(new), len(names), ", ".join(sorted(names)[:3])))
+
+    # RE-HOMING — THE SECOND RECONCILIATION, AND IT IS THIS ERA'S OWN. A row can leave one owner and
+    # arrive at another WITHOUT being new API, and 10.6 does that to the whole delegate surface: 10.5
+    # declares `@interface NSObject (NSTableViewDelegate)` and 10.6 declares `@protocol
+    # NSTableViewDelegate`, so the same selector leaves `NSObject` and arrives at the protocol. The
+    # pairing below is exact rather than heuristic (one GONE row and one ADDED row with the same
+    # (kind, name)), which is what makes it reportable while the looser "the selector exists somewhere"
+    # test in §8d stayed a scratch measurement: THAT one could not tell a re-home from a common name.
+    gone_by_name, added_by_name = {}, {}
+    for r in gone:
+        gone_by_name.setdefault((r[0], r[2]), []).append(r[3])
+    for r in added:
+        added_by_name.setdefault((r[0], r[2]), []).append(r[3])
+    moves = {}
+    pairs = 0
+    for k in gone_by_name:
+        if k in added_by_name:
+            for old in gone_by_name[k]:
+                for new in added_by_name[k]:
+                    moves[(old, new)] = moves.get((old, new), 0) + 1
+                    pairs += 1
+    print("\n# RE-HOMED — rows whose (kind, name) left one owner and arrived at another (%d pair(s)):"
+          % pairs)
+    for (old, new), n in sorted(moves.items(), key=lambda kv: -kv[1])[:8]:
+        print("   %-28s -> %-28s %5d" % (old, new, n))
     return 0
+
+
+def audit():
+    """THE PARSE-ACCOUNTING RULE §8h OF THE PLAN SAYS WAS MISSING, AS A MODE.
+
+    For every header: the raw `@interface`/`@protocol` lines and the raw member lines must equal what
+    `parse()` produced. It is the check that found two real defects in the earlier instruments — one of
+    which had already shipped a short ledger — and it is a mode here rather than a scratch script
+    because it is the instrument's own proof that it read the corpus it claims to have read.
+
+    TWO ACCOUNTING RULES, EACH OF WHICH COST A FALSE ALARM ONCE, AND BOTH ARE IN THE CODE:
+      * a member line is `[-+]` followed by `(` OR an identifier — `- initWithDelegate:name:` declares a
+        method with NO return type, and a rule that required `(` reported 10.2's NSInputServer.h as
+        having one method too many;
+      * a DUPLICATED container line is ONE container — 10.5/10.6 repeat `@interface X : Y {` inside
+        `#if`/`#else`, and comparing raw LINES against parsed ROWS reported every such file as short."""
+    corpus = read_corpus(CORPUS)
+    if not corpus:
+        print("appkit-106-sweep: --audit needs the corpus at %s" % CORPUS)
+        return 1
+    print("appkit-106-sweep --audit: %d header(s)" % len(corpus))
+    diff = 0
+    for fname in sorted(corpus):
+        text = strip_comments(corpus[fname])
+        raw_c = set()
+        for line in text.splitlines():
+            m = re.match(r"\s*@interface\s+[A-Za-z_]\w*\s*\(\s*([A-Za-z_]\w*)\s*\)", line)
+            if m:
+                raw_c.add(m.group(1))
+                continue
+            m = re.match(r"\s*@(?:interface|protocol)\s+([A-Za-z_]\w*)", line)
+            if m:
+                raw_c.add(m.group(1))
+        raw_m = len(re.findall(r"^\s*[-+]\s*[\(A-Za-z_]", text, re.M))
+        raw_p = len(re.findall(r"^\s*@property\b", text, re.M))
+        rows = parse(corpus[fname])
+        got_c = {r["name"] for r in rows if r["kind"] in ("class", "protocol", "category")}
+        got_m = len([r for r in rows if r["kind"] == "method"])
+        got_p = len([r for r in rows if r["kind"] == "property"])
+        if raw_c != got_c or raw_m != got_m or raw_p != got_p:
+            diff += 1
+            print("  DIFF %-28s containers %d/%d %s  members %d/%d  properties %d/%d"
+                  % (fname, len(got_c), len(raw_c), sorted(got_c ^ raw_c), got_m, raw_m,
+                     got_p, raw_p))
+    bad = [(f, r["kind"], r["name"]) for f in sorted(corpus) for r in parse(corpus[f])
+           if re.search(r"AND_LATER|AVAILABLE_MAC_OS|DEPRECATED_IN_MAC", r["name"])]
+    print("files whose parsed counts differ from the raw lines: %d" % diff)
+    print("rows whose NAME is an availability-macro remnant: %d %s" % (len(bad), bad[:3]))
+    return 1 if (diff or bad) else 0
 
 
 def work_list(want=None, cluster=None):
@@ -1242,7 +1433,7 @@ def order():
     it already does."""
     corpus = read_corpus(CORPUS)
     if not corpus:
-        print("appkit-105-sweep: --order needs the corpus at %s" % os.path.relpath(CORPUS, ROOT))
+        print("appkit-106-sweep: --order needs the corpus at %s" % os.path.relpath(CORPUS, ROOT))
         return 1
     supers, status = {}, {}
     for kind, st, name, owner, family, why, src in read_surface():
@@ -1272,58 +1463,6 @@ def order():
         for n in names:
             print("  %-30s %-8s : %s" % (n, status[n], supers.get(n, "-")))
     return 0
-
-
-def audit():
-    """THE PARSE-ACCOUNTING RULE THE PLAN'S §8h SAYS WAS MISSING, AS A MODE.
-
-    For every header: the raw `@interface`/`@protocol` lines and the raw member lines must equal what
-    `parse()` produced. IT IS THE CHECK THAT FOUND THE 10.2 INSTRUMENT'S DEFECT (a no-argument method
-    whose parenthesised return type is followed by a space was dropped in silence) AND THIS ONE'S (a
-    repeated `@interface … {` line inside `#if`/`#else` left the parser inside an ivar block for the rest
-    of the file, costing NSLayoutManager.h all 137 of its methods). Run it after any change to the
-    reader; it needs the corpus, so it is NOT part of `--check`.
-
-    TWO ACCOUNTING RULES, EACH OF WHICH COST A FALSE ALARM ONCE, AND BOTH ARE IN THE CODE:
-      * a member line is `[-+]` followed by `(` OR an identifier — `- initWithDelegate:name:` declares a
-        method with NO return type;
-      * a DUPLICATED container line is ONE container — THIS corpus repeats `@interface X : Y {` inside
-        `#if`/`#else` (NSLayoutManager.h does), and comparing raw LINES against parsed ROWS reported
-        every such file as short.
-    """
-    corpus = read_corpus(CORPUS)
-    if not corpus:
-        print("appkit-105-sweep: --audit needs the corpus at %s" % CORPUS)
-        return 1
-    print("appkit-105-sweep --audit: %d header(s)" % len(corpus))
-    diff = 0
-    for fname in sorted(corpus):
-        text = strip_comments(corpus[fname])
-        raw_c = set()
-        for line in text.splitlines():
-            m = re.match(r"\s*@interface\s+[A-Za-z_]\w*\s*\(\s*([A-Za-z_]\w*)\s*\)", line)
-            if m:
-                raw_c.add(m.group(1))
-                continue
-            m = re.match(r"\s*@(?:interface|protocol)\s+([A-Za-z_]\w*)", line)
-            if m:
-                raw_c.add(m.group(1))
-        raw_m = len(re.findall(r"^\s*[-+]\s*[\(A-Za-z_]", text, re.M))
-        raw_p = len(re.findall(r"^\s*@property\b", text, re.M))
-        rows = parse(corpus[fname])
-        got_c = {r["name"] for r in rows if r["kind"] in ("class", "protocol", "category")}
-        got_m = len([r for r in rows if r["kind"] == "method"])
-        got_p = len([r for r in rows if r["kind"] == "property"])
-        if raw_c != got_c or raw_m != got_m or raw_p != got_p:
-            diff += 1
-            print("  DIFF %-28s containers %d/%d %s  members %d/%d  properties %d/%d"
-                  % (fname, len(got_c), len(raw_c), sorted(got_c ^ raw_c), got_m, raw_m,
-                     got_p, raw_p))
-    bad = [(f, r["kind"], r["name"]) for f in sorted(corpus) for r in parse(corpus[f])
-           if re.search(r"AND_LATER|AVAILABLE_MAC_OS|DEPRECATED_IN_MAC", r["name"])]
-    print("files whose parsed counts differ from the raw lines: %d" % diff)
-    print("rows whose NAME is an availability-macro remnant: %d %s" % (len(bad), bad[:3]))
-    return 1 if (diff or bad) else 0
 
 
 def main(argv):
