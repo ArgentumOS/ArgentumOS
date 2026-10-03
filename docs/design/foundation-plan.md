@@ -15982,6 +15982,39 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.136 — THE CUT IS A REWIRING, NOT A DELETION SET — AND THE PROBE SPLITTER DOES NOT EARN ITS KEEP YET (2026-10-01)
+
+**⚠⚠ MEASURED, AND IT IS THE SHAPE OF THE WHOLE REMAINING JOB: NOT ONE OF THE 87 CUT CLASSES IS UNENTANGLED.** All 87 are
+referenced outside their own files, and the references cross the cut boundary in both directions:
+`NSArray.h` → `NSPredicate`, `NSKeyedArchiver` → `NSOrderedSet`, `NSURLConnection.m` → `NSURLSessionConfiguration`,
+`NSCalendar.h` → `NSURLSessionConfiguration`, `NSDateIntervalFormatter` → `NSDateInterval`, `FNCURLURLProtocol.m` →
+`NSURLSession`. **SO THE CUT CANNOT BE EXECUTED AS A LIST OF DELETIONS: REMOVING A CLASS ALSO MEANS REMOVING THE
+MEMBERS OF *KEPT* CLASSES THAT NAME IT** — and that is coherent rather than awkward, because those members are
+themselves post-10.2 and already in the member cut (`NSArray`'s `-filteredArrayUsingPredicate:` is 10.4). ***THE TWO
+AXES CLOSE THE GRAPH TOGETHER; NEITHER CLOSES IT ALONE.***
+
+**AND THE ONE FAMILY THAT *IS* CLOSED AMONG ITSELF IS THE MEASUREMENT SUBSYSTEM — `NSUnit*` ↔ `NSDimension` ↔
+`NSMeasurement` reference only each other, plus `NSByteCountFormatter`, `NSListFormatter` and the formatter probe. That
+is why it is still the right first slice.**
+
+**⚠⚠ BUT ITS PROBE COST IS LARGE AND MY SPLITTER IS NOT YET HONEST, WHICH IS WHY NOTHING WAS DELETED:** a line-range split
+between successive `check(` calls reported 27 of the probe's 86 checks as naming a slice class — **and it is visibly
+wrong in both directions: it killed `pnc-securecoding` as an `NSListFormatter` check and SPARED `unit-length`,
+`unit-mass`, `unit-angle`, `unit-converter-raises` and `unit-measurement-formatter-options`, WHICH PLAINLY TEST `NSUnit`
+SUBCLASSES.** The cause is the same one that has bitten this file three times already: **a check's subject is often
+declared in the lines BEFORE its `check(` call, so a range that begins at `check(` begins after the evidence.**
+***RELIABLE REMOVAL NEEDS BRACE-MATCHED STATEMENT PARSING, AND THE `unit-*` FAMILY MEANS A LARGE FRACTION — PLAUSIBLY
+HALF — OF THE PROBE'S 86 CHECKS GOES WITH THE SLICE.***
+
+**SCOPE CONFIRMED FOR THE SLICE, MEASURED: 26 classes (~52 files, ~110 KB); `Foundation.h` carries 26 import lines for
+them; `mk/20-userland.mk` names three of the sources explicitly (`NSListFormatter.m`, `NSByteCountFormatter.m`,
+`NSMeasurementFormatter.m`); the probe is 2167 lines and imports the UMBRELLA, so it compiles against whatever
+`Foundation.h` declares and every removed family must leave it.**
+
+**NOTHING WAS DELETED. The next step is a brace-matching splitter for the probes — a small, testable tool that must
+agree with a hand count on `unit-length` (which does test `NSUnit`) and on `pnc-securecoding` (which does not) BEFORE it
+is trusted with a deletion.**
+
 ## §63.135 — THE CUT ROWS LEAVE THE LEDGER, AND THE SAME MISTAKE A SECOND TIME IN ONE TURN (2026-10-01)
 
 **LANDED — STEP 2 OF §63.130's ORDER: the ledger's cut rows are REMOVED BY SCRIPT. MEASURED: 4564 rows → 3370, 1194
