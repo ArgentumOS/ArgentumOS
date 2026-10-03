@@ -15982,6 +15982,41 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.134 — WHAT THE CUT DOES TO THE DEBT, AND A SLICE THAT IS NOT SELF-CONTAINED (2026-10-01)
+
+**MEASURED — THE DEBT FALLS FROM 467 OWED ROWS TO 318, WHICH IS THE LARGEST SINGLE EFFECT OF THE WHOLE CHANGE:**
+ * **121 rows stop being owed because their OWNER is cut outright** (68 methods, 53 properties);
+ * **28 more stop because the member is annotated LATER than 10.2** (all properties);
+ * **318 remain owed** (247 methods, 71 properties) — the real work list after the cut.
+*And the rows that vanish are disproportionately the HARD ones: **`NSURLComponents` 13 — the owner recorded two units
+ago as needing its source string retained through every initialiser — is the single largest disappearance**, followed
+by `NSLinguisticTagger` 12, `NSUserActivity` 11, `NSProgress` 8, `NSURLSession` 8, `NSMapTable`/`NSOperation`/`NSPredicate`
+7 each. **THE CUT RETROACTIVELY REPRICES THE HARDEST REMAINING WORK AS OUT OF SCOPE.***
+
+**⚠⚠ AND A CORRECTION TO MY OWN PROPOSAL: THE ‘NSUnit SLICE IS SELF-CONTAINED’ CLAIM WAS WRONG.** MEASURED: the
+25 classes are **~110 KB of source across ~50 files** (the largest single file in the whole slice is
+`NSMeasurementFormatter.m` at 16.7 KB), and `NSUnit*` is **NOT** unreferenced — `Foundation.h` (the umbrella header)
+imports them, **`NSDimension` is their base class**, and `NSByteCountFormatter`, `NSListFormatter` and the probe
+`foundation_formatters.m` all name them. *The saving grace is that every one of those referrers is ALSO cut at 10.2 —
+`NSByteCountFormatter` (10.8), `NSListFormatter` (10.15), `NSDimension` (10.12) — so the slice is coherent, just not
+isolated, and the umbrella header plus one probe plus its case are part of it.*
+
+**AND THE LEDGER'S MECHANICS, MEASURED, BECAUSE THEY DECIDE HOW STEP 2 CAN BE DONE AT ALL:**
+ * the ledger is a GENERATED artefact whose generator's input — `tutorials/data/index/foundation` — **NOW 404s, so
+   `--refresh` cannot run**; the cut rows must therefore be REMOVED BY SCRIPT, and the ledger's provenance line has to
+   say so rather than claim a refresh;
+ * **`selector_header_counts()` finds NO count block in the ledger today** (the `# kind shipped N open N struck N`
+   pattern matches nothing), so a filtered ledger does not trip that gate — which removes the obstacle that a
+   hand-maintained count would have been;
+ * and the cut rows must leave the ledger as REMOVED rather than STRUCK: struck means ‘a claim about our headers’,
+   and after step 3 the headers will no longer carry these names, so a struck row would fail `--check` by naming a
+   ground that no longer applies.
+
+**THE PLAN STANDS, WITH THE SLICE RESCOPED: (1) the ledger's `era` column — writer AND reader; (2) the cut rows leave
+it by script, with the provenance line updated; (3) the `NSUnit`/`NSMeasurement`/`NSDimension` family plus `Foundation.h`
+plus the formatter probe and its case, declarations and definitions together; (4) then the remaining 62 classes and the
+member cuts; (5) §11.0's wording. NOTHING IS DELETED YET.**
+
 ## §63.133 — BOTH OWED ITEMS CLOSED, AND THE MEMBER AXIS IS ANSWERED BY SCOPE RATHER THAN BY A CRAWL (2026-10-01)
 
 **LANDED: `tools/foundation-era.py` now takes `docs/reference/foundation-era.txt` as its GROUND, with the header parse
