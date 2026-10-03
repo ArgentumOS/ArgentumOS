@@ -15982,6 +15982,45 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.132 — THE VERIFIED CUT, FROM APPLE'S OWN METADATA — AND A CORRECTION I OWE MY OWN RECORD (2026-10-01)
+
+**LANDED: `tools/foundation-era-fetch.py` — the one-time crawl, generator kept, output a tracked artefact — and
+`docs/reference/foundation-era.txt`, 187 owners with Apple's own `introducedAt` and `deprecatedAt`.**
+
+**MEASURED — THE VERIFIED CUT: at 10.2, CUT 85 CLASSES and KEEP 98; at 10.4, CUT 81 and KEEP 102.** Plus 4 unresolved
+and 34 internal. By era: 10.3 (1), 10.4 (3), 10.5 (7), 10.6 (5), 10.7 (10), 10.8 (5), 10.9 (5), 10.10 (10), 10.11 (2),
+**10.12 (25 — the whole `NSUnit*`/`NSMeasurement` family)**, 10.13 (1), 10.14 (1), 10.15 (6), 12.0 (3), 14.0 (1).
+
+**⚠⚠ THE HEADER GROUND UNDER-CUT BY 34 CLASSES, WHICH IS EXACTLY THE FAILURE §63.131 PREDICTED AND COULD NOT SIZE:**
+`NSUserNotification`/`NSUserNotificationCenter` (10.8), `NSOrderedSet`/`NSMutableOrderedSet` and `NSLinguisticTagger`
+(10.7), `NSDateInterval` (10.12), the `NSUnit*`/`NSMeasurement` family (10.12), `NSISO8601DateFormatter`,
+`NSOrderedCollectionDifference`, `NSRelativeDateTimeFormatter`, `NSPresentationIntent`, `NSInvocationOperation` (10.5),
+`NSCalendarDate` (10.4). **A LOWER BOUND OF 51 BECAME A VERIFIED 85.**
+
+**⚠⚠ AND THE CORRECTION: §63.131 STATED THAT `NSLocale`, `NSCalendar` AND `NSDateComponents` ARE 10.4 AND CITED THEM AS
+PROOF THE HEADER GROUND IS UNSOUND. APPLE'S PAGE METADATA SAYS 10.0 FOR ALL THREE — MEASURED DIRECTLY, TWICE, FROM THE
+PAGES THEMSELVES (nscalendar, nslocale, nsdatecomponents).** The header ground IS unsound — `NSUserNotification` at
+10.8 proves it independently — **but my three examples were wrong, and the reason they were wrong is worth keeping: I
+supplied 10.4 FROM RECOLLECTION AND PRESENTED IT AS MEASUREMENT.** *Apple's published metadata is the authority here;
+my memory of a 2001 release is not, and the artefact now carries the fact so nobody has to remember it.*
+
+**⚠ AND A SECOND FINDING, FROM BUILDING THE CRAWLER: `https://developer.apple.com/tutorials/data/index/foundation` — THE
+URL BOTH THIS TREE'S SWEEPS HAVE ALWAYS USED, AND `foundation-sweep.py`'s only networked mode — NOW RETURNS 404.
+`--refresh` CANNOT RUN.** The framework page (`/documentation/foundation.json`) resolves but carries only 35 refs, and
+Apple's URL slugs are inconsistent in a way that cannot be derived from a class name: **`nsitemprovider` resolves while
+`itemprovider` 404s, and `urlsessionconfiguration` resolves while `nsurlsessionconfiguration` 404s** — so the fetcher
+tries both spellings per name and records which one answered. **THAT A SLUG IS A GUESS IS THE REASON THE ARTEFACT RECORDS
+EVERY PAGE IT USED.**
+
+**UNRESOLVED, 4 of them, and each for a nameable reason: `NSBundleResourceRequest` (an iOS-only page, no macOS entry),
+`NSDirectoryEnumerator`, `NSObject` (documented with the Objective-C runtime, which `KEEP_ELSEWHERE` already says), and
+`NSTask` — WHICH APPLE HAS RENAMED TO `Process`, so the page exists under a different name.**
+
+**⚠ AND TWO THINGS ARE OWED RATHER THAN DONE: (1) the MEMBER axis still reads the corpus annotations, which carry the
+same under-annotation risk as the class axis did — per-member versions need their own page-level collection; and (2)
+`tools/foundation-era.py` should read this artefact rather than the corpus, so that one ground serves both axes.**
+Nothing is removed while either is outstanding.
+
 ## §63.131 — THE ERA CLASSIFIER LANDS, AND ITS GROUND IS SOUND ONE WAY ONLY (2026-10-01)
 
 **`tools/foundation-era.py` — “was this declaration in Foundation at macOS X.Y?” — reported, never deleting, with the
