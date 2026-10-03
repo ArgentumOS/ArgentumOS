@@ -15969,6 +15969,41 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.142 — THE MEMBER CUT WORKS AND IS MECHANICAL; ITS PROBE TRIMMING IS NOT SCOPE-SHAPED, AND TWO OVER-REMOVALS SAY WHY (2026-10-01)
+
+**THE MEMBER CUT ITSELF IS DONE AND MEASURED, AND IT IS MECHANICAL: SIXTEEN SESSION-TYPED MEMBERS REMOVED FROM THREE KEPT
+CLASSES, DECLARATIONS AND DEFINITIONS TOGETHER — `NSHTTPCookieStorage` (`-storeCookies:forTask:`,
+`-getCookiesForTask:completionHandler:`), `NSURLCache` (`-getCachedResponseForDataTask:completionHandler:`,
+`-storeCachedResponse:forDataTask:`, `-removeCachedResponseForDataTask:`) and `NSURLCredentialStorage` (six, including
+`-getCredentialsForProtectionSpace:task:completionHandler:` and the task-scoped set/get pair) — plus FIVE now-dead
+`@class NSURLSessionTask;` / `#import <NSURLSessionTask.h>` lines, ONE stale comment corrected, and NINE ledger rows
+removed with the counts rebuilt. THE HOST BUILD WAS GREEN AT THE STANDING SIX WARNINGS THROUGHOUT.**
+
+**⚠⚠ AND IT WAS REVERTED, BECAUSE ITS PROBE TRIMMING IS NOT SCOPE-SHAPED. THE PROBES CALL THE REMOVED DOORS DIRECTLY
+— and WHEN SUCH A CALL SITS IN `main()`'s BODY, THE INNERMOST ENCLOSING SCOPE IS THE WHOLE FUNCTION.** So removing ‘the
+scope containing the hit’ deletes the file. **TWO ATTEMPTS, TWO OVER-REMOVALS: the first took FIFTEEN CHECKS from each of
+two probes — including `the-disk-is-not-written-to`, `the-shared-store-is-one-per-process` and
+`a-credential-is-filed-under-its-space`, none of which has anything to do with a task — and the second took SIXTEEN and
+left `foundation_urlcache.m` with a syntax error (‘expected function body after function declarator’). Both were caught
+immediately by the build and by `testimg`.** *The tree is green and the working tree is clean: the member cut is designed,
+measured and reverted rather than half-landed.*
+
+**⚠⚠ AND THE RULE, WHICH IS THE USEFUL THING HERE: SCOPE-BASED REMOVAL IS SOUND WHEN THE SUBJECT IS DECLARED IN A NESTED
+BLOCK AND UNSOUND WHEN IT IS DECLARED AT FUNCTION SCOPE.** In the Measurement slice the tool was right 41 times out of 41
+attributions, because each unit check sat in its own `{ }`. Here the calls sit in `main()` — **and a scope-remover with no
+floor is a hole exactly the size of `main`.**
+
+***THE GUARD TO ADD, AND IT IS ONE LINE: `tools/probe-scope.py` MUST REFUSE A SCOPE THAT IS THE FUNCTION BODY, because
+that is the one answer that means ‘delete the whole probe’.** Where a removed door is called at function scope, the fix
+is STATEMENT-level (take the call and the `check(…)` that asserts about it), not scope-level — and that is a per-site edit
+rather than a tool.*
+
+**WHAT REMAINS, EXACTLY: the member cut above is ready to re-land; it needs the three probes' task-scoped CALLS and
+CHECKS removed at statement level — `foundation_urlcache` (one task-scoped block, one check
+`a-task-scoped-store-and-get-round-trip`), `foundation_httpcookiestorage` (three checks), `foundation_credentialstorage`
+(`a-task-scoped-read-answers`, `and-so-is-its-task-form`, `the-removal-options-door-is-absent`) — and then the ledger rows
+follow.**
+
 ## §63.141 — THE URL-ENGINE REWRITE, READ IN FULL: FOUR DOORS HAVE NO PROTOCOL EQUIVALENT, WHICH IS THE DESIGN (2026-10-01)
 
 **THE USER'S DECISION (dec-148b4598987d58c5): REWRITE `NSURLConnection` TO DRIVE `NSURLProtocol`/curl — the 10.2 design.
