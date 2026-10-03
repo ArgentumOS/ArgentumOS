@@ -92,14 +92,12 @@
 @class NSError;
 @class NSMutableURLRequest;
 @class NSURLProtocol;
-/* The challenge and the credential the authentication door's handler carries are FORWARD declared: this
- * header is included BY NSURLSession.h, and NSURLCredential.h comes after it in Foundation.h, so a
- * declaration that needed the full type here would be exactly the cycle §50.3 set out to remove. */
+/* THE CHALLENGE IS FORWARD DECLARED: only a POINTER is passed, and the type's own header is for whoever
+ * answers one. ⚠ THE CREDENTIAL'S FORWARD DECLARATION IS GONE (§63.158): it was here for the completion
+ * handler the authentication door took, and that handler is gone — the answer goes through the challenge's
+ * sender, so no credential crosses this header at all. And so is the METRICS RECORD's (§63.159): its whole
+ * type left with the session family, taking the first-party door that carried it. */
 @class NSURLAuthenticationChallenge;
-@class NSURLCredential;
-/* And the metrics record the first-party door below carries (§52): forward declared for the same reason -
- * only a POINTER is passed, and the header of the type is for whoever reads the record. */
-@class NSURLSessionTaskTransactionMetrics;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -158,32 +156,22 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)URLProtocolDidFinishLoading:(NSURLProtocol *)protocol;
 - (void)URLProtocol:(NSURLProtocol *)protocol didFailWithError:(NSError *)error;
 
-/* --- AND ONE DOOR APPLE DOES NOT DECLARE, which is why it is @optional AND why it carries this library's
- * `fn` prefix (§52). Apple's URL loading system PRODUCES the metrics itself and publishes no way for a
- * protocol to hand them over; here the transport IS a protocol, so what it measured has to travel through
- * the seam — and a first-party door named as ours is the honest shape for that:
- *
- *   * IT IS OPTIONAL, because a protocol implementation written against APPLE's protocol must keep working
- *     without it. The bridge asks -respondsToSelector: before reporting — the rule every first-party door
- *     in this library keeps — and no client is required to answer;
- *   * THE PAYLOAD IS THE PUBLIC RECORD, so the seam still learns nothing about curl: WHAT was measured
- *     travels, HOW it was measured stays in the transport;
- *   * WHEN IT ARRIVES: ONCE PER TRANSACTION and before the ending above — a transfer that was challenged
- *     and re-issued reports two, which is what Apple's array of transactions is for — and the SESSION is
- *     what turns those reports into the task's own record and delivers it to the delegate. */
+/* --- AND TWO DOORS APPLE DOES NOT DECLARE, which is why they are @optional AND why they carry this library's
+ * `fn` prefix (§52). ⚠⚠ A THIRD ONE — `-URLProtocol:fnDidCollectMetrics:` — IS GONE (§63.159): its payload was
+ * Apple's `NSURLSessionTaskTransactionMetrics`, a 10.10 type, and the whole session family it belonged to has
+ * left the surface. WHAT REPLACES IT IS THE HONEST SHAPE AT THIS BASELINE: the transport measures for ITSELF,
+ * and a 10.2 connection publishes no metrics to hand anywhere — so there is no record to carry and no door to
+ * carry it through. THE TWO THAT STAY are both about a TRANSFER's own numbers rather than about a report: */
 @optional
 
-- (void)URLProtocol:(NSURLProtocol *)protocol
-    fnDidCollectMetrics:(NSURLSessionTaskTransactionMetrics *)metrics;
-
-/* AND THE SAME KIND OF DOOR FOR AN UPLOAD'S PROGRESS (§62.32): the transfer is what counts the bytes as they
- * leave, so this is the only place the numbers exist - Apple's NSURLProtocolClient has no door for it, which
- * is why this one is first-party like the metrics door above. `bytesSent` is what moved since the last report,
- * `totalBytesSent` is the transfer's running total, and `totalBytesExpectedToSend` is what the request said. */
-/* AND THE THIRD OF THESE (§62.36), FOR THE ONE RE-SEND A DELEGATE CANNOT REACH ANY OTHER WAY: the transport
- * re-issues a 401 ITSELF (`goto retry_transfer:`), so the session never sees the second attempt and no delegate
- * door can be asked from there. A body that was a STREAM has been spent by the first attempt, so this door asks
- * the client for a fresh one - Apple's contract for a replacement is "a new, UNOPENED stream". */
+/* THE UPLOAD'S PROGRESS (§62.32): the transfer is what counts the bytes as they leave, so this is the only
+ * place the numbers exist - Apple's NSURLProtocolClient has no door for it. `bytesSent` is what moved since the
+ * last report, `totalBytesSent` is the transfer's running total, and `totalBytesExpectedToSend` is what the
+ * request said. */
+/* AND THE SECOND OF THESE (§62.36), FOR THE ONE RE-SEND A DELEGATE CANNOT REACH ANY OTHER WAY: the transport
+ * re-issues a 401 ITSELF (`goto retry_transfer:`), so no delegate door can be asked from there. A body that was
+ * a STREAM has been spent by the first attempt, so this door asks the client for a fresh one - Apple's contract
+ * for a replacement is "a new, UNOPENED stream". */
 - (nullable NSInputStream *)URLProtocol:(NSURLProtocol *)protocol
 	       fnNewBodyStreamForReSend:(NSURLRequest *)request;
 

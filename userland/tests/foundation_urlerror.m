@@ -83,44 +83,30 @@ int main(void)
 	      NSURLErrorDomain != nil && [NSURLErrorDomain isEqualToString:@"NSURLErrorDomain"],
 	      @"the library spells this string at three call sites, so the constant has to be that string");
 
-	/* --- AND THAT IS TRUE OF A REAL TASK, NOT ONLY OF THE CONSTANTS ----------------------------------- */
+	/* --- AND THAT IS TRUE OF A REAL TRANSFER, NOT ONLY OF THE CONSTANTS -------------------------------- */
+	/* ⚠⚠ AND THE SUBJECT IS THE KEPT CLASS NOW (§63.159). These two blocks used to build `NSURLSessionTask`s
+	 * and read the errors the SESSION put on them — one cancelled, one unclaimed. THE SESSION IS GONE.
+	 *
+	 * THE UNCLAIMED HALF HAS AN EXACT 10.2 EQUIVALENT AND IS RE-POINTED: a request NO REGISTERED PROTOCOL
+	 * CLAIMS is `NSURLErrorUnsupportedURL`, and `+sendSynchronousRequest:` is the door that reports it with no
+	 * delegate to write. **AND THE CANCELLED HALF IS NOT RE-POINTED, BECAUSE THERE IS NOTHING TO POINT IT AT:**
+	 * a connection's `-cancel` reports NOTHING — Apple's own contract for that class, which NSURLConnection.h
+	 * states — so a check expecting a cancellation error would be asserting the OPPOSITE of what this library
+	 * promises. It is deleted rather than weakened. */
 	{
-		NSURLSessionTask *task = [[NSURLSessionTask alloc]
-			fnInitWithRequest:[NSMutableURLRequest requestWithURL:
-						[NSURL URLWithString:@"https://example.com/cancel"]]
-			       identifier:1];
-
-		[task cancel];
-		check("and-a-cancelled-task-carries-that-code",
-		      [task error] != nil &&
-		      [[[task error] domain] isEqualToString:NSURLErrorDomain] &&
-		      [[task error] code] == NSURLErrorCancelled,
-		      @"-cancel builds its error from the constant, so the value has to be the one a caller compares");
-	}
-
-	{
-		NSURLSession *session = [NSURLSession sessionWithConfiguration:
-					[NSURLSessionConfiguration defaultSessionConfiguration]];
-		__block NSError *ending = nil;
-		NSURLSessionTask *unclaimed;
-		int waited = 0;
+		NSURLResponse *response = nil;
+		NSError *ending = nil;
 
 		/* NOTHING CLAIMS THIS SCHEME, which is exactly the path that builds NSURLErrorUnsupportedURL. */
-		unclaimed = [session dataTaskWithRequest:[NSMutableURLRequest requestWithURL:
-						[NSURL URLWithString:@"fn-nobody-claims://example.test/"]]
-		    completionHandler:^(NSData *d, NSURLResponse *r, NSError *e) {
-			(void)d; (void)r;
-			ending = e;
-		}];
-		[unclaimed resume];
-		while ([unclaimed state] != NSURLSessionTaskStateCompleted && waited < 300) {
-			usleep(10000);
-			waited++;
-		}
+		(void)[NSURLConnection sendSynchronousRequest:
+			[NSURLRequest requestWithURL:
+				[NSURL URLWithString:@"fn-nobody-claims://example.test/"]]
+					       returningResponse:&response
+						   error:&ending];
 		check("and-an-unclaimable-request-carries-the-unsupported-url-code",
 		      ending != nil && [[ending domain] isEqualToString:NSURLErrorDomain] &&
 		      [ending code] == NSURLErrorUnsupportedURL,
-		      @"the session's own -1002 path, now named instead of spelled");
+		      @"the library's own -1002 path, now named instead of spelled");
 	}
 
 	/* --- THE SHAPE OF THE FAMILY: EVERY CODE IN THE BLOCK ITS NAME CLAIMS ------------------------------ */

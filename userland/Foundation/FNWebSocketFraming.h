@@ -8,9 +8,9 @@
  * FNWebSocketFraming — RFC 6455's framing, as PURE FUNCTIONS OVER BYTES. §59 slice 2, internal.
  *
  * THIS IS NOT PUBLIC API AND IS NOT IN Foundation.h: Apple has no such type, and it is here so that the framing
- * is a LAYER rather than a paragraph of code inside the task. The reason is the one that makes it testable at
- * all - a frame codec that only exists as "whatever NSURLSessionWebSocketTask does with a socket" can only be
- * tested through a socket, a handshake and a peer; these functions take bytes and return bytes, so the probe
+ * is a LAYER rather than a paragraph of code inside a task. The reason is the one that makes it testable at
+ * all - a frame codec that exists only as "whatever the socket layer happens to do" can only be tested
+ * through a socket, a handshake and a peer; these functions take bytes and return bytes, so the probe
  * drives them directly and a failure names a frame rather than a connection. (FNPointerTable is the precedent
  * for the placement and the words "not public API" are its.)
  *

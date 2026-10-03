@@ -77,7 +77,7 @@ CHECKS = ("connection-class-declared", "delegate-protocols-declared",
           "download-round-trip",
           "the-data-doors-are-not-used-for-a-download",
           "the-download-progress-door-is-reported",
-          "download-refusals-are-absent", "the-session-download-protocol-shape",
+          "download-refusals-are-absent",
           # §63.155: THE AUTHENTICATION CLUSTER, asked through this class's OWN door
           # (-URLProtocol:didReceiveAuthenticationChallenge:completionHandler:) — Apple's precedence, and the
           # rule that this class must NOT answer that continuation when a delegate door exists.

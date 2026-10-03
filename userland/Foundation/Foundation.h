@@ -204,13 +204,12 @@
 #import <Foundation/NSURLCache.h>
 #import <Foundation/NSURLProtocol.h>
 #import <Foundation/FNCURLURLProtocol.h>
-#import <Foundation/NSURLSessionConfiguration.h>
-#import <Foundation/NSURLSessionTask.h>
-#import <Foundation/NSURLSessionStreamTask.h>
-#import <Foundation/NSURLSessionTaskMetrics.h>
-#import <Foundation/NSURLSession.h>
-#import <Foundation/NSURLSessionWebSocketTask.h>
-#import <Foundation/NSURLSessionWebSocketMessage.h>
+/* ⚠⚠ AND THE NSURLSession FAMILY IS NOT IN THE UMBRELLA ANY MORE (§63.159). It was SEVEN classes — NSURLSession,
+ * its configuration, its task base, its stream/download/websocket tasks and its metrics record — all of them
+ * Apple's LATER than the 10.2 baseline this library targets (§11.0), and all of them REMOVED here together. The
+ * selector ledger had already filtered their owners out (§63.135); this is the code catching up with that
+ * statement. WHAT REPLACED THEM IS THE 10.2 SHAPE THE SEAM ALWAYS HAD: a connection and a download drive
+ * `NSURLProtocol` themselves (§63.153, §63.157), so no class in this library owns a session. */
 #import <Foundation/NSHTTPURLResponse.h>
 #import <Foundation/NSHTTPCookie.h>
 #import <Foundation/NSURLProtectionSpace.h>

@@ -15969,6 +15969,77 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.159 — THE SESSION FAMILY IS CUT: SEVEN CLASSES, A FIRST-PARTY DOOR, 156 LEDGER ROWS, AND SIX CASES WHOSE SUBJECT LEFT (2026-10-03)
+
+**LANDED: `NSURLSession` AND ITS FAMILY ARE OUT OF THE TREE — fourteen files, seven classes** (`NSURLSession`, its
+configuration, its task base, its stream/download/websocket tasks and its metrics record). The user's decision on the
+one thing that could not be a deletion was to **drop §52's first-party metrics door with it** rather than re-home its
+payload (dec-8035262557131bdc), and that is what landed: `-URLProtocol:fnDidCollectMetrics:` and
+`NSURLSessionTaskTransactionMetrics` are both gone, the transport no longer builds a record from the curl handle,
+and the two first-party doors that remain are about a TRANSFER's own numbers.
+
+**⚠⚠ AND THE UNIT'S FIRST MEASUREMENT CHANGED ITS SHAPE BEFORE A LINE WAS DELETED. §63.135's era filter was applied
+to the SELECTOR surface only; the SYMBOL surface still carried the whole family as `shipped` — EIGHTY-FOUR ROWS.**
+`--check` fails when a header stops declaring a shipped row, so deleting the classes broke the gate until the same
+hand-filter was applied. **And the filter's own rule then decided the seam's question**: the metrics record is
+Apple's **10.10** class, later than the 10.2 baseline, so the rule removes it — which is what made "drop the door" a
+real option rather than a preference. *Two units in a row where measuring first reversed the plan: §63.156's
+premise about where three doors belong, and this one about how big the cut was.*
+
+**WHAT REPLACED THE FAMILY IS NOTHING, AND THAT IS THE POINT: the 10.2 shape IS the seam.** A connection and a
+download drive `NSURLProtocol` themselves (§63.153, §63.157), so no class in this library owns a session, and the
+family's absence is the surface the campaign was aimed at. `mk/20-userland.mk` lost the three `NSURLSession*.h`
+entries from `FOUNDATION_HDRS` and two of its three `FN_FOUNDATION_SSL` entries (the two files that needed libressl
+headers went with the classes; `FNWebSocketHandshake.m` stays for its SHA-1 accept digest).
+
+**AND SIX CASES WENT WITH THEIR SUBJECT, WHICH IS A REAL LOSS AND IS NAMED RATHER THAN BURIED:**
+ * **four session-subject probes and their cases** — `foundation_cachehooks`, `foundation_authloop`,
+   `foundation_challengedoor`, `foundation_redirect`. **THEIR BEHAVIOUR DID NOT VANISH WITH THEM:** the redirect
+   door and the whole authentication precedence are tested on `NSURLConnection` now (§63.154, §63.155), which is
+   where a 10.2 connection keeps them, and the cache DECISION is the connection's recorded work item because the
+   seam has no question to ask it.
+ * **two diagnostics that used a session as their subject** — `fn_block_mrc` and `fn_receiver_probe`. Their titles
+   say what they were ("does an MRC-built block survive the same session door?"); they were scaffolding for a bug
+   that is closed, not coverage of the surface.
+
+**AND THE TWO KEPT PROBES THAT NAMED THE FAMILY WERE HANDLED DIFFERENTLY, EACH BY WHAT IS TRUE:**
+ * **`foundation_url` LOST `url-session-shipped` — the FIFTH time that file's own rule has applied to itself**
+   ("an absence assertion is a fact about the TREE, and a landing that changes the tree revisits it"). The family
+   ARRIVED in W7 slice 2c and has now LEFT, so the assertion is removed with its subject rather than subtracted
+   from; the half that is still true — the deprecated family SHIPS — stays.
+ * **`foundation_urlerror` HAD ONE CHECK RE-POINTED AND ONE DELETED, and the second is the interesting one.** Both
+   used to read errors off an `NSURLSessionTask`. The unclaimed-scheme check is `NSURLErrorUnsupportedURL` on
+   `NSURLConnection` too, so it is re-pointed at `+sendSynchronousRequest:` — **which makes it a check on the KEPT
+   class**. **THE CANCELLED HALF IS NOT RE-POINTED BECAUSE THERE IS NOTHING TO POINT IT AT: a connection's `-cancel`
+   reports NOTHING, by Apple's own contract for that class** — so a check expecting a cancellation error would be
+   asserting the OPPOSITE of what this library promises. It is deleted rather than weakened.
+ * `foundation_urlconnection` lost the `download-refusals-are-absent` second half (there is no session to hold the
+   resume API), lost `the-session-download-protocol-shape` with the protocol, and lost the fixture whose only
+   purpose was to make that protocol's metadata exist.
+
+**EVERY LEDGER ROW WENT BY HAND, IN ONE PASS, AND THE NUMBERS ARE THE RECORD: 84 SYMBOL ROWS AND 72 SELECTOR ROWS
+FILTERED** (`method shipped 1686→1655, open 243→236`; `property 744→714, open 99→95`), with the counts blocks
+recomputed exactly as the tool writes them because `--refresh` cannot run. The filter also CAUGHT SEVENTY-TWO
+selector rows the earlier filter had missed, which is worth the line: **the two surfaces were filtered by different
+passes and one of them was incomplete.**
+
+**AND SEVEN PROSE CLAIMS HAD BECOME FALSE ABOUT THE TREE, SO THEY WERE CORRECTED RATHER THAN LEFT TO BE READ:** the
+refused-loading-system lists in `NSURL.h` and `NSURLRequest.h` (which named `NSURLConnection` as refused long after
+§62.25 shipped it, and `NSURLSession` as refused when it had merely arrived and then departed), the
+challenge's "the decision belongs to the delegate door on NSURLSession", both WebSocket helper headers' composition
+notes, and `FNAuthenticationChallengeSender.h`'s sentence placing the session enum. **Plus `NSData.m`'s D9, whose
+stated ground — "there is no `NSURLSession` anywhere in the library" — was false when it was written and is false
+the other way round now**: the refusal stands, the ground is rewritten to what the method actually does (it will not
+turn a non-file URL into a PATH), and the debt recorded in §63.157 is paid.
+
+**VERIFICATION.** `make testimg` **EXIT 0** (library and every remaining probe); `foundation_url*` **14/14 cases,
+72/72 checks**; `foundation_ws*` **3/3, 9/9** (the WebSocket helpers keep their own probes and outlived their
+composer); `foundation_connectionauth` 1/1, 6/6; `foundation-sweep.py --check` **consistent** and
+`--unimplemented` **0 NEW**.
+
+**AND THE 10.2 CAMPAIGN HAS NO NAMED MASS LEFT:** §63.130's cut is complete — the ledger and the code now say the
+same thing about what this library's surface is, which is what the campaign was for.
+
 ## §63.158 — §48.6's DEVIATION IS RETIRED: THE CLIENT DOOR IS APPLE'S, THE SEAM HAS ONE ANSWER PATH, AND A LEDGER ROW CLOSES (2026-10-03)
 
 **LANDED: THE `NSURLProtocolClient` AUTHENTICATION DOOR IS APPLE'S — `-URLProtocol:didReceiveAuthenticationChallenge:`,

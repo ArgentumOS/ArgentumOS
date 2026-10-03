@@ -635,10 +635,18 @@ static int base64Value(unsigned char c)
 /*
  * THE URL FORMS ARE THE FILE FORMS ONCE THE URL IS A PATH (D7's kind (D), 2026-09-19). A FILE url
  * maps through -path, which is the F8 rule for the FSH's paths; every OTHER scheme is REFUSED with
- * an NSError rather than silently answering nil, because this Foundation has no fetching machinery
- * at all — there is no NSURLSession anywhere in the library. That refusal is a DEVIATION and it is
- * REGISTERED as D9 of §11.6.1 with ground (ii), which is what the policy requires of a refusal
- * this library chooses rather than one it cannot avoid.
+ * an NSError rather than silently answering nil. That refusal is a DEVIATION and it is REGISTERED as
+ * D9 of §11.6.1 with ground (ii), which is what the policy requires of a refusal this library chooses
+ * rather than one it cannot avoid.
+ *
+ * ⚠⚠ AND ITS STATED GROUND WAS FALSE, SO §63.159 CORRECTS IT RATHER THAN LEAVING IT TO BE READ. It used to
+ * say "...because this Foundation has no fetching machinery at all — there is no NSURLSession anywhere in
+ * the library", which was wrong twice over: the fetching machinery has existed since §46/§52 (a request, a
+ * response, the protocol seam and the libcurl bridge behind it), and a session DID live here until that
+ * unit removed it. THE REFUSAL IS UNCHANGED AND ITS GROUND IS NOW THE TRUE ONE: what this method does NOT
+ * do is turn a NON-FILE url into a PATH — a `file:` document is the only kind whose bytes ARE the file —
+ * and a caller that wants to FETCH one uses `NSURLConnection` or `NSURLDownload`, which is where fetching
+ * lives.
  */
 static NSString *fn_path_for_url(NSURL *url, NSError **errorPtr)
 {

@@ -367,26 +367,10 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
 
 @end
 
-/* A CLASS THAT ADOPTS THE SESSION'S DOWNLOAD PROTOCOL, AND IT EXISTS FOR A MEASUREMENT RATHER THAN FOR
- * BEHAVIOUR: `objc_getProtocol` answers NULL for a protocol THE CALLING BINARY NEVER ADOPTS, however many
- * other images use it (foundation_url.m records the same thing about NSURLProtocolClient). The check below
- * asks about this protocol's shape, so this file has to adopt it - and it implements ONLY the required door,
- * which is the second thing the check asserts: the progress door really is optional. */
-@interface FNDownloadDelegateShape : NSObject <NSURLSessionDownloadDelegate>
-@end
-
-@implementation FNDownloadDelegateShape
-
-- (void)URLSession:(NSURLSession *)session
-      downloadTask:(NSURLSessionDownloadTask *)downloadTask
-didFinishDownloadingToURL:(NSURL *)location
-{
-	(void)session;
-	(void)downloadTask;
-	(void)location;
-}
-
-@end
+/* ⚠⚠ THE SESSION'S DOWNLOAD-PROTOCOL FIXTURE IS GONE (§63.159), and it is worth saying why it existed: it
+ * adopted `NSURLSessionDownloadDelegate` FOR A MEASUREMENT RATHER THAN FOR BEHAVIOUR, because
+ * `objc_getProtocol` answers NULL for a protocol the calling binary never adopts. The protocol it registered
+ * left with the session family, so there is nothing left to make exist. */
 
 /* THE RE-SENDER (§62.35): it hands back a stream when asked, and records the ask - so the translation is a
  * measurement rather than a claim. */
@@ -871,32 +855,20 @@ int main(void)
 			rec->writeProgressCalls, (long)rec->lastTotalWritten,
 			(long)rec->lastExpectedTotal, (int)[downloadFixture length]]);
 
-		/* THE GROUND §62.31 CORRECTED RATHER THAN THE REFUSAL: this check used to assert that the SESSION had
-		 * no resume API, and that was true when §62.29 wrote it and false one unit later. WHAT REMAINS IS
-		 * STRUCTURAL - an NSURLConnection cannot be GIVEN resume data - so the check now states BOTH halves:
-		 * the connection's door is absent, AND the session has the doors that make the absence a property of
-		 * this class rather than of the loading system. */
+		/* THE CONNECTION'S RESUME DOOR IS ABSENT, AND THAT REFUSAL IS STRUCTURAL: an `NSURLConnection` cannot
+		 * be GIVEN resume data — the class has no initialiser that takes it — so a door that announces a
+		 * resume would be announcing something that cannot happen.
+		 *
+		 * ⚠⚠ AND THE SECOND HALF OF THIS CHECK WENT WITH THE SESSION FAMILY (§63.159): it used to assert that
+		 * the SESSION had the resume API, which is what made the absence a property of THIS CLASS rather than
+		 * of the loading system. THERE IS NO SESSION TO ASK ANY MORE, and that is the stronger form of the same
+		 * statement — nothing in this library can resume, so the door could not be implemented even if it were
+		 * declared. */
 		check("download-refusals-are-absent",
 		      !fn_protocol_has(dl,
-			"connectionDidResumeDownloading:totalBytesWritten:expectedTotalBytes:") &&
-		      [NSURLSession instancesRespondToSelector:
-			NSSelectorFromString(@"downloadTaskWithResumeData:")] &&
-		      [NSURLSessionDownloadTask instancesRespondToSelector:
-			NSSelectorFromString(@"cancelByProducingResumeData:")],
-		      @"the CONNECTION's resume door is absent while the SESSION has the resume API (§62.31): the "
-		      @"refusal is structural - a connection cannot be given resume data - not a missing dependency");
-
-		/* AND THE SESSION'S OWN DOWNLOAD PROTOCOL, WHICH §62.29 DECLARED AND THE PROGRESS DOOR NEEDS: its
-		 * required/optional split is asserted where the door lives, because a protocol whose shape is
-		 * assumed is a protocol nobody checked. */
-		check("the-session-download-protocol-shape",
-		      fn_protocol_requires(objc_getProtocol("NSURLSessionDownloadDelegate"),
-				      "URLSession:downloadTask:didFinishDownloadingToURL:") &&
-		      fn_protocol_has(objc_getProtocol("NSURLSessionDownloadDelegate"),
-				      "URLSession:downloadTask:didWriteData:totalBytesWritten:"
-				      "totalBytesExpectedToWrite:"),
-		      @"the file door is REQUIRED and the progress door is OPTIONAL - and the resume door is "
-		      @"refused by name rather than declared and never called");
+			"connectionDidResumeDownloading:totalBytesWritten:expectedTotalBytes:"),
+		      @"the CONNECTION's resume door is absent (§62.31): the refusal is structural - a "
+		      @"connection cannot be given resume data - not a missing dependency");
 	}
 
 	/* --- 9. THE AUTHENTICATION TRANSLATION, ON THIS CLASS'S OWN DOOR ---------------------------------

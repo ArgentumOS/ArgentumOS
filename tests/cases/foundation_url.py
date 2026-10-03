@@ -45,7 +45,7 @@ CHECKS = (
     "url-bookmark-data-with-contents-refuses",
     "url-bookmark-resolution-refuses",
     "url-bookmark-alias-resolution-refuses","url-parse", "url-refusals", "url-request-values-shipped",
-          "urlprotocol-seam-shipped", "url-session-shipped", "url-shipped", "url-file", "url-file-refusals",
+          "urlprotocol-seam-shipped", "url-shipped", "url-file", "url-file-refusals",
           "url-append-path", "url-delete-path", "url-equality", "url-identity",
           "urlconnection-shipped",
           "cross-tu",

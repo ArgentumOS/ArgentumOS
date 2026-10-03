@@ -8,7 +8,8 @@
  *
  * THE CLASS IS MECHANICS, NOT POLICY. It carries a protection space, the credential that was proposed
  * before, how many attempts have failed, and the response and error from the last one - and it decides
- * nothing. The decision belongs to whoever receives it (the delegate door on NSURLSession), and the store
+ * nothing. The decision belongs to whoever receives it — the delegate door on `NSURLConnection` or on
+ * `NSURLDownload`, which is what the transport asks — and the store
  * that remembers credentials is a third class again.
  *
  * AND THE ACCESSOR THAT WAS REFUSED IS NOW SHIPPED, BECAUSE THE GROUND IT RESTED ON WAS RETIRED. The

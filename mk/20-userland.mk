@@ -284,9 +284,6 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/FNSpellServerDispatch.h \
 	$(FOUNDATION_SRC)/FNTextBreaking.h \
 	$(FOUNDATION_SRC)/FNLegacyMapTable.h \
-	$(FOUNDATION_SRC)/NSURLSessionConfiguration.h \
-	$(FOUNDATION_SRC)/NSURLSessionTask.h \
-	$(FOUNDATION_SRC)/NSURLSession.h \
 	$(FOUNDATION_SRC)/NSHTTPURLResponse.h \
 	$(FOUNDATION_SRC)/NSAttributedString.h \
 	$(FOUNDATION_SRC)/NSMorphology.h \
@@ -329,8 +326,12 @@ FN_FOUNDATION_CURL   = FNCURLURLProtocol.m
 # -startSecureConnection wraps its descriptor in a TLS session: <openssl/ssl.h>, from the libressl the
 # library ALREADY links. (curl is the reason libssl is on the link line, and the reason this file needs
 # no new library either - it needs the HEADERS, which is what a per-file include list is for.)
-FN_FOUNDATION_SSL    = NSURLSessionStreamTask.m FNWebSocketHandshake.m NSURLSessionWebSocketTask.m
-# THREE ENTRIES NOW, AND THE THIRD EARNED ITS PLACE THE HARD WAY: NSURLSessionWebSocketTask.m masks its frames with
+FN_FOUNDATION_SSL    = FNWebSocketHandshake.m
+# ⚠⚠ ONE ENTRY NOW, NOT THREE (§63.159): NSURLSessionStreamTask.m and NSURLSessionWebSocketTask.m were the other
+# two, and both files left with the session family. THE RULE below is unchanged; what is left is the file that
+# still needs it — FNWebSocketHandshake.m, for §4.2.2's SHA-1 accept digest. (The frames themselves are built by
+# the first-party FNWebSocketAssembler, which digests nothing.)
+# THE THIRD ENTRY ONCE EARNED ITS PLACE THE HARD WAY: NSURLSessionWebSocketTask.m masked its frames with
 # RAND_bytes (<openssl/rand.h>), and being absent from this list is what made the library build fail with
 # "'openssl/rand.h' file not found" - the very trap the note below describes, met by the file that needed it.
 # FNWebSocketHandshake.m is here because §4.2.2's accept digest is a SHA-1; NSURLSessionStreamTask.m for the TLS
@@ -1478,28 +1479,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_urlprotocol_curl.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlprotocol_curl"
-	# foundation_cachehooks: the bridge's cache hooks, proved by a contact count
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		userland/tests/foundation_cachehooks.m -o .build/probe-foundation_cachehooks.o
-	$(MUSL64_OBJC) .build/probe-foundation_cachehooks.o \
-		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_cachehooks"
 	# foundation_urlcache: the cache and its policy (W7 slice 5)
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		userland/tests/foundation_urlcache.m -o .build/probe-foundation_urlcache.o
 	$(MUSL64_OBJC) .build/probe-foundation_urlcache.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlcache"
-	# foundation_authloop: the 401 path end to end, probe as its own server
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		userland/tests/foundation_authloop.m -o .build/probe-foundation_authloop.o
-	$(MUSL64_OBJC) .build/probe-foundation_authloop.o \
-		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_authloop"
 	# foundation_connectionauth: §62.41's acceptance - THE COMPOSITION, ALONE IN ONE PROBE. A connection, a 401, and
 	# a stream body: the challenge must reach the CONNECTION's delegate, the transport's own 401 re-issue must ask
 	# for a FRESH body, and the re-issued request must carry both the credential and the body. It is its own probe
@@ -1682,16 +1667,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_dobjects"
-	# foundation_redirect: following a redirect, decided by the delegate, bounded by the hop limit (§54).
-	# Its own HTTP server again (a 302, a 307, a decline and a never-ending chain), and it reads §52's record
-	# off the delegate, so it links the bridge and curl exactly as the two units beside it do.
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		userland/tests/foundation_redirect.m -o .build/probe-foundation_redirect.o
-	$(MUSL64_OBJC) .build/probe-foundation_redirect.o \
-		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_redirect"
 	# foundation_urlerror: the URL error names, their values, and the shape of the family (§56). No transport
 	# and no server: two of its checks read a REAL task's error and the rest are the codes themselves.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
@@ -1720,12 +1695,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_wshandshake.o \
 		-L$(FNXLIB) -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_wshandshake"
-	# foundation_challengedoor: the two delegate doors, driven (W7 slice 4)
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		userland/tests/foundation_challengedoor.m -o .build/probe-foundation_challengedoor.o
-	$(MUSL64_OBJC) .build/probe-foundation_challengedoor.o \
-		-L$(FNXLIB) -lfoundation \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_challengedoor"
 	# foundation_credentialstorage: the store keyed by protection space (W7 slice 4)
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		userland/tests/foundation_credentialstorage.m -o .build/probe-foundation_credentialstorage.o
@@ -1766,19 +1735,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_httpcookie"
-	# fn_block_mrc: the MRC TWIN of the crashing call - same door, same __block-object capture
-	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
-		userland/tests/fn_block_mrc.m -o .build/probe-fn_block_mrc.o
-	$(MUSL64_OBJC) .build/probe-fn_block_mrc.o \
-		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-		-o "$(ROOTFS64)/System/Shared/tests/fn_block_mrc"
-	# fn_receiver_probe: the receiver ALONE - three rounds could not tell 'never starts' from
-	# 'something before the check blocks', and a probe that does one thing can.
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		userland/tests/fn_receiver_probe.m -o .build/probe-fn_receiver_probe.o
-	$(MUSL64_OBJC) .build/probe-fn_receiver_probe.o \
-		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-		-o "$(ROOTFS64)/System/Shared/tests/fn_receiver_probe"
 	# curl_smoke: W7 slice 2b's acceptance - LIBCURL ON THE GUEST. NOT a Foundation probe: this is a
 	# third-party library's landing, so the program that judges it has no Foundation in it (the
 	# kernel_pipe_dup2 reasoning). It compiles against the VENDORED libcurl out of .build/curl-prefix

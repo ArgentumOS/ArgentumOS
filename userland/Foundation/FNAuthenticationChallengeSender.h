@@ -15,7 +15,9 @@
  * left is the TRANSPORT'S OWN vocabulary: the five things a client can answer, named for this library rather
  * than borrowed from a session type. **THE SESSION'S OWN ENUM IS NOT DELETED BY THAT** — Apple declares
  * `NSURLSessionAuthChallengeDisposition` for its session doors, it is a `shipped` row in the ledger under
- * `NSURLSessionDelegate` and `NSURLSessionTaskDelegate`, and it lives in `NSURLSession.h` where Apple puts it.
+ * `NSURLSessionDelegate` and `NSURLSessionTaskDelegate`, and it lived in `NSURLSession.h` where Apple puts
+ * it. ⚠⚠ AND THAT HEADER HAS NOW LEFT THE TREE TOO (§63.159): the whole session family was cut, so the
+ * enum went with it and NOTHING IN THIS LIBRARY BORROWS A SESSION NAME ANY MORE.
  * This file simply stops borrowing it, which is also what stops the seam having a session-named type at all.
  *
  * WHY IT EXISTS (§62.27): `NSURLAuthenticationChallenge` always ACCEPTED a `sender:` and never kept one,

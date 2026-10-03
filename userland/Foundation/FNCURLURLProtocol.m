@@ -11,11 +11,11 @@
 #import <Foundation/NSURLCredential.h>
 #import <Foundation/FNAuthenticationChallengeSender.h>
 #import <Foundation/NSURLAuthenticationChallenge.h>
-#import <Foundation/NSURLSession.h>
 #import <Foundation/NSURLCache.h>
-/* THE RECORD THE PRIVATE DOOR BELOW CARRIES, AND ITS INTERNAL WRITER CATEGORY (§52): what the transport
- * measured is reported as the PUBLIC record, so the seam learns nothing about curl. */
-#import <Foundation/NSURLSessionTaskMetrics.h>
+/* ⚠⚠ THE METRICS RECORD IS NOT IMPORTED HERE ANY MORE (§63.159): the family that declared it left the surface,
+ * and with it the first-party door that carried it. THE TRANSPORT STILL MEASURES — `fn_curl_progress` and the
+ * durations curl reports are what the upload-progress door is built from — it simply has nowhere to send a
+ * RECORD, because a 10.2 connection publishes none. */
 #import <Foundation/NSData.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDictionary.h>
@@ -60,10 +60,7 @@ typedef struct FNCurlTransfer {
  * only has as a `void *`, and the reporting has to happen at the moment the callback sees the fact. */
 @interface FNCURLURLProtocol (FNCurlReporting)
 - (void)fnReportResponseWithStatus:(long)status headers:(NSDictionary *)headers;
-/* AND THE MEASUREMENTS GO UP THROUGH ONE (§52): the record is built WHERE THE NUMBERS ARE - on the handle,
- * before curl_easy_cleanup - and then reported through the client's first-party door, which a client is not
- * required to implement. */
-- (void)fnReportMetrics:(NSURLSessionTaskTransactionMetrics *)metrics;
+/* ⚠ THE `-fnReportMetrics:` DOOR IS GONE (§63.159), and with it the record it carried. */
 /* THE CLIENT IS ASKED ABOUT A CHALLENGE THROUGH THIS, because the C header callback cannot message it. THE
  * DOOR IS APPLE'S NOW (§63.158): the challenge this method hands over CARRIES the sender that answers this
  * transport's continuation, so there is no handler argument and no second answer path. A client that
@@ -347,139 +344,14 @@ static size_t fn_curl_header_discard(char *ptr, size_t size, size_t nmemb, void 
 	return size * nmemb;
 }
 
-/* THE RECORD OF ONE ATTEMPT (§52), BUILT WHERE THE MEASUREMENTS ARE AND NOWHERE ELSE: this is the only
- * place in the library holding the curl handle, and every field below is read FROM IT before
- * curl_easy_cleanup. Three rules decide what is filled and what is left:
- *
- *   * CURL REPORTS DURATIONS, NOT INSTANTS, so the attempt's start - captured immediately before
- *     curl_easy_perform - is the base every date is added to;
- *   * A PHASE WHOSE DURATION IS ZERO DID NOT HAPPEN, so both of its markers stay NIL rather than collapsing
- *     onto the start (the record's own rule: nil is not zero, and a DNS pair filled with zeros would claim a
- *     lookup that never occurred);
- *   * A FIELD WITH NO SOURCE IS LEFT AND SAID SO: localAddress and the domain-resolution protocol are not
- *     reported by the transport at all, and countOfRequestHeaderBytesSent has no source - a count has no nil
- *     to say "not reported" with, so it stays 0 and the header documents it.
- *
- * AND THE FOUR NETWORK BOOLEANS ARE ANSWERED FROM THE PLATFORM rather than from the transfer: cellular,
- * expensive, constrained and multipath describe the NETWORK A MACHINE IS ON, and this system is on none of
- * those - which is a true answer and a checkable one. */
-static NSURLSessionTaskTransactionMetrics *fn_metrics_for_transfer(FNCurlTransfer *transfer,
-								  NSDate *started)
-{
-	NSURLSessionTaskTransactionMetrics *metrics = [[NSURLSessionTaskTransactionMetrics alloc] init];
-	NSURLRequest *request = [transfer->protocol request];
-	NSURLResponse *response = nil;
-	NSDictionary *fields = nil;
-	NSDate *connectStart = started;
-	BOOL hasRemote = NO;
-	double elapsed = 0.0;
-	long status = 0;
-	long value = 0;
-	char *text = NULL;
-	curl_off_t count = 0;
-
-	/* THE ANSWER'S HEAD, from the bytes this attempt received: the same source the client was told from, so
-	 * a record and a response cannot disagree. No status at all (a file transfer, or a failure before the
-	 * head arrived) leaves the response nil - which is Apple's own answer for a transaction that never got
-	 * one. */
-	if ([transfer->headerBytes length] > 0) {
-		fields = fn_curl_header_fields(transfer->headerBytes);
-	}
-	if (fields != nil &&
-	    curl_easy_getinfo(transfer->curl, CURLINFO_RESPONSE_CODE, &status) == CURLE_OK && status > 0) {
-		response = [[[NSHTTPURLResponse alloc] initWithURL:[request URL]
-							statusCode:status
-						       HTTPVersion:nil
-						      headerFields:fields] autorelease];
-	}
-
-	[metrics fnSetRequest:request response:response];
-	[metrics fnSetFetchStartDate:started];
-
-	if (curl_easy_getinfo(transfer->curl, CURLINFO_NAMELOOKUP_TIME, &elapsed) == CURLE_OK && elapsed > 0.0) {
-		/* THE LOOKUP'S START IS THE TRANSACTION'S OWN, because the lookup is the first phase and the
-		 * transport reports only how long it took. */
-		[metrics fnSetDomainLookupStartDate:started];
-		connectStart = [started dateByAddingTimeInterval:elapsed];
-		[metrics fnSetDomainLookupEndDate:connectStart];
-	}
-	if (curl_easy_getinfo(transfer->curl, CURLINFO_CONNECT_TIME, &elapsed) == CURLE_OK && elapsed > 0.0) {
-		[metrics fnSetConnectStartDate:connectStart];
-		[metrics fnSetConnectEndDate:[started dateByAddingTimeInterval:elapsed]];
-	}
-	/* THE SECURE CONNECTION'S END ONLY, and that is §50.1's measurement rather than an omission: curl
-	 * reports the handshake finishing and never when it started, so the start marker STAYS NIL. */
-	if (curl_easy_getinfo(transfer->curl, CURLINFO_APPCONNECT_TIME, &elapsed) == CURLE_OK && elapsed > 0.0) {
-		[metrics fnSetSecureConnectionEndDate:[started dateByAddingTimeInterval:elapsed]];
-	}
-	if (curl_easy_getinfo(transfer->curl, CURLINFO_PRETRANSFER_TIME, &elapsed) == CURLE_OK && elapsed > 0.0) {
-		[metrics fnSetRequestStartDate:[started dateByAddingTimeInterval:elapsed]];
-	}
-	if (curl_easy_getinfo(transfer->curl, CURLINFO_STARTTRANSFER_TIME, &elapsed) == CURLE_OK && elapsed > 0.0) {
-		NSDate *firstByte = [started dateByAddingTimeInterval:elapsed];
-
-		/* ONE MEASUREMENT IN TWO FIELDS: the instant the first byte arrived is when the request finished
-		 * going out AND when the answer began, which is true of a request-response exchange and is said
-		 * here rather than invented twice. */
-		[metrics fnSetRequestEndDate:firstByte];
-		[metrics fnSetResponseStartDate:firstByte];
-	}
-	if (curl_easy_getinfo(transfer->curl, CURLINFO_TOTAL_TIME, &elapsed) == CURLE_OK && elapsed > 0.0) {
-		[metrics fnSetResponseEndDate:[started dateByAddingTimeInterval:elapsed]];
-	}
-
-	if (curl_easy_getinfo(transfer->curl, CURLINFO_PRIMARY_IP, &text) == CURLE_OK && text != NULL) {
-		[metrics fnSetRemoteAddress:[NSString stringWithUTF8String:text]];
-		hasRemote = YES;
-	}
-	if (hasRemote &&
-	    curl_easy_getinfo(transfer->curl, CURLINFO_NUM_CONNECTS, &value) == CURLE_OK) {
-		/* A TRANSFER THAT DIALED NOTHING REUSED ITS CONNECTION - and the test is guarded by a remote
-		 * address, because a `file://` transfer dials nothing either and is not a reused connection. */
-		[metrics fnSetReusedConnection:value == 0];
-	}
-	if (curl_easy_getinfo(transfer->curl, CURLINFO_HTTP_VERSION, &value) == CURLE_OK) {
-		switch (value) {
-		case CURL_HTTP_VERSION_1_0:
-			[metrics fnSetNetworkProtocolName:@"http/1.0"];
-			break;
-		case CURL_HTTP_VERSION_1_1:
-			[metrics fnSetNetworkProtocolName:@"http/1.1"];
-			break;
-		case CURL_HTTP_VERSION_2_0:
-		case CURL_HTTP_VERSION_2TLS:
-			[metrics fnSetNetworkProtocolName:@"h2"];
-			break;
-		case CURL_HTTP_VERSION_3:
-			[metrics fnSetNetworkProtocolName:@"h3"];
-			break;
-		default:
-			break;	/* NONE, or a version this mapping does not name: nil rather than a guess */
-		}
-	}
-
-	if (curl_easy_getinfo(transfer->curl, CURLINFO_HEADER_SIZE, &value) == CURLE_OK) {
-		[metrics fnSetCountOfResponseHeaderBytesReceived:(NSInteger)value];
-	}
-	if (curl_easy_getinfo(transfer->curl, CURLINFO_SIZE_DOWNLOAD_T, &count) == CURLE_OK) {
-		/* NOTHING IS DECODED SEPARATELY, so the two response-body counts are the same number - §50.1's
-		 * rule for the request's pair, and saying so beats inventing a distinction. */
-		[metrics fnSetCountOfResponseBodyBytesReceived:(NSInteger)count];
-		[metrics fnSetCountOfResponseBodyBytesAfterDecoding:(NSInteger)count];
-	}
-	if (curl_easy_getinfo(transfer->curl, CURLINFO_SIZE_UPLOAD_T, &count) == CURLE_OK) {
-		[metrics fnSetCountOfRequestBodyBytesSent:(NSInteger)count];
-		[metrics fnSetCountOfRequestBodyBytesBeforeEncoding:(NSInteger)count];
-	}
-
-	[metrics fnSetCellular:NO];
-	[metrics fnSetExpensive:NO];
-	[metrics fnSetConstrained:NO];
-	[metrics fnSetMultipath:NO];
-	[metrics fnSetResourceFetchType:NSURLSessionTaskMetricsResourceFetchTypeNetworkLoad];
-
-	return metrics;
-}
+/* ⚠⚠ AND THE RECORD OF AN ATTEMPT IS GONE (§63.159), TOGETHER WITH THE DOOR THAT CARRIED IT. This was
+ * §52's metrics payload — one `NSURLSessionTaskTransactionMetrics` built from the curl handle — and both it
+ * and that type left with the session family. WHAT THE TRANSPORT STILL MEASURES IS WHAT ITS OWN DOORS
+ * REPORT: the upload's progress counts bytes as they leave, the response door carries the status and the
+ * headers, and curl's durations are no longer anyone's business because a 10.2 connection publishes no
+ * metrics to hand anywhere. THE DECISION IS RECORDED RATHER THAN IMPLIED: dropping the door was the
+ * user's (dec-8035262557131bdc), and the alternative — re-homing the record as a first-party type — was
+ * rejected because nothing at this baseline would read it. */
 
 @implementation FNCURLURLProtocol
 
@@ -724,19 +596,14 @@ retry_transfer:
 		 * BASIC carries and nothing else here does. So it goes out pre-emptively, once, by name. */
 		curl_easy_setopt(curl, CURLOPT_HTTPAUTH, (long)CURLAUTH_BASIC);
 	}
-	/* THE INSTANT THIS ATTEMPT BEGINS (§52): curl reports DURATIONS and no instants, so this capture is the
-	 * base of every date in the record - and it is taken PER ATTEMPT, because a re-issued 401 is a SECOND
-	 * transaction rather than a longer first one. */
+	/* ⚠⚠ AND NOTHING GOES UP HERE ANY MORE (§63.159): this was the metrics report — the instant the attempt
+	 * began, and the record built from the handle before its outcome was decided. THE CAPTURE AND THE RECORD
+	 * WENT WITH THE SESSION FAMILY, because the record's type was Apple's 10.10 class and the door that
+	 * carried it was a first-party extra with nothing at this baseline to carry it to. */
 	if (!transfer.refusedNoLength) {
-		NSDate *attemptStarted = [NSDate date];
-
 		_transfer = &transfer;
 		result = curl_easy_perform(curl);
 		_transfer = NULL;
-		/* AND WHAT IT COST GOES UP BEFORE ITS OUTCOME IS DECIDED, which is the order Apple delivers in:
-		 * the record describes the exchange, and whether the exchange then failed or finished is the
-		 * outgoing report's business rather than the metrics'. */
-		[self fnReportMetrics:fn_metrics_for_transfer(&transfer, attemptStarted)];
 	}
 	if (transfer.retry && transfer.credential != nil) {
 		/* A RE-SEND WITH A SPENT STREAM NEEDS A FRESH ONE (§62.40), AND THIS IS THE ONLY PLACE IT CAN BE ASKED
@@ -821,17 +688,10 @@ retry_transfer:
 	[pool release];
 }
 
-/* THE MEASUREMENTS GO UP THROUGH THIS, AND A CLIENT THAT DOES NOT IMPLEMENT THE DOOR IS SIMPLY NOT TOLD
- * (§52). The record was built from the handle; what is left here is the RULE every first-party door in this
- * library keeps - no door means nothing is reported, and it is not a failure. */
-- (void)fnReportMetrics:(NSURLSessionTaskTransactionMetrics *)metrics
-{
-	if (_client == nil ||
-	    ![_client respondsToSelector:@selector(URLProtocol:fnDidCollectMetrics:)]) {
-		return;
-	}
-	[_client URLProtocol:self fnDidCollectMetrics:metrics];
-}
+/* ⚠⚠ THE METRICS REPORT IS GONE (§63.159): this method sent a record through the client's first-party
+ * `-URLProtocol:fnDidCollectMetrics:` door, and BOTH the door and the record's type left with the session
+ * family. What it leaves behind is the rule the two remaining first-party doors still keep — no door means
+ * nothing is reported, and it is not a failure. */
 
 /* --- THE PRIVATE REPORTING DOORS ----------------------------------------------------------------- */
 

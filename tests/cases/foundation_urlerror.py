@@ -13,7 +13,6 @@ PROBE = "/System/Shared/tests/foundation_urlerror"
 CHECKS = (
     "the-four-codes-the-library-reports",
     "the-domain-is-the-one-the-library-reports",
-    "and-a-cancelled-task-carries-that-code",
     "and-an-unclaimable-request-carries-the-unsupported-url-code",
     "the-exchange-block-is-where-it-says",
     "the-file-block-is-where-it-says",

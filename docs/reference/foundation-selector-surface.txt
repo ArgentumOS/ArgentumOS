@@ -44,8 +44,9 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-# method	shipped	1686	open	243	struck	390
-# property	shipped	744	open	99	struck	170
+# method	shipped	1655	open	236	struck	390
+# property	shipped	714	open	95	struck	170
+
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -2925,78 +2926,6 @@ property	shipped	URL	NSURLResponse	Networking / Requests and responses / Getting
 property	shipped	expectedContentLength	NSURLResponse	Networking / Requests and responses / Getting the response properties	-	objc
 property	shipped	suggestedFilename	NSURLResponse	Networking / Requests and responses / Getting the response properties	-	objc
 property	shipped	textEncodingName	NSURLResponse	Networking / Requests and responses / Getting the response properties	-	objc
-method	open	-URLSession:dataTask:didBecomeDownloadTask:	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes	-	objc
-method	open	-URLSession:dataTask:didBecomeStreamTask:	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes	-	objc
-method	shipped	-URLSession:dataTask:didReceiveData:	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Receiving data	-	objc
-method	shipped	-URLSession:dataTask:didReceiveResponse:completionHandler:	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes	-	objc
-method	shipped	-URLSession:dataTask:willCacheResponse:completionHandler:	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling caching	-	objc
-method	shipped	-init	NSURLSessionDataTask	Networking / Essentials / Adding data tasks to a session / Instance Methods	deprecated	objc
-method	shipped	+new	NSURLSessionDataTask	Networking / Essentials / Adding data tasks to a session / Type Methods	deprecated	objc
-method	shipped	-URLSession:didBecomeInvalidWithError:	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling session life cycle changes	-	objc
-method	shipped	-URLSession:didReceiveChallenge:completionHandler:	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges	-	objc
-method	shipped	-URLSessionDidFinishEventsForBackgroundURLSession:	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling session life cycle changes	-	objc
-method	shipped	-URLSession:downloadTask:didFinishDownloadingToURL:	NSURLSessionDownloadDelegate	Networking / Essentials / Adding download tasks to a session / Handling download life cycle changes	-	objc
-method	shipped	-URLSession:downloadTask:didResumeAtOffset:expectedTotalBytes:	NSURLSessionDownloadDelegate	Networking / Essentials / Adding download tasks to a session / Resuming paused downloads	-	objc
-method	shipped	-URLSession:downloadTask:didWriteData:totalBytesWritten:totalBytesExpectedToWrite:	NSURLSessionDownloadDelegate	Networking / Essentials / Adding download tasks to a session / Receiving progress updates	-	objc
-method	shipped	-cancelByProducingResumeData:	NSURLSessionDownloadTask	Networking / Essentials / Adding download tasks to a session / Canceling a download	-	objc
-method	shipped	-init	NSURLSessionDownloadTask	Networking / Essentials / Adding download tasks to a session / Creating download tasks	deprecated	objc
-method	shipped	+new	NSURLSessionDownloadTask	Networking / Essentials / Adding download tasks to a session / Creating download tasks	deprecated	objc
-method	shipped	-URLSession:betterRouteDiscoveredForStreamTask:	NSURLSessionStreamDelegate	Networking / Essentials / Adding stream tasks to a session / Handling rerouting	-	objc
-method	shipped	-URLSession:readClosedForStreamTask:	NSURLSessionStreamDelegate	Networking / Essentials / Adding stream tasks to a session / Handling closing events	-	objc
-method	shipped	-URLSession:streamTask:didBecomeInputStream:outputStream:	NSURLSessionStreamDelegate	Networking / Essentials / Adding stream tasks to a session / Completing stream capture	-	objc
-method	shipped	-URLSession:writeClosedForStreamTask:	NSURLSessionStreamDelegate	Networking / Essentials / Adding stream tasks to a session / Handling closing events	-	objc
-method	open	-URLSession:didCreateTask:	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Instance Methods	-	objc
-method	shipped	-URLSession:task:didCompleteWithError:	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling task life cycle changes	-	objc
-method	shipped	-URLSession:task:didFinishCollectingMetrics:	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Collecting task metrics	-	objc
-method	shipped	-URLSession:task:didReceiveChallenge:completionHandler:	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges	-	objc
-method	open	-URLSession:task:didReceiveInformationalResponse:	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Instance Methods	-	objc
-method	shipped	-URLSession:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Working with upload tasks	-	objc
-method	shipped	-URLSession:task:needNewBodyStream:	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Working with upload tasks	-	objc
-method	open	-URLSession:task:needNewBodyStreamFromOffset:completionHandler:	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Instance Methods	-	objc
-method	shipped	-URLSession:task:willBeginDelayedRequest:completionHandler:	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks	-	objc
-method	shipped	-URLSession:task:willPerformHTTPRedirection:newRequest:completionHandler:	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling redirects	-	objc
-method	open	-URLSession:taskIsWaitingForConnectivity:	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks	-	objc
-method	shipped	-init	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Creating transaction metrics	deprecated	objc
-method	shipped	+new	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Creating transaction metrics	deprecated	objc
-property	shipped	cellular	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
-property	shipped	connectEndDate	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing temporal metrics	-	objc
-property	shipped	connectStartDate	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing temporal metrics	-	objc
-property	shipped	constrained	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
-property	shipped	countOfRequestBodyBytesBeforeEncoding	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing data transfer metrics	-	objc
-property	shipped	countOfRequestBodyBytesSent	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing data transfer metrics	-	objc
-property	shipped	countOfRequestHeaderBytesSent	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing data transfer metrics	-	objc
-property	shipped	countOfResponseBodyBytesAfterDecoding	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing data transfer metrics	-	objc
-property	shipped	countOfResponseBodyBytesReceived	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing data transfer metrics	-	objc
-property	shipped	countOfResponseHeaderBytesReceived	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing data transfer metrics	-	objc
-property	shipped	domainLookupEndDate	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing temporal metrics	-	objc
-property	shipped	domainLookupStartDate	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing temporal metrics	-	objc
-property	shipped	domainResolutionProtocol	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
-property	shipped	expensive	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
-property	shipped	fetchStartDate	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing temporal metrics	-	objc
-property	shipped	localAddress	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
-property	open	localPort	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
-property	shipped	multipath	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
-property	open	negotiatedTLSCipherSuite	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
-property	open	negotiatedTLSProtocolVersion	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
-property	shipped	networkProtocolName	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
-property	shipped	proxyConnection	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
-property	shipped	remoteAddress	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
-property	open	remotePort	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
-property	shipped	request	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing request and response	-	objc
-property	shipped	requestEndDate	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing temporal metrics	-	objc
-property	shipped	requestStartDate	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing temporal metrics	-	objc
-property	shipped	resourceFetchType	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
-property	shipped	response	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing request and response	-	objc
-property	shipped	responseEndDate	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing temporal metrics	-	objc
-property	shipped	responseStartDate	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing temporal metrics	-	objc
-property	shipped	reusedConnection	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
-property	shipped	secureConnectionEndDate	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing temporal metrics	-	objc
-property	shipped	secureConnectionStartDate	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing temporal metrics	-	objc
-method	open	-cancelByProducingResumeData:	NSURLSessionUploadTask	Networking / Essentials / Adding upload tasks to a session / Instance Methods	-	objc
-method	shipped	-init	NSURLSessionUploadTask	Networking / Essentials / Adding upload tasks to a session / Instance Methods	deprecated	objc
-method	shipped	+new	NSURLSessionUploadTask	Networking / Essentials / Adding upload tasks to a session / Type Methods	deprecated	objc
-method	shipped	-URLSession:webSocketTask:didCloseWithCode:reason:	NSURLSessionWebSocketDelegate	Networking / Essentials / Adding WebSocket tasks to a session / Handling WebSocket lifecycle events	-	objc
-method	shipped	-URLSession:webSocketTask:didOpenWithProtocol:	NSURLSessionWebSocketDelegate	Networking / Essentials / Adding WebSocket tasks to a session / Handling WebSocket lifecycle events	-	objc
 method	open	+classNameDecodedForArchiveClassName:	NSUnarchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	swift-page
 method	open	-classNameDecodedForArchiveClassName:	NSUnarchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	swift-page
 method	open	+decodeClassName:asClassName:	NSUnarchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	swift-page

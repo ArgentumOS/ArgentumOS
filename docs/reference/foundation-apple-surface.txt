@@ -38,15 +38,16 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-#   class     shipped  191   open    0   struck   52
-#   protocol  shipped   39   open    0   struck    6
-#   macro     shipped  121   open    0   struck  132
-#   enum      shipped  148   open    0   struck    9
-#   case      shipped 1206   open    0   struck   78
-#   func      shipped  167   open    0   struck   22
-#   var       shipped  703   open    0   struck  211
-#   typealias shipped   71   open    0   struck    5
-#   struct    shipped   13   open    0   struck    0
+# case	shipped	1156	open	0	struck	78
+# class	shipped	180	open	0	struck	52
+# enum	shipped	138	open	0	struck	9
+# func	shipped	167	open	0	struck	22
+# macro	shipped	121	open	0	struck	132
+# protocol	shipped	33	open	0	struck	6
+# struct	shipped	13	open	0	struck	0
+# typealias	shipped	71	open	0	struck	5
+# var	shipped	696	open	0	struck	211
+
 
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSActivityAnimationTrackingEnabled	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
@@ -935,11 +936,8 @@ case	shipped	NSURLErrorBadURL	NSError	App Support / User-Relevant Errors / Error
 case	shipped	NSURLErrorCallIsActive	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
 case	shipped	NSURLErrorCancelled	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
 case	shipped	NSURLErrorCancelledReasonBackgroundUpdatesDisabled		Networking / Errors / Keys / Cancellation reasons	-	objc
-case	shipped	NSURLErrorCancelledReasonBackgroundUpdatesDisabled	NSURLSession	Networking / Essentials / Handling errors / Cancellation reasons	-	objc
 case	shipped	NSURLErrorCancelledReasonInsufficientSystemResources		Networking / Errors / Keys / Cancellation reasons	-	objc
-case	shipped	NSURLErrorCancelledReasonInsufficientSystemResources	NSURLSession	Networking / Essentials / Handling errors / Cancellation reasons	-	objc
 case	shipped	NSURLErrorCancelledReasonUserForceQuitApplication		Networking / Errors / Keys / Cancellation reasons	-	objc
-case	shipped	NSURLErrorCancelledReasonUserForceQuitApplication	NSURLSession	Networking / Essentials / Handling errors / Cancellation reasons	-	objc
 case	shipped	NSURLErrorCannotCloseFile	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
 case	shipped	NSURLErrorCannotConnectToHost	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
 case	shipped	NSURLErrorCannotCreateFile	NSError	App Support / User-Relevant Errors / Error Codes / URL Errors	-	objc
@@ -1028,53 +1026,6 @@ case	shipped	NSURLRequestReturnCacheDataElseLoad	NSMutableURLRequest	Networking 
 case	shipped	NSURLRequestReturnCacheDataElseLoad	NSURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
 case	shipped	NSURLRequestUseProtocolCachePolicy	NSMutableURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
 case	shipped	NSURLRequestUseProtocolCachePolicy	NSURLRequest	Networking / Requests and responses / Working with a cache policy / Policies	-	swift-page
-case	shipped	NSURLSessionAuthChallengeCancelAuthenticationChallenge	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
-case	shipped	NSURLSessionAuthChallengeCancelAuthenticationChallenge	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
-case	shipped	NSURLSessionAuthChallengePerformDefaultHandling	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
-case	shipped	NSURLSessionAuthChallengePerformDefaultHandling	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
-case	shipped	NSURLSessionAuthChallengeRejectProtectionSpace	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
-case	shipped	NSURLSessionAuthChallengeRejectProtectionSpace	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
-case	shipped	NSURLSessionAuthChallengeUseCredential	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
-case	shipped	NSURLSessionAuthChallengeUseCredential	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges / Constants	-	objc
-case	shipped	NSURLSessionDelayedRequestCancel	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks / Dispositions	-	objc
-case	shipped	NSURLSessionDelayedRequestContinueLoading	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks / Dispositions	-	objc
-case	shipped	NSURLSessionDelayedRequestUseNewRequest	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks / Dispositions	-	objc
-case	shipped	NSURLSessionMultipathServiceTypeAggregate	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP / Service types	-	swift-page
-case	shipped	NSURLSessionMultipathServiceTypeHandover	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP / Service types	-	swift-page
-case	shipped	NSURLSessionMultipathServiceTypeInteractive	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP / Service types	-	swift-page
-case	shipped	NSURLSessionMultipathServiceTypeNone	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP / Service types	-	swift-page
-case	shipped	NSURLSessionResponseAllow	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes / Task dispositions	-	objc
-case	shipped	NSURLSessionResponseBecomeDownload	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes / Task dispositions	-	objc
-case	shipped	NSURLSessionResponseBecomeStream	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes / Task dispositions	-	objc
-case	shipped	NSURLSessionResponseCancel	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes / Task dispositions	-	objc
-case	shipped	NSURLSessionTaskMetricsDomainResolutionProtocolHTTPS	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Enumeration Cases	-	objc
-case	shipped	NSURLSessionTaskMetricsDomainResolutionProtocolTCP	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Enumeration Cases	-	objc
-case	shipped	NSURLSessionTaskMetricsDomainResolutionProtocolTLS	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Enumeration Cases	-	objc
-case	shipped	NSURLSessionTaskMetricsDomainResolutionProtocolUDP	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Enumeration Cases	-	objc
-case	shipped	NSURLSessionTaskMetricsDomainResolutionProtocolUnknown	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Enumeration Cases	-	objc
-case	shipped	NSURLSessionTaskMetricsResourceFetchTypeLocalCache	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	-	objc
-case	shipped	NSURLSessionTaskMetricsResourceFetchTypeNetworkLoad	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	-	objc
-case	shipped	NSURLSessionTaskMetricsResourceFetchTypeServerPush	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	deprecated	objc
-case	shipped	NSURLSessionTaskMetricsResourceFetchTypeUnknown	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics / Fetch types	-	objc
-case	shipped	NSURLSessionTaskStateCanceling	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
-case	shipped	NSURLSessionTaskStateCompleted	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
-case	shipped	NSURLSessionTaskStateRunning	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
-case	shipped	NSURLSessionTaskStateSuspended	NSURLSessionTask	Networking / Essentials / Controlling the task state / Task states	-	swift-page
-case	shipped	NSURLSessionWebSocketCloseCodeAbnormalClosure	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	shipped	NSURLSessionWebSocketCloseCodeGoingAway	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	shipped	NSURLSessionWebSocketCloseCodeInternalServerError	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	shipped	NSURLSessionWebSocketCloseCodeInvalid	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	shipped	NSURLSessionWebSocketCloseCodeInvalidFramePayloadData	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	shipped	NSURLSessionWebSocketCloseCodeMandatoryExtensionMissing	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	shipped	NSURLSessionWebSocketCloseCodeMessageTooBig	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	shipped	NSURLSessionWebSocketCloseCodeNoStatusReceived	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	shipped	NSURLSessionWebSocketCloseCodeNormalClosure	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	shipped	NSURLSessionWebSocketCloseCodePolicyViolation	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	shipped	NSURLSessionWebSocketCloseCodeProtocolError	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	shipped	NSURLSessionWebSocketCloseCodeTLSHandshakeFailure	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	shipped	NSURLSessionWebSocketCloseCodeUnsupportedData	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection / Close codes	-	swift-page
-case	shipped	NSURLSessionWebSocketMessageTypeData	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session / Enumeration Cases	-	objc
-case	shipped	NSURLSessionWebSocketMessageTypeString	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session / Enumeration Cases	-	objc
 case	shipped	NSUTF16BigEndianStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSUTF16LittleEndianStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSUTF16StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -1536,17 +1487,6 @@ class	shipped	NSURLProtocol		Networking / Essentials / Creating a session / Supp
 class	shipped	NSURLQueryItem		Fundamentals / URLs	-	objc
 class	shipped	NSURLRequest		Networking / Requests and responses	-	objc
 class	shipped	NSURLResponse		Networking / Requests and responses	-	objc
-class	shipped	NSURLSession		Networking / Essentials	-	objc
-class	shipped	NSURLSessionConfiguration		Networking / Essentials / Creating a session	-	objc
-class	shipped	NSURLSessionDataTask		Networking / Essentials / Adding data tasks to a session	-	objc
-class	shipped	NSURLSessionDownloadTask		Networking / Essentials / Adding download tasks to a session	-	objc
-class	shipped	NSURLSessionStreamTask		Networking / Essentials / Adding stream tasks to a session	-	objc
-class	shipped	NSURLSessionTask		Networking / Essentials	-	objc
-class	shipped	NSURLSessionTaskMetrics		Networking / Essentials / Working with a delegate / Collecting task metrics	-	objc
-class	shipped	NSURLSessionTaskTransactionMetrics		Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics	-	objc
-class	shipped	NSURLSessionUploadTask		Networking / Essentials / Adding upload tasks to a session	-	objc
-class	shipped	NSURLSessionWebSocketMessage		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
-class	shipped	NSURLSessionWebSocketTask		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 class	shipped	NSUUID		Fundamentals / Unique Identifiers	-	objc
 class	shipped	NSUbiquitousKeyValueStore		Files and Data Persistence / iCloud key and value storage	-	objc
 class	shipped	NSUnarchiver		Files and Data Persistence / Deprecated	deprecated	objc
@@ -1712,16 +1652,6 @@ enum	shipped	NSURLRequestCachePolicy	NSMutableURLRequest	Networking / Requests a
 enum	shipped	NSURLRequestCachePolicy	NSURLRequest	Networking / Requests and responses / Working with a cache policy	-	swift-page
 enum	shipped	NSURLRequestNetworkServiceType	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type	-	swift-page
 enum	shipped	NSURLRequestNetworkServiceType	NSURLRequest	Networking / Requests and responses / Accessing the service type	-	swift-page
-enum	shipped	NSURLSessionAuthChallengeDisposition	NSURLSessionDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges	-	objc
-enum	shipped	NSURLSessionAuthChallengeDisposition	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling authentication challenges	-	objc
-enum	shipped	NSURLSessionDelayedRequestDisposition	NSURLSessionTaskDelegate	Networking / Essentials / Working with a delegate / Handling delayed and waiting tasks	-	objc
-enum	shipped	NSURLSessionMultipathServiceType	NSURLSessionConfiguration	Networking / Essentials / Creating a session / Supporting Multipath TCP	-	swift-page
-enum	shipped	NSURLSessionResponseDisposition	NSURLSessionDataDelegate	Networking / Essentials / Adding data tasks to a session / Handling task life cycle changes	-	objc
-enum	shipped	NSURLSessionTaskMetricsDomainResolutionProtocol	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
-enum	shipped	NSURLSessionTaskMetricsResourceFetchType	NSURLSessionTaskTransactionMetrics	Networking / Essentials / Working with a delegate / Collecting task metrics / Accessing task metrics / Accessing transaction characteristics	-	objc
-enum	shipped	NSURLSessionTaskState	NSURLSessionTask	Networking / Essentials / Controlling the task state	-	swift-page
-enum	shipped	NSURLSessionWebSocketCloseCode	NSURLSessionWebSocketTask	Networking / Essentials / Adding WebSocket tasks to a session / Closing the connection	-	swift-page
-enum	shipped	NSURLSessionWebSocketMessageType	NSURLSession	Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 enum	shipped	NSUserNotificationActivationType	NSUserNotification	App Support / User Notifications / Constants	deprecated	swift-page
 enum	shipped	NSVolumeEnumerationOptions	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents	-	objc
 enum	struck	NSWhoseSubelementIdentifier	NSWhoseSpecifier	App Support / Object Specifiers / Constants	declined	objc
@@ -2208,12 +2138,6 @@ protocol	shipped	NSURLConnectionDownloadDelegate		Networking / Legacy / URL Conn
 protocol	shipped	NSURLDownloadDelegate		Networking / Legacy / URL Download	deprecated	objc
 protocol	shipped	NSURLHandleClient		Networking / Legacy / URL Handle	deprecated	objc
 protocol	shipped	NSURLProtocolClient		Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes	-	objc
-protocol	shipped	NSURLSessionDataDelegate		Networking / Essentials / Adding data tasks to a session	-	objc
-protocol	shipped	NSURLSessionDelegate		Networking / Essentials / Working with a delegate	-	objc
-protocol	shipped	NSURLSessionDownloadDelegate		Networking / Essentials / Adding download tasks to a session	-	objc
-protocol	shipped	NSURLSessionStreamDelegate		Networking / Essentials / Adding stream tasks to a session	-	objc
-protocol	shipped	NSURLSessionTaskDelegate		Networking / Essentials / Working with a delegate	-	objc
-protocol	shipped	NSURLSessionWebSocketDelegate		Networking / Essentials / Adding WebSocket tasks to a session	-	objc
 protocol	shipped	NSUserActivityDelegate		App Support / Activity Sharing / Monitoring activity-related behaviors	-	objc
 protocol	shipped	NSUserNotificationCenterDelegate		App Support / User Notifications	-	objc
 protocol	shipped	NSXMLParserDelegate		Files and Data Persistence / XML / Event-Based Processing	-	objc
@@ -3016,7 +2940,6 @@ var	shipped	NSURLDirectoryEntryCountKey	NSURL	Fundamentals / URLs / Accessing Re
 var	shipped	NSURLDocumentIdentifierKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLEffectiveIconKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLErrorBackgroundTaskCancelledReasonKey		Networking / Errors / Keys	-	objc
-var	shipped	NSURLErrorBackgroundTaskCancelledReasonKey	NSURLSession	Networking / Essentials / Handling errors / User info dictionary keys	-	objc
 var	shipped	NSURLErrorDomain	NSError	App Support / User-Relevant Errors / Error Domains	-	objc
 var	shipped	NSURLErrorFailingURLErrorKey		Networking / Errors / Keys	-	objc
 var	shipped	NSURLErrorFailingURLPeerTrustErrorKey		Networking / Errors / Keys	-	objc
@@ -3091,12 +3014,6 @@ var	shipped	NSURLProtectionSpaceHTTPS	NSURLProtectionSpace	Networking / Authenti
 var	shipped	NSURLProtectionSpaceHTTPSProxy	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Proxy types	-	objc
 var	shipped	NSURLProtectionSpaceSOCKSProxy	NSURLProtectionSpace	Networking / Authentication and credentials / Identifying protection space properties / Proxy types	-	objc
 var	shipped	NSURLQuarantinePropertiesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
-var	shipped	NSURLSessionDownloadTaskResumeData	NSURLSession	Networking / Essentials / Handling errors / User info dictionary keys	-	objc
-var	shipped	NSURLSessionTaskPriorityDefault	NSURLSessionTask	Networking / Essentials / Controlling the task state / Priority constants	-	objc
-var	shipped	NSURLSessionTaskPriorityHigh	NSURLSessionTask	Networking / Essentials / Controlling the task state / Priority constants	-	objc
-var	shipped	NSURLSessionTaskPriorityLow	NSURLSessionTask	Networking / Essentials / Controlling the task state / Priority constants	-	objc
-var	shipped	NSURLSessionTransferSizeUnknown	NSURLSessionTask	Networking / Essentials / Obtaining task progress	-	objc
-var	shipped	NSURLSessionUploadTaskResumeData		Reference / Constants	-	objc
 var	shipped	NSURLTagNamesKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Other resource keys	-	objc
 var	shipped	NSURLThumbnailDictionaryKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Thumbnail keys	deprecated	objc
 var	shipped	NSURLThumbnailKey	NSURL	Fundamentals / URLs / Accessing Resource Values / Thumbnail keys	deprecated	objc

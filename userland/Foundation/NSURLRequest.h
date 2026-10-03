@@ -24,8 +24,11 @@
  * ABSENT: a caller porting an old program is exactly who needs it.
  *
  * REFUSED BY NAME, each because it needs something this library does not ship or is a different unit:
- *   - THE TRANSPORT: `NSURLSession`, `NSURLConnection`, `NSURLProtocol`, and every `-resume`/`-start`/
- *     `-loadRequest:`. A request here is a DESCRIPTION; the thing that performs it is a later slice.
+ *   - THE TRANSPORT: `-loadRequest:` and the `-resume`/`-start` family on the URL itself. **⚠⚠ AND THE
+ *     THREE CLASSES THAT USED TO BE NAMED HERE ARE NOT REFUSED ANY MORE, EACH FOR ITS OWN REASON:** the
+ *     seam shipped (§52), `NSURLConnection` shipped (§62.25) and drives that seam itself (§63.153), and
+ *     `NSURLSession` left the surface altogether with the 10.2 cut (§63.159). A request here is still a
+ *     DESCRIPTION — that has not changed — and what performs it is `NSURLConnection`.
  *   - CODING (NSSecureCoding): a request's archived form is Apple's own keyed structure and its key
  *     names are unpublished, so implementing it would invent a new format wearing Apple's name. The
  *     coder door is therefore refused rather than invented — the reasoning D2 records for values.

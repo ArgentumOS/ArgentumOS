@@ -15,7 +15,9 @@
  * given away the connection. So it is a function of a key and a reply, and this file is where it can be tested
  * against RFC 6455's own worked example rather than against a server that agrees with whatever we wrote.
  *
- * NOT PUBLIC API AND NOT IN Foundation.h (FNPointerTable's precedent). NSURLSessionWebSocketTask composes it.
+ * NOT PUBLIC API AND NOT IN Foundation.h (FNPointerTable's precedent). ⚠ The session task that used to
+ * compose it left with the session family (§63.159); what composes it now is the probe that drives it
+ * against RFC 6455's worked example.
  *
  * THE ONE THING THAT IS NOT HERE, deliberately: the RANDOMNESS behind a key. `FNWebSocketCreateKey` supplies it,
  * because a key generator is not a handshake rule - and everything else takes the key as an ARGUMENT, so the
