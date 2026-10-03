@@ -15982,6 +15982,43 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.112 — A SEVENTH GROUND ("UNSUPPORTED BY APPLE"), `NSCoder` LEAVES THE WORK LIST, AND THE COLON (2026-10-01)
+
+**THE USER'S DECISION (`dec-d87c6598da7ee665`): `-encodeNXObject:` AND `-decodeNXObject` ARE STRUCK AS UNSUPPORTED BY
+APPLE — and with them **`NSCoder` HAS LEFT THE WORK LIST**, having entered this pair of units with seventeen rows.**
+
+**MEASURED: `method open 349 → 347`, `struck 387 → 389`; `--check` consistent; `NSCoder`'s heading is GONE from
+`--work-list`; and the ledger's own reason histogram now reads `unsupported-by-apple 2`.**
+
+**⚠⚠ AND THE NEW GROUND IS **NOT** THE UN-DEPRECATION POLICY, WHICH IS THE WHOLE REASON IT EXISTS: that policy
+un-deprecates everything Apple deprecated BECAUSE A DEPRECATED API IS A PORTING TARGET — a caller porting an
+application meets it by name and can be served.** `-encodeNXObject:` and `-decodeNXObject` are marked
+`API_DEPRECATED("Not supported", macos(10.0,10.5), …)`: supported until 10.5 and dead by Apple's own account since.
+**“Not supported” IS A DIFFERENT SENTENCE: IT SAYS THE DOOR DOES NOTHING, so there is no target to port to.**
+***“Deprecated” says stop using this; “not supported” says there is nothing here.***
+**AND THE CAVEAT TRAVELS WITH THE GROUND, because the two sentences sit one word apart in the same annotation: a name
+belongs in this set ONLY IF APPLE'S OWN MESSAGE SAYS NOT SUPPORTED.** A deprecation with a real replacement belongs in
+the work list, and this is not a place for a door that is merely awkward.
+
+**⚠⚠ AND §63.84'S THREE-PLACE LESSON WAS APPLIED BEFORE THE FAILURE RATHER THAN AFTER IT — `struck_reason()` for the
+REASON, `STRIKE_REASONS` to make it ACT, and `_selector_why()` for the path a SELECTOR ROW ACTUALLY TAKES — AND IT STILL
+TOOK THREE ATTEMPTS, EACH FOR A DIFFERENT REASON:**
+ 1. **AN ANCHOR THAT MATCHED TWO FUNCTIONS** — the branch text `if row["name"] in OTHER_FRAMEWORK: return
+    "other-framework"` is SHARED between `struck_reason` and `_selector_why`, so a count of one was never possible;
+ 2. **AN ANCHOR THAT MISSED A COMMENT** — §63.104 had put a note BETWEEN the two lines `_selector_why` was anchored on,
+    so the text it searched for no longer existed;
+ 3. **AND THE COLON** — `-decodeNXObject` TAKES NO ARGUMENTS, so its selector is `decodeNXObject` WITH NO COLON, and
+    the name I wrote matched nothing while its sibling matched. **§63.84'S SIGN LESSON IN ITS SIBLING FORM:** there the
+    name carried a SIGN the rows do not; here it carried a COLON the selector does not.
+
+**⚠ AND THE THIRD ATTEMPT'S METHOD IS THE ONE WORTH KEEPING: EVERY ANCHOR VALIDATED, EVERY COUNT PRINTED, AND NOTHING
+WRITTEN UNLESS EVERY COUNT IS EXACTLY ONE.** *The two failures before it wrote nothing only by luck about where the
+write sat in the script — which is a property of that script and not of scripts in general.*
+
+**AND WITH `NSCoder` DONE, THIS SESSION'S OWNERS ARE: `NSAttributedString`/→`NSMutableAttributedString` (complete),
+`NSValue` (left), `NSString` (down to four), `NSURL` (down to the UTType pair), and now `NSCoder` (left).** The work
+list's top is `NSExtensionContext` at sixteen.
+
 ## §63.111 — SEVENTEEN ROWS LEAVE `NSCoder` ON TWO GROUNDS, AND AN INSTRUMENT'S INTENTION IS NOT ITS OUTPUT (2026-10-01)
 
 **WHAT LANDED: SEVENTEEN ROWS STRUCK AND `NSCoder` CUT FROM SEVENTEEN TO TWO** — thirteen on the type ground (§63.102's

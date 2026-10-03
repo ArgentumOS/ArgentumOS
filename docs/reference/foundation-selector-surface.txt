@@ -25,9 +25,9 @@
 #                   which is how the declined families' whole selector surface is removed rather
 #                   than left open. The `why` column says which ground.
 #
-# why the struck rows are struck: 32-bit-only 4, declined 443, other-framework 112
+# why the struck rows are struck: 32-bit-only 4, declined 443, other-framework 112, unsupported-by-apple 2
 #
-# AND 557 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
+# AND 555 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): deprecated API is a PORTING TARGET here, so `deprecated` says what KIND of work a
 # row is, never that it is excluded.
 #
@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2192   open  349   struck  387
+#   method     shipped 2192   open  347   struck  389
 #   property   shipped 1278   open  186   struck  172
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -605,7 +605,7 @@ method	shipped	-decodeInt64ForKey:	NSCoder	Files and Data Persistence / Keyed Ar
 method	shipped	-decodeIntForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodeIntegerForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	struck	-decodeNXColor	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding Color Struct Data	other-framework	objc
-method	open	-decodeNXObject	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	deprecated	objc
+method	struck	-decodeNXObject	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	unsupported-by-apple	objc
 method	shipped	-decodeObject	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodeObjectForKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
 method	shipped	-decodeObjectOfClass:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Decoding General Data	-	objc
@@ -651,7 +651,7 @@ method	shipped	-encodeInt32:forKey:	NSCoder	Files and Data Persistence / Keyed A
 method	shipped	-encodeInt64:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeInt:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeInteger:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
-method	open	-encodeNXObject:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	deprecated	objc
+method	struck	-encodeNXObject:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	unsupported-by-apple	objc
 method	shipped	-encodeObject:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodeObject:forKey:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc
 method	shipped	-encodePoint:	NSCoder	Files and Data Persistence / Keyed Archivers / Encoding General Data	-	objc

@@ -530,6 +530,29 @@ OTHER_FRAMEWORK = frozenset((
 ))
 
 
+# §63.112 — A SEVENTH GROUND: APPLE SAYS THE DOOR DOES NOTHING. THE USER'S DECISION (dec-d87c6598da7ee665).
+#
+# `-encodeNXObject:` AND `-decodeNXObject` ARE MARKED `API_DEPRECATED("Not supported", macos(10.0,10.5), ios(2.0,2.0),
+# …)` — SUPPORTED UNTIL 10.5 AND DEAD BY APPLE'S OWN ACCOUNT SINCE.
+#
+# ⚠⚠ AND THIS GROUND IS **NOT** THE UN-DEPRECATION POLICY OF 2026-09-26, WHICH IS WHY IT EXISTS AT ALL: that policy
+# un-deprecates everything Apple deprecated **because a deprecated API is a PORTING TARGET — a caller porting an
+# application meets it by name and can be served.** "Not supported" IS A DIFFERENT SENTENCE: it says the door DOES
+# NOTHING, so there is no target to port to. ***"Deprecated" says stop using this; "not supported" says there is
+# nothing here.***
+#
+# ⚠ AND THE CAVEAT TRAVELS WITH THE GROUND: a name belongs here ONLY IF APPLE'S OWN MESSAGE SAYS NOT SUPPORTED. A
+# deprecation with a real replacement belongs in the work list, and this set is not a place for a door that is merely
+# awkward.
+UNSUPPORTED_BY_APPLE = frozenset((
+    "encodeNXObject:",
+    # ⚠ AND NO COLON: `-decodeNXObject` TAKES NO ARGUMENTS, so the colon I typed was a selector that does not exist
+    # (§63.84's lesson in its sibling form — there the name carried a sign the rows do not; here it carried a colon
+    # the selector does not).
+    "decodeNXObject",
+))
+
+
 def struck_reason(row):
     """Why this symbol is OUT, or None. Three exclusions, and the reason travels
     with the row so a struck line can be argued with."""
@@ -547,6 +570,9 @@ def struck_reason(row):
         return "swift-only"
     if row["name"] in OTHER_FRAMEWORK:
         return "other-framework"
+    if row["name"] in UNSUPPORTED_BY_APPLE:
+        # §63.112: Apple's annotation says the door DOES NOTHING — and note this is NOT the un-deprecation policy.
+        return "unsupported-by-apple"
     # THE DEPRECATION GROUND IS RETIRED (the user's policy, 2026-09-26): "to support porting older Mac
     # applications, all items removed for being deprecated are un-deprecated in Argentum Foundation, and added to
     # the work list." SO `apple_says_deprecated` NO LONGER STRIKES A ROW - IT MARKS ONE. The reason still travels
@@ -875,7 +901,8 @@ def why_of(row):
 # what the user's policy asks for - deprecated API is a PORTING TARGET, not something this library is spared.
 # ⚠ A REASON IS NOT A STRIKE HERE: `struck_reason()` ANSWERS and THIS TUPLE ACTS.
 STRIKE_REASONS = ("32-bit-only", "swift-only", "os-version-constant", "declined",
-                  "needs-corefoundation", "frame-walk-unsupported", "other-framework")
+                  "needs-corefoundation", "frame-walk-unsupported", "other-framework",
+                  "unsupported-by-apple")
 
 # THE INFORMATIONAL REASONS: a `why` that does NOT strike. `deprecated` is the only one today, and it is here so
 # that a reader can tell "this row is work because Apple deprecated it" from "this row is work".
@@ -1133,6 +1160,8 @@ def _selector_why(row):
     # §63.84: THE THIRD PLACE, AND THE ONE A SELECTOR ROW ACTUALLY TAKES.
     if row["name"] in OTHER_FRAMEWORK:
         return "other-framework"
+    if row["name"] in UNSUPPORTED_BY_APPLE:
+        return "unsupported-by-apple"
     return "deprecated" if apple_says_deprecated(row) else "-"
 
 
