@@ -15969,6 +15969,48 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.148 — THE SESSION-FREE ENGINE WORKS: 30/30 AND FIVE OF SIX URL CASES GREEN (2026-10-01)
+
+**THE REWRITE IS PROVEN. With the engine applied and the probe's session-era doors retired, the guest ran and every URL
+case that touches the loading system passed:**
+
+```
+FOUNDATION-URLCONNECTION   ok=30 fail=0      FOUNDATION-URLCACHE           ok=15 fail=0
+FOUNDATION-URL             ok=43 fail=0      FOUNDATION-HTTPCOOKIESTORAGE  ok=17 fail=0
+FOUNDATION-URLERROR        ok=12 fail=0      FOUNDATION-CREDENTIALSTORAGE  ok=14 fail=0
+```
+
+**⚠⚠ AND THE DECISIVE FINDING, FROM THE RAW GUEST LOG AND NOT FROM THE HARNESS: THE PROBE WAS DRIVING A SESSION-SHAPED
+DOOR.** `-[NSURLConnection URLSession:task:didReceiveChallenge:completionHandler:] is not implemented` — then `Aborted`
+(SIGABRT, status 134). **`foundation_urlconnection.m:869` builds that selector with `NSSelectorFromString` and sends it
+with `objc_msgSend`.** It is an `NSURLSessionTaskDelegate` method that OUR OLD `NSURLConnection` implemented **because it
+WAS a session delegate** — **Apple's 10.2 connection never had it.** *So the engine was right and the TEST was
+session-era: the same class of member the cut removes, found by the load path instead of by the ledger.* **The file's own
+comment even says it: ‘THE SESSION'S CHALLENGE DOOR IS ASKED DIRECTLY THROUGH THE RUNTIME, as the redirect door is a few
+checks above’.** The redirect, download, cache-decision and re-send checks are the same shape — **and the four that
+still PASSED (`download-protocol-declared`, `download-refusals-are-absent`, `the-session-download-protocol-shape`,
+`the-declared-surface-is-what-ships`) assert the DECLARED surface rather than calling it.**
+
+**AND THE DIAGNOSTIC WORKED THE WAY THE RECIPE SAYS, AFTER MY OWN FIRST ATTEMPT WROTE TO THE WRONG DESCRIPTOR: fd 2
+produced nothing and fd 1 is what the guest log carries.** *The trace was worth its two lines: it turned ‘a check fails’
+into ‘a door that should not exist is being called’.*
+
+**⚠⚠ AND THE ONE REAL BLOCKER, WHICH IS NOW THE THIRD OCCURRENCE OF A SINGLE FAILURE MODE: SCOPE-BASED REMOVAL OF PROBE
+CHECKS IS THE WRONG UNIT WHEN A CHECK SHARES A BLOCK WITH CONTROL FLOW OR WITH A NEIGHBOUR.**
+ 1. §63.142 — **15 checks taken from each of two probes** (including checks with nothing to do with the subject);
+ 2. §63.142 again — **16 taken and `foundation_urlcache.m` left with a syntax error**;
+ 3. here — retirement left **`if (mode == 0)  else if (mode == 1)  else`**: the scope removal took STATEMENTS OUT OF AN
+    IF-CHAIN, and the file stopped compiling at `foundation_urlconnection.m:689`.
+***THE UNIT MUST BE THE STATEMENT — the `check(…);` call to its semicolon, never the enclosing braces — AND WHERE A CHECK'S
+SUBJECT IS DECLARED IN A SIBLING STATEMENT, THAT STATEMENT IS THE UNIT TOO.*** A guard cannot fix this: the guard that
+exists (25% of the file) passed every time, because a *statement* removal is small and a *scope* removal that swallows an
+if-chain is not.
+
+**NOTHING IS LANDED FROM THIS UNIT; the tree is green at §63.147's commit (build EXIT 0 at the standing SIX warnings,
+`make testimg` EXIT 0, `--check` consistent). WHAT REMAINS IS NAMED EXACTLY: retire the session-era checks in
+`foundation_urlconnection` BY STATEMENT, then re-apply the engine (§63.145's design, ~19 KB, which compiles and builds),
+then take the family and the four `fn*` doors out behind it.**
+
 ## §63.147 — THE TRACE AT THE CHALLENGE SITE: THE GAP IS TWO `respondsToSelector:` GUARDS, AND THE HANG SAYS WHICH (2026-10-01)
 
 **THE CHALLENGE SITE WAS READ (FNCURLURLProtocol.m lines 285–340), AND IT IS MORE INFORMATIVE THAN THE FAILURE LINE WAS.**
