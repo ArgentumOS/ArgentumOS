@@ -125,9 +125,6 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSURL.m \
 	$(FOUNDATION_SRC)/NSKeyValueCoding.m \
 	$(FOUNDATION_SRC)/NSSortDescriptor.m \
-	$(FOUNDATION_SRC)/NSPredicate.m \
-	$(FOUNDATION_SRC)/NSPredicateFormat.m \
-	$(FOUNDATION_SRC)/NSPredicate.h \
 	$(FOUNDATION_SRC)/NSDataCodec.m \
 	$(FOUNDATION_SRC)/NSData.h \
 		$(FOUNDATION_SRC)/NSCalendar.h \
@@ -143,8 +140,6 @@ FOUNDATION_SRCS = $(FOUNDATION_SRC)/NSObject.m $(FOUNDATION_SRC)/NSString.m \
 	$(FOUNDATION_SRC)/NSCountedSet.m \
 	$(FOUNDATION_SRC)/NSOrderedSet.m \
 	$(FOUNDATION_SRC)/NSKeyValueObserving.m \
-	$(FOUNDATION_SRC)/NSExpression.m \
-	$(FOUNDATION_SRC)/NSComparisonPredicate.m \
 	$(FOUNDATION_SRC)/NSCoder.m \
 	$(FOUNDATION_SRC)/NSKeyedArchiver.m \
 	$(FOUNDATION_SRC)/NSProcessInfo.m \
@@ -260,7 +255,6 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 	$(FOUNDATION_SRC)/NSURL.h \
 	$(FOUNDATION_SRC)/NSKeyValueCoding.h \
 	$(FOUNDATION_SRC)/NSSortDescriptor.h \
-	$(FOUNDATION_SRC)/NSPredicate.h \
 	$(FOUNDATION_SRC)/NSURLRequest.h \
 	$(FOUNDATION_SRC)/NSURLResponse.h \
 	$(FOUNDATION_SRC)/NSURLConnection.h \
@@ -343,7 +337,7 @@ FN_FOUNDATION_SSL    = FNWebSocketHandshake.m
 # THE ICU-HEADER LIST IS PER FILE, and a file that needs it and is not here fails on the GUEST ONLY
 # (the host has ICU's headers on its default include path). NSDecimalNumber.m asks ICU for the locale's
 # decimal separator, so it belongs in this list - which the guest build is what proved.
-FN_FOUNDATION_ICU   = NSScanner.m NSOrthography.m NSCalendar.m NSDateFormatter.m NSNumberFormatter.m NSPredicate.m NSTimeZone.m NSLinguisticTagger.m FNTextBreaking.m \
+FN_FOUNDATION_ICU = NSScanner.m NSOrthography.m NSCalendar.m NSDateFormatter.m NSNumberFormatter.m NSTimeZone.m NSLinguisticTagger.m FNTextBreaking.m \
                       NSCharacterSet.m NSLocale.m NSDecimalNumber.m \
                       NSISO8601DateFormatter.m NSDateIntervalFormatter.m \
                       NSRelativeDateTimeFormatter.m NSDateComponentsFormatter.m \
@@ -390,12 +384,12 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP) $(FN_FOUN
 	# F11a: the predicate object model — an abstract base, two private leaves, the tree
 	# node, and the two collection filters. The block leaf is why this file stores a block.
 	#
-	# F13.7d: NSPredicate.m NOW INCLUDES ICU (<unicode/ucol.h>, for the `[d]` collation) and
-	# <regex.h> (musl's POSIX engine, which is inside libc — so MATCHES adds no link and no
-	# artifact). The ICU include path is therefore on THIS rule; the link needed nothing new,
-	# because F13.6 already made libfoundation need libicui18n/libicuuc/libicudata.
-	# F11b: the format grammar. A category on NSPredicate, so the parser lives beside the object
-	# model without either file owning the other.
+	# ⚠⚠ TWO ENTRIES OF THIS LIST'S RATIONALE LEFT WITH THE PREDICATE FAMILY (§63.161): NSPredicate.m was
+	# here for ICU's <unicode/ucol.h> (the `[d]` collation) and for musl's <regex.h> (MATCHES, which is
+	# inside libc, so it never added a link), and NSPredicateFormat.m was the format grammar — a category on
+	# NSPredicate, which is why the parser lived beside the object model. BOTH FILES ARE GONE: the family is
+	# macOS 10.4. THE RULE they were examples of is unchanged, and the link still needs nothing new: F13.6
+	# already made libfoundation need libicui18n/libicuuc/libicudata.
 	# F12: the compression binding. NSDataCodec.m is the ONLY file that includes <zlib.h>, so the X11
 	# prefix is on ITS include path — and on the LINK line below, because libfoundation now needs
 	# libz.so.1. That library is already staged into the guest for the X11 stack, so this adds a
@@ -721,18 +715,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_sort_support.o .build/probe-foundation_sort.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_sort"
-	# foundation_predicate: F11a acceptance. Two units again: the support unit builds a
-	# predicate (and counts a block's calls from its own side), so a predicate that crossed a
-	# translation unit can only have gone through the object model.
-	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
-		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_predicate_support.m -o .build/probe-foundation_predicate_support.o
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_predicate.m -o .build/probe-foundation_predicate.o
-	$(MUSL64_OBJC) .build/probe-foundation_predicate_support.o .build/probe-foundation_predicate.o \
-		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_predicate"
 	# foundation_codecs: F12 acceptance. Two units, and the SUPPORT unit builds the BYTES — so the
 	# codec is exercised on data it did not create.
 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
@@ -810,13 +792,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_kvo.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_kvo"
-	# foundation_expression: F13.10 acceptance. ONE unit, only <Foundation/Foundation.h>.
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_expression.m -o .build/probe-foundation_expression.o
-	$(MUSL64_OBJC) .build/probe-foundation_expression.o \
-		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_expression"
 	# foundation_coder: F13.12 acceptance. ONE unit, only <Foundation/Foundation.h>.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \

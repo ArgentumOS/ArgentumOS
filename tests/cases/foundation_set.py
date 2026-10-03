@@ -17,7 +17,6 @@ than a cross-translation-unit boundary), importing only `<Foundation/Foundation.
   * `set-adding-forms`      — the three `-setByAdding…` forms, and the receiver left UNCHANGED;
   * `set-enumeration`       — for-in and -enumerateObjectsUsingBlock: each visit every member once;
   * `set-order-independent` — sets built in DIFFERENT ORDERS are equal AND hash alike;
-  * `set-predicate-filter`  — -filteredSetUsingPredicate: (the F11 predicate family);
   * `set-sort-descriptors`  — a set becomes an ORDERED array through NSSortDescriptor (F10);
   * `set-copy-semantics`    — a mutable set's -copy is an immutable snapshot of the same membership;
   * `set-counted`          — NSCountedSet: `-count` is DISTINCT members while `-countForObject:` is
@@ -33,7 +32,7 @@ from harness import BaseCase
 PROBE = "/System/Shared/tests/foundation_set"
 CHECKS = ("set-dedupes-by-value", "set-member-by-value", "set-algebra",
           "set-relations", "set-adding-forms", "set-enumeration",
-          "set-order-independent", "set-predicate-filter", "set-sort-descriptors",
+          "set-order-independent", "set-sort-descriptors",
           "set-copy-semantics", "set-counted", "set-variadic-factory", "set-nscoding-doors")
 
 

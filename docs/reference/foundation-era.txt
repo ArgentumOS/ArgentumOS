@@ -192,3 +192,12 @@ NSXMLDTD	10.0	-
 NSXMLDocument	10.0	-
 NSXMLNode	10.0	-
 NSXMLParser	10.0	-
+# ⚠⚠ TWO OWNERS ADDED BY HAND (2026-10-03, §63.161), BECAUSE THE GENERATOR CANNOT RUN: the per-name page
+# endpoint this file was built from NOW 404s (measured today for `nspredicate` itself, which IS in this
+# file, so the closure post-dates the crawl). BOTH ARE macOS 10.4, AND THE GROUND IS THE FAMILY THEY
+# BELONG TO: NSPredicate and NSExpression are recorded above at 10.4, all four arrived together with Core
+# Data in Tiger, and Apple's page for NSComparisonPredicate's own initializer carries `macOS: 10.4.0 -`
+# (https://developer.apple.com/documentation/foundation/nscomparisonpredicate; GNUstep's API reference
+# agrees: "MacOS-X 10.4.0"). THE FILTER COULD NOT SEE THEM WITHOUT THIS.
+NSComparisonPredicate	10.4	-
+NSCompoundPredicate	10.4	-

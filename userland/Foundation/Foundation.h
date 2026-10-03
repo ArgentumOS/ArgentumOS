@@ -101,8 +101,13 @@
 #import <Foundation/NSURL.h>
 #import <Foundation/NSKeyValueCoding.h>
 #import <Foundation/NSSortDescriptor.h>
-#import <Foundation/NSPredicate.h>
-#import <Foundation/NSExpression.h>
+/* ⚠⚠ AND THE PREDICATE FAMILY IS NOT IN THE UMBRELLA ANY MORE (§63.161): NSPredicate,
+ * NSExpression, NSCompoundPredicate, NSComparisonPredicate and the format grammar are ALL macOS 10.4 —
+ * later than the 10.2 baseline §11.0 targets — and §63.135 had ALREADY removed their ledger rows with
+ * the recorded reason "REMOVED rather than struck ... the headers lose these names in the same campaign".
+ * THIS IS THAT CAMPAIGN. What the family took with it is the predicate-taking API on the collection
+ * classes, which is 10.4 too: `-filteredArrayUsingPredicate:`, `-filterUsingPredicate:` and their
+ * siblings left NSArray, NSSet and NSOrderedSet in the same pass. */
 #import <Foundation/NSFormatter.h>
 #import <Foundation/NSLengthFormatter.h>
 #import <Foundation/NSMassFormatter.h>

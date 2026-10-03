@@ -21,7 +21,6 @@
 #import <Foundation/NSArray.h>
 #import <Foundation/NSEnumerator.h>
 #import <Foundation/NSSet.h>
-#import <Foundation/NSPredicate.h>
 #import <Foundation/NSException.h>
 #import <Foundation/NSString.h>
 #include <stdarg.h>		/* the nil-terminated construction doors walk a va_list */
@@ -634,24 +633,6 @@ static NSArray *fn_from_varargs(id firstObject, va_list args)
 	return [[self set] isSubsetOfSet:set];
 }
 
-- (instancetype)filteredOrderedSetUsingPredicate:(NSPredicate *)predicate
-{
-	NSMutableArray *kept = [NSMutableArray array];
-	NSUInteger i;
-
-	if (predicate == nil) {
-		return self;
-	}
-	for (i = 0; i < [self count]; i++) {
-		id object = [self objectAtIndex:i];
-
-		if ([predicate evaluateWithObject:object]) {
-			[kept addObject:object];
-		}
-	}
-	return [[[self class] alloc] initWithArray:kept];
-}
-
 - (NSArray *)sortedArrayUsingDescriptors:(NSArray *)descriptors
 {
 	return [[self array] sortedArrayUsingDescriptors:descriptors];
@@ -1097,22 +1078,6 @@ static NSArray *fn_from_varargs(id firstObject, va_list args)
 		[out addObject:[all objectAtIndex:i]];
 	}
 	[self fnReplaceMembers:out];
-}
-
-- (void)filterUsingPredicate:(NSPredicate *)predicate
-{
-	NSMutableArray *kept = [NSMutableArray array];
-	NSUInteger i;
-
-	if (predicate == nil) {
-		return;
-	}
-	for (i = 0; i < [self count]; i++) {
-		if ([predicate evaluateWithObject:[self objectAtIndex:i]]) {
-			[kept addObject:[self objectAtIndex:i]];
-		}
-	}
-	[self fnReplaceMembers:kept];
 }
 
 /* ===================================================================================================

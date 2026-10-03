@@ -412,7 +412,8 @@ int main(void)
 			"sortedArrayUsingDescriptors:", "sortedArrayUsingFunction:context:",
 			"enumerateObjectsUsingBlock:",
 			"objectsAtIndexes:", "indexesOfObjectsPassingTest:",
-			"filteredArrayUsingPredicate:",		/* NSPredicate — F11a */
+			/* ⚠ THE PREDICATE FILTERS LEFT THE INVENTORY WITH THE FAMILY (§63.161): each took an
+			 * `NSPredicate`, a macOS 10.4 type, so they left the collection classes in the same pass. */
 			"isEqualToArray:", "isEqual:", "hash", "description", "copy", "mutableCopy",
 			"countByEnumeratingWithState:objects:count:",
 			/* THE ELEMENT-SENDING AND COMMON-MEMBER DOORS (this pass): Apple's documented surface, so the
@@ -427,7 +428,6 @@ int main(void)
 		};
 		static const char *mutableSelectors[] = {
 			"initWithCapacity:", "addObject:", "addObjectsFromArray:",
-			"filterUsingPredicate:",		/* NSPredicate — F11a, the mutable form */
 			"insertObject:atIndex:", "removeObjectAtIndex:", "removeLastObject",
 			"removeObject:", "removeObject:inRange:",
 			"removeObjectIdenticalTo:", "removeObjectIdenticalTo:inRange:",

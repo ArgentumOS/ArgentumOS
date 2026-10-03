@@ -19,7 +19,7 @@ each value once AND the order is part of the value. The probe is
                                     exchange and remove, asserted POSITION BY POSITION;
   * `ordered-enumeration-both-ways`      — for-in in order, and `-reverseObjectEnumerator`, as the
                                     literal strings `cab` and `bac`;
-  * `ordered-predicate-and-sort`         — the F11 predicate family (order preserved) and F10's
+  * `ordered-set-sorted-by-descriptor`         — the F11 predicate family (order preserved) and F10's
                                     sort descriptors;
   * `ordered-copy-semantics`             — a mutable's `-copy` is an immutable snapshot.
 """
@@ -32,7 +32,7 @@ PROBE = "/System/Shared/tests/foundation_orderedset"
 CHECKS = ("ordered-keeps-the-order-it-was-given", "ordered-index-and-lookup",
           "ordered-lends-its-membership-to-a-set", "ordered-equality-is-order-sensitive",
           "ordered-relations", "ordered-mutation-keeps-the-order",
-          "ordered-enumeration-both-ways", "ordered-predicate-and-sort",
+          "ordered-enumeration-both-ways", "ordered-set-sorted-by-descriptor",
           "ordered-copy-semantics", "ordered-construction-doors",
           "ordered-construction-copies-when-asked", "ordered-enumeration-doors",
           "ordered-positional-and-reversal", "ordered-set-relations",

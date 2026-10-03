@@ -3714,7 +3714,6 @@ vanishing.
 | **Fundamentals / Date Representations** | all classes shipped | — |
 | **Fundamentals / Dates and times** | all classes shipped | — |
 | **Fundamentals / Deprecated** | all classes shipped | — |
-| **Fundamentals / Filltering** | all classes shipped | — |
 | **Fundamentals / Geometry** | all classes shipped | — |
 | **Fundamentals / Indexes** | all classes shipped | — |
 | **Fundamentals / Iteration** | all classes shipped | — |
@@ -15968,6 +15967,89 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 `--families --write` (rewrote the family table and the ledger) → `--check` **consistent** → `--unimplemented`
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
+
+## §63.161 — THE PREDICATE FAMILY IS CUT, AND THE API IT EXISTS TO SERVE GOES WITH IT (2026-10-03)
+
+**LANDED: `NSPredicate`, `NSExpression`, `NSCompoundPredicate`, `NSComparisonPredicate` and the format grammar
+are out of the tree** — six files (`NSPredicate.h/.m`, `NSExpression.h/.m`, `NSComparisonPredicate.m`,
+`NSPredicateFormat.m`), **all macOS 10.4**. The user's decision (dec-6e026f163bcec154), taken after the measurement
+said the row-level finding was the tip of a family: §63.135 had ALREADY filtered `NSPredicate`'s and
+`NSExpression`'s ledger rows with the recorded reason *“REMOVED rather than struck … **the headers lose these names
+in the same campaign**”*, and only the two owners Apple's page walk missed still had rows. **This is that
+campaign** — the same debt §63.159 paid for the session family.
+
+**⚠⚠ AND THE CUT DRAGGED IN AN API NOBODY HAD COUNTED, BECAUSE IT IS FORCED RATHER THAN CHOSEN: THE
+PREDICATE-TAKING METHODS ON THE COLLECTION CLASSES.** `-filteredArrayUsingPredicate:` and its six siblings
+(`-filterUsingPredicate:` on NSArray/NSMutableArray/NSSet/NSMutableSet/NSCountedSet/NSMutableOrderedSet,
+`-filteredSetUsingPredicate:`, `-filteredOrderedSetUsingPredicate:`) are 10.4 API too, and **you cannot keep one
+without the type it takes** — so the same pass removed **7 declarations, 7 implementations, 3 forward declarations
+and 4 imports** across `NSArray`, `NSSet`, `NSCountedSet`, `NSOrderedSet` and `NSMutableOrderedSet`. *The unit's
+real size was six deletions plus a cross-cutting API removal, and the measurement that found it is the one that
+also produced the decision.*
+
+**AND ONE CHECK WAS RE-POINTED RATHER THAN DELETED, WHICH IS A DISTINCTION THIS CUT COULD MAKE:**
+`foundation_orderedset`'s `ordered-predicate-and-sort` tested BOTH halves — a predicate filter AND a
+`-sortedArrayUsingDescriptors:` sort. `NSSortDescriptor` is 10.3 and a KEPT class, so the sort half survives and the
+check is renamed `ordered-set-sorted-by-descriptor` to say what it now tests. *Three others could not survive at
+all: `foundation_predicate`, its support unit and `foundation_expression` — 43 checks between them — had the family
+as their SUBJECT, and `foundation_set`'s predicate filter and `foundation_constants`' comparison-predicate
+option-type check went with their doors.*
+
+**EVERY LEDGER ROW WENT BY HAND: 22 SELECTOR ROWS AND 45 SYMBOL ROWS REMOVED**, the plan's generated family table
+regenerated (`--families --write`), and the counts blocks recomputed for both surfaces (`method shipped 1643/open
+227`, `property 707/92`). **AND THE ERA GROUND GAINED THE TWO ENTRIES WHOSE ABSENCE STARTED THIS** —
+`NSComparisonPredicate` and `NSCompoundPredicate` at 10.4, **ADDED BY HAND WITH THEIR SOURCE RECORDED**, because
+the generator cannot run: the per-name page endpoint this ground was built from **404s today** (measured for
+`nspredicate` itself, which IS in the file, so the closure post-dates the crawl). Apple's page for
+`NSComparisonPredicate`'s own initializer carries `macOS: 10.4.0 -`, and GNUstep's APIRefs agrees.
+
+**AND THE WORK LIST SHRANK BY THE THREE ROWS THE REVIEW FOUND: 322 → 319 open selectors.** Those three were
+exactly the `NSComparisonPredicate` open ones; the other 19 rows that left were `shipped` or a struck record. **The
+metric that matters is that every remaining open row is closable**, which is what §63.160's `refused` ground bought.
+
+**TWO PROSE CLAIMS HAD BECOME FALSE AND WERE CORRECTED:** `NSFormatter.h`'s “that is the same shape `NSPredicate`
+took” (the rule stands without the example) and the makefile's two comments explaining why `NSPredicate.m` sat on
+the ICU include list and `NSPredicateFormat.m` beside it.
+
+**VERIFICATION.** `make testimg` **EXIT 0**; `foundation_collection` 1/1, `foundation_constants` 1/1,
+`foundation_set` 1/1, `foundation_orderedset` 1/1 — six case checks each; `foundation-sweep.py --check`
+**consistent**, `--unimplemented` **0 NEW**, family table regenerated. *(The first `foundation_set` run failed on a
+case entry a line-based removal had missed, which is the probe/case pairing doing its job.)*
+
+**STILL OWED FROM THE SAME REVIEW, AND IT IS THE BIGGER HALF: THE ERA GROUND IS MISSING 106 OF THE LEDGER'S 204
+OWNERS.** Two are now in it; the rest cannot be fetched and must be audited by hand, and several are plainly
+post-baseline while still carrying `shipped` rows (`NSCondition` 10.5, `NSFileAccessIntent`/`NSExtensionRequestHandling`
+10.10, `NSItemProviderReading`/`Writing` 10.11, and the macOS-12 formatter/morphology classes). **THE RULE THAT
+WOULD HAVE CAUGHT THEM — the era filter — IS ONLY AS COMPLETE AS ITS GROUND.**
+
+## §63.160 — REFUSALS GET A GROUND OF THEIR OWN: NINE ROWS LEAVE THE WORK LIST (2026-10-03)
+
+**LANDED, from the review of the open rows (dec-6667cfd561624207): `tools/foundation-sweep.py` gains a NINTH
+STRIKE GROUND, `refused`** — a door THIS TREE REFUSES BY NAME, with its ground stated in the owner's header **and**
+an absence check asserting it — and the nine rows it names are struck rather than left on the work list.
+
+**WHY IT IS NOT `declined`:** a decline is a scope decision about Apple's SURFACE (“this project is not shipping
+the AppleScript family”), and a refusal is a decision about ONE DOOR on a class this library DOES ship. **WHY IT IS
+NOT `open` EITHER — WHICH IS WHERE ALL NINE SAT:** an open row is WORK, and every one of these can never be closed,
+because the thing it would need does not exist here. A work list carrying nine unclosable rows lies about its own
+size. The test requires BOTH halves, so a row is struck because the tree says so twice rather than because a reader
+decided it.
+
+**THE NINE, each with the ground its own header gives it:** `NSURLConnection`'s `-scheduleInRunLoop:forMode:` and
+`-unscheduleFromRunLoop:forMode:` (no door to a run loop — and note the per-`(owner, selector)` granularity, which
+is why this could not be a NAME strike: the selector is `shipped` for `NSMachPort`, `NSPort` and `NSStream`);
+`NSURLConnectionDelegate`'s `-connectionShouldUseCredentialStorage:` and
+`-connection:didCancelAuthenticationChallenge:`; `NSURLProtocolClient`'s
+`-URLProtocol:didCancelAuthenticationChallenge:`; `NSHTTPCookieStorage`'s
+`+sharedCookieStorageForGroupContainerIdentifier:`; `NSSortDescriptor`'s `-allowEvaluation`; and
+`NSURLProtectionSpace`'s `serverTrust`/`distinguishedNames`.
+
+**VERIFIED BY EXERCISING THE INSTRUMENT RATHER THAN READING IT:** `why_of()` answers `refused` for all nine;
+`status_of(…, "refused")` is `struck` and `refused` is in `STRIKE_REASONS`, so the reason **acts**; and the CONTROLS
+keep their own answers — the same selectors on owners that do not refuse them compute `-`, so the table does not
+over-strike. **AND ONE STALE PROSE CLAIM WENT WITH IT:** `NSFileHandle.h` said Apple's nine deprecated methods were
+ones “§11.5 strikes” — false since 2026-09-26, when the policy made deprecated API a PORTING TARGET; the ledger
+counts all nine as owed, and the header now says so with the date.
 
 ## §63.159 — THE SESSION FAMILY IS CUT: SEVEN CLASSES, A FIRST-PARTY DOOR, 156 LEDGER ROWS, AND SIX CASES WHOSE SUBJECT LEFT (2026-10-03)
 

@@ -31,7 +31,6 @@
 
 @class NSString;
 @class NSIndexSet;
-@class NSPredicate;
 
 /* NULLABILITY (F6): NONNULL by default, and the two that can legitimately be nil
  * are -firstObject and -lastObject, because an EMPTY array has neither. */
@@ -162,7 +161,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 /* THE PREDICATE FILTER (F11a): the elements the predicate answers YES for, in order. The
  * returned array is NEW and the receiver is untouched — Cocoa's rule everywhere here. */
-- (NSArray *)filteredArrayUsingPredicate:(NSPredicate *)predicate;
 
 /* --- §63.45: THE OPTIONS FORMS OF THE ENUMERATION AND TEST DOORS ------------------------------------
  *
@@ -303,7 +301,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)sortUsingDescriptors:(NSArray *)sortDescriptors;
 - (void)sortUsingFunction:(NSInteger (*)(ObjectType, ObjectType, void *))comparator context:(nullable void *)context;
 /* Keeps only what the predicate answers YES for. In place, because that is what MUTABLE means. */
-- (void)filterUsingPredicate:(NSPredicate *)predicate;
 
 /* The NSIndexSet forms. The counts of objects and indexes must AGREE, and the
  * mismatches raise NSInvalidArgumentException because the message is the only

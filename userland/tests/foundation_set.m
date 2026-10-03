@@ -173,17 +173,9 @@ int main(void)
 			(unsigned long)[two hash]]);
 	}
 
-	{
-		NSSet *set = [NSSet setWithArray:@[@"ann", @"bob", @"anna"]];
-		NSSet *kept = [set filteredSetUsingPredicate:
-				[NSPredicate predicateWithFormat:@"SELF BEGINSWITH \"ann\""]];
-
-		check("set-predicate-filter",
-		      kept != nil && [kept count] == 2 && [kept containsObject:@"ann"] &&
-		      [kept containsObject:@"anna"] && ![kept containsObject:@"bob"],
-		      [NSString stringWithFormat:@"kept=%lu",
-			(unsigned long)(kept != nil ? [kept count] : 0)]);
-	}
+	/* ⚠⚠ AND THE PREDICATE FILTER IS GONE WITH THE FAMILY (§63.161): `-filteredSetUsingPredicate:` took an
+	 * `NSPredicate` — a macOS 10.4 type, later than the 10.2 baseline — so it left this class in the same
+	 * pass, and this check went with it. */
 
 	{
 		NSSet *set = [NSSet setWithArray:@[@"c", @"a", @"b"]];

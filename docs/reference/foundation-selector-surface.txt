@@ -50,8 +50,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-# method	shipped	1655	open	229	struck	397
-# property	shipped	714	open	93	struck	172
+# method	shipped	1643	open	227	struck	397
+# property	shipped	707	open	92	struck	172
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -183,7 +183,6 @@ method	shipped	-differenceFromArray:withOptions:usingEquivalenceTest:	NSArray	Fu
 method	shipped	-enumerateObjectsAtIndexes:options:usingBlock:	NSArray	Fundamentals / Basic Collections / Sending Messages to Elements	-	objc
 method	shipped	-enumerateObjectsUsingBlock:	NSArray	Fundamentals / Basic Collections / Sending Messages to Elements	-	objc
 method	shipped	-enumerateObjectsWithOptions:usingBlock:	NSArray	Fundamentals / Basic Collections / Sending Messages to Elements	-	objc
-method	shipped	-filteredArrayUsingPredicate:	NSArray	Fundamentals / Basic Collections / Deriving New Arrays	-	objc
 method	shipped	-firstObjectCommonWithArray:	NSArray	Fundamentals / Basic Collections / Comparing Arrays	-	objc
 method	shipped	-getObjects:	NSArray	Fundamentals / Basic Collections / Querying an Array	deprecated	objc
 method	shipped	-getObjects:range:	NSArray	Fundamentals / Basic Collections / Querying an Array	-	objc
@@ -631,24 +630,6 @@ property	shipped	requiresSecureCoding	NSCoder	Files and Data Persistence / Keyed
 property	shipped	systemVersion	NSCoder	Files and Data Persistence / Keyed Archivers / Getting Version Information	-	objc
 method	shipped	-encodeWithCoder:	NSCoding	Files and Data Persistence / Adopting Codability / Encoding with a coder	-	objc
 method	shipped	-initWithCoder:	NSCoding	Files and Data Persistence / Adopting Codability / Initializing with a coder	-	objc
-method	shipped	-initWithCoder:	NSComparisonPredicate	Fundamentals / Filltering / Creating Comparison Predicates	-	objc
-method	open	-initWithLeftExpression:rightExpression:customSelector:	NSComparisonPredicate	Fundamentals / Filltering / Creating Comparison Predicates	-	objc
-method	shipped	-initWithLeftExpression:rightExpression:modifier:type:options:	NSComparisonPredicate	Fundamentals / Filltering / Creating Comparison Predicates	-	objc
-method	open	+predicateWithLeftExpression:rightExpression:customSelector:	NSComparisonPredicate	Fundamentals / Filltering / Creating Comparison Predicates	-	objc
-method	shipped	+predicateWithLeftExpression:rightExpression:modifier:type:options:	NSComparisonPredicate	Fundamentals / Filltering / Creating Comparison Predicates	-	objc
-property	shipped	comparisonPredicateModifier	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate	-	objc
-property	open	customSelector	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate	-	objc
-property	shipped	leftExpression	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate	-	objc
-property	shipped	options	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate	-	swift-page
-property	shipped	predicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate	-	objc
-property	shipped	rightExpression	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate	-	objc
-method	shipped	+andPredicateWithSubpredicates:	NSCompoundPredicate	Fundamentals / Filltering / Creating Compound Predicates	-	objc
-method	shipped	-initWithCoder:	NSCompoundPredicate	Fundamentals / Filltering / Creating Compound Predicates	-	objc
-method	shipped	-initWithType:subpredicates:	NSCompoundPredicate	Fundamentals / Filltering / Creating Compound Predicates	-	objc
-method	shipped	+notPredicateWithSubpredicate:	NSCompoundPredicate	Fundamentals / Filltering / Creating Compound Predicates	-	objc
-method	shipped	+orPredicateWithSubpredicates:	NSCompoundPredicate	Fundamentals / Filltering / Creating Compound Predicates	-	objc
-property	shipped	compoundPredicateType	NSCompoundPredicate	Fundamentals / Filltering / Getting Information About a Compound Predicate	-	objc
-property	shipped	subpredicates	NSCompoundPredicate	Fundamentals / Filltering / Getting Information About a Compound Predicate	-	objc
 method	shipped	-broadcast	NSCondition	Low-Level Utilities / Threads and Locking / Signaling Waiting Threads	-	objc
 method	shipped	-signal	NSCondition	Low-Level Utilities / Threads and Locking / Signaling Waiting Threads	-	objc
 method	shipped	-wait	NSCondition	Low-Level Utilities / Threads and Locking / Waiting for the Lock	-	objc
@@ -1580,7 +1561,6 @@ method	shipped	+arrayWithCapacity:	NSMutableArray	Fundamentals / Basic Collectio
 method	shipped	+arrayWithContentsOfFile:	NSMutableArray	Fundamentals / Basic Collections / Creating and Initializing a Mutable Array	-	objc
 method	shipped	+arrayWithContentsOfURL:	NSMutableArray	Fundamentals / Basic Collections / Type Methods	-	objc
 method	shipped	-exchangeObjectAtIndex:withObjectAtIndex:	NSMutableArray	Fundamentals / Basic Collections / Rearranging Content	-	objc
-method	shipped	-filterUsingPredicate:	NSMutableArray	Fundamentals / Basic Collections / Filtering Content	-	objc
 method	shipped	-init	NSMutableArray	Fundamentals / Basic Collections / Creating and Initializing a Mutable Array	-	objc
 method	shipped	-initWithCapacity:	NSMutableArray	Fundamentals / Basic Collections / Creating and Initializing a Mutable Array	-	objc
 method	shipped	-initWithCoder:	NSMutableArray	Fundamentals / Basic Collections / Instance Methods	-	objc
@@ -1733,7 +1713,6 @@ method	shipped	-removeIndexesInRange:	NSMutableIndexSet	Fundamentals / Indexes /
 method	open	-shiftIndexesStartingAtIndex:by:	NSMutableIndexSet	Fundamentals / Indexes / Shifting Index Groups	-	objc
 method	shipped	-addObject:	NSMutableSet	Fundamentals / Basic Collections / Adding and removing entries	-	objc
 method	shipped	-addObjectsFromArray:	NSMutableSet	Fundamentals / Basic Collections / Adding and removing entries	-	objc
-method	shipped	-filterUsingPredicate:	NSMutableSet	Fundamentals / Basic Collections / Adding and removing entries	-	objc
 method	shipped	-init	NSMutableSet	Fundamentals / Basic Collections / Creating a mutable set	-	objc
 method	shipped	-initWithCapacity:	NSMutableSet	Fundamentals / Basic Collections / Creating a mutable set	-	objc
 method	shipped	-initWithCoder:	NSMutableSet	Fundamentals / Basic Collections / Instance Methods	-	objc
@@ -2260,7 +2239,6 @@ method	open	-descriptionWithLocale:	NSSet	Fundamentals / Basic Collections / Des
 method	open	-enumerateIndexPathsWithOptions:usingBlock:	NSSet	Fundamentals / Basic Collections / Instance Methods	-	objc
 method	shipped	-enumerateObjectsUsingBlock:	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
 method	open	-enumerateObjectsWithOptions:usingBlock:	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
-method	shipped	-filteredSetUsingPredicate:	NSSet	Fundamentals / Basic Collections / Accessing Set Members	-	objc
 method	shipped	-init	NSSet	Fundamentals / Basic Collections / Initializing a Set	-	objc
 method	shipped	-initWithArray:	NSSet	Fundamentals / Basic Collections / Initializing a Set	-	objc
 method	shipped	-initWithCoder:	NSSet	Fundamentals / Basic Collections / Instance Methods	-	objc

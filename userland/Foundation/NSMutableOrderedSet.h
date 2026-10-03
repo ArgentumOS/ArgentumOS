@@ -72,7 +72,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)sortUsingComparator:(NSComparator)comparator;
 - (void)sortWithOptions:(NSSortOptions)options usingComparator:(NSComparator)comparator;
 - (void)sortRange:(NSRange)range options:(NSSortOptions)options usingComparator:(NSComparator)comparator;
-- (void)filterUsingPredicate:(NSPredicate *)predicate;
 
 @end
 

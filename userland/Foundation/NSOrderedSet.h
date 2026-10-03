@@ -36,7 +36,6 @@
 #import <Foundation/NSCoding.h>
 
 @class NSArray<ObjectType>, NSEnumerator<ObjectType>, NSSet<ObjectType>;
-@class NSPredicate;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -129,7 +128,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)intersectsSet:(NSSet<ObjectType> *)set;
 - (BOOL)isSubsetOfSet:(NSSet<ObjectType> *)set;
 
-- (instancetype)filteredOrderedSetUsingPredicate:(NSPredicate *)predicate;
 - (NSArray *)sortedArrayUsingDescriptors:(NSArray *)descriptors;
 /* THE PREDICATE AND COMPARATOR DOORS (§63.8). The two SORTS DELEGATE to the array view, exactly as
  * `-sortedArrayUsingDescriptors:` above does and for the same reason: the array view IS the same sequence —

@@ -38,9 +38,9 @@
 # it keeps its `shipped` status and says so in the `why` column.
 #
 # counts by kind:
-# case	shipped	1156	open	0	struck	78
-# class	shipped	180	open	0	struck	52
-# enum	shipped	138	open	0	struck	9
+# case	shipped	1120	open	0	struck	78
+# class	shipped	176	open	0	struck	52
+# enum	shipped	133	open	0	struck	9
 # func	shipped	167	open	0	struck	22
 # macro	shipped	121	open	0	struck	132
 # protocol	shipped	33	open	0	struck	6
@@ -62,7 +62,6 @@ case	shipped	NSActivityUserInitiated	NSProcessInfo	App Support / System Interact
 case	shipped	NSActivityUserInitiatedAllowingIdleSystemSleep	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
 case	shipped	NSActivityUserInteractive	NSProcessInfo	App Support / System Interaction / Managing activities / Constants	-	objc
 case	shipped	NSAdminApplicationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	shipped	NSAggregateExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	shipped	NSAlignAllEdgesInward		Fundamentals / Geometry / Related Types / Constants	-	objc
 case	shipped	NSAlignAllEdgesNearest		Fundamentals / Geometry / Related Types / Constants	-	objc
 case	shipped	NSAlignAllEdgesOutward		Fundamentals / Geometry / Related Types / Constants	-	objc
@@ -88,11 +87,7 @@ case	shipped	NSAlignWidthOutward		Fundamentals / Geometry / Related Types / Cons
 case	shipped	NSAllApplicationsDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSAllDomainsMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
 case	shipped	NSAllLibrariesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	shipped	NSAllPredicateModifier	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSAnchoredSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
-case	shipped	NSAndPredicateType	NSCompoundPredicate	Fundamentals / Filltering / Getting Information About a Compound Predicate / Constants	-	objc
-case	shipped	NSAnyKeyExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
-case	shipped	NSAnyPredicateModifier	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	struck	NSAppleEventSendAlwaysInteract	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	declined	objc
 case	struck	NSAppleEventSendCanInteract	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	declined	objc
 case	struck	NSAppleEventSendCanSwitchLayer	NSAppleEventDescriptor	App Support / Apple Event Handling / Supporting Types / Constants	declined	objc
@@ -124,12 +119,9 @@ case	shipped	NSBackgroundActivityResultDeferred	NSBackgroundActivityScheduler	Ap
 case	shipped	NSBackgroundActivityResultFinished	NSBackgroundActivityScheduler	App Support / System Interaction / Constants / Constants	-	objc
 case	shipped	NSBackwardsSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	struck	NSBeginsWithComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
-case	shipped	NSBeginsWithPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
-case	shipped	NSBetweenPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSBinarySearchingFirstEqual	NSArray	Fundamentals / Basic Collections / Constants / Constants	-	objc
 case	shipped	NSBinarySearchingInsertionIndex	NSArray	Fundamentals / Basic Collections / Constants / Constants	-	objc
 case	shipped	NSBinarySearchingLastEqual	NSArray	Fundamentals / Basic Collections / Constants / Constants	-	objc
-case	shipped	NSBlockExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	shipped	NSBundleErrorMaximum	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
 case	shipped	NSBundleErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
 case	shipped	NSBundleErrorMinimum	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
@@ -205,7 +197,6 @@ case	shipped	NSCalendarUnitYearForWeekOfYear	NSCalendar	Fundamentals / Calendric
 case	shipped	NSCalendarUnitYearForWeekOfYear	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Specifying Years and Months	-	objc
 case	shipped	NSCalendarWrapComponents	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates / Constants	-	objc
 case	struck	NSCannotCreateScriptCommandError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
-case	shipped	NSCaseInsensitivePredicateOption	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	swift-page
 case	shipped	NSCaseInsensitiveSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
 case	shipped	NSCloudSharingConflictError		Files and Data Persistence / Errors / iCloud Sharing Errors	-	objc
 case	shipped	NSCloudSharingConflictError	NSError	App Support / User-Relevant Errors / Error Codes / Cloud-Sharing Errors	-	objc
@@ -238,13 +229,9 @@ case	struck	NSCollectorDisabledOption		Low-Level Utilities / Legacy / Legacy / C
 case	shipped	NSCompressionErrorMaximum	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
 case	shipped	NSCompressionErrorMinimum	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
 case	shipped	NSCompressionFailedError	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
-case	shipped	NSConditionalExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
-case	shipped	NSConstantValueExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	struck	NSContainerSpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	struck	NSContainsComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
-case	shipped	NSContainsPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSCoreServiceDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	shipped	NSCustomSelectorPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSDataBase64DecodingIgnoreUnknownCharacters	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations / Constants	-	objc
 case	shipped	NSDataBase64Encoding64CharacterLineLength	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations / Constants	-	objc
 case	shipped	NSDataBase64Encoding76CharacterLineLength	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations / Constants	-	objc
@@ -308,9 +295,7 @@ case	shipped	NSDemoApplicationDirectory	NSFileManager	Files and Data Persistence
 case	shipped	NSDesktopDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSDeveloperApplicationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSDeveloperDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	shipped	NSDiacriticInsensitivePredicateOption	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	swift-page
 case	shipped	NSDiacriticInsensitiveSearch	NSString	Fundamentals / Strings / Identifying and Comparing Strings / Constants	-	objc
-case	shipped	NSDirectPredicateModifier	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSDirectoryEnumerationIncludesDirectoriesPostOrder	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Enumeration Cases	-	objc
 case	shipped	NSDirectoryEnumerationProducesRelativePathURLs	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Enumeration Cases	-	objc
 case	shipped	NSDirectoryEnumerationSkipsHiddenFiles	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Enumeration Options	-	objc
@@ -322,7 +307,6 @@ case	shipped	NSDocumentDirectory	NSFileManager	Files and Data Persistence / File
 case	shipped	NSDocumentationDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSDownloadsDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	struck	NSEndsWithComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
-case	shipped	NSEndsWithPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSEnergyFormatterUnitCalorie	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
 case	shipped	NSEnergyFormatterUnitJoule	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
 case	shipped	NSEnergyFormatterUnitKilocalorie	NSEnergyFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
@@ -330,10 +314,8 @@ case	shipped	NSEnergyFormatterUnitKilojoule	NSEnergyFormatter	Fundamentals / Dep
 case	shipped	NSEnumerationConcurrent		Fundamentals / Iteration / Constants	-	objc
 case	shipped	NSEnumerationReverse		Fundamentals / Iteration / Constants	-	objc
 case	struck	NSEqualToComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
-case	shipped	NSEqualToPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSEraCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	shipped	NSEraCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
-case	shipped	NSEvaluatedObjectExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	struck	NSEverySubelement	NSWhoseSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	shipped	NSExecutableArchitectureMismatchError	NSBundle	App Support / Bundle Resources / Errors	-	objc
 case	shipped	NSExecutableArchitectureMismatchError	NSError	App Support / User-Relevant Errors / Error Codes / Executable Errors	-	objc
@@ -435,7 +417,6 @@ case	shipped	NSFormattingErrorMinimum	NSError	App Support / User-Relevant Errors
 case	shipped	NSFormattingUnitStyleLong	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
 case	shipped	NSFormattingUnitStyleMedium	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
 case	shipped	NSFormattingUnitStyleShort	NSFormatter	Fundamentals / Custom formatters / Constants / Constants	-	objc
-case	shipped	NSFunctionExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	shipped	NSGrammaticalCaseAblative		Reference / Enumerations / Enumeration Cases	-	objc
 case	shipped	NSGrammaticalCaseAccusative		Reference / Enumerations / Enumeration Cases	-	objc
 case	shipped	NSGrammaticalCaseAdessive		Reference / Enumerations / Enumeration Cases	-	objc
@@ -493,8 +474,6 @@ case	shipped	NSGrammaticalPronounTypePossessive		Reference / Enumerations / Enum
 case	shipped	NSGrammaticalPronounTypeReflexive		Reference / Enumerations / Enumeration Cases	-	objc
 case	struck	NSGreaterThanComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
 case	struck	NSGreaterThanOrEqualToComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
-case	shipped	NSGreaterThanOrEqualToPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
-case	shipped	NSGreaterThanPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSHPUXOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	shipped	NSHTTPCookieAcceptPolicyAlways	NSHTTPCookie	Networking / Essentials / Creating a session / Setting cookie policies / Accepting cookies / Policies	-	objc
 case	shipped	NSHTTPCookieAcceptPolicyAlways	NSHTTPCookieStorage	Networking / Cookies / Getting and setting the cookie accept policy / Policies	-	objc
@@ -521,7 +500,6 @@ case	shipped	NSISO8601DateFormatWithWeekOfYear	NSISO8601DateFormatter	Fundamenta
 case	shipped	NSISO8601DateFormatWithYear	NSISO8601DateFormatter	Fundamentals / Date Formatting / Constants / Constants	-	objc
 case	shipped	NSISOLatin1StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSISOLatin2StringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	shipped	NSInPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	struck	NSIndexSubelement	NSWhoseSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	shipped	NSInlinePresentationIntentBlockHTML	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
 case	shipped	NSInlinePresentationIntentCode	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes / Getting inline presentation types	-	objc
@@ -534,7 +512,6 @@ case	shipped	NSInlinePresentationIntentStronglyEmphasized	NSAttributedString	Fun
 case	shipped	NSInputMethodsDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	struck	NSInternalScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSInternalSpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
-case	shipped	NSIntersectSetExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	struck	NSInvalidIndexSpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	shipped	NSItemProviderFileOptionOpenInPlace	NSItemProvider	App Support / Attachments / Constants / File Options	-	objc
 case	shipped	NSItemProviderItemUnavailableError	NSItemProvider	App Support / Attachments / Constants / Constants	-	objc
@@ -557,7 +534,6 @@ case	shipped	NSJSONWritingPrettyPrinted	NSJSONSerialization	Files and Data Persi
 case	shipped	NSJSONWritingSortedKeys	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data / Formatting JSON	-	objc
 case	shipped	NSJSONWritingWithoutEscapingSlashes	NSJSONSerialization	Files and Data Persistence / JSON / Creating JSON Data / Formatting JSON	-	objc
 case	shipped	NSJapaneseEUCStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	shipped	NSKeyPathExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	struck	NSKeySpecifierEvaluationScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	shipped	NSKeyValueChangeInsertion		Reference / Enumerations / Constants	-	objc
 case	shipped	NSKeyValueChangeRemoval		Reference / Enumerations / Constants	-	objc
@@ -582,10 +558,7 @@ case	shipped	NSLengthFormatterUnitMillimeter	NSLengthFormatter	Fundamentals / De
 case	shipped	NSLengthFormatterUnitYard	NSLengthFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
 case	struck	NSLessThanComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
 case	struck	NSLessThanOrEqualToComparison	NSSpecifierTest	App Support / Object Matching Tests / Constants / Constants	declined	objc
-case	shipped	NSLessThanOrEqualToPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
-case	shipped	NSLessThanPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSLibraryDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
-case	shipped	NSLikePredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSLinguisticTaggerJoinNames	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
 case	shipped	NSLinguisticTaggerOmitOther	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
 case	shipped	NSLinguisticTaggerOmitPunctuation	NSLinguisticTagger	Fundamentals / Deprecated / Enumerating Linguistic Tags / Constants	deprecated	objc
@@ -613,7 +586,6 @@ case	shipped	NSMassFormatterUnitKilogram	NSMassFormatter	Fundamentals / Deprecat
 case	shipped	NSMassFormatterUnitOunce	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
 case	shipped	NSMassFormatterUnitPound	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
 case	shipped	NSMassFormatterUnitStone	NSMassFormatter	Fundamentals / Deprecated / Constants / Constants	deprecated	objc
-case	shipped	NSMatchesPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
 case	shipped	NSMatchingAnchored	NSRegularExpression	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 case	shipped	NSMatchingCompleted	NSRegularExpression	Fundamentals / Pattern Matching / Constants / Constants	-	objc
 case	shipped	NSMatchingHitEnd	NSRegularExpression	Fundamentals / Pattern Matching / Constants / Constants	-	objc
@@ -629,7 +601,6 @@ case	shipped	NSMaxYEdge		Fundamentals / Geometry / Related Types / Minimum and m
 case	struck	NSMiddleSubelement	NSWhoseSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	shipped	NSMinXEdge		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
 case	shipped	NSMinYEdge		Fundamentals / Geometry / Related Types / Minimum and maximum values	-	objc
-case	shipped	NSMinusSetExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	shipped	NSMinuteCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
 case	shipped	NSMinuteCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units / Deprecated	deprecated	objc
 case	shipped	NSMonthCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
@@ -654,9 +625,6 @@ case	struck	NSNoSpecifierError	NSScriptObjectSpecifier	App Support / Object Spec
 case	struck	NSNoSubelement	NSWhoseSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	struck	NSNoTopLevelContainersSpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	shipped	NSNonLossyASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	shipped	NSNormalizedPredicateOption	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	swift-page
-case	shipped	NSNotEqualToPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate / Constants	-	objc
-case	shipped	NSNotPredicateType	NSCompoundPredicate	Fundamentals / Filltering / Getting Information About a Compound Predicate / Constants	-	objc
 case	shipped	NSNotificationCoalescingOnName	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
 case	shipped	NSNotificationCoalescingOnSender	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
 case	shipped	NSNotificationNoCoalescing	NSNotificationQueue	App Support / Notifications / Constants / Constants	-	objc
@@ -698,7 +666,6 @@ case	shipped	NSOperationQueuePriorityLow	NSOperation	App Support / Operations / 
 case	shipped	NSOperationQueuePriorityNormal	NSOperation	App Support / Operations / Constants / Constants	-	swift-page
 case	shipped	NSOperationQueuePriorityVeryHigh	NSOperation	App Support / Operations / Constants / Constants	-	swift-page
 case	shipped	NSOperationQueuePriorityVeryLow	NSOperation	App Support / Operations / Constants / Constants	-	swift-page
-case	shipped	NSOrPredicateType	NSCompoundPredicate	Fundamentals / Filltering / Getting Information About a Compound Predicate / Constants	-	objc
 case	shipped	NSOrderedAscending		Fundamentals / Sorting / Constants	-	objc
 case	shipped	NSOrderedCollectionDifferenceCalculationInferMoves	NSArray	Fundamentals / Basic Collections / Comparing with Another Array / Difference Calculation Options	-	objc
 case	shipped	NSOrderedCollectionDifferenceCalculationInferMoves	NSOrderedSet	Fundamentals / Specialized Sets / Comparing with Another Set / Difference Calculation Options	-	objc
@@ -876,7 +843,6 @@ case	shipped	NSStringEnumerationByWords	NSString	Fundamentals / Strings / Perfor
 case	shipped	NSStringEnumerationLocalized	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
 case	shipped	NSStringEnumerationReverse	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
 case	shipped	NSStringEnumerationSubstringNotRequired	NSString	Fundamentals / Strings / Performing Linguistic Analysis / Constants	-	objc
-case	shipped	NSSubqueryExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	shipped	NSSunOSOperatingSystem	NSProcessInfo	App Support / System Interaction / Getting host information / Constants	deprecated	objc
 case	shipped	NSSymbolStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
 case	shipped	NSSystemDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
@@ -1050,7 +1016,6 @@ case	shipped	NSUbiquitousKeyValueStoreServerChange	NSUbiquitousKeyValueStore	Fil
 case	shipped	NSUncachedRead	NSData	Fundamentals / Binary Data / Reading Data from a File / Legacy Constants	deprecated	objc
 case	shipped	NSUndefinedDateComponent	NSDateComponents	Fundamentals / Calendrical Calculations / Validating a Date / Constants	deprecated	objc
 case	shipped	NSUnicodeStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
-case	shipped	NSUnionSetExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	struck	NSUnknownKeyScriptError	NSScriptCommand	App Support / Script Commands / Constants / Constants	declined	objc
 case	struck	NSUnknownKeySpecifierError	NSScriptObjectSpecifier	App Support / Object Specifiers / Constants / Constants	declined	objc
 case	shipped	NSUserActivityConnectionUnavailableError	NSError	App Support / User-Relevant Errors / Error Codes / User Activity Errors	-	objc
@@ -1075,7 +1040,6 @@ case	shipped	NSUserNotificationActivationTypeNone	NSUserNotification	App Support
 case	shipped	NSUserNotificationActivationTypeReplied	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
 case	shipped	NSValidationErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Validation Errors	-	objc
 case	shipped	NSValidationErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Validation Errors	-	objc
-case	shipped	NSVariableExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression / Constants	-	swift-page
 case	shipped	NSVolumeEnumerationProduceFileReferenceURLs	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents / Volume Enumeration Options	-	objc
 case	shipped	NSVolumeEnumerationSkipHiddenVolumes	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents / Volume Enumeration Options	-	objc
 case	shipped	NSWeekCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information / Deprecated	deprecated	objc
@@ -1307,8 +1271,6 @@ class	struck	NSClassDescription		App Support / Script Dictionary Description	dec
 class	struck	NSCloneCommand		App Support / Script Commands	declined	objc
 class	struck	NSCloseCommand		App Support / Script Commands	declined	objc
 class	shipped	NSCoder		Files and Data Persistence / Keyed Archivers	-	objc
-class	shipped	NSComparisonPredicate		Fundamentals / Filltering	-	objc
-class	shipped	NSCompoundPredicate		Fundamentals / Filltering	-	objc
 class	shipped	NSCondition		Low-Level Utilities / Threads and Locking	-	objc
 class	shipped	NSConditionLock		Low-Level Utilities / Threads and Locking	-	objc
 class	shipped	NSConnection		Low-Level Utilities / Legacy / Legacy	deprecated	objc
@@ -1338,7 +1300,6 @@ class	shipped	NSEnumerator		Fundamentals / Iteration	-	objc
 class	shipped	NSError		App Support / User-Relevant Errors	-	objc
 class	shipped	NSException		App Support / Exceptions	-	objc
 class	struck	NSExistsCommand		App Support / Script Commands	declined	objc
-class	shipped	NSExpression		Fundamentals / Filltering	-	objc
 class	shipped	NSExtensionContext		App Support / Extension Support	-	objc
 class	shipped	NSExtensionItem		App Support / Attachments	-	objc
 class	shipped	NSFileAccessIntent		Files and Data Persistence / Coordinated file access	-	objc
@@ -1430,7 +1391,6 @@ class	shipped	NSPortCoder		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSPortMessage		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	shipped	NSPortNameServer		Low-Level Utilities / Legacy / Legacy	deprecated	objc
 class	struck	NSPositionalSpecifier		App Support / Object Specifiers	declined	objc
-class	shipped	NSPredicate		Fundamentals / Filltering	-	objc
 class	shipped	NSPresentationIntent		Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
 class	shipped	NSProcessInfo		App Support / System Interaction	-	objc
 class	shipped	NSProgress		App Support / Progress	-	objc
@@ -1530,10 +1490,7 @@ enum	shipped	NSCalendarOptions	NSCalendar	Fundamentals / Calendrical Calculation
 enum	shipped	NSCalendarUnit	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
 enum	shipped	NSCalendarUnit	NSDateComponents	Fundamentals / Calendrical Calculations / Accessing Components as Calendrical Units	-	objc
 enum	shipped	NSCollectionChangeType	NSOrderedCollectionDifference	Fundamentals / Basic Collections / Comparing with Another Array / Accessing Changes	-	objc
-enum	shipped	NSComparisonPredicateModifier	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate	-	objc
-enum	shipped	NSComparisonPredicateOptions	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate	-	swift-page
 enum	shipped	NSComparisonResult		Fundamentals / Sorting	-	objc
-enum	shipped	NSCompoundPredicateType	NSCompoundPredicate	Fundamentals / Filltering / Getting Information About a Compound Predicate	-	objc
 enum	shipped	NSDataBase64DecodingOptions	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations	-	objc
 enum	shipped	NSDataBase64EncodingOptions	NSData	Fundamentals / Binary Data / Encoding and Decoding Base64 Representations	-	objc
 enum	shipped	NSDataCompressionAlgorithm	NSData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc
@@ -1551,7 +1508,6 @@ enum	shipped	NSDirectoryEnumerationOptions	NSFileManager	Files and Data Persiste
 enum	shipped	NSDistributedNotificationOptions	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Constants	-	objc
 enum	shipped	NSEnergyFormatterUnit	NSEnergyFormatter	Fundamentals / Deprecated / Constants	deprecated	objc
 enum	shipped	NSEnumerationOptions		Fundamentals / Iteration	-	objc
-enum	shipped	NSExpressionType	NSExpression	Fundamentals / Filltering / Getting Information About an Expression	-	swift-page
 enum	shipped	NSFileCoordinatorReadingOptions	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants	-	objc
 enum	shipped	NSFileCoordinatorWritingOptions	NSFileCoordinator	Files and Data Persistence / Coordinated file access / Constants	-	objc
 enum	shipped	NSFileManagerItemReplacementOptions	NSFileManager	Files and Data Persistence / File system operations / Replacing items	-	objc
@@ -1607,7 +1563,6 @@ enum	shipped	NSOrderedCollectionDifferenceCalculationOptions	NSArray	Fundamental
 enum	shipped	NSOrderedCollectionDifferenceCalculationOptions	NSOrderedSet	Fundamentals / Specialized Sets / Comparing with Another Set	-	objc
 enum	shipped	NSPointerFunctionsOptions	NSPointerFunctions	Fundamentals / Pointer Collections / Getting the Pointer Functions / Constants	-	objc
 enum	shipped	NSPostingStyle	NSNotificationQueue	App Support / Notifications / Constants	-	objc
-enum	shipped	NSPredicateOperatorType	NSComparisonPredicate	Fundamentals / Filltering / Getting Information About a Comparison Predicate	-	objc
 enum	shipped	NSPresentationIntentKind		Reference / Enumerations	-	objc
 enum	shipped	NSPresentationIntentKind	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc
 enum	shipped	NSPresentationIntentTableColumnAlignment	NSAttributedString	Fundamentals / Strings with Metadata / Representing markdown attributes	-	objc

@@ -173,22 +173,21 @@ int main(void)
 			walked, reversed, (unsigned long)count]);
 	}
 
+	/* ⚠⚠ AND THE PREDICATE HALF OF THIS CHECK LEFT WITH THE FAMILY (§63.161):
+	 * `-filteredOrderedSetUsingPredicate:` took an `NSPredicate` (macOS 10.4) and is gone from this class.
+	 * **THE SORT HALF STAYS, BECAUSE `-sortedArrayUsingDescriptors:` TAKES AN `NSSortDescriptor`, WHICH THIS
+	 * LIBRARY KEEPS** — so the check is RE-POINTED rather than deleted, and renamed to say what it now tests. */
 	{
 		NSOrderedSet *ordered = [NSOrderedSet orderedSetWithArray:@[@"pear", @"apple", @"plum"]];
-		NSOrderedSet *kept = [ordered filteredOrderedSetUsingPredicate:
-				      [NSPredicate predicateWithFormat:@"SELF BEGINSWITH \"p\""]];
 		NSArray *sorted = [ordered sortedArrayUsingDescriptors:
 				   @[[NSSortDescriptor sortDescriptorWithKey:@"self" ascending:YES]]];
 
-		check("ordered-predicate-and-sort",
-		      kept != nil && [kept count] == 2 &&
-		      [[kept objectAtIndex:0] isEqualToString:@"pear"] &&
-		      [[kept objectAtIndex:1] isEqualToString:@"plum"] &&
+		check("ordered-set-sorted-by-descriptor",
 		      sorted != nil && [sorted count] == 3 &&
 		      [[sorted objectAtIndex:0] isEqualToString:@"apple"] &&
+		      [[sorted objectAtIndex:1] isEqualToString:@"pear"] &&
 		      [[sorted objectAtIndex:2] isEqualToString:@"plum"],
-		      [NSString stringWithFormat:@"kept=%@ sorted=%@",
-			fn_order(kept), fn_order(sorted)]);
+		      [NSString stringWithFormat:@"sorted count=%lu", (unsigned long)[sorted count]]);
 	}
 
 	{

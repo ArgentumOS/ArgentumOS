@@ -19,7 +19,6 @@
 #import <Foundation/NSException.h>
 #import <Foundation/NSIndexSet.h>
 #import <Foundation/NSSortDescriptor.h>
-#import <Foundation/NSPredicate.h>
 /* FOR THE ARRAY-WIDE KVO DOORS (§63.45): they send the NSObject category's own doors, so the declarations
  * have to be visible here or the compiler reports the send as an unknown selector. */
 #import <Foundation/NSKeyValueObserving.h>
@@ -618,29 +617,6 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 	return array_sorted_with_comparator(self, ^NSComparisonResult(id left, id right) {
 		return (NSComparisonResult)comparator(left, right, context);
 	});
-}
-
-/* THE PREDICATE FILTER (F11a): keep what the predicate answers YES for, in order. The receiver is
- * untouched — this is the immutable form, and -filterUsingPredicate: is the mutable one. A NIL
- * predicate raises rather than quietly answering an empty array, which is what a message to nil
- * would have produced by accident. */
-- (NSArray *)filteredArrayUsingPredicate:(NSPredicate *)predicate
-{
-	NSMutableArray *kept = [[NSMutableArray alloc] init];
-	NSUInteger i;
-
-	if (predicate == nil) {
-		[NSException raise:NSInvalidArgumentException
-			    format:@"-filteredArrayUsingPredicate: needs a predicate"];
-	}
-	for (i = 0; i < [self count]; i++) {
-		id element = [self objectAtIndex:i];	/* ONE READ: the predicate must not be asked twice */
-
-		if ([predicate evaluateWithObject:element]) {
-			[kept addObject:element];
-		}
-	}
-	return kept;
 }
 
 - (void)enumerateObjectsUsingBlock:(void (^)(id object, NSUInteger index, BOOL *stop))block
@@ -1613,12 +1589,6 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 - (void)sortUsingFunction:(NSInteger (*)(id, id, void *))comparator context:(nullable void *)context
 {
 	[self setArray:[self sortedArrayUsingFunction:comparator context:context]];
-}
-
-/* In place, because that is what MUTABLE means: the kept elements stay in the receiver. */
-- (void)filterUsingPredicate:(NSPredicate *)predicate
-{
-	[self setArray:[self filteredArrayUsingPredicate:predicate]];
 }
 
 - (void)replaceObjectsInRange:(NSRange)range

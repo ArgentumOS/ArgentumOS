@@ -51,7 +51,6 @@ NS_ASSUME_NONNULL_BEGIN
  * where Apple's declaration does not. The mutable class's own -intersectSet: IS parameterized, so the two
  * rungs of the ladder differ here, and matching Apple means keeping them different. */
 - (void)intersectSet:(NSSet *)other;
-- (void)filterUsingPredicate:(NSPredicate *)predicate;
 
 - (NSUInteger)countForObject:(ObjectType)object;
 

@@ -8,9 +8,11 @@
  *
  * Apple's NSFormatter is the parent of NSDateFormatter and NSNumberFormatter, and it is
  * ABSTRACT: it declares the doors and implements all but one of them by refusing, because what a
- * string IS depends entirely on the subclass. That is the same shape NSPredicate took, and for the
- * same reason — a default answer would be a lie (nil would read as "this value has no text" where
- * the truth is "nothing was asked").
+ * string IS depends entirely on the subclass. **A PARENT'S JOB HERE IS TO REFUSE WHAT IT CANNOT KNOW** —
+ * a default answer would be a lie (nil would read as "this value has no text" where the truth is
+ * "nothing was asked"). ⚠ THIS SENTENCE USED TO COMPARE THE SHAPE TO `NSPredicate`'s, which left the
+ * surface with its 10.4 family in §63.161; the rule it was making is about ABSTRACT PARENTS, and it
+ * stands without the example.
  *
  * COMPLETED AGAINST APPLE'S PAGE (2026-09-20, W11). Three members this header was missing when W11
  * read Apple's documentation against it, plus the `NSCoding` conformance Apple declares:

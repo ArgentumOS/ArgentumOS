@@ -22,7 +22,6 @@
 #import <Foundation/NSCountedSet.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSNumber.h>
-#import <Foundation/NSPredicate.h>
 
 /* THE COUNTED SET'S OWN CONCRETE CLASS (plan §C.5, M3: "counted-set storage as its own concrete class").
  * The storage is NSCountedSet's own ivar - a count array index-aligned with the inherited member array -
@@ -179,23 +178,6 @@
 		}
 	}
 	[super intersectSet:other];
-	_counts = keptCounts;
-}
-
-- (void)filterUsingPredicate:(NSPredicate *)predicate
-{
-	NSMutableArray *keptCounts = [NSMutableArray array];
-	NSUInteger i;
-
-	if (predicate == nil) {
-		return;
-	}
-	for (i = 0; i < [_members count]; i++) {
-		if ([predicate evaluateWithObject:[_members objectAtIndex:i]]) {
-			[keptCounts addObject:[_counts objectAtIndex:i]];
-		}
-	}
-	[super filterUsingPredicate:predicate];
 	_counts = keptCounts;
 }
 

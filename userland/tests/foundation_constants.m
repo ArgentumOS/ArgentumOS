@@ -176,24 +176,10 @@ int main(void)
 		      @"an NSErrorUserInfoKey is spellable and usable as a dictionary key");
 	}
 
-	/* 9. THE COMPARISON PREDICATE'S OPTION TYPE, AND THE SORT OPTIONS — the last two enums (§62.104). */
-	{
-		NSComparisonPredicateOptions options =
-			(NSCaseInsensitivePredicateOption | NSNormalizedPredicateOption);
-		NSComparisonPredicate *predicate = [[NSComparisonPredicate alloc]
-			initWithLeftExpression:[NSExpression expressionForKeyPath:@"name"]
-			       rightExpression:[NSExpression expressionForConstantValue:@"ada"]
-				      modifier:NSDirectPredicateModifier
-					  type:NSEqualToPredicateOperatorType
-				       options:options];
-
-		check("comparison-predicate-options-type",
-		      NSCaseInsensitivePredicateOption == 0x01 && NSDiacriticInsensitivePredicateOption == 0x02 &&
-		      NSNormalizedPredicateOption == 0x04 && predicate != nil &&
-		      [predicate options] == options,
-		      [NSString stringWithFormat:@"the modern type takes the bits and the predicate keeps them (%lu)",
-						  (unsigned long)[predicate options]]);
-	}
+	/* ⚠⚠ §62.104'S LAST TWO ENUMS WERE THE COMPARISON PREDICATE'S OPTION TYPE AND THE SORT OPTIONS,
+	 * AND ONLY THE SECOND SURVIVES (§63.161): the first is declared in NSPredicate.h, which left with the
+	 * predicate family, so its check went with it. The sort options are NSComparator's and NSDictionary's,
+	 * and they stay. */
 
 	/* AND THE SORT OPTIONS, MEASURED RATHER THAN DECLARED: `NSSortStable` is a PROMISE, so the check is that
 	 * elements comparing EQUAL keep the order they arrived in — through BOTH doors. */

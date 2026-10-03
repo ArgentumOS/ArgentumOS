@@ -41,7 +41,6 @@
 #import <Foundation/NSCoding.h>
 
 @class NSArray<ObjectType>, NSEnumerator<ObjectType>;
-@class NSPredicate;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -101,7 +100,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)setByAddingObjectsFromArray:(NSArray<ObjectType> *)other;
 
 - (NSArray *)sortedArrayUsingDescriptors:(NSArray *)descriptors;
-- (instancetype)filteredSetUsingPredicate:(NSPredicate *)predicate;
 
 - (BOOL)isEqual:(id)other;
 - (NSUInteger)hash;
@@ -128,7 +126,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)minusSet:(NSSet<ObjectType> *)other;
 - (void)intersectSet:(NSSet<ObjectType> *)other;
 - (void)setSet:(NSSet<ObjectType> *)other;
-- (void)filterUsingPredicate:(NSPredicate *)predicate;
 
 @end
 

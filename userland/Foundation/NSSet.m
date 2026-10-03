@@ -19,7 +19,6 @@
 #import <Foundation/NSCoder.h>	/* the NSCoding doors call the coder's methods, not just its type */
 #import <Foundation/NSArray.h>
 #import <Foundation/NSEnumerator.h>
-#import <Foundation/NSPredicate.h>
 #import <Foundation/NSString.h>
 #include <stdlib.h>		/* calloc/free: the variadic factory's exactly-sized list */
 /* THE KEYED ARCHIVE'S KEY NAMES, shared with NSKeyedArchiver's structural branch so the NSCoding doors below
@@ -372,24 +371,6 @@
 	return [[self allObjects] sortedArrayUsingDescriptors:descriptors];
 }
 
-- (instancetype)filteredSetUsingPredicate:(NSPredicate *)predicate
-{
-	NSMutableArray *kept = [NSMutableArray array];
-	NSUInteger i;
-
-	if (predicate == nil) {
-		return self;
-	}
-	for (i = 0; i < [self count]; i++) {
-		id object = [[self allObjects] objectAtIndex:i];
-
-		if ([predicate evaluateWithObject:object]) {
-			[kept addObject:object];
-		}
-	}
-	return [[[self class] alloc] initWithArray:kept];
-}
-
 - (BOOL)isEqual:(id)other
 {
 	if (other == self) {
@@ -599,17 +580,6 @@
 - (void)setSet:(NSSet *)other
 {
 	[self fnReplaceMembers:[other allObjects]];
-}
-
-- (void)filterUsingPredicate:(NSPredicate *)predicate
-{
-	NSSet *kept;
-
-	if (predicate == nil) {
-		return;
-	}
-	kept = [[NSSet alloc] initWithArray:[self allObjects]];
-	[self fnReplaceMembers:[[kept filteredSetUsingPredicate:predicate] allObjects]];
 }
 
 /* A MUTABLE SET COPIES BY VALUE — the members, not a shared reference — and a copy of one is the
