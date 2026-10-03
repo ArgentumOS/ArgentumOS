@@ -202,20 +202,28 @@ int main(void)
 		 * the tier that owns them. WHAT THIS PROBE HOLDS IS THE OTHER HALF, and it is the half that catches a
 		 * regression: `NSSelectorFromString` rather than `@selector(…)` because NO DECLARATION IS IN SCOPE
 		 * HERE, which is exactly the fact being asserted. */
-		check("cg-spelled-geometry-doors-are-not-on-foundation-s-nsvalue",
-		      ![NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGPoint:")] &&
-		      ![NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGSize:")] &&
-		      ![NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGRect:")] &&
-		      ![NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGVector:")] &&
-		      ![NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGAffineTransform:")] &&
-		      ![NSValue instancesRespondToSelector:NSSelectorFromString(@"CGPointValue")] &&
-		      ![NSValue instancesRespondToSelector:NSSelectorFromString(@"CGSizeValue")] &&
-		      ![NSValue instancesRespondToSelector:NSSelectorFromString(@"CGRectValue")] &&
-		      ![NSValue instancesRespondToSelector:NSSelectorFromString(@"CGVectorValue")] &&
-		      ![NSValue instancesRespondToSelector:NSSelectorFromString(@"CGAffineTransformValue")],
-		      [NSString stringWithFormat:@"Foundation's NSValue carries none of the five CG-spelled boxes or "
-						@"readers: they are the CoreGraphics tier's, and their positive checks live in "
-						@"coregraphics_nsvalue"]);
+		/* ⚠ THIS CHECK USED TO ASSERT THE OPPOSITE — that Foundation's NSValue does NOT respond to the five
+		 * CG-spelled boxes and readers — AND THAT ASSERTION CANNOT HOLD IN ANY PROCESS THAT LINKS
+		 * COREGRAPHICS, which is every probe: the doors are a CATEGORY, `NSValue (NSValueCGGeometryAdditions)`
+		 * in userland/CoreGraphics/NSValueCGGeometry.{h,m}, so the runtime answers YES whichever header
+		 * declared them. The header-level claim ("no Foundation header of either SDK declares these") is a
+		 * SOURCE fact and belongs to the SWEEP, which judges declaration and owner; what a probe can observe
+		 * is the boundary as it IS — the CG-spelled tier answering, beside Foundation's own NS-spelled pair
+		 * asserted above. It was invisible until the host tier could run at all, which is how it was found. */
+		check("cg-spelled-geometry-doors-are-the-coregraphics-tier-s",
+		      [NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGPoint:")] &&
+		      [NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGSize:")] &&
+		      [NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGRect:")] &&
+		      [NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGVector:")] &&
+		      [NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGAffineTransform:")] &&
+		      [NSValue instancesRespondToSelector:NSSelectorFromString(@"CGPointValue")] &&
+		      [NSValue instancesRespondToSelector:NSSelectorFromString(@"CGSizeValue")] &&
+		      [NSValue instancesRespondToSelector:NSSelectorFromString(@"CGRectValue")] &&
+		      [NSValue instancesRespondToSelector:NSSelectorFromString(@"CGVectorValue")] &&
+		      [NSValue instancesRespondToSelector:NSSelectorFromString(@"CGAffineTransformValue")],
+		      [NSString stringWithFormat:@"the five CG-spelled boxes and readers come from CoreGraphics' "
+						@"NSValue category, so they answer here; Foundation's NS-spelled pair is asserted "
+						@"above and its headers declare none of these (the sweep holds that half)"]);
 	}
 
 	{

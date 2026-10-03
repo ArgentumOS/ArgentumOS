@@ -15992,10 +15992,13 @@ are Apple's own spelling; only the *call* form differs from what the bare name s
    `strings .build/host/lib/libfoundation.so | grep -c <a new selector>` against a control selector on the
    same class (8 versus 6 in this unit). **`nm` is the wrong instrument** — ObjC selectors are runtime
    metadata, not dynamic symbols. Verify the ARTIFACT, not the command's exit code.
-3. `make host-foundation-run` **cannot run at all today**: `HOST_PROBES` names `foundation_expression`, whose
-   source does not exist, so `mk/60-host.mk:179` fails and the tier stops **before executing any probe**. That
-   is pre-existing, and it is why this unit's acceptance is the GUEST tier — which compiles the probe itself
-   and therefore cannot be fooled by a stale object.
+3. `make host-foundation-run` could not run at all at the time of this unit: `HOST_PROBES` named
+   `foundation_expression` and `foundation_predicate`, whose sources were removed with the CUT PREDICATE
+   FAMILY (§63.161, `d33b508a`), so `mk/60-host.mk` failed at the first of them (`clang: error: no input
+   files`) and the tier stopped before executing any probe — **FIXED since** (both stale names are out of
+   `HOST_PROBES` and out of the harness's `HOST_CLEAN`, and the tier runs 40 probes with **0 FAIL**), which
+   is why this unit's acceptance was taken on the GUEST tier: it compiles the probe itself and cannot be
+   fooled by a stale object.
 
 (Also: a probe's `printf` markers are block-buffered and are LOST when it aborts, which is why an early
 debugging run printed nothing at all.)
