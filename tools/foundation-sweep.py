@@ -863,6 +863,15 @@ DECLINED_SYMBOLS = frozenset((
 # and is invisible to the tool, which is the worst way for it to be wrong.
 DECLINED_SELECTORS = frozenset((
     ("NSDistantObject", "initWithCoder:"),
+    # ⚠⚠ `+timeZoneWithAbbreviation:` IS A DECLINE WITH A POSITIVE REASON, AND THE REASON IS THE TREE'S OWN (the
+    # class’s header has carried it since the class was written): APPLE'S DOOR IS A CURATED MAP FROM AN ADBREVIATION TO
+    # ONE CHOSEN ZONE ("EST" -> "America/New_York"), AND ICU HAS ABBREVIATIONS BUT NOT THAT CURATION. §63.125 MEASURED
+    # WHAT THE ALTERNATIVE WOULD BE, now that `+knownTimeZoneNames` and `-abbreviation` both work: A SCAN FOR A ZONE
+    # WHOSE ABBREVIATION IS "EST" ANSWERS WHICHEVER COMES FIRST — the same guess with more arithmetic behind it. **SO
+    # THE DOOR IS NAMED HERE RATHER THAN BUILT, AND THE CLASS'S OWN NOTE NAMES IT TOO.** (`abbreviationDictionary`, its
+    # sibling, is struck through OTHER_FRAMEWORK for the mechanical reason that the name occurs in another framework's
+    # corpus; the SEMANTIC ground is this same curation argument.) The tuple carries NO sign, as a selector row does not.
+    ("NSTimeZone", "timeZoneWithAbbreviation:"),
     # ⚠ THE OBEX CATEGORY IS NOT FOUNDATION AT ALL (USER DECISION, 2026-10-01). These 24 selector rows are
     # owned by NSMutableDictionary in this ledger because THE SWEEP ATTRIBUTES A CATEGORY'S METHODS TO THE CLASS
     # IT EXTENDS — and the category in question is `NSDictionaryOBEXExtensions`, declared in IOBluetooth's

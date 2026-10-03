@@ -23,9 +23,15 @@
  * WHAT IS STILL REFUSED, named here rather than left to be discovered:
  *   * `+abbreviationDictionary` / `+timeZoneWithAbbreviation:` — Apple's is a CURATED map from an
  *     abbreviation to ONE chosen zone ("EST" -> "America/New_York"). ICU has abbreviations but not
- *     that curation, so deriving one would be a guess dressed as data: it is its own sub-step;
- *   * the deprecated `+timeZoneWithName:data:` / `-data` pair — Apple's blob is a serialization
- *     format, and belongs to the coder family this library has not built.
+ *     that curation, so deriving one would be a guess dressed as data. **AND THE REFUSAL STANDS NOW THAT
+ *     `+knownTimeZoneNames` AND `-abbreviation` BOTH WORK (§63.125): a scan of the database for a zone
+ *     whose abbreviation is "EST" answers WHICHEVER ZONE COMES FIRST, which is the same guess with more
+ *     arithmetic behind it.** The row is DECLINED in the sweep's own ledger, not left open;
+ *   * ⚠ AND ONE REFUSAL IN THIS NOTE WAS WRONG AND IS CORRECTED RATHER THAN LEFT: `+timeZoneWithName:data:`,
+ *     `-initWithName:data:` and `-data` were listed here as DEPRECATED. **THEY ARE NOT — Apple's own header
+ *     carries no `API_DEPRECATED` on any of them — AND THEY ARE NOW IMPLEMENTED** (§63.124), with the data's
+ *     format documented on the declarations themselves. *A stale note is a wrong note, and this one would
+ *     have told the next reader that a shipped family was refused.*
  */
 
 #ifndef FOUNDATION_NSTIMEZONE_H

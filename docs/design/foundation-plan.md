@@ -15982,6 +15982,34 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.125 — `NSTimeZone` COMPLETE: THE LAST ROW IS A DECLINE, AND A STALE NOTE IS CORRECTED (2026-10-01)
+
+**`NSTimeZone` HAS NO OPEN ROWS. `--work-list | grep -c NSTimeZone` → 0: the owner has left the work list, which is
+the only signal this campaign counts — the FIFTH owner finished outright.**
+
+**MEASURED: `method open 326 → 325`, `struck 398 → 399`; `property 1287 / 168 / 181` unchanged; `--refresh` and
+`--check` both consistent; build EXIT 0 with exactly the standing SIX warnings; `make testimg` EXIT 0;
+**`FOUNDATION-CALENDARDATE 20/20`**; `TESTS-OK 1/1 case(s), 6/6 check(s) in 12s`.**
+
+**⚠⚠ THE DECISION, AND ITS REASON WAS ALREADY THE TREE'S OWN: `+timeZoneWithAbbreviation:` IS DECLINED, NOT BUILT.** The
+class's header has carried the ground since the class was written — *“Apple's is a CURATED map from an abbreviation to
+ONE chosen zone (‘EST’ -> ‘America/New_York’). ICU has abbreviations but not that curation, so deriving one would be a
+guess dressed as data”* — **AND §63.125 MEASURED THE ALTERNATIVE NOW THAT THE ALTERNATIVE EXISTS, because it did not
+before: `+knownTimeZoneNames` AND `-abbreviation` BOTH WORK NOW, SO A SCAN OF THE DATABASE IS POSSIBLE AND IS STILL WRONG
+— it answers WHICHEVER ZONE COMES FIRST, WHICH IS THE SAME GUESS WITH MORE ARITHMETIC BEHIND IT.** The row went into
+the sweep's `DECLINED_SELECTORS`, which is the mechanism the tool actually reads — and **a selector row's name carries
+NO SIGN, which the tool's own docstring warns about and which would have made the entry invisible.**
+
+**⚠⚠ AND THE PART WORTH KEEPING IS THE CORRECTION: THE SAME HEADER NOTE LISTED `+timeZoneWithName:data:`,
+`-initWithName:data:` AND `-data` AS ‘DEPRECATED’ AND REFUSED — WHILE §63.124 HAD JUST IMPLEMENTED ALL THREE. Apple's own
+header carries NO `API_DEPRECATED` on any of them (measured in the corpus).** So the note was rewritten in the same unit:
+***a stale note is a wrong note, and this one would have told the next reader that a shipped family was refused.***
+
+**AND THE METHOD NOTE: THE TREE'S OWN RECORDED REASONING IS A FIRST-CLASS SOURCE — READ IT BEFORE DESIGNING.** This
+header named the refusal's ground, and its exact qualification (‘with more arithmetic behind it’), *before* I worked it
+out; the unit took one measurement round because the first thing I did was read the file I was about to change. **And when
+a later unit proves an earlier note wrong, correcting the note is part of that unit's work and not a separate chore.**
+
 ## §63.124 — THE DATA DOORS, THE CLASS'S MISSING `-dealloc`, AND A FINDING THAT IS A ROW RATHER THAN A FIX (2026-10-01)
 
 **WHAT LANDED: `-data`, `+timeZoneWithName:data:`, `-initWithName:data:` AND `+resetSystemTimeZone` — FOUR ROWS, so

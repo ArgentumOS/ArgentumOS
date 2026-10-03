@@ -25,7 +25,7 @@
 #                   which is how the declined families' whole selector surface is removed rather
 #                   than left open. The `why` column says which ground.
 #
-# why the struck rows are struck: 32-bit-only 4, declined 443, other-framework 130, unsupported-by-apple 2
+# why the struck rows are struck: 32-bit-only 4, declined 444, other-framework 130, unsupported-by-apple 2
 #
 # AND 549 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): deprecated API is a PORTING TARGET here, so `deprecated` says what KIND of work a
@@ -35,7 +35,7 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2204   open  326   struck  398
+#   method     shipped 2204   open  325   struck  399
 #   property   shipped 1287   open  168   struck  181
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
@@ -3322,7 +3322,7 @@ method	shipped	-nextDaylightSavingTimeTransitionAfterDate:	NSTimeZone	Fundamenta
 method	shipped	+resetSystemTimeZone	NSTimeZone	Fundamentals / Calendrical Calculations / Working with System Time Zones	-	objc
 method	shipped	-secondsFromGMTForDate:	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information	-	objc
 method	shipped	+timeZoneForSecondsFromGMT:	NSTimeZone	Fundamentals / Calendrical Calculations / Creating Time Zones	-	objc
-method	open	+timeZoneWithAbbreviation:	NSTimeZone	Fundamentals / Calendrical Calculations / Creating Time Zones	-	objc
+method	struck	+timeZoneWithAbbreviation:	NSTimeZone	Fundamentals / Calendrical Calculations / Creating Time Zones	declined	objc
 method	shipped	+timeZoneWithName:	NSTimeZone	Fundamentals / Calendrical Calculations / Creating Time Zones	-	objc
 method	shipped	+timeZoneWithName:data:	NSTimeZone	Fundamentals / Calendrical Calculations / Creating Time Zones	-	objc
 property	shipped	abbreviation	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information	-	objc
