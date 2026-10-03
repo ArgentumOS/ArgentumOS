@@ -15982,6 +15982,45 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.129 — ‘SHIPPED’ IS THE SURFACE, NOT WIRING: MEASURED, DECIDED, AND THE RULER DID NOT SHIP (2026-10-01)
+
+**THE USER ASKED THE ONE QUESTION THE LEDGER CANNOT ANSWER: ARE THESE PROPERTIES ACTUALLY USED AS INTENDED? THE ANSWER
+IS NO FOR A MEASURABLE SUBSET, AND THE MEASUREMENT IS BELOW. THE INSTRUMENT BUILT TO SAY SO WAS REVERTED RATHER THAN
+SHIPPED, BECAUSE IT REPORTED ZERO.**
+
+**MEASURED (textual ruler over every Foundation `.h`/`.m`, corrected once mid-unit):**
+ * **`~91` property ivars are referenced ONLY from their own accessors** — stored, round-tripped, and consulted by
+   nothing — against **788** that something outside the accessors reads. Controls that prove the ruler separates the
+   tiers: `NSTimeZone._secondsFromGMT` (3 outside uses — it really does drive the offset arithmetic §63.123 calls) and
+   `NSURLComponents._host` (16 — it drives `-string`);
+ * **the list is not random, it is where the substrate cannot act**: `NSURLSessionTaskMetrics` (15 — byte counts
+   nothing measures), `NSURLRequest` (`allowsCellularAccess`, `HTTPShouldUsePipelining`, `HTTPShouldHandleCookies`),
+   `NSUserActivity` (6), `NSProgress` (`cancellable`, `pausable`, `paused`), `NSThread` (`cancelled`, `threadID`),
+   `NSTask` (`qualityOfService`), `NSConnection` (`requestTimeout`, `independentConversationQueueing`,
+   `multipleThreadsEnabled` — **landed earlier in this very session, §63.115**);
+ * **and the direct check on this session's newest addition: the six `NSURLSessionConfiguration` flags have EXACTLY TWO
+   OCCURRENCES EACH — getter and setter, and nothing else.**
+
+**⚠⚠ AND THE PART THAT IS ABOUT THIS SESSION'S OWN WORK: §63.127's `ask` FRAMING WAS TRUE ABOUT STORING AND FALSE
+ABOUT ANSWERING.** The class's header listed each of those rows with what would have to exist first and concluded
+*“left OPEN rather than adding more stored flags nothing reads”*. I quoted two clauses of that note and did not read
+the per-row list beneath them — which says `connectionProxyDictionary`'s ‘the transfer hands curl no proxy at all’
+and that three others are ‘iOS machinery this system does not have’. **The user therefore chose on a summary I had
+flattened, and then I edited the note to bless the result.** Apple's `allowsCellularAccess` gates a radio; this
+library's is a boolean a caller can set. *Honest as a value; not honest as behaviour.*
+
+**AND THE DECISION: BUILD THE DISTINCTION INTO THE INSTRUMENT, KEEP THE EIGHT, LABEL THEM.** The ruler was written —
+method-span based, because a line-based first attempt scored this tree's one-line accessors
+(`- (BOOL)x { return _x; }`) as real uses and undercounted by half — **AND IT REPORTED `carried: 0 of 1295`, WHICH IS
+FALSE, since the six flags above have two references each.** ⚠⚠ **IT WAS REVERTED, NOT SHIPPED: A RULER THAT REPORTS
+ZERO ASSERTS THE OPPOSITE OF THE TRUTH, WHICH IS WORSE THAN NO RULER AT ALL.** One debugging round on the ivar-declaration
+match is what it needs.
+
+**THE BLOCKER, NAMED EXACTLY: `carried_properties()` finds no declared ivar for any shipped property, so every one is
+classified ‘computed’ and the count comes out zero. The finding above was measured with a working throwaway script;
+the shipping instrument's `declared` regex does not match `\tBOOL _allowsUltraConstrainedNetworkAccess;` and that single
+expression is the whole of what is wrong.**
+
 ## §63.128 — THE OWED PROBE IS PAID, IN THE NEXT UNIT, AND IT TOOK ONE ROUND (2026-10-01)
 
 **§63.127 SAID ‘NO GUEST PROBE WAS RUN FOR THIS UNIT, AND A PROBE IS OWED’. THIS IS THAT PROBE.
