@@ -804,6 +804,20 @@ DECLINED_ROOTS = frozenset((
 
 # Free-standing rows that belong to a declined family without being owned by one of its roots.
 DECLINED_SYMBOLS = frozenset((
+    # ⚠⚠ §63.177 — APPLE'S AppKit CATEGORY ON A FOUNDATION CLASS, WHICH IS WHY THE CORPUS MADE IT AN NSSet ROW.
+    # `NSSet (NSCollectionViewAdditions)` DECLARES THE TWO CONSTRUCTORS BELOW, and Apple's own documentation
+    # FILES THEM UNDER foundation/nsset — so the corpus, which reads Apple's index, sees an NSSet member and
+    # the row is ours to answer for. It is AppKit's: the category is named for NSCollectionView, the type it
+    # builds is the one AppKit's item APIs take, and the independent Objective-C binding (`objc2-app-kit`)
+    # gates both methods behind its `NSCollectionView` FEATURE rather than its Foundation surface. THE GROUND
+    # IS POSITIVE AND CITED: https://developer.apple.com/documentation/foundation/nsset/init(collectionviewindexpath:)
+    #
+    # ⚠ ONE ROW OF THE SAME VOCABULARY IS *NOT* STRUCK HERE: -enumerateIndexPathsWithOptions:usingBlock: is
+    # reported by the corpus under NSSet with the same NSCollectionView vocabulary, but no positive evidence
+    # of its declaration has been found yet (its member page 404s like several others, and the binding's trait
+    # documents only the two constructors). IT STAYS OPEN, and that is the rule: a strike needs its ground.
+    "+setWithCollectionViewIndexPath:",
+    "+setWithCollectionViewIndexPaths:",
     # THE SYNCHRONISATION SURFACE (§62.102), declined by §48.1's recorded decision and NAMED rather than
     # lumped together: iCloud does not exist on this system and the plan has never proposed it, which is a
     # SCOPE ground (not deprecation - that ground was retired, and these names are not deprecated anyway).

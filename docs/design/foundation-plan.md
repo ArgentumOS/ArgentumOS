@@ -15962,6 +15962,51 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.177 — two NSSet rows are struck: AppKit's category on a Foundation class, with the ground cited
+
+`+setWithCollectionViewIndexPath:` and `+setWithCollectionViewIndexPaths:` leave the open list:
+`method open 209 → 207, struck 397 → 399`. No code changes — this is the work list being made HONEST, and
+it is the sort of row that is worth separating from the ones that are simply unimplemented.
+
+**THE GROUND IS POSITIVE AND CITED, WHICH IS THE ONLY KIND THIS FILE ACCEPTS.** Apple declares both in
+`NSSet (NSCollectionViewAdditions)` — an AppKit category on a Foundation class. The row reached our ledger
+because Apple's own documentation FILES them under `foundation/nsset` (the class page is
+`https://developer.apple.com/documentation/foundation/nsset/init(collectionviewindexpath:)`), and this
+tool reads Apple's index, so it saw an NSSet member. Three independent facts say the declaration is
+AppKit's: the category is named for `NSCollectionView`; the type it builds is the one AppKit's item APIs
+take; and the maintained Objective-C binding (`objc2-app-kit`) documents a trait
+`NSSetNSCollectionViewAdditions` whose methods are gated behind its **`NSCollectionView` feature** rather
+than behind its Foundation surface.
+
+**ONE ROW OF THE SAME VOCABULARY IS DELIBERATELY LEFT OPEN.** `-enumerateIndexPathsWithOptions:usingBlock:`
+is reported by the corpus under NSSet with the same CollectionView vocabulary, but no positive evidence of
+its declaration has been found: its member page 404s (as several members' do), and the binding's trait
+documents only the two constructors. IT STAYS OPEN, and that is the rule rather than a compromise — a
+strike needs its ground, and "it looks like AppKit" is not one. What would settle it: a page or a header
+naming its category, or the same kind of corroborating binding entry the other two have — recorded here so
+the next pass does not re-litigate it from memory.
+
+**THE MECHANISM, AND WHY IT IS NAME-KEYED.** The sweep declines either an OWNER (`DECLINED_ROOTS`) or a
+name (`DECLINED_SYMBOLS`), and its own comment warns what that means: a selector in the second set strikes
+every class's door that spells it — `"-initWithCoder:"` there would strike sixteen implemented coder doors.
+So only these two exact names enter, which is safe precisely because both exist only in this AppKit
+category. The reason prose sits beside them, in the same file, rather than in the ledger's one-word `why`.
+
+**AND THE MIS-SCOPING IS NOT A DUPLICATION:** both AppKit-side reference files were checked, and neither
+carries these names — the row was simply ours to answer for until now. Recorded so that a later AppKit
+surface pass (another agent's area) does not read their absence from AppKit's ledger as an omission.
+
+**A TRAP THE CHANGE ITSELF SPRANG.** The two names were inserted into the Python frozenset by a script that
+substituted a QUOTED selector, and it produced `"+"+setWithCollectionViewIndexPath:"` — one stray quote,
+which stopped the tool COMPILING. The ledger had already been flipped by then, so the change sat half
+applied while `--families` returned 1 for a reason that had nothing to do with the ledger. Repaired by an
+exact-line replacement, and the lesson is cheap and general: when a script edits a *tool's own source*,
+compile the tool (`python3 -m py_compile`) before believing its next run — the sweep is now in that loop.
+
+Acceptance: `tools/foundation-sweep.py --check` consistent on both ledgers (`method 1608/207/399`,
+`property 679/85/172`), `--families --write` rc=0, `--unimplemented` 0 NEW. NO GUEST GATE: nothing in the
+runtime changed, and this project's rule is to run gates a change can affect.
+
 ## §63.176 — NSDateComponents: the unit-addressable pair, the two references, and the two validation answers
 
 Eleven rows leave the work list — four methods and seven properties — and the selector ledger moves with

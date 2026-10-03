@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1608	open	209	struck	397
+# method	shipped	1608	open	207	struck	399
 # property	shipped	679	open	85	struck	172
 
 
@@ -2171,8 +2171,8 @@ method	shipped	-setByAddingObjectsFromArray:	NSSet	Fundamentals / Basic Collecti
 method	shipped	-setByAddingObjectsFromSet:	NSSet	Fundamentals / Basic Collections / Creating a Set	-	objc
 method	shipped	-setValue:forKey:	NSSet	Fundamentals / Basic Collections / Comparing Sets	-	objc
 method	shipped	+setWithArray:	NSSet	Fundamentals / Basic Collections / Creating a Set	-	objc
-method	open	+setWithCollectionViewIndexPath:	NSSet	Fundamentals / Basic Collections / Type Methods	-	objc
-method	open	+setWithCollectionViewIndexPaths:	NSSet	Fundamentals / Basic Collections / Type Methods	-	objc
+method	struck	+setWithCollectionViewIndexPath:	NSSet	Fundamentals / Basic Collections / Type Methods	declined	objc
+method	struck	+setWithCollectionViewIndexPaths:	NSSet	Fundamentals / Basic Collections / Type Methods	declined	objc
 method	shipped	+setWithObject:	NSSet	Fundamentals / Basic Collections / Creating a Set	-	objc
 method	shipped	+setWithObjects:	NSSet	Fundamentals / Basic Collections / Creating a Set	-	objc
 method	shipped	+setWithObjects:count:	NSSet	Fundamentals / Basic Collections / Creating a Set	-	objc
