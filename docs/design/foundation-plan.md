@@ -15969,6 +15969,34 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.152 — TWO HYPOTHESES DISPROVEN BY BYTE-IDENTICAL CRASHES, WHICH POINTS AT A STALE ARTEFACT (2026-10-01)
+
+**⚠⚠ THREE ENGINE VARIANTS, ONE CRASH, AND THE ADDRESSES ARE IDENTICAL EVERY TIME.** §63.150 ran the engine as designed.
+§63.151 added a SECOND RETAIN in `-start` for the protocol's-client lifetime. §63.152 replaced the teardown's plain
+`release` of the protocol with an `autorelease`, so that a transfer finishing INSIDE `-startLoading` is not freed while
+its own frame is on the stack. **ALL THREE CRASH AT `rip = 0x00004000005cfacc`, WITH THE SAME REGISTER DUMP
+(`r14: 0x0000400002f08a98  r15: 0x0000400002ee6000`), IMMEDIATELY AFTER THE SAME CHECK (`original-and-current-request
+ok`).**
+
+***MY CHANGES ARE NOT REACHING THE FAULTING INSTRUCTION — WHICH IS WHY THE ADDRESSES DO NOT MOVE. A RETAIN COUNT AND A
+RELEASE STRATEGY ARE DIFFERENT PROGRAMS; IDENTICAL `rip` ACROSS BOTH MEANS THE BINARY THAT RAN IS NOT THE ONE I BUILT.***
+
+**AND THIS TREE HAS RECORDED THIS TRAP TWICE, WHICH IS WHY IT IS THE FIRST THING TO CHECK RATHER THAN THE LAST:**
+ * **‘`make rootagfs` DOES NOT REBUILD USERLAND APPS ON A HEADER CHANGE’** — the WM's chrome drew white until consumers
+   were touched;
+ * **‘a missing `.o` IS NOT EVIDENCE ABOUT THE SOURCE LIST’** — the library build stops at the FIRST failing object.
+***THE THIRD FORM HERE IS THE SAME FAMILY: `make testimg` EXIT 0 IS NOT EVIDENCE THAT THE PROBE INSIDE THE IMAGE IS THE
+ONE THAT WAS JUST BUILT.*** The `foundation_urlconnection` probe is built for the GUEST by `mk/20-userland.mk`, and its
+`.o` was NOT regenerated when the library it links against changed — which would run the OLD probe against the NEW
+library, or the reverse.
+
+**THE DIAGNOSTIC, AND IT IS ONE COMMAND: TOUCH THE PROBE, REBUILD, AND SEE WHETHER THE `rip` MOVES.** *If it moves, the
+engine was never the problem — the probe's previous build was, and every conclusion drawn from those three runs about
+the engine's teardown is void. If it does not move, the instrumentation goes on `-dealloc` next.*
+
+**REVERTED AND GREEN: build EXIT 0 at the standing SIX warnings, `make testimg` EXIT 0, `--check` consistent.**
+§63.149's retirement stands.
+
 ## §63.151 — THE CRASH, TRACED: A #GP RIGHT AFTER ONE CHECK, AND MY FIRST HYPOTHESIS DISPROVEN BY MEASUREMENT (2026-10-01)
 
 **THE CRASH IS A GENERAL PROTECTION FAULT, AND THE RAW LOG GIVES ITS CONTEXT RATHER THAN ITS ADDRESSES:**
