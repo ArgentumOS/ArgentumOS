@@ -15969,6 +15969,30 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.150 — THE RETIREMENT IS LANDED AND THE ENGINE CRASHES ON ONE CHECK: A FAULT IN ITS OWN TEARDOWN (2026-10-01)
+
+**LANDED AND GREEN: §63.149's STATEMENT-LEVEL RETIREMENT, COMMITTED ON ITS OWN.** *Seventeen checks removed, the probe
+compiles, and under the OLD engine it read `FOUNDATION-URLCONNECTION ok=13 fail=0`, `TESTS-OK 1/1 case(s), 6/6 check(s)
+in 12s`.* **BANKING IT SEPARATELY WAS THE POINT: the retirement is green on both sides of the engine swap, so the swap
+could be judged on its own.**
+
+**AND THE SWAP WAS RE-APPLIED AND IS GREEN EVERYWHERE EXCEPT ONE PLACE. `make host-foundation` EXIT 0 at the standing SIX
+warnings; `make testimg` EXIT 0; and FIVE OF THE SIX URL CASES PASS — `FOUNDATION-URL ok=43`, `FOUNDATION-URLERROR
+ok=12`, `FOUNDATION-URLCACHE ok=15`, `FOUNDATION-HTTPCOOKIESTORAGE ok=17`, `FOUNDATION-CREDENTIALSTORAGE ok=14`, all
+`fail=0`.**
+
+**⚠⚠ AND `foundation_urlconnection` NOW CRASHES — NOT A FAILING CHECK BUT A FAULT: THE PROBE NEVER PRINTED `DONE`, AND ITS
+OUTPUT TAIL IS A REGISTER DUMP (`r14: 0x0000400002f08a98  r15: 0x0000400002ee6000`). *A CRASH IN THE ENGINE, AND THE
+SHAPE POINTS AT ITS TEARDOWN RATHER THAN AT A DOOR: the last run before this one — the same engine, the same probe with
+thirty checks — DID reach `DONE` with `ok=30 fail=0`, so what changed is only WHICH checks run, and the checks removed
+since were the ones that exercised the redirect and the endings.*** ‘`fnFinishWithError:`’ IS WHERE TO LOOK: it takes a
+retain and releases twice, and `-cancel` now calls the ending itself AS WELL AS `-stopLoading`, so a transport that
+reports afterwards can arrive at a finishing connection with `_protocol` already released. **THE OVER-RELEASE IS THE
+FIRST HYPOTHESIS AND IT IS TESTABLE IN ONE RUN.**
+
+**REVERTED, BECAUSE A CRASHING ENGINE IS NOT A STATE TO LEAVE THE TREE IN: build EXIT 0 at the standing SIX warnings,
+`make testimg` EXIT 0, `--check` consistent. §63.149's retirement is landed; §63.145's engine is one teardown fix away.**
+
 ## §63.148 — THE SESSION-FREE ENGINE WORKS: 30/30 AND FIVE OF SIX URL CASES GREEN (2026-10-01)
 
 **THE REWRITE IS PROVEN. With the engine applied and the probe's session-era doors retired, the guest ran and every URL
