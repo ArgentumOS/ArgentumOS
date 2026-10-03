@@ -15962,6 +15962,65 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.175 — NSIndexSet/NSMutableIndexSet: the test scan, the index enumerators, the set relations and the mutable group operations
+
+Fourteen rows leave the work list — eleven on `NSIndexSet` and three on `NSMutableIndexSet` — and the
+selector ledger moves with them: `method shipped 1590 → 1604`, `open 227 → 213`. This is the first unit
+of the resumed implementation campaign, and it was picked because it is pure Foundation: no deprecated
+member, and none of the foreign vocabulary that NSSet's three `…CollectionViewIndexPath:` rows turn out
+to be (those are AppKit's category on NSSet and belong on a decline list, not in an implementation).
+
+**ONE ARITHMETIC UNDER FOUR NEW DOORS.** Every new query is the range primitive this class already had
+(the sorted, merged range list, walked through `-fnEnumerateRanges:reverse:usingBlock:` with a clip):
+`-enumerateIndexesInRange:options:usingBlock:` is that walk one index at a time, its options-free
+sibling is the whole set, and the index and the index-set scans are the same walk collecting one answer
+or many. NSEnumerationReverse is honoured; NSEnumerationConcurrent stays the hint the header already
+says this library ignores. The predicate's out-parameter IS the scan's stop, so a caller that stops
+early and one that runs to the end differ only in how many times the walk asks —
+`-indexPassingTest:` and `-indexesPassingTest:` are the options-0 forms of their options-taking
+siblings rather than separate algorithms. `-containsIndexes:` asks `-countOfIndexesInRange:` once per
+range of the argument (vacuously YES for an empty set), and `-intersectsIndexesInRange:` asks the same
+count for its sign.
+
+**A FROZEN ANSWER NEEDS BUILDING, NOT COPYING.** `-copy` on this family is a retain — an immutable set
+needs no copy — so the collecting doors cannot answer with the mutable set they accumulated into.
+`-initWithIndexSet:` is the door that produces a genuinely immutable set, and it is now used for that:
+the probe asserts the collected result `isKindOfClass:[NSIndexSet class]` and **not** of the mutable
+class, which is a property nothing else in the tree would have caught.
+
+**THE MUTABLE THREE.** `-addIndexes:` appends the other set's ranges and normalises ONCE (an alias is a
+no-op: walking a buffer while appending to it is the one thing this must not do), `-removeIndexes:`
+walks the argument through the range form that rebuilds storage rather than editing it, and
+`-shiftIndexesStartingAtIndex:by:` is a rebuild plus a normalise — a range that straddles the start is
+cut in two, the lower part staying, and a DOWNWARD shift merges with the indexes it lands on instead of
+double-counting them. Its one error case is decided by measurement: NSRangeException is raised when an
+index that would ACTUALLY MOVE lands below zero, so a start below every index and an empty set are both
+fine, and the probe asserts both directions.
+
+**THE INSTRUMENT DID THE ACCEPTING.** The probe's `excluded[]` list is this library's refusal ledger, and
+four of its names (`-addIndexes:`, `-removeIndexes:`, `-containsIndexes:`, `-shiftIndexesStartingAtIndex:by:`)
+were work this library had not done rather than refusals it believed in — so the unit moves them out of
+that list and into the required inventory, where the same probe now demands them. Two behavioural checks
+were added beside the inventory (`indexset-test-and-collect`, `indexset-mutable-groups`): the probe's own
+tally went 63 → 65.
+
+**THREE TRAPS, ALL MEASURED.** (1) `tools/foundation-sweep.py --refresh` is NOT how a row flips after
+implementing: it regenerated the selector ledger from the UNFILTERED corpus — 3,150 rows to 4,564, open
+319 to 1,227 — destroying the era filter this campaign depends on. It was reverted whole
+(`git checkout --` on both ledgers) and the fourteen rows were flipped by hand, with the counts block
+recomputed from the file's own rows; `--check` is the verifier, and it now reads consistent. (2) The
+sweep's own messages are load-bearing in both directions: `PRESENT BUT LISTED OPEN … flip the row` named
+what to flip, and `STALE SHIPPED CLAIM` caught a REAL omission — `-initWithIndexSet:` was implemented
+without being declared, and the gate checks declarations in both directions, so the build stayed shut
+until the header said so. (3) My own expectation was wrong once, and the check's own count is what
+proved it: a downward shift that lands on the indexes below the start leaves 30..31, NOT 30..33, and
+`count == 4` is the assertion that says the merge did not double-count. The detail string now carries
+the values, because a failing check that prints no numbers is a second bug.
+
+Acceptance: `make testimg` green; `make test TESTS=foundation_collection` → 1/1 case, 6/6 case checks,
+probe 65/65; `tools/foundation-sweep.py --check` consistent (symbol ledger untouched, selector ledger
+`1604/213`); `--unimplemented` 0 NEW.
+
 ## §63.174 — the NSURLComponents/NSURLQueryItem family is re-homed, not cut (private FNURLComponents)
 
 The 10.9 components family leaves the public surface and its machinery stays, under a private name.

@@ -40,6 +40,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (id)initWithIndex:(NSUInteger)value;
 - (id)initWithIndexesInRange:(NSRange)range;
+- (id)initWithIndexSet:(NSIndexSet *)other;
 
 - (BOOL)containsIndex:(NSUInteger)value;
 - (BOOL)containsIndexesInRange:(NSRange)range;
@@ -90,6 +91,38 @@ typedef enum {
 - (void)enumerateRangesInRange:(NSRange)range
 		       options:(NSEnumerationOptions)options
 		    usingBlock:(void (^)(NSRange range, BOOL *stop))block;
+
+/* THE TEST SCAN, THE INDEX ENUMERATORS AND THE SET RELATIONS (D7). One arithmetic under them all: a
+ * clip over the range list, walked ascending or descending. NSEnumerationReverse is honoured; the
+ * Concurrent bit is the hint the header above says this library ignores, so a scan is always serial
+ * and synchronous.
+ *
+ * THE PREDICATE'S TWO ARGUMENTS ARE BOTH ANSWERS: its return value says "this index passes", and it
+ * may write YES through `stop` to END THE SCAN - which is why a scan that stops early and one that
+ * runs to the end are the same walk with the same out-parameter. `-indexPassingTest:` and
+ * `-indexesPassingTest:` are the options-0 forms of the two doors below, not separate algorithms. */
+- (BOOL)containsIndexes:(NSIndexSet *)other;
+- (BOOL)intersectsIndexesInRange:(NSRange)range;
+
+- (NSUInteger)indexPassingTest:(BOOL (^)(NSUInteger index, BOOL *stop))predicate;
+- (NSUInteger)indexWithOptions:(NSEnumerationOptions)options
+		   passingTest:(BOOL (^)(NSUInteger index, BOOL *stop))predicate;
+- (NSUInteger)indexInRange:(NSRange)range
+		   options:(NSEnumerationOptions)options
+	       passingTest:(BOOL (^)(NSUInteger index, BOOL *stop))predicate;
+
+- (NSIndexSet *)indexesPassingTest:(BOOL (^)(NSUInteger index, BOOL *stop))predicate;
+- (NSIndexSet *)indexesWithOptions:(NSEnumerationOptions)options
+		       passingTest:(BOOL (^)(NSUInteger index, BOOL *stop))predicate;
+- (NSIndexSet *)indexesInRange:(NSRange)range
+		       options:(NSEnumerationOptions)options
+		   passingTest:(BOOL (^)(NSUInteger index, BOOL *stop))predicate;
+
+- (void)enumerateIndexesWithOptions:(NSEnumerationOptions)options
+			 usingBlock:(void (^)(NSUInteger index, BOOL *stop))block;
+- (void)enumerateIndexesInRange:(NSRange)range
+			options:(NSEnumerationOptions)options
+		     usingBlock:(void (^)(NSUInteger index, BOOL *stop))block;
 @end
 
 @interface NSMutableIndexSet : NSIndexSet
@@ -102,8 +135,20 @@ typedef enum {
 - (void)removeIndexesInRange:(NSRange)range;
 - (void)removeAllIndexes;
 
-NS_ASSUME_NONNULL_END
+/* THE GROUP OPERATIONS (§63.175). -removeIndexes: takes the receiver's own indexes back out; the two
+ * incoming sets are walked as RANGES, so a set built from one wide range costs one step. */
+- (void)addIndexes:(NSIndexSet *)indexSet;
+- (void)removeIndexes:(NSIndexSet *)indexSet;
+
+/* SHIFTING IS AN INDEX-SET OPERATION, not a bit shift: every index at or after `startIndex` moves by
+ * `delta`, indexes below it stay put, and a NEGATIVE delta may move an index down onto one the set
+ * already holds - where the canonical order merges them, which is why this is a rebuild and a
+ * normalise rather than a memmove. An index that would move below zero is an NSRangeException, as
+ * Apple's page says, rather than being clamped to 0. */
+- (void)shiftIndexesStartingAtIndex:(NSUInteger)startIndex by:(NSInteger)delta;
 
 @end
+
+NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSINDEXSET_H */

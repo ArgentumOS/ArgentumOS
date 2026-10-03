@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1590	open	227	struck	397
+# method	shipped	1604	open	213	struck	397
 # property	shipped	672	open	92	struck	172
 
 
@@ -1225,33 +1225,33 @@ property	shipped	length	NSIndexPath	Fundamentals / Indexes / Counting Nodes	-	ob
 property	open	row	NSIndexPath	Fundamentals / Indexes / Using Special Node Names	-	objc
 property	open	section	NSIndexPath	Fundamentals / Indexes / Using Special Node Names	-	objc
 method	shipped	-containsIndex:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
-method	open	-containsIndexes:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
+method	shipped	-containsIndexes:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
 method	shipped	-containsIndexesInRange:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
 method	shipped	-countOfIndexesInRange:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
-method	open	-enumerateIndexesInRange:options:usingBlock:	NSIndexSet	Fundamentals / Indexes / Enumerating Indexes	-	objc
+method	shipped	-enumerateIndexesInRange:options:usingBlock:	NSIndexSet	Fundamentals / Indexes / Enumerating Indexes	-	objc
 method	shipped	-enumerateIndexesUsingBlock:	NSIndexSet	Fundamentals / Indexes / Enumerating Indexes	-	objc
-method	open	-enumerateIndexesWithOptions:usingBlock:	NSIndexSet	Fundamentals / Indexes / Enumerating Indexes	-	objc
+method	shipped	-enumerateIndexesWithOptions:usingBlock:	NSIndexSet	Fundamentals / Indexes / Enumerating Indexes	-	objc
 method	shipped	-enumerateRangesInRange:options:usingBlock:	NSIndexSet	Fundamentals / Indexes / Enumerating Index Set Content	-	objc
 method	shipped	-enumerateRangesUsingBlock:	NSIndexSet	Fundamentals / Indexes / Enumerating Index Set Content	-	objc
 method	shipped	-enumerateRangesWithOptions:usingBlock:	NSIndexSet	Fundamentals / Indexes / Enumerating Index Set Content	-	objc
 method	shipped	-getIndexes:maxCount:inIndexRange:	NSIndexSet	Fundamentals / Indexes / Getting Indexes	-	objc
 method	shipped	-indexGreaterThanIndex:	NSIndexSet	Fundamentals / Indexes / Getting Indexes	-	objc
 method	shipped	-indexGreaterThanOrEqualToIndex:	NSIndexSet	Fundamentals / Indexes / Getting Indexes	-	objc
-method	open	-indexInRange:options:passingTest:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
+method	shipped	-indexInRange:options:passingTest:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
 method	shipped	-indexLessThanIndex:	NSIndexSet	Fundamentals / Indexes / Getting Indexes	-	objc
 method	shipped	-indexLessThanOrEqualToIndex:	NSIndexSet	Fundamentals / Indexes / Getting Indexes	-	objc
-method	open	-indexPassingTest:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
+method	shipped	-indexPassingTest:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
 method	shipped	+indexSet	NSIndexSet	Fundamentals / Indexes / Creating Index Sets	-	objc
 method	shipped	+indexSetWithIndex:	NSIndexSet	Fundamentals / Indexes / Creating Index Sets	-	objc
 method	shipped	+indexSetWithIndexesInRange:	NSIndexSet	Fundamentals / Indexes / Creating Index Sets	-	objc
-method	open	-indexWithOptions:passingTest:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
-method	open	-indexesInRange:options:passingTest:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
-method	open	-indexesPassingTest:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
-method	open	-indexesWithOptions:passingTest:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
+method	shipped	-indexWithOptions:passingTest:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
+method	shipped	-indexesInRange:options:passingTest:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
+method	shipped	-indexesPassingTest:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
+method	shipped	-indexesWithOptions:passingTest:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
 method	shipped	-initWithIndex:	NSIndexSet	Fundamentals / Indexes / Creating Index Sets	-	objc
-method	open	-initWithIndexSet:	NSIndexSet	Fundamentals / Indexes / Creating Index Sets	-	objc
+method	shipped	-initWithIndexSet:	NSIndexSet	Fundamentals / Indexes / Creating Index Sets	-	objc
 method	shipped	-initWithIndexesInRange:	NSIndexSet	Fundamentals / Indexes / Creating Index Sets	-	objc
-method	open	-intersectsIndexesInRange:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
+method	shipped	-intersectsIndexesInRange:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
 method	shipped	-isEqualToIndexSet:	NSIndexSet	Fundamentals / Indexes / Comparing Index Sets	-	objc
 property	shipped	count	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
 property	shipped	firstIndex	NSIndexSet	Fundamentals / Indexes / Getting Indexes	-	objc
@@ -1621,13 +1621,13 @@ method	shipped	-setObject:forKeyedSubscript:	NSMutableDictionary	Fundamentals / 
 method	shipped	-setValue:forKey:	NSMutableDictionary	Fundamentals / Basic Collections / Adding Entries to a Mutable Dictionary	-	objc
 method	struck	+withOBEXHeadersData:headersDataSize:	NSMutableDictionary	Fundamentals / Basic Collections / Type Methods	declined	objc
 method	shipped	-addIndex:	NSMutableIndexSet	Fundamentals / Indexes / Adding Indexes	-	objc
-method	open	-addIndexes:	NSMutableIndexSet	Fundamentals / Indexes / Adding Indexes	-	objc
+method	shipped	-addIndexes:	NSMutableIndexSet	Fundamentals / Indexes / Adding Indexes	-	objc
 method	shipped	-addIndexesInRange:	NSMutableIndexSet	Fundamentals / Indexes / Adding Indexes	-	objc
 method	shipped	-removeAllIndexes	NSMutableIndexSet	Fundamentals / Indexes / Removing Indexes	-	objc
 method	shipped	-removeIndex:	NSMutableIndexSet	Fundamentals / Indexes / Removing Indexes	-	objc
-method	open	-removeIndexes:	NSMutableIndexSet	Fundamentals / Indexes / Removing Indexes	-	objc
+method	shipped	-removeIndexes:	NSMutableIndexSet	Fundamentals / Indexes / Removing Indexes	-	objc
 method	shipped	-removeIndexesInRange:	NSMutableIndexSet	Fundamentals / Indexes / Removing Indexes	-	objc
-method	open	-shiftIndexesStartingAtIndex:by:	NSMutableIndexSet	Fundamentals / Indexes / Shifting Index Groups	-	objc
+method	shipped	-shiftIndexesStartingAtIndex:by:	NSMutableIndexSet	Fundamentals / Indexes / Shifting Index Groups	-	objc
 method	shipped	-addObject:	NSMutableSet	Fundamentals / Basic Collections / Adding and removing entries	-	objc
 method	shipped	-addObjectsFromArray:	NSMutableSet	Fundamentals / Basic Collections / Adding and removing entries	-	objc
 method	shipped	-init	NSMutableSet	Fundamentals / Basic Collections / Creating a mutable set	-	objc

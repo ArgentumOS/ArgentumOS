@@ -10,6 +10,7 @@
 
 #import <Foundation/NSIndexSet.h>
 #import <Foundation/NSString.h>
+#import <Foundation/NSException.h>
 #include <stdlib.h>
 
 /* ===================================================================================================
@@ -157,6 +158,23 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 	return self;
 }
 
+- (id)initWithIndexSet:(NSIndexSet *)other
+{
+	self = [super init];
+	if (self == nil) {
+		return nil;
+	}
+	/* THE OTHER SET'S OWN RANGES ARE ALREADY CANONICAL (sorted, merged), so appending them in order
+	 * leaves this set canonical too and no normalise is needed. */
+	if (other != nil) {
+		[other enumerateRangesUsingBlock:^(NSRange mine, BOOL *stop) {
+			fn_append(self, mine.location, mine.length);
+			(void)stop;
+		}];
+	}
+	return self;
+}
+
 - (void)dealloc
 {
 	free(_ranges);
@@ -184,6 +202,31 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 		}
 	}];
 	return found;
+}
+
+/* ALL OF THE OTHER SET, decided range by range: every one of other's ranges must be FULLY covered by
+ * this set, and `-countOfIndexesInRange:` is the question asked once per range. An empty argument is
+ * vacuously contained, which is what "all of its indexes" means. */
+- (BOOL)containsIndexes:(NSIndexSet *)other
+{
+	__block BOOL all = YES;
+
+	if (other == nil) {
+		return NO;
+	}
+	[other enumerateRangesUsingBlock:^(NSRange mine, BOOL *stop) {
+		if ((unsigned long)[self countOfIndexesInRange:mine] != (unsigned long)mine.length) {
+			all = NO;
+			*stop = YES;
+		}
+	}];
+	return all;
+}
+
+/* ANY index in the range at all - the same count, asked for its sign rather than its value. */
+- (BOOL)intersectsIndexesInRange:(NSRange)range
+{
+	return [self countOfIndexesInRange:range] > 0;
 }
 
 - (NSUInteger)count
@@ -267,6 +310,137 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 			block(mine.location + k, stop);
 		}
 	}];
+}
+
+/*
+ * THE TEST SCAN AND THE INDEX ENUMERATORS. All of them are the range primitive (§C.3 item 5) with a
+ * clip, walked ascending or descending - the arithmetic the range enumerators above already use, and
+ * the reason the options are read in exactly one place per door.
+ *
+ * THE PREDICATE'S OUT-PARAMETER IS THE SCAN'S STOP, which is why the loops below test it rather than
+ * keeping a flag of their own: a caller that stops early and one that runs to the end differ only in
+ * how many times the walk asks.
+ */
+- (void)enumerateIndexesInRange:(NSRange)range
+			options:(NSEnumerationOptions)options
+		     usingBlock:(void (^)(NSUInteger index, BOOL *stop))block
+{
+	BOOL reverse = (options & NSEnumerationReverse) != 0;
+	NSRange clip = range;
+
+	if (block == nil) {
+		return;
+	}
+	[self fnEnumerateRanges:&clip reverse:reverse usingBlock:^(NSRange mine, BOOL *stop) {
+		NSUInteger k;
+
+		for (k = 0; k < mine.length && !*stop; k++) {
+			NSUInteger index = reverse ? (mine.location + mine.length - 1 - k)
+						   : (mine.location + k);
+
+			block(index, stop);
+		}
+	}];
+}
+
+- (void)enumerateIndexesWithOptions:(NSEnumerationOptions)options
+			 usingBlock:(void (^)(NSUInteger index, BOOL *stop))block
+{
+	[self enumerateIndexesInRange:NSMakeRange(0, NSUIntegerMax) options:options usingBlock:block];
+}
+
+/* THE FIRST (or, reversed, the LAST) INDEX THE PREDICATE ACCEPTS - NSNotFound when there is none, which
+ * is the same sentinel -firstIndex answers for an empty set. The predicate's own `stop` ends the scan
+ * exactly as a match does: both mean "no further index can change this answer". */
+- (NSUInteger)indexInRange:(NSRange)range
+		   options:(NSEnumerationOptions)options
+	       passingTest:(BOOL (^)(NSUInteger index, BOOL *stop))predicate
+{
+	__block NSUInteger found = NSNotFound;
+	BOOL reverse = (options & NSEnumerationReverse) != 0;
+	NSRange clip = range;
+
+	if (predicate == nil) {
+		return NSNotFound;
+	}
+	[self fnEnumerateRanges:&clip reverse:reverse usingBlock:^(NSRange mine, BOOL *stop) {
+		NSUInteger k;
+
+		for (k = 0; k < mine.length; k++) {
+			NSUInteger index = reverse ? (mine.location + mine.length - 1 - k)
+						   : (mine.location + k);
+			BOOL stopHere = NO;
+
+			if (predicate(index, &stopHere)) {
+				found = index;
+				*stop = YES;
+				break;
+			}
+			if (stopHere) {
+				*stop = YES;
+				break;
+			}
+		}
+	}];
+	return found;
+}
+
+- (NSUInteger)indexWithOptions:(NSEnumerationOptions)options
+		   passingTest:(BOOL (^)(NSUInteger index, BOOL *stop))predicate
+{
+	return [self indexInRange:NSMakeRange(0, NSUIntegerMax) options:options passingTest:predicate];
+}
+
+- (NSUInteger)indexPassingTest:(BOOL (^)(NSUInteger index, BOOL *stop))predicate
+{
+	return [self indexInRange:NSMakeRange(0, NSUIntegerMax) options:0 passingTest:predicate];
+}
+
+/* THE SAME SCAN, COLLECTED: a mutable set accumulates while the walk runs, and the ANSWER IS AN
+ * IMMUTABLE COPY - -copy on this family is a retain (an immutable needs no copy), so a genuinely
+ * frozen result has to be built through -initWithIndexSet: rather than asked for. */
+- (NSIndexSet *)indexesInRange:(NSRange)range
+		       options:(NSEnumerationOptions)options
+		   passingTest:(BOOL (^)(NSUInteger index, BOOL *stop))predicate
+{
+	NSMutableIndexSet *picked = [[NSMutableIndexSet alloc] init];
+	NSIndexSet *answer;
+	BOOL reverse = (options & NSEnumerationReverse) != 0;
+	NSRange clip = range;
+
+	if (predicate != nil) {
+		[self fnEnumerateRanges:&clip reverse:reverse usingBlock:^(NSRange mine, BOOL *stop) {
+			NSUInteger k;
+
+			for (k = 0; k < mine.length; k++) {
+				NSUInteger index = reverse ? (mine.location + mine.length - 1 - k)
+							   : (mine.location + k);
+				BOOL stopHere = NO;
+
+				if (predicate(index, &stopHere)) {
+					[picked addIndex:index];
+				}
+				if (stopHere) {
+					*stop = YES;
+					break;
+				}
+			}
+		}];
+	}
+	answer = [[NSIndexSet alloc] initWithIndexSet:picked];
+	[picked release];
+	return [answer autorelease];
+}
+
+- (NSIndexSet *)indexesWithOptions:(NSEnumerationOptions)options
+		       passingTest:(BOOL (^)(NSUInteger index, BOOL *stop))predicate
+{
+	return [self indexesInRange:NSMakeRange(0, NSUIntegerMax) options:options passingTest:predicate];
+}
+
+- (NSIndexSet *)indexesPassingTest:(BOOL (^)(NSUInteger index, BOOL *stop))predicate
+{
+	return [self indexesInRange:NSMakeRange(0, NSUIntegerMax) options:0 passingTest:predicate];
 }
 
 - (BOOL)isEqualToIndexSet:(NSIndexSet *)other
@@ -587,6 +761,93 @@ static void fn_append(NSIndexSet *set, unsigned long location, unsigned long len
 	_ranges = NULL;
 	_rangeCount = 0;
 	_capacity = 0;
+}
+
+/* THE OTHER SET'S RANGES ARE APPENDED AND NORMALISED ONCE, rather than one -addIndexesInRange: call
+ * each (which would normalise per range). An alias is a no-op: [m addIndexes:m] asks for what m already
+ * holds, and walking the buffer while appending to it is the one thing this form must not do. */
+- (void)addIndexes:(NSIndexSet *)indexSet
+{
+	__block BOOL appended = NO;
+
+	if (indexSet == nil || indexSet == self) {
+		return;
+	}
+	[indexSet enumerateRangesUsingBlock:^(NSRange mine, BOOL *stop) {
+		fn_append(self, mine.location, mine.length);
+		appended = YES;
+		(void)stop;
+	}];
+	if (appended) {
+		fn_normalise(self);
+	}
+}
+
+/* EACH OF THE OTHER SET'S RANGES COMES OUT, through the range form below - which rebuilds the storage
+ * rather than editing it, so the walk over `indexSet` never sees a buffer this method is freeing. */
+- (void)removeIndexes:(NSIndexSet *)indexSet
+{
+	if (indexSet == nil) {
+		return;
+	}
+	if (indexSet == self) {
+		[self removeAllIndexes];
+		return;
+	}
+	[indexSet enumerateRangesUsingBlock:^(NSRange mine, BOOL *stop) {
+		[self removeIndexesInRange:mine];
+		(void)stop;
+	}];
+}
+
+/* THE SHIFT. Every index at or after `startIndex` moves by `delta`; a range that STRADDLES startIndex is
+ * cut in two, the lower part staying where it is. The rebuilt list is normalised, which is what makes a
+ * downward shift merge with the indexes it lands on instead of double-counting them. Apple's one error
+ * case is honoured rather than clamped: an index that would land below zero is an NSRangeException. */
+- (void)shiftIndexesStartingAtIndex:(NSUInteger)startIndex by:(NSInteger)delta
+{
+	NSMutableIndexSet *shifted;
+	unsigned long i;
+
+	if (delta == 0) {
+		return;
+	}
+	if (delta < 0) {
+		/* THE FIRST INDEX THAT WOULD ACTUALLY MOVE IS WHAT DECIDES THIS: a start below every index is
+		 * not an error (nothing moves), and an empty set cannot place anything below zero. */
+		NSUInteger first = [self indexGreaterThanOrEqualToIndex:startIndex];
+
+		if (first != NSNotFound && (NSInteger)first + delta < 0) {
+			[NSException raise:NSRangeException
+				    format:@"*** -[NSMutableIndexSet shiftIndexesStartingAtIndex:by:]: "
+					   @"shift of %ld from %lu would place index %lu below zero",
+					   (long)delta, (unsigned long)startIndex, (unsigned long)first];
+		}
+	}
+	shifted = [[NSMutableIndexSet alloc] init];
+	for (i = 0; i < _rangeCount; i++) {
+		unsigned long location = _ranges[i * 2];
+		unsigned long length = _ranges[i * 2 + 1];
+		unsigned long end = location + length;
+
+		if (end <= startIndex) {
+			fn_append(shifted, location, length);
+		} else if (location >= startIndex) {
+			fn_append(shifted, (unsigned long)((NSInteger)location + delta), length);
+		} else {
+			fn_append(shifted, location, startIndex - location);
+			fn_append(shifted, (unsigned long)((NSInteger)startIndex + delta),
+				  end - startIndex);
+		}
+	}
+	fn_normalise(shifted);
+	free(_ranges);
+	_ranges = shifted->_ranges;
+	_rangeCount = shifted->_rangeCount;
+	_capacity = shifted->_capacity;
+	shifted->_ranges = NULL;
+	shifted->_rangeCount = 0;
+	shifted->_capacity = 0;
 }
 
 @end

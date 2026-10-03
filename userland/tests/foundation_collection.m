@@ -676,11 +676,19 @@ int main(void)
 			"getIndexes:maxCount:inIndexRange:",
 			"enumerateRangesUsingBlock:", "enumerateRangesWithOptions:usingBlock:",
 			"enumerateRangesInRange:options:usingBlock:",
+			"initWithIndexSet:", "containsIndexes:", "intersectsIndexesInRange:",
+			"indexPassingTest:", "indexWithOptions:passingTest:",
+			"indexInRange:options:passingTest:",
+			"indexesPassingTest:", "indexesWithOptions:passingTest:",
+			"indexesInRange:options:passingTest:",
+			"enumerateIndexesWithOptions:usingBlock:",
+			"enumerateIndexesInRange:options:usingBlock:",
 NULL
 		};
 		static const char *mutableSelectors[] = {
 			"addIndex:", "addIndexesInRange:", "removeIndex:",
-			"removeIndexesInRange:", "removeAllIndexes", NULL
+			"removeIndexesInRange:", "removeAllIndexes",
+			"addIndexes:", "removeIndexes:", "shiftIndexesStartingAtIndex:by:", NULL
 		};
 		static const char *excluded[] = {
 			/* The range- and buffer-based queries: a caller walks the set with
@@ -694,8 +702,11 @@ NULL
 			 * and -indexInRange:options:passingTest: — so they are REMOVED rather than left
 			 * standing as a claim this probe could never honour. A REFUSAL THAT TURNS OUT TO BE
 			 * CORRECT IS NOT THE PART THAT WAS WRONG; THE CLAIM WAS. */
-			"shiftIndexesStartingAtIndex:by:",
-			"addIndexes:", "removeIndexes:", "containsIndexes:",
+			/* FOUR MORE LEFT THIS LIST IN §63.175, in the other direction from §23's four: these
+			 * names were never a refusal this library believed in — they were work — and the doors
+			 * now exist and are DEMANDED above. A name belongs in this list only while its absence is
+			 * the answer; an excluded name that becomes a selector would fail the check below, which
+			 * is what makes moving one a deliberate act rather than a silent one. */
 			NULL
 		};
 		NSIndexSet *probe = [NSIndexSet indexSetWithIndex:1];
@@ -735,6 +746,114 @@ NULL
 		}
 		check("indexset-api-complete", complete,
 		      "the audited Cocoa inventory for NSIndexSet/NSMutableIndexSet");
+	}
+
+	{
+		/* THE TEST SCAN AND THE COLLECTORS (§63.175). One arithmetic over the range list, so what is
+		 * asserted is the ANSWER rather than the order it was produced in: the ascending scan answers
+		 * the first match, the reverse option the last, a range clip restricts both, the predicate's
+		 * `stop` ends a scan early (HERE: two visits out of seven), and the collecting doors answer an
+		 * index set whose contents are the matches - FROZEN, because -copy on this family is a retain
+		 * and so a mutable collector is not a copy of anything. */
+		NSMutableIndexSet *walked = [[NSMutableIndexSet alloc] init];
+		NSIndexSet *collected;
+		NSIndexSet *clipped;
+		__block int visits = 0;
+		NSUInteger first, last, none;
+
+		[walked addIndex:1];
+		[walked addIndex:3];
+		[walked addIndexesInRange:NSMakeRange(10, 5)];		/* 1, 3, 10..14 */
+		first = [walked indexPassingTest:^BOOL(NSUInteger index, BOOL *stop) {
+			(void)stop;
+			return index % 2 == 1 ? YES : NO;
+		}];
+		last = [walked indexWithOptions:NSEnumerationReverse passingTest:^BOOL(NSUInteger index, BOOL *stop) {
+			(void)stop;
+			return index % 2 == 1 ? YES : NO;
+		}];
+		none = [walked indexInRange:NSMakeRange(20, 5) options:0 passingTest:^BOOL(NSUInteger index, BOOL *stop) {
+			(void)index; (void)stop;
+			return YES;
+		}];
+		[walked enumerateIndexesWithOptions:NSEnumerationReverse usingBlock:^(NSUInteger index, BOOL *stop) {
+			(void)index;
+			visits++;
+			if (visits == 2) {
+				*stop = YES;
+			}
+		}];
+		collected = [walked indexesPassingTest:^BOOL(NSUInteger index, BOOL *stop) {
+			(void)stop;
+			return index >= 10 ? YES : NO;
+		}];
+		clipped = [walked indexesInRange:NSMakeRange(0, 4) options:0 passingTest:^BOOL(NSUInteger index, BOOL *stop) {
+			(void)index; (void)stop;
+			return YES;
+		}];
+		check("indexset-test-and-collect",
+		      first == 1 && last == 13 && none == NSNotFound && visits == 2 &&
+		      [collected count] == 5 && [collected containsIndexesInRange:NSMakeRange(10, 5)] &&
+		      ![collected containsIndex:1] && [clipped count] == 2 && [clipped containsIndex:3] &&
+		      [collected isKindOfClass:[NSIndexSet class]] &&
+		      ![collected isKindOfClass:[NSMutableIndexSet class]] &&
+		      [walked containsIndexes:collected] && ![collected containsIndexes:walked] &&
+		      [walked intersectsIndexesInRange:NSMakeRange(13, 100)] &&
+		      ![walked intersectsIndexesInRange:NSMakeRange(4, 6)],
+		      "the ascending/descending scans, the range clip, the predicate's stop, and the frozen collection");
+	}
+
+	{
+		/* THE MUTABLE GROUP OPERATIONS (§63.175): adding another set's indexes (which a shift then moves),
+		 * removing them again, and the shift's two hard parts - a range that straddles the start moves
+		 * only its upper half, and a downward shift merges with the indexes it lands on rather than
+		 * double-counting them. The ONE error case is asserted in both directions: an index that would
+		 * land below zero raises NSRangeException, while an empty set (or a start below every index, where
+		 * nothing moves) does not raise at all. */
+		NSMutableIndexSet *m = [[NSMutableIndexSet alloc] init];
+		NSMutableIndexSet *other = [[NSMutableIndexSet alloc] init];
+		BOOL raised = NO;
+		BOOL emptyIsFine = YES;
+
+		[m addIndexesInRange:NSMakeRange(10, 3)];		/* 10..12 */
+		[m addIndex:20];
+		[other addIndex:10];
+		[other addIndex:11];
+		[m addIndexes:other];					/* already held: no change */
+		[m removeIndexes:other];				/* 12, 20 */
+		[m shiftIndexesStartingAtIndex:12 by:5];		/* 17, 25 */
+		[m addIndexesInRange:NSMakeRange(30, 4)];		/* 17, 25, 30..33 */
+		[m shiftIndexesStartingAtIndex:32 by:-2];		/* 30, 31 stay; 32, 33 land on them */
+		@try {
+			NSMutableIndexSet *bad = [[NSMutableIndexSet alloc] init];
+
+			[bad addIndex:1];
+			[bad shiftIndexesStartingAtIndex:0 by:-1];	/* 1 -> 0: legal */
+			[bad shiftIndexesStartingAtIndex:0 by:-1];	/* 0 -> -1: not */
+		} @catch (id e) {
+			(void)e;
+			raised = YES;
+		}
+		@try {
+			NSMutableIndexSet *empty = [[NSMutableIndexSet alloc] init];
+
+			[empty shiftIndexesStartingAtIndex:5 by:-100];
+		} @catch (id e) {
+			(void)e;
+			emptyIsFine = NO;
+		}
+		check("indexset-mutable-groups",
+		      [m count] == 4 && [m containsIndex:17] && [m containsIndex:25] &&
+		      /* THE STRADDLING SHIFT LANDED ON WHAT DID NOT MOVE: 32 and 33 became 30 and 31, where
+			 * the two indexes below the start already were - so the set is exactly 30..31 here, and
+			 * the count of four above is what says the merge did not double-count them. */
+		      [m containsIndexesInRange:NSMakeRange(30, 2)] &&
+		      ![m containsIndex:32] && ![m containsIndex:33] &&
+		      ![m containsIndex:12] && ![m containsIndex:20] &&
+		      raised && emptyIsFine,
+		      [[NSString stringWithFormat:@"-addIndexes:/-removeIndexes:, the shift's split-and-merge, "
+						 "and the one ranged error case (count=%lu, raised=%d, empty=%d)",
+						 (unsigned long)[m count], raised, emptyIsFine] UTF8String]);
 	}
 
 	{
