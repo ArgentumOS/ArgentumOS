@@ -15969,6 +15969,49 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.155 — STEP 6 IS COMPLETE: THE AUTHENTICATION CLUSTER AND THE RE-SEND'S BODY COME BACK, AND EVERY RETIRED CHECK IS NOW ACCOUNTED FOR (2026-10-03)
+
+**LANDED: SIX MORE CHECKS, AND THE PROBE IS `26/26` WITH THE CASE `6/6` — BOTH ON THE FIRST RUN.** §63.154 brought
+back the redirect cluster (4) and the download path (3); this unit brings back the AUTHENTICATION cluster (4) and
+the RE-SEND'S BODY (2). **The engine needed NO change for any of them** — which is the interesting half: §62.28's
+precedence and §62.36's first-party body door survived the re-architecture untouched, because they were always the
+CONNECTION's semantics rather than the session's. *A re-architecture that leaves a whole cluster's behaviour
+byte-identical is the evidence that the cluster belonged to the class all along.*
+
+**THE AUTHENTICATION CLUSTER IS ASKED THROUGH `-URLProtocol:didReceiveAuthenticationChallenge:completionHandler:`
+— THE DOOR THE BRIDGE USES — AND THE SHARPEST ASSERTION IN IT IS A NEGATIVE ONE:** `disposition` must stay `-1`,
+i.e. **THIS CLASS MUST NOT ANSWER THAT CONTINUATION WHEN A DELEGATE DOOR EXISTS.** It is one continuation with two
+possible answerers: the delegate answers through `[challenge sender]`, which IS that handler, so a class that also
+called it would answer one challenge twice. Apple's order is then pinned branch by branch — the MODERN door
+supersedes the pair (a delegate implementing all three is asked exactly once, and the credential lands in the
+SENDER); the GATE is asked next and then the challenge; **a `NO` from the gate means no authentication**, with the
+handler answered `PerformDefaultHandling`, no credential, and the challenge door NOT asked; and no door at all
+means the same default WITHOUT WAITING.
+
+**AND THE RE-SEND'S BODY IS THE ONE ATTEMPT NO OTHER DOOR CAN REACH (§62.36), WHICH IS WHY IT NEEDED ITS OWN DOOR
+AND NOW ITS OWN CHECK:** the TRANSPORT re-issues a 401 itself (`goto retry_transfer:` in the bridge), so the
+connection never sees the second attempt and no delegate door can be asked from there. The bridge asks its client
+through `-URLProtocol:fnNewBodyStreamForReSend:` and this class asks its delegate — whose answer, INCLUDING nil,
+goes straight back. Both halves are asserted: the delegate's own stream comes back (and it was asked exactly once),
+and a delegate that implements no such door answers nil rather than being blocked on.
+
+**STEP 6 IS THEREFORE COMPLETE, AND THE ACCOUNTING IS EXPLICIT RATHER THAN "DONE":** the seventeen checks §63.149
+retired by statement are now answered as **eleven restored checks in a NEW shape** — four redirect (§63.154), three
+download (§63.154), four authentication and two re-send (here) — plus the handful of inventory-shaped ones that the
+four surviving declaration checks already assert. *THE ONE THING NOT RESTORED IS NEITHER A GAP NOR RESTORABLE:* the
+download protocol's `-connection:willCacheResponse:` has no door on the other side of the seam
+(`-URLProtocol:cachedResponseIsValid:` is a NOTIFICATION, not a question), so it stays declared, stays absent from
+the DATA protocol where `refused-doors-are-absent` requires it, and stays the header's recorded WORK ITEM.
+
+**VERIFICATION.** `make testimg` EXIT 0; `foundation_urlconnection` **26/26 probe checks and 6/6 case checks**, first
+run; and because this unit changes NO library file — only the probe and its case — no other gate is owed, and the
+standing family result from §63.154 (`foundation_url*` 14/14 cases, 72/72 checks; `foundation_auth*` 2/2;
+`foundation_connectionauth` 1/1) stands unchanged.
+
+**WHAT IS OWED NEXT, NAMED AND UNCHANGED:** §63.145's steps 1, 3 and 5 — the member cut (the four session-era doors,
+which would touch the declared surface the four surviving inventory checks pin), the download-to-`NSURLDownload`
+move, and the disposition enum's move out of the public `NSURLProtocol.h`.
+
 ## §63.154 — STEP 6 BEGINS: SEVEN RETIRED CHECKS COME BACK AGAINST THIS CLASS'S OWN DOORS, AND RE-POINTING FOUND TWO ENGINE DEFECTS (2026-10-03)
 
 **LANDED: THE REDIRECT DOOR AND THE DOWNLOAD PATH ARE TESTED AGAIN, THROUGH THE `NSURLProtocolClient` DOORS THE

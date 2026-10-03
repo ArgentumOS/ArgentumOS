@@ -866,6 +866,199 @@ int main(void)
 		      @"refused by name rather than declared and never called");
 	}
 
+	/* --- 9. THE AUTHENTICATION TRANSLATION, ON THIS CLASS'S OWN DOOR ---------------------------------
+	 *
+	 * THE PRECEDENCE IS APPLE'S AND IT IS THE WHOLE SUBJECT: the MODERN door supersedes the deprecated
+	 * pair, the GATE is asked next, and no door at all means the default WITHOUT WAITING. The connection is
+	 * asked through the door the BRIDGE uses, `-URLProtocol:didReceiveAuthenticationChallenge:
+	 * completionHandler:`, and every check reads what the delegate recorded plus whether that handler was
+	 * answered — because THIS CLASS must NOT answer it when a delegate door exists: the delegate answers
+	 * through the challenge's SENDER, which IS that continuation, so answering both would answer one
+	 * challenge twice.
+	 */
+	{
+		SEL sel = @selector(URLProtocol:didReceiveAuthenticationChallenge:completionHandler:);
+		typedef void (*Fn)(id, SEL, NSURLProtocol *, NSURLAuthenticationChallenge *,
+				   void (^)(NSURLSessionAuthChallengeDisposition, NSURLCredential *));
+		NSURLProtectionSpace *space = [[NSURLProtectionSpace alloc]
+			initWithHost:@"example.invalid" port:80 protocol:@"http" realm:@"Probe"
+	    authenticationMethod:NSURLAuthenticationMethodHTTPBasic];
+		NSURLRequest *request = [NSURLRequest requestWithURL:fn_url(@"file:///dev/null")];
+
+		/* THE MODERN DOOR SUPERSEDES THE PAIR, AND THIS DELEGATE IMPLEMENTS ALL THREE — so the check is
+		 * about one that COULD have been asked twice. THE SENDER IS WHERE THE ANSWER LANDS: a connection
+		 * delegate has no completion handler, so the credential goes back through `[challenge sender]`. */
+		{
+			FNSenderRecorder *sender = [[FNSenderRecorder alloc] init];
+			FNAuthDelegate *auth = [[FNAuthDelegate alloc] init];
+			NSURLConnection *conn = [[NSURLConnection alloc] initWithRequest:request
+									 delegate:(id)auth
+								 startImmediately:NO];
+			NSURLAuthenticationChallenge *challenge = [[NSURLAuthenticationChallenge alloc]
+				initWithProtectionSpace:space proposedCredential:nil previousFailureCount:0
+					 failureResponse:nil error:nil sender:sender];
+			__block NSInteger disposition = -1;
+			BOOL present = (conn != nil) && [conn respondsToSelector:sel];
+
+			if (present) {
+				((Fn)objc_msgSend)(conn, sel, nil, challenge,
+					^(NSURLSessionAuthChallengeDisposition d, NSURLCredential *c) {
+					(void)c;
+					disposition = (NSInteger)d;
+				});
+			}
+			check("the-modern-door-supersedes-the-deprecated-pair",
+			      present && auth->modernCalls == 1 && auth->gateCalls == 0 &&
+			      auth->deprecatedCalls == 0 && sender->useCredentialCalls == 1 &&
+			      disposition == -1,
+			      [NSString stringWithFormat:@"modern=%d gate=%d deprecated=%d senderCredential=%d "
+				@"disposition=%ld, and the continuation was NOT called by this class",
+				auth->modernCalls, auth->gateCalls, auth->deprecatedCalls,
+				sender->useCredentialCalls, (long)disposition]);
+		}
+
+		/* THE DEPRECATED PAIR WHEN THE MODERN DOOR IS ABSENT: THE GATE FIRST, then the challenge — Apple's
+		 * order — and both answered through the sender, exactly as the modern door is. */
+		{
+			FNSenderRecorder *sender = [[FNSenderRecorder alloc] init];
+			FNDeprecatedAuthDelegate *auth = [[FNDeprecatedAuthDelegate alloc] init];
+			NSURLConnection *conn = [[NSURLConnection alloc] initWithRequest:request
+									 delegate:(id)auth
+								 startImmediately:NO];
+			NSURLAuthenticationChallenge *challenge = [[NSURLAuthenticationChallenge alloc]
+				initWithProtectionSpace:space proposedCredential:nil previousFailureCount:0
+					 failureResponse:nil error:nil sender:sender];
+			__block NSInteger disposition = -1;
+			BOOL present = (conn != nil) && [conn respondsToSelector:sel];
+
+			auth->gateAnswer = YES;
+			if (present) {
+				((Fn)objc_msgSend)(conn, sel, nil, challenge,
+					^(NSURLSessionAuthChallengeDisposition d, NSURLCredential *c) {
+					(void)c;
+					disposition = (NSInteger)d;
+				});
+			}
+			check("the-deprecated-pair-is-asked-gate-first",
+			      present && auth->gateCalls == 1 && auth->deprecatedCalls == 1 &&
+			      sender->useCredentialCalls == 1 && disposition == -1,
+			      [NSString stringWithFormat:@"gate=%d deprecated=%d senderCredential=%d "
+				@"disposition=%ld", auth->gateCalls, auth->deprecatedCalls,
+				sender->useCredentialCalls, (long)disposition]);
+		}
+
+		/* AND A `NO` FROM THE GATE MEANS "DO NOT AUTHENTICATE": the transfer continues WITHOUT credentials,
+		 * which is the default handling this completion handler names — and the challenge door is not asked,
+		 * because the gate has already answered. */
+		{
+			FNSenderRecorder *sender = [[FNSenderRecorder alloc] init];
+			FNDeprecatedAuthDelegate *auth = [[FNDeprecatedAuthDelegate alloc] init];
+			NSURLConnection *conn = [[NSURLConnection alloc] initWithRequest:request
+									 delegate:(id)auth
+								 startImmediately:NO];
+			NSURLAuthenticationChallenge *challenge = [[NSURLAuthenticationChallenge alloc]
+				initWithProtectionSpace:space proposedCredential:nil previousFailureCount:0
+					 failureResponse:nil error:nil sender:sender];
+			__block NSInteger disposition = -1;
+			__block NSURLCredential *given = nil;
+			BOOL present = (conn != nil) && [conn respondsToSelector:sel];
+
+			auth->gateAnswer = NO;
+			if (present) {
+				((Fn)objc_msgSend)(conn, sel, nil, challenge,
+					^(NSURLSessionAuthChallengeDisposition d, NSURLCredential *c) {
+					disposition = (NSInteger)d;
+					given = c;
+				});
+			}
+			check("a-no-from-the-gate-means-no-authentication",
+			      present && auth->gateCalls == 1 && auth->deprecatedCalls == 0 &&
+			      given == nil &&
+			      disposition == NSURLSessionAuthChallengePerformDefaultHandling,
+			      [NSString stringWithFormat:@"gate=%d deprecated=%d disposition=%ld credential=%s",
+				auth->gateCalls, auth->deprecatedCalls, (long)disposition,
+				given == nil ? "none" : "one"]);
+		}
+
+		/* AND NO AUTH DOOR AT ALL MEANS THE DEFAULT, WITHOUT WAITING — the rule every door in this library
+		 * keeps, and the reason a delegate that cares about none of this is never blocked on. */
+		{
+			FNEmptyConnDelegate *empty = [[FNEmptyConnDelegate alloc] init];
+			NSURLConnection *conn = [[NSURLConnection alloc] initWithRequest:request
+									 delegate:(id)empty
+								 startImmediately:NO];
+			NSURLAuthenticationChallenge *challenge = [[NSURLAuthenticationChallenge alloc]
+				initWithProtectionSpace:space proposedCredential:nil previousFailureCount:0
+					 failureResponse:nil error:nil sender:nil];
+			__block NSInteger disposition = -1;
+			BOOL present = (conn != nil) && [conn respondsToSelector:sel];
+
+			if (present) {
+				((Fn)objc_msgSend)(conn, sel, nil, challenge,
+					^(NSURLSessionAuthChallengeDisposition d, NSURLCredential *c) {
+					(void)c;
+					disposition = (NSInteger)d;
+				});
+			}
+			check("no-auth-door-means-the-default-without-waiting",
+			      present && disposition == NSURLSessionAuthChallengePerformDefaultHandling,
+			      [NSString stringWithFormat:@"disposition=%ld", (long)disposition]);
+		}
+	}
+
+	/* --- 10. THE RE-SEND'S BODY, THROUGH THE SEAM'S FIRST-PARTY DOOR ---------------------------------
+	 *
+	 * THIS IS THE ONE ATTEMPT NO OTHER DOOR CAN REACH (§62.36): the TRANSPORT re-issues a 401 itself
+	 * (`goto retry_transfer:` in the bridge), so the connection never sees the second attempt and no
+	 * delegate door can be asked from there. The bridge therefore asks its client through
+	 * `-URLProtocol:fnNewBodyStreamForReSend:`, and this class asks its delegate — whose answer, INCLUDING
+	 * nil, goes straight back, because Apple's contract for a replacement is "a new, UNOPENED stream" and a
+	 * delegate that has none says so by answering nothing.
+	 */
+	{
+		SEL sel = @selector(URLProtocol:fnNewBodyStreamForReSend:);
+		typedef NSInputStream *(*Fn)(id, SEL, NSURLProtocol *, NSURLRequest *);
+		const char *freshBytes = "a fresh body, unopened and unstoppable\n";
+		NSData *freshData = [NSData dataWithBytes:freshBytes length:strlen(freshBytes)];
+		NSURLRequest *request = [NSURLRequest requestWithURL:fn_url(@"file:///dev/null")];
+
+		{
+			FNBodyStreamAnswerer *answerer = [[FNBodyStreamAnswerer alloc] init];
+			NSURLConnection *conn = [[NSURLConnection alloc] initWithRequest:request
+									 delegate:(id)answerer
+								 startImmediately:NO];
+			NSInputStream *asked = nil;
+			BOOL present = (conn != nil) && [conn respondsToSelector:sel];
+
+			answerer->stream = [NSInputStream inputStreamWithData:freshData];
+			if (present) {
+				asked = ((Fn)objc_msgSend)(conn, sel, nil, request);
+			}
+			check("the-re-sends-body-comes-from-the-delegate",
+			      present && answerer->asks == 1 && asked == answerer->stream,
+			      [NSString stringWithFormat:@"asks=%d answeredTheDelegatesStream=%d",
+				answerer->asks, (int)(asked == answerer->stream)]);
+		}
+
+		/* AND A DELEGATE THAT IMPLEMENTS NO SUCH DOOR ANSWERS NOTHING RATHER THAN BEING BLOCKED ON: nil is
+		 * what the transport re-runs with, which is the failure its own header describes. */
+		{
+			FNEmptyConnDelegate *empty = [[FNEmptyConnDelegate alloc] init];
+			NSURLConnection *conn = [[NSURLConnection alloc] initWithRequest:request
+									 delegate:(id)empty
+								 startImmediately:NO];
+			NSInputStream *asked = nil;
+			BOOL present = (conn != nil) && [conn respondsToSelector:sel];
+
+			if (present) {
+				asked = ((Fn)objc_msgSend)(conn, sel, nil, request);
+			}
+			check("the-re-sends-body-with-no-delegate-door-is-nil",
+			      present && asked == nil,
+			      [NSString stringWithFormat:@"answeredNil=%d", (int)(asked == nil)]);
+		}
+	}
+
 	/* --- 7. THE DOORS THAT DO SHIP, ON THE CLASS AND THE PROTOCOLS ------------------------------- */
 	{
 		Protocol *data = objc_getProtocol("NSURLConnectionDataDelegate");

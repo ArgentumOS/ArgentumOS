@@ -75,6 +75,17 @@ CHECKS = ("connection-class-declared", "delegate-protocols-declared",
           "the-data-doors-are-not-used-for-a-download",
           "the-download-progress-door-is-reported",
           "download-refusals-are-absent", "the-session-download-protocol-shape",
+          # §63.155: THE AUTHENTICATION CLUSTER, asked through this class's OWN door
+          # (-URLProtocol:didReceiveAuthenticationChallenge:completionHandler:) — Apple's precedence, and the
+          # rule that this class must NOT answer that continuation when a delegate door exists.
+          "the-modern-door-supersedes-the-deprecated-pair",
+          "the-deprecated-pair-is-asked-gate-first",
+          "a-no-from-the-gate-means-no-authentication",
+          "no-auth-door-means-the-default-without-waiting",
+          # §63.155: THE RE-SEND'S BODY — the seam's first-party door, for the one attempt no delegate
+          # door can reach (the transport re-issues a 401 itself).
+          "the-re-sends-body-comes-from-the-delegate",
+          "the-re-sends-body-with-no-delegate-door-is-nil",
           "the-declared-surface-is-what-ships")
 
 
