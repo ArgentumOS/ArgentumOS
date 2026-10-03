@@ -658,6 +658,32 @@ static NSString *fn_key_for_class(Class cls)
 							   error:NULL];
 }
 
+
+- (instancetype)initRequiringSecureCoding:(BOOL)requiresSecureCoding
+{
+	/* A BUFFER OF ITS OWN, which is the whole difference from -initForWritingWithMutableData:. */
+	self = [self initForWritingWithMutableData:[[NSMutableData alloc] init]];
+
+	if (self != nil) {
+		self.requiresSecureCoding = requiresSecureCoding;	/* the BASE's property */
+	}
+	return self;
+}
+
+- (nullable NSData *)encodedData
+{
+	[self finishEncoding];
+	if (_data == nil) {
+		return nil;
+	}
+	return [NSData dataWithData:_data];	/* a copy: the answer outlives the archiver's -dealloc */
+}
+
+- (NSPropertyListFormat)outputFormat
+{
+	return NSPropertyListXMLFormat_v1_0;	/* what -finishEncoding writes, measured from the bytes */
+}
+
 @end
 
 @implementation NSKeyedUnarchiver

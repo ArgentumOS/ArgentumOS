@@ -120,11 +120,10 @@ extern NSString * const NSKeyedArchiveRootObjectKey;
 - (nullable NSString *)classNameForClass:(Class)cls;
 - (void)setClassName:(nullable NSString *)codedName forClass:(Class)cls;
 
-/* THE SECURE-CLASS DOOR AND THE STREAMING ONE. `-archivedDataWithRootObject:requiringSecureCoding:error:`
- * is the error-returning form of the door above (which answers nil and says nothing);
- * `-initRequiringSecureCoding:` starts an archiver with a buffer OF ITS OWN, which -encodedData answers;
- * -outputFormat reports the format the bytes are in. */
-+ (nullable NSData *)archivedDataWithRootObject:(id)rootObject
+/* THE SECURE-CLASS DOOR is the error-returning form of the class door above (which answers nil and says
+ * nothing). THE STREAMING FLOW completes the same instance flow for a caller: -initRequiringSecureCoding:
+ * starts an archiver over a buffer OF ITS OWN, -encodedData answers the bytes (a COPY, so the answer
+ * outlives the archiver), and -outputFormat reports their format. */+ (nullable NSData *)archivedDataWithRootObject:(id)rootObject
 			  requiringSecureCoding:(BOOL)requiresSecureCoding
 					  error:(NSError * _Nullable * _Nullable)error;
 
@@ -138,6 +137,11 @@ extern NSString * const NSKeyedArchiveRootObjectKey;
 - (void)encodeRect:(NSRect)rect forKey:(NSString *)key;
 
 - (void)finishEncoding;
+
+
+- (instancetype)initRequiringSecureCoding:(BOOL)requiresSecureCoding;
+- (nullable NSData *)encodedData;
+- (NSPropertyListFormat)outputFormat;
 
 @end
 

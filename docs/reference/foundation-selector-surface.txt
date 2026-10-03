@@ -33,8 +33,8 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1651	open	164	struck	399
-# property	shipped	685	open	79	struck	172
+# method	shipped	1652	open	163	struck	399
+# property	shipped	687	open	77	struck	172
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -1300,12 +1300,12 @@ method	shipped	-encodeObject:forKey:	NSKeyedArchiver	Files and Data Persistence 
 method	shipped	-finishEncoding	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Archiving Data	-	objc
 method	shipped	-init	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Creating a Keyed Archiver	deprecated	objc
 method	shipped	-initForWritingWithMutableData:	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Creating a Keyed Archiver	deprecated	objc
-method	open	-initRequiringSecureCoding:	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Creating a Keyed Archiver	-	objc
+method	shipped	-initRequiringSecureCoding:	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Creating a Keyed Archiver	-	objc
 method	shipped	+setClassName:forClass:	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Managing Classes and Class Names	-	swift-page
 method	shipped	-setClassName:forClass:	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Managing Classes and Class Names	-	swift-page
 property	shipped	delegate	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Managing the Delegate	-	objc
-property	open	encodedData	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Archiving Data	-	objc
-property	open	outputFormat	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Archiving Data	-	objc
+property	shipped	encodedData	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Archiving Data	-	objc
+property	shipped	outputFormat	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Archiving Data	-	objc
 property	shipped	requiresSecureCoding	NSKeyedArchiver	Files and Data Persistence / Keyed Archivers / Archiving Data	-	objc
 method	shipped	-archiver:didEncodeObject:	NSKeyedArchiverDelegate	Files and Data Persistence / Keyed Archivers / Encoding Data and Objects	-	objc
 method	shipped	-archiver:willEncodeObject:	NSKeyedArchiverDelegate	Files and Data Persistence / Keyed Archivers / Encoding Data and Objects	-	objc

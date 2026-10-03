@@ -708,6 +708,44 @@ int main(void)
 			refusedError != nil ? [refusedError localizedDescription] : @"none"]);
 	}
 
+
+	{
+		/* THE STREAMING FLOW (§63.185): an archiver over its OWN buffer, a caller's own key, and the bytes read
+		 * back through the top-level door. It mirrors a HOST experiment run first, which works in every variant
+		 * (including requiresSecureCoding=YES on an NSCoding-only fixture). */
+		NSString *trouble = nil;
+		NSData *streamed = nil;
+		id back = nil;
+		NSError *readError = nil;
+		NSUInteger fmtOk = 0;
+
+		@try {
+			NSKeyedArchiver *streaming = [[NSKeyedArchiver alloc] initRequiringSecureCoding:YES];
+
+			fmtOk = ([streaming outputFormat] == NSPropertyListXMLFormat_v1_0);
+			[streaming encodeObject:[[KUAlpha alloc] init] forKey:@"thing"];
+			streamed = [streaming encodedData];
+			if (streamed != nil) {
+				NSKeyedUnarchiver *reader = [[NSKeyedUnarchiver alloc] initForReadingWithData:streamed];
+
+				back = [reader decodeTopLevelObjectForKey:@"thing" error:&readError];
+			}
+		} @catch (id exception) {
+			trouble = [exception reason];
+		}
+		NSString *text = streamed != nil
+			? [[NSString alloc] initWithData:streamed encoding:NSUTF8StringEncoding] : nil;
+		check("archiver-secure-and-streaming",
+		      trouble == nil && streamed != nil && fmtOk && back != nil && [back isKindOfClass:[KUAlpha class]],
+		      trouble != nil ? trouble
+				     : [NSString stringWithFormat:@"len=%lu back=%@ err=%@ fmt=%lu key-in-bytes=%d",
+					(unsigned long)[streamed length],
+					back != nil ? (id)[back class] : (id)@"nil",
+					readError != nil ? [readError localizedDescription] : @"none",
+					(unsigned long)fmtOk,
+					text != nil && [text rangeOfString:@"thing"].location != NSNotFound]);
+	}
+
 	printf("FOUNDATION-ARCHIVER RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-ARCHIVER-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-ARCHIVER DONE\n");

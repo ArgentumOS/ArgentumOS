@@ -65,7 +65,8 @@ CHECKS = (
     "a-sequential-geometry-door-on-the-keyed-archiver-raises",
     "archiver-class-map", "archiver-class-map-clears", "archiver-secure-doors",
     "archiver-writer-class-map", "archiver-writer-class-map-clears",
-    "archiver-secure-class-door")
+    "archiver-secure-class-door",
+    "archiver-secure-and-streaming")
 
 
 class Case(BaseCase):

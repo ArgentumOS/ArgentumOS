@@ -15962,6 +15962,47 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.185 — NSKeyedArchiver: the streaming flow lands, and the reader-defect claim of §63.184 is withdrawn
+
+Three rows: `method shipped 1651 → 1652, open 164 → 163`; `property 685 → 687, open 79 → 77` —
+`-initRequiringSecureCoding:`, `-encodedData` and `-outputFormat`.
+
+**THE ENTRY BEFORE THIS ONE WAS WRONG ABOUT A READER, AND A HOST EXPERIMENT SETTLED IT.** §63.184 reported that
+a caller-keyed top-level object "can be written but not read back" because
+`-decodeTopLevelObjectForKey:error:` "finds the `$top` slot and answers nil from `[self fnDecodeSlot:slot]`
+without raising". Reconstructing the flow with **committed public API only** — `-initForWritingWithMutableData:`
+plus `-encodeObject:forKey:` plus `-finishEncoding`, then `-decodeTopLevelObjectForKey:error:` — works in every
+variant, including `requiresSecureCoding = YES` on an `NSCoding`-only fixture:
+
+    A: instance flow, key "thing"  -> $top: {thing: {$ref: 1}},  back=ScratchThing err=none
+    C: same, requiresSecureCoding=YES                            back=ScratchThing err=none
+
+`fnDecodeSlot:` DOES resolve a reference (`fn_slot_is_reference` → `fnObjectAtIndex:`), and the door reads
+`_top` correctly. **The nil came from the archive that the since-removed door produced, not from the reader.**
+What survives from §63.184 is the sweep's rule — the three rows stayed open because nothing declared them —
+and the `$null` path worth remembering: `fnObjectAtIndex:`'s `index == 0` is the reference that means "nothing
+was here", and it returns nil WITHOUT raising, which is the one way a nil arrives unremarked.
+
+**A METHOD LESSON, AND IT IS THE SESSION'S SECOND OF THIS SHAPE:** a claim about a *subsystem* was built from a
+probe result whose cause was in *my own, since-deleted code*. The host experiment that disproved it took
+seconds, and it used no library change at all — only committed doors. **When a probe fails, reconstruct the
+flow outside the suspect code before charging the subsystem.**
+
+**THE DOORS.** `-initRequiringSecureCoding:` builds an archiver over a buffer of its own (the whole difference
+from `-initForWritingWithMutableData:`) and sets the BASE's `requiresSecureCoding` property;
+`-encodedData` finishes the encoding and answers a COPY of the buffer, so the answer outlives the archiver's
+`-dealloc` (the class door already paid for that lesson with freed bytes); `-outputFormat` answers
+`NSPropertyListXMLFormat_v1_0`, which is what `-finishEncoding` writes, measured from the bytes.
+
+**AND AN ANCHOR, NAMED BECAUSE IT COST A BUILD:** a method added before the *unarchiver's* `@implementation`
+lands outside any `@implementation` — "missing context for method declaration" for each one. The insertion
+anchor is the ARCHIVER's own `@end`. (The build failed and the exit status said so; a grep of its output would
+not have.)
+
+Acceptance: `make testimg` green (status-checked); `make test TESTS=foundation_archiver` → 1/1 case, probe
+tally 37 → 38; `tools/foundation-sweep.py --check` consistent (`method 1652/163/399`, `property 687/77/172`),
+`--families --write` rc=0, `--unimplemented` 0 NEW.
+
 ## §63.184 — NSKeyedArchiver: the writer's class-name map and the secure-class door
 
 Five rows: `method shipped 1646 → 1651, open 169 → 164` — the writer's class-name map
@@ -15992,13 +16033,7 @@ A build that dies at the sweep gate prints no `error:` line and looks exactly li
 STALE probe in the image is what the gate runs (its output even kept the old check's name). The build's EXIT
 STATUS is the verdict.
 
-**THE THREE STREAMING ROWS STAY OPEN, AND NOTHING DECLARES THEM.** `-initRequiringSecureCoding:`,
-`encodedData` and `outputFormat` depend on a READER defect this unit found and measured: a caller-keyed
-top-level object can be written but not read back, because `-decodeTopLevelObjectForKey:error:` finds the `$top`
-slot and answers nil from `[self fnDecodeSlot:slot]` without raising and without setting an error
-(`key-in-bytes=1 back=nil readError=none`). Declaring them first would put doors in the header whose rows must
-stay open — which the sweep refuses, and it refused mine until they were removed. Its own unit: "the top-level
-read resolves a slot it has already found".
+**A CLAIM IN THIS ENTRY, WITHDRAWN IN §63.185.** This entry reported a READER defect behind the three streaming rows (`key-in-bytes=1 back=nil readError=none`, read as `-decodeTopLevelObjectForKey:` answering nil from `fnDecodeSlot:`). That is WRONG. A host experiment with committed public API only (§63.185) shows the instance flow AND the top-level read working end to end in every variant, `requiresSecureCoding = YES` included; `fnDecodeSlot:` does resolve references, and the nil came from the archive that the since-removed door produced. The three rows stayed open because NOTHING DECLARED THEM — the sweep's rule, not a reader fault.
 
 **THE DESIGN TRAPS, ALL MEASURED:** a dictionary COPIES its keys and a Class is not `NSCopying` (keying by the
 Class raised `NSInvalidArgumentException`, so the map is keyed by name); the map must be consulted at the CALL
