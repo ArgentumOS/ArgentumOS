@@ -666,7 +666,8 @@ CORPUS_LACKS_OWNER_HEADER = frozenset((
     "NSUnitSpeed",
     "NSUnitTemperature",
     "NSUnitVolume",
-    "NSUserNotificationCenter",
+    # ⚠⚠ NSUserNotificationCenter WAS HERE UNTIL §63.167 (2026-10-03): the 10.8 notification family is
+    # cut, classes and rows together. A LIST OF CLASSES MUST NOT OUTLIVE THE CLASSES (§63.163).
     "NSUserUnixTask",
 ))
 

@@ -33,8 +33,8 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1594	open	227	struck	397
-# property	shipped	675	open	92	struck	172
+# method	shipped	1590	open	227	struck	397
+# property	shipped	673	open	92	struck	172
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -2907,12 +2907,6 @@ method	open	-synchronize	NSUserDefaults	Files and Data Persistence / App-specifi
 method	shipped	-volatileDomainForName:	NSUserDefaults	Files and Data Persistence / App-specific settings / Managing domain-specific values	-	objc
 property	shipped	standardUserDefaults	NSUserDefaults	Files and Data Persistence / App-specific settings / Creating a user defaults object	-	objc
 property	shipped	volatileDomainNames	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
-method	shipped	+actionWithIdentifier:title:	NSUserNotificationAction	App Support / User Notifications / Creating User Notification Actions	deprecated	objc
-property	shipped	identifier	NSUserNotificationAction	App Support / User Notifications / Getting the Identifier and Title	deprecated	objc
-property	shipped	title	NSUserNotificationAction	App Support / User Notifications / Getting the Identifier and Title	deprecated	objc
-method	shipped	-userNotificationCenter:didActivateNotification:	NSUserNotificationCenterDelegate	App Support / User Notifications / User Notification Delivery Information	deprecated	objc
-method	shipped	-userNotificationCenter:didDeliverNotification:	NSUserNotificationCenterDelegate	App Support / User Notifications / User Notification Delivery Information	deprecated	objc
-method	shipped	-userNotificationCenter:shouldPresentNotification:	NSUserNotificationCenterDelegate	App Support / User Notifications / User Notification Display Override	deprecated	objc
 method	struck	-executeWithCompletionHandler:	NSUserScriptTask	Low-Level Utilities / Scripts and External Tasks / Executing the User Script	declined	objc
 method	struck	-initWithURL:error:	NSUserScriptTask	Low-Level Utilities / Scripts and External Tasks / Specifying the Script	declined	objc
 property	struck	scriptURL	NSUserScriptTask	Low-Level Utilities / Scripts and External Tasks / Specifying the Script	declined	objc

@@ -6,11 +6,11 @@
 # source: https://developer.apple.com/tutorials/data/index/foundation
 #
 # kind	status	name	owner	family	why	src
-# case	shipped	1015	open	0	struck	78
-# class	shipped	161	open	0	struck	52
-# enum	shipped	115	open	0	struck	9
-# protocol	shipped	32	open	0	struck	6
-# var	shipped	666	open	0	struck	211
+# case	shipped	1010	open	0	struck	78
+# class	shipped	158	open	0	struck	52
+# enum	shipped	114	open	0	struck	9
+# protocol	shipped	31	open	0	struck	6
+# var	shipped	665	open	0	struck	211
 
 
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -892,11 +892,6 @@ case	shipped	NSUserActivityRemoteApplicationTimedOutError	NSUserActivity	App Sup
 case	shipped	NSUserCancelledError	NSError	App Support / User-Relevant Errors / Error Codes / Cancellation	-	objc
 case	shipped	NSUserDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSUserDomainMask	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Specifying Search Path Domains	-	objc
-case	shipped	NSUserNotificationActivationTypeActionButtonClicked	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
-case	shipped	NSUserNotificationActivationTypeAdditionalActionClicked	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
-case	shipped	NSUserNotificationActivationTypeContentsClicked	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
-case	shipped	NSUserNotificationActivationTypeNone	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
-case	shipped	NSUserNotificationActivationTypeReplied	NSUserNotification	App Support / User Notifications / Constants / Constants	deprecated	swift-page
 case	shipped	NSValidationErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Validation Errors	-	objc
 case	shipped	NSValidationErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Validation Errors	-	objc
 case	shipped	NSVolumeEnumerationProduceFileReferenceURLs	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents / Volume Enumeration Options	-	objc
@@ -1300,9 +1295,6 @@ class	shipped	NSUserActivity		App Support / Activity Sharing	-	objc
 class	struck	NSUserAppleScriptTask		Low-Level Utilities / Scripts and External Tasks	declined	objc
 class	struck	NSUserAutomatorTask		Low-Level Utilities / Scripts and External Tasks	declined	objc
 class	shipped	NSUserDefaults		Files and Data Persistence / App-specific settings	-	objc
-class	shipped	NSUserNotification		App Support / User Notifications	deprecated	objc
-class	shipped	NSUserNotificationAction		App Support / User Notifications	deprecated	objc
-class	shipped	NSUserNotificationCenter		App Support / User Notifications	deprecated	objc
 class	struck	NSUserScriptTask		Low-Level Utilities / Scripts and External Tasks	declined	objc
 class	shipped	NSUserUnixTask		Low-Level Utilities / Scripts and External Tasks	-	objc
 class	shipped	NSValue		Low-Level Utilities / Value Wrappers and Transformations	-	objc
@@ -1433,7 +1425,6 @@ enum	shipped	NSURLRequestCachePolicy	NSMutableURLRequest	Networking / Requests a
 enum	shipped	NSURLRequestCachePolicy	NSURLRequest	Networking / Requests and responses / Working with a cache policy	-	swift-page
 enum	shipped	NSURLRequestNetworkServiceType	NSMutableURLRequest	Networking / Requests and responses / Accessing the service type	-	swift-page
 enum	shipped	NSURLRequestNetworkServiceType	NSURLRequest	Networking / Requests and responses / Accessing the service type	-	swift-page
-enum	shipped	NSUserNotificationActivationType	NSUserNotification	App Support / User Notifications / Constants	deprecated	swift-page
 enum	shipped	NSVolumeEnumerationOptions	NSFileManager	Files and Data Persistence / File system operations / Discovering directory contents	-	objc
 enum	struck	NSWhoseSubelementIdentifier	NSWhoseSpecifier	App Support / Object Specifiers / Constants	declined	objc
 enum	shipped	NSXMLDTDNodeKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Constants	-	swift-page
@@ -1919,7 +1910,6 @@ protocol	shipped	NSURLDownloadDelegate		Networking / Legacy / URL Download	depre
 protocol	shipped	NSURLHandleClient		Networking / Legacy / URL Handle	deprecated	objc
 protocol	shipped	NSURLProtocolClient		Networking / Essentials / Creating a session / Supporting custom protocols / Getting protocol attributes	-	objc
 protocol	shipped	NSUserActivityDelegate		App Support / Activity Sharing / Monitoring activity-related behaviors	-	objc
-protocol	shipped	NSUserNotificationCenterDelegate		App Support / User Notifications	-	objc
 protocol	shipped	NSXMLParserDelegate		Files and Data Persistence / XML / Event-Based Processing	-	objc
 protocol	struck	NSXPCListenerDelegate		Low-Level Utilities / XPC Services	declined	objc
 protocol	struck	NSXPCProxyCreating		Low-Level Utilities / XPC Client	declined	objc
@@ -2878,7 +2868,6 @@ var	shipped	NSUnionOfSetsKeyValueOperator		Reference / Constants	-	objc
 var	shipped	NSUserActivityTypeBrowsingWeb	NSUserActivity	App Support / Activity Sharing / Browsing the web	-	objc
 var	shipped	NSUserDefaultsDidChangeNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Monitoring settings changes and issues	-	objc
 var	shipped	NSUserDefaultsSizeLimitExceededNotification	NSUserDefaults	Files and Data Persistence / App-specific settings / Monitoring settings changes and issues	-	objc
-var	shipped	NSUserNotificationDefaultSoundName	NSUserNotification	App Support / User Notifications / Constants	deprecated	objc
 var	shipped	NSWeekDayNameArray	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated / Date & Time Information	deprecated	objc
 var	shipped	NSWillBecomeMultiThreadedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
 var	shipped	NSWillBecomeMultiThreadedNotification	NSThread	Low-Level Utilities / Threads and Locking / Notifications	deprecated	swift-page

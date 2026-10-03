@@ -3688,7 +3688,6 @@ vanishing.
 | **App Support / Script Execution** | ALL STRUCK: `NSAppleScript` | — |
 | **App Support / System Interaction** | all classes shipped | — |
 | **App Support / Undo** | all classes shipped | — |
-| **App Support / User Notifications** | all classes shipped | — |
 | **App Support / User-Relevant Errors** | all classes shipped | — |
 | **Files and Data Persistence / Adopting Codability** | all classes shipped | — |
 | **Files and Data Persistence / App-specific settings** | all classes shipped | — |
@@ -15965,6 +15964,34 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 `--families --write` (rewrote the family table and the ledger) → `--check` **consistent** → `--unimplemented`
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
+
+## §63.167 — THE 10.8 NOTIFICATION FAMILY IS CUT WHOLE, AND SIX ROWS THAT SURVIVED §63.162's LIST COME OUT WITH IT (2026-10-03)
+
+**LANDED, the fifth family under `dec-cd47c0ae6583103b`.** `NSUserNotification`, `NSUserNotificationAction`,
+`NSUserNotificationCenter` and `NSUserNotificationCenterDelegate` — the 10.8 notification family — are gone, together
+with the first-party seam that carried them.
+
+**WHAT WENT.** `NSUserNotification.h/.m`, `NSUserNotificationCenter.h/.m` and `FNUserNotification.h` (five files);
+the umbrella's two imports; the probe `foundation_usernotification` and its case; four lines of `mk/20-userland.mk`
+and one `HOST_PROBES` token; **eleven symbol rows over eleven names**; and — the part §63.162's list did not
+reach — **SIX SELECTOR ROWS owned by `NSUserNotificationAction` and `NSUserNotificationCenterDelegate`**, whose
+owners were in the audit's *live-but-missing* set rather than among the thirteen that unit entered. **THE SWEEP FOUND
+THEM AND NOTHING ELSE WOULD HAVE:** `--check` reported all six as `STALE SHIPPED CLAIM` the moment the declarations
+left, which is exactly what that mode is for. Ledger now `method shipped 1594 → 1590`, `property 675 → 673`.
+
+**AND TWO PROSE SITES WERE RE-POINTED RATHER THAN LEFT POINTING AT NOTHING:** `NSCalendar.h`'s sentence naming two of
+the cut classes as examples of an `identifier` property, and the sweep tool's `_DECL_FORM_RX` name table, which had
+`NSUserNotificationCenter` in it — **A LIST OF CLASSES MUST NOT OUTLIVE THE CLASSES**, the lesson §63.163 recorded for
+`PARAM_CLASSES` and this unit needed again.
+
+**THE CUT ALSO CAUGHT MY OWN MIS-READ, WORTH THE LINE:** I had assumed that table was the tool's class-registry list
+and said so while cutting it; reading it showed `_DECL_FORM_RX` is the tuple of names whose DECLARATION FORMS the
+sweep must recognize. The edit was right and the reason I gave for it was wrong — **so the note left in the file says
+what the list is, not what I assumed it was.**
+
+**VERIFICATION.** `foundation-sweep.py --check` **consistent** (after `--families --write`, 85 rows); `make testimg`
+**green** — the library builds without the family, which is the whole gate for a cut whose own probe and case left
+with it.
 
 ## §63.166 — THE 10.10 EXTENSION FAMILY IS CUT WHOLE, AND A UNIT'S SHAPE IS DECIDED BY WHAT IT CONTAINS RATHER THAN BY ITS LEDGER ROWS (2026-10-03)
 

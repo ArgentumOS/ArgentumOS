@@ -959,13 +959,6 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) .build/probe-foundation_calendardate.o \
 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
 		-o "$(ROOTFS64)/System/Shared/tests/foundation_calendardate"
-	# foundation_usernotification: §62.68. ONE unit + the internal activation seam.
-	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-		-Werror=nullable-to-nonnull-conversion \
-		userland/tests/foundation_usernotification.m -o .build/probe-foundation_usernotification.o
-	$(MUSL64_OBJC) .build/probe-foundation_usernotification.o \
-		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-		-o "$(ROOTFS64)/System/Shared/tests/foundation_usernotification"
 	# foundation_distributednotification: §62.80. ONE unit - the center and its suspension engine.
 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
 		-Werror=nullable-to-nonnull-conversion \
