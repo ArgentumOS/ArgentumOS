@@ -6,11 +6,11 @@
 # source: https://developer.apple.com/tutorials/data/index/foundation
 #
 # kind	status	name	owner	family	why	src
-# case	shipped	1010	open	0	struck	78
-# class	shipped	158	open	0	struck	52
+# case	shipped	1005	open	0	struck	78
+# class	shipped	157	open	0	struck	52
 # enum	shipped	114	open	0	struck	9
 # protocol	shipped	31	open	0	struck	6
-# var	shipped	665	open	0	struck	211
+# var	shipped	662	open	0	struck	211
 
 
 case	shipped	NSASCIIStringEncoding	NSString	Fundamentals / Strings / Working with Encodings / Constants	-	objc
@@ -79,20 +79,15 @@ case	struck	NSBeginsWithComparison	NSSpecifierTest	App Support / Object Matching
 case	shipped	NSBinarySearchingFirstEqual	NSArray	Fundamentals / Basic Collections / Constants / Constants	-	objc
 case	shipped	NSBinarySearchingInsertionIndex	NSArray	Fundamentals / Basic Collections / Constants / Constants	-	objc
 case	shipped	NSBinarySearchingLastEqual	NSArray	Fundamentals / Basic Collections / Constants / Constants	-	objc
-case	shipped	NSBundleErrorMaximum	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
 case	shipped	NSBundleErrorMaximum	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
-case	shipped	NSBundleErrorMinimum	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
 case	shipped	NSBundleErrorMinimum	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
 case	shipped	NSBundleExecutableArchitectureARM64	NSBundle	App Support / Bundle Resources / Loading code from a bundle / Constants	-	objc
 case	shipped	NSBundleExecutableArchitectureI386	NSBundle	App Support / Bundle Resources / Loading code from a bundle / Constants	-	objc
 case	shipped	NSBundleExecutableArchitecturePPC	NSBundle	App Support / Bundle Resources / Loading code from a bundle / Constants	-	objc
 case	shipped	NSBundleExecutableArchitecturePPC64	NSBundle	App Support / Bundle Resources / Loading code from a bundle / Constants	-	objc
 case	shipped	NSBundleExecutableArchitectureX86_64	NSBundle	App Support / Bundle Resources / Loading code from a bundle / Constants	-	objc
-case	shipped	NSBundleOnDemandResourceExceededMaximumSizeError	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
 case	shipped	NSBundleOnDemandResourceExceededMaximumSizeError	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
-case	shipped	NSBundleOnDemandResourceInvalidTagError	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
 case	shipped	NSBundleOnDemandResourceInvalidTagError	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
-case	shipped	NSBundleOnDemandResourceOutOfSpaceError	NSBundleResourceRequest	App Support / On-Demand Resources / Errors	-	objc
 case	shipped	NSBundleOnDemandResourceOutOfSpaceError	NSError	App Support / User-Relevant Errors / Error Codes / Bundle Errors	-	objc
 case	shipped	NSCachesDirectory	NSFileManager	Files and Data Persistence / File system operations / Supporting Types / Directory Locations	-	objc
 case	shipped	NSCalculationDivideByZero		Fundamentals / Numbers / Performing arithmetic using references / Constants	-	objc
@@ -1113,7 +1108,6 @@ class	shipped	NSAutoreleasePool		Low-Level Utilities / Memory Management	-	objc
 class	shipped	NSBackgroundActivityScheduler		App Support / System Interaction	-	objc
 class	shipped	NSBlockOperation		App Support / Operations	-	objc
 class	shipped	NSBundle		App Support / Bundle Resources	-	objc
-class	shipped	NSBundleResourceRequest		App Support / On-Demand Resources	deprecated	objc
 class	shipped	NSCache		Fundamentals / Purgeable Collections	-	objc
 class	shipped	NSCachedURLResponse		Networking / Cache behavior	-	objc
 class	shipped	NSCalendar		Fundamentals / Calendrical Calculations	-	objc
@@ -2015,9 +2009,6 @@ var	shipped	NSAssertionHandlerKey	NSThread	Low-Level Utilities / Threads and Loc
 var	shipped	NSAverageKeyValueOperator		Reference / Constants	-	objc
 var	shipped	NSBuddhistCalendar	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale / Constants	deprecated	objc
 var	shipped	NSBundleDidLoadNotification	NSBundle	App Support / Bundle Resources / Getting classes from a bundle	-	objc
-var	shipped	NSBundleResourceRequestLoadingPriorityUrgent	NSBundleResourceRequest	App Support / On-Demand Resources / Setting the download priority	deprecated	objc
-var	shipped	NSBundleResourceRequestLowDiskSpaceNotification	NSBundleResourceRequest	App Support / On-Demand Resources / Working with notifications	deprecated	swift-page
-var	shipped	NSBundleResourceRequestLowDiskSpaceNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	deprecated	swift-page
 var	shipped	NSCalendarDayChangedNotification	NSCalendar	Fundamentals / Calendrical Calculations / Recognizing Notifications	-	swift-page
 var	shipped	NSCalendarDayChangedNotification	NSNotification	App Support / Notifications / Creating Notifications / Foundation	-	swift-page
 var	shipped	NSCalendarIdentifierBangla	NSCalendar	Fundamentals / Calendrical Calculations / Creating and Initializing Calendars / Calendar identifiers	-	objc

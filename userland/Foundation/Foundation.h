@@ -77,7 +77,6 @@
 #import <Foundation/NSSpellServer.h>
 #import <Foundation/NSArchiver.h>
 #import <Foundation/NSUbiquitousKeyValueStore.h>
-#import <Foundation/NSBundleResourceRequest.h>
 #import <Foundation/NSUserActivity.h>
 #import <Foundation/NSDistantObjectRequest.h>
 #import <Foundation/NSIndexSet.h>

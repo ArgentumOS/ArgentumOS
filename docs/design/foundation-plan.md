@@ -3679,7 +3679,6 @@ vanishing.
 | **App Support / Notifications** | all classes shipped | — |
 | **App Support / Object Matching Tests** | ALL STRUCK: `NSLogicalTest`, `NSScriptWhoseTest`, `NSSpecifierTest` | — |
 | **App Support / Object Specifiers** | ALL STRUCK: `NSIndexSpecifier`, `NSMiddleSpecifier`, `NSNameSpecifier`, `NSPositionalSpecifier`, `NSPropertySpecifier`, `NSRandomSpecifier`, `NSRangeSpecifier`, `NSRelativeSpecifier`, `NSScriptObjectSpecifier`, `NSUniqueIDSpecifier`, `NSWhoseSpecifier` | — |
-| **App Support / On-Demand Resources** | all classes shipped | — |
 | **App Support / Operations** | all classes shipped | — |
 | **App Support / Progress** | all classes shipped | — |
 | **App Support / Scheduling** | all classes shipped | — |
@@ -15964,6 +15963,39 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 `--families --write` (rewrote the family table and the ledger) → `--check` **consistent** → `--unimplemented`
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
+
+## §63.168 — THE iOS-ONLY ON-DEMAND-RESOURCES FAMILY IS CUT, AND THE ONE TOOL LIST THAT NAMES IT STAYS BECAUSE THE LIST IS ABOUT APPLE'S CORPUS RATHER THAN THIS TREE (2026-10-03)
+
+**LANDED, the sixth family under `dec-cd47c0ae6583103b`, and the one a standing decision already covered:**
+`NSBundleResourceRequest` is the **iOS-only shape** — Apple lists no native macOS version for it, .NET marks it
+`[UnsupportedOSPlatform("macos")]`, and Apple's own text says it *"ignores calls from Mac apps built with Mac
+Catalyst"* (§63.162's measurement). The 10.2 baseline is the macOS surface, so a class with no macOS version at all
+is out for a reason one level earlier than the era filter — `foundation-residue-delete-policy`'s *"DELETE iOS-only
+shapes because the macOS surface is the target."*
+
+**WHAT WENT.** `NSBundleResourceRequest.h/.m` and `FNBundleResourceRequest.h`; the umbrella's import; the probe
+`foundation_resourcerequest` and its case; four lines of `mk/20-userland.mk` and one `HOST_PROBES` token; and **NINE
+SYMBOL ROWS OVER EIGHT NAMES** — the class, its two notification names, the load-priority global, **and the five
+`NSBundleOnDemandResource*` / `NSBundleError*` cases APPLE FILES UNDER IT.** *That last group is why the sweep
+matched on OWNER as well as on name: a name-prefix filter alone would have left five rows about a class that no
+longer exists.* No selector rows existed (the owner was filtered long ago) and the era ground already carried it at
+**§63.162's entry, with the no-macOS-version note** — which is what made this cut's ground a lookup rather than a
+judgement.
+
+**IT WAS ALSO THE CLEANEST UNIT OF THE CAMPAIGN, AND THAT IS THE MEASUREMENT WORTH KEEPING: the family referenced
+NOTHING outside itself.** Its only referrers were its own header pair, its umbrella import, and its own probe — no
+kept class, no `FN` seam used elsewhere, no cascade to reason about. **A family whose references are all inward is a
+family the tree never depended on — which is what an iOS-only shape should look like on a macOS-targeted surface.**
+
+**AND THE ONE TOOL LIST THAT NAMES IT STAYS, WHICH IS THE §63.167 LESSON APPLIED IN THE OTHER DIRECTION.**
+`tools/foundation-sweep.py` carries `NSBundleResourceRequest` in `CORPUS_LACKS_OWNER_HEADER` — and I READ IT BEFORE
+TOUCHING IT this time, because §63.167 removed a name from a list I had *assumed* was a class registry. **THIS SET IS
+A FACT ABOUT APPLE'S CORPUS, NOT ABOUT OUR TREE:** it names the owners whose header the corpus does not carry, so
+absence from the corpus is never treated as evidence. **The name OUTLIVES the class: deleting it would make the tool
+assert the opposite of what is true.** A note beside it says so, and says why it was checked.
+
+**VERIFICATION.** `foundation-sweep.py --check` **consistent** (after `--families --write`, 84 rows); `make testimg`
+**green** — the library builds without the family, and with no other referrer there was nothing else to gate.
 
 ## §63.167 — THE 10.8 NOTIFICATION FAMILY IS CUT WHOLE, AND SIX ROWS THAT SURVIVED §63.162's LIST COME OUT WITH IT (2026-10-03)
 

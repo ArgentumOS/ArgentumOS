@@ -602,6 +602,11 @@ UNSUPPORTED_BY_APPLE = frozenset((
 CORPUS_LACKS_OWNER_HEADER = frozenset((
     "NSAttributedStringMarkdown",
     "NSBlockOperation",
+    # ⚠⚠ NSBundleResourceRequest STAYS HERE AFTER §63.168 CUT THE CLASS (2026-10-03), AND THAT IS THE POINT:
+    # THIS SET IS ABOUT APPLE'S CORPUS, NOT ABOUT THIS TREE - it names the owners whose header the corpus does
+    # not carry, so absence from it is not evidence. THE NAME IS A FACT ABOUT THE CORPUS AND OUTLIVES THE CLASS:
+    # removing it would make the tool assert the opposite. (§63.167 read a similar list WRONG and removed a name
+    # it should have kept had the list been what I assumed - so READ WHAT A LIST IS BEFORE EDITING IT.)
     "NSBundleResourceRequest",
     "NSCacheDelegate",
     "NSCachedURLResponse",
