@@ -15982,6 +15982,41 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.105 — RETRACTION: THE TYPES WERE ALREADY THERE, AND A `head -4` MADE ME SAY THEY WERE NOT (2026-10-01)
+
+**NO ROWS CLOSED. §63.104'S MEASUREMENT IS RETRACTED, AND THE WAY IT WAS WRONG IS THE PUREST INSTANCE OF THIS SESSION'S
+ONE MISTAKE.**
+
+**⚠⚠ THE RETRACTION: `NSURLBookmarkResolutionOptions` **IS** DECLARED IN THIS TREE — `NSURL.h:569` — and so the
+seven bookmark doors never needed the typedefs §63.104 said they needed.** The measurement that said otherwise was:
+```
+grep -rn "NSURLBookmarkResolutionOptions\|NSURLBookmarkCreationOptions\|NSURLResourceKey" userland/Foundation/*.h | head -4
+```
+**AND `head -4` CUT THE OUTPUT AT FOUR LINES.** The list it printed was short; **I read the SHORT LIST as the absence of
+the thing I was looking for.** *THE INSTRUMENT'S OUTPUT WAS TRUNCATED AND THE TRUNCATION WAS READ AS THE WORLD* —
+which is the same mistake as every other one this session, in its barest form: a search reporting on something other
+than the thing being asked about. **THE FIX IS TO COUNT, NOT TO LOOK: `grep -c` answered 1 immediately.**
+
+**⚠⚠ AND THE GUARD WAS RIGHT, WHICH IS THE PART WORTH KEEPING: IT REFUSED TO RE-ADD A TYPE THAT ALREADY EXISTED.**
+`note: NSURL.h already has 'NSURLBookmarkResolutionOptions'` — the message I read as a misfire was the guard doing
+exactly its job, and the round that followed from it re-measured with `grep -c` and found the truth. **A CORRECT GUARD
+LOOKS IDENTICAL TO A MISFIRING ONE; THE DIFFERENCE IS ONLY VISIBLE BY MEASURING THE THING IT GUARDED.**
+
+**AND THE UNIT IS SMALLER THAN WHEN THE ROUND OPENED: THE TYPEDEFS ARE UNNECESSARY, SO THE SEVEN REFUSALS ARE A
+DECLARATIONS-ONLY CHANGE** — the declarations, the one shared ground, and the seven one-per-door checks **are all
+written and understood, and the enum-parse that was built to generate the typedefs is not needed at all.** *A round that
+ends with LESS work than it began with, because it checked one of its own premises.*
+
+**⚠ AND THE SCRIPT ITSELF WAS LOST TO A SECOND INSTANCE OF A TRAP THIS SESSION HAD ALREADY RECORDED: I CLEANED UP WITH
+`ls /tmp/bm2.py >/dev/null && rm -f /tmp/bm2.py` IN THE SAME COMMAND THAT STILL NEEDED IT.** §63.93 recorded the same
+shape (an `rm` mid-chain), and the record did not prevent the repeat. **§63.100's lesson one turn further on: THE
+RECORD IS NOT THE MEMORY — and the working copy of a script is not a scratch file when it is the only copy of the
+work.**
+
+**AND THE STATE: THE TREE IS GREEN — `method 2177 / open 381`, `property 1278 / open 186`, `--check` consistent, and the
+probe at 28/28.** The seven refusals are one clean write away, and this time the write needs no new types, no parsed
+enums, and no guard on a type.
+
 ## §63.104 — THE USER DECIDED THE BOOKMARKS REFUSE, AND THE FIRST THING THE UNIT MEASURED WAS A TYPE THAT DOES NOT EXIST (2026-10-01)
 
 **THE DECISION (user, 2026-10-01, `dec-412cc6306e238994`): THE BOOKMARK FAMILY REFUSES BY NAME, CONSISTENTLY WITH
