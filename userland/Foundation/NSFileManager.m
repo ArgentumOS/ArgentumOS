@@ -229,6 +229,39 @@ static NSString *fn_joined(NSString *directory, NSString *name)
 	return [NSString stringWithFormat:@"%@/%@", directory, name];
 }
 
+
+/* §63.193: THE VETO WALK every legacy handler door shares. The handler is asked about the item itself and,
+ * when it is a directory, about every item inside it — and the walk finishes BEFORE anything is done, so a
+ * `NO` anywhere leaves the world untouched. Apple's calls interleave with the work; this does not, and the
+ * header says so. */
+static BOOL fn_legacy_veto(BOOL (^handler)(NSString *, NSError *), NSString *path)
+{
+	BOOL isDirectory = NO;
+	NSError *ignored = nil;
+
+	if (handler == nil) {
+		return YES;
+	}
+	if (!handler(path, nil)) {
+		return NO;
+	}
+	if (![[NSFileManager defaultManager] fileExistsAtPath:path isDirectory:&isDirectory] || !isDirectory) {
+		return YES;
+	}
+	{
+		NSDirectoryEnumerator *walk = [[NSFileManager defaultManager] enumeratorAtPath:path];
+		NSString *item;
+
+		while ((item = [walk nextObject]) != nil) {
+			if (!handler([path stringByAppendingPathComponent:item], nil)) {
+				return NO;
+			}
+		}
+	}
+	(void)ignored;
+	return YES;
+}
+
 @implementation NSFileManager
 
 + (NSFileManager *)defaultManager
@@ -949,6 +982,43 @@ typedef enum {
 		return fn_failed(error, err);
 	}
 	return YES;
+}
+
+/* --- THE LEGACY HANDLER DOORS (§63.193) ------------------------------------- */
+
+- (BOOL)copyPath:(NSString *)source toPath:(NSString *)destination
+	 handler:(BOOL (^)(NSString *, NSError *))handler
+{
+	if (!fn_legacy_veto(handler, source)) {
+		return NO;
+	}
+	return [self copyItemAtPath:source toPath:destination error:NULL];
+}
+
+- (BOOL)movePath:(NSString *)source toPath:(NSString *)destination
+	 handler:(BOOL (^)(NSString *, NSError *))handler
+{
+	if (!fn_legacy_veto(handler, source)) {
+		return NO;
+	}
+	return [self moveItemAtPath:source toPath:destination error:NULL];
+}
+
+- (BOOL)linkPath:(NSString *)source toPath:(NSString *)destination
+	 handler:(BOOL (^)(NSString *, NSError *))handler
+{
+	if (!fn_legacy_veto(handler, source)) {
+		return NO;
+	}
+	return [self linkItemAtPath:source toPath:destination error:NULL];
+}
+
+- (BOOL)removeFileAtPath:(NSString *)path handler:(BOOL (^)(NSString *, NSError *))handler
+{
+	if (!fn_legacy_veto(handler, path)) {
+		return NO;
+	}
+	return [self removeItemAtPath:path error:NULL];
 }
 
 - (nullable NSDictionary *)attributesOfItemAtPath:(NSString *)path

@@ -15962,6 +15962,34 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.193 — NSFileManager: the four legacy handler doors, and the one place the veto is stronger than Apple's
+
+Four rows: `method shipped 1668 → 1672, open 147 → 143` — `-copyPath:toPath:handler:`,
+`-movePath:toPath:handler:`, `-linkPath:toPath:handler:`, `-removeFileAtPath:handler:`.
+
+**EACH IS THE MODERN DOOR WITH A PER-ITEM VETO, WHICH IS THE ONLY THING THE NAME ADDS.** All four go through
+ONE walker: the handler is asked about the item itself and, when it is a directory, about every item inside
+it — that is what makes the legacy door different from `-copyItemAtPath:…`, and the probe asserts the count
+(a directory plus two files is THREE calls, not one).
+
+**AND THE VETO IS STRONGER THAN APPLE'S, DELIBERATELY AND IN WRITING.** Apple's handler calls interleave with
+the work, so a `NO` part-way can leave a partial result; here the walk finishes BEFORE anything is done, so a
+veto leaves the world untouched. A veto is a veto — and the check is what makes that a claim rather than a
+preference: a refused copy leaves **no destination at all** (`handler-called=1`, `destination-exists=0`).
+The header says so beside the doors, where a caller will meet it.
+
+**THE SECOND CHECK IS THE ONE THAT MATTERS FOR A VETO DOOR**, because "the operation failed" and "the
+operation never started" look identical from the return value alone; the observable is the ABSENCE of the
+destination, asserted with a delegate-less file manager so nothing else can be blamed.
+
+**A SMALL TRAP:** this probe has no `@implementation` block, so a patch that anchored a file-scope `static`
+before one aborted — a static belongs at file scope, which is what the insertion point has to be. The build
+and gate were green while the probe was unchanged, which is exactly the vacuous pass this campaign watches
+for: green until the checks exist.
+
+Acceptance: `make testimg` green (status-checked); `make test TESTS=foundation_filemanager` → `TESTS-OK` with
+three new checks; `tools/foundation-sweep.py --check` consistent (`method 1672/143/399`).
+
 ## §63.192 — NSURLRequest / NSMutableURLRequest: the network-policy and DNS surface
 
 Fourteen rows: `property shipped 705 → 719, open 59 → 45` — for each class:

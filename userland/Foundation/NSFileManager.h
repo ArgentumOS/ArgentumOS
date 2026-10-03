@@ -426,6 +426,21 @@ typedef enum {
 		toPath:(NSString *)destinationPath
 		 error:(NSError ** _Nullable)error;
 
+
+/* ⚠ THE LEGACY HANDLER DOORS (§63.193). Each is the modern door above with a PER-ITEM VETO: the handler is
+ * called for the item itself and, when it is a directory, for every item inside it, and a `NO` anywhere means
+ * NOTHING IS DONE. That is stronger than Apple's own wording — Apple's calls interleave with the work, so a
+ * veto can leave a partial result — and it is stated here rather than left to be discovered: a veto is a
+ * veto, and the probe asserts that a vetoed copy leaves no copy.
+ * `handler` may be nil, which is the same as always approving. */
+- (BOOL)copyPath:(NSString *)source toPath:(NSString *)destination
+	 handler:(nullable BOOL (^)(NSString *path, NSError *error))handler;
+- (BOOL)movePath:(NSString *)source toPath:(NSString *)destination
+	 handler:(nullable BOOL (^)(NSString *path, NSError *error))handler;
+- (BOOL)linkPath:(NSString *)source toPath:(NSString *)destination
+	 handler:(nullable BOOL (^)(NSString *path, NSError *error))handler;
+- (BOOL)removeFileAtPath:(NSString *)path
+		 handler:(nullable BOOL (^)(NSString *path, NSError *error))handler;
 /* ---- A COPY AND A MOVE REFUSE AN EXISTING DESTINATION (W8 slice 3, AND BOTH ARE FIXES) ------------
  *
  * Apple says it in the copy's own discussion - "if a file with the same name already exists at dstPath,

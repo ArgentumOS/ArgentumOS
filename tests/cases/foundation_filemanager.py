@@ -98,7 +98,7 @@ CHECKS = ("fs-default-manager", "fs-create-and-list", "fs-write-and-size", "fs-m
           "fs-file-system-representation", "fs-url-file-forms", "fs-url-relationship",
           "fs-user-directory-urls", "fs-deprecated-doors", "fs-no-icloud-answers",
           "fs-sync-controls-answer-unsupported", "fs-url-directory-forms-are-the-named-refusal",
-          "fs-trash-refuses-and-unmount-answers")
+          "fs-trash-refuses-and-unmount-answers", "filemanager-legacy-copy-handler-counts", "filemanager-legacy-copy-veto-leaves-nothing", "filemanager-legacy-link-move-and-remove")
 
 
 class Case(BaseCase):

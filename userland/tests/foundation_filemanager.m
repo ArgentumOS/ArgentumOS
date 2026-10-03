@@ -47,6 +47,9 @@
 
 static int okc, failc;
 
+/* §63.193: the legacy handler doors' accounting. */
+static int fn_probe_handler_calls = 0;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
 	if (ok) {
@@ -1158,6 +1161,89 @@ int main(void)
 		      [NSString stringWithFormat:@"trashed=%d trashErr=%d resulting=%@ unmount=%d err=%d bad=%d/%d",
 			(int)trashed, trashErr != nil, resulting,
 			unmountCalls, unmountErr != nil, badCalls, badErr != nil]);
+	}
+
+
+	{
+		/* §63.193: THE HANDLER SEES EVERY ITEM — the directory AND the two files inside it — which is the
+		 * whole difference between this door and the modern one. */
+		NSFileManager *manager = [NSFileManager defaultManager];
+		NSString *tree = fn_path(@"legacy-tree");
+		NSString *copy = fn_path(@"legacy-copy");
+		NSError *ignored = nil;
+		BOOL built;
+		BOOL copied;
+
+		[manager removeItemAtPath:tree error:&ignored];
+		[manager removeItemAtPath:copy error:&ignored];
+		built = [manager createDirectoryAtPath:tree withIntermediateDirectories:NO attributes:nil error:&ignored];
+		built = built && [[@"one" dataUsingEncoding:NSUTF8StringEncoding]
+			writeToFile:[tree stringByAppendingPathComponent:@"one.txt"] atomically:NO];
+		built = built && [[@"two" dataUsingEncoding:NSUTF8StringEncoding]
+			writeToFile:[tree stringByAppendingPathComponent:@"two.txt"] atomically:NO];
+		fn_probe_handler_calls = 0;
+		copied = [manager copyPath:tree toPath:copy handler:^BOOL(NSString *path, NSError *error) {
+			(void)path;
+			(void)error;
+			fn_probe_handler_calls++;
+			return YES;
+		}];
+		check("filemanager-legacy-copy-handler-counts",
+		      built && copied && fn_probe_handler_calls == 3 &&
+		      [manager fileExistsAtPath:[copy stringByAppendingPathComponent:@"two.txt"]],
+		      [NSString stringWithFormat:@"built=%d copied=%d handler-called=%d copy-has-two=%d",
+			built, copied, fn_probe_handler_calls,
+			[manager fileExistsAtPath:[copy stringByAppendingPathComponent:@"two.txt"]]]);
+	}
+	{
+		/* AND A VETO IS A VETO: the FIRST `NO` stops everything, and nothing is left behind. */
+		NSFileManager *manager = [NSFileManager defaultManager];
+		NSString *tree = fn_path(@"veto-tree");
+		NSString *copy = fn_path(@"veto-copy");
+		NSError *ignored = nil;
+		BOOL copied;
+
+		[manager removeItemAtPath:tree error:&ignored];
+		[manager removeItemAtPath:copy error:&ignored];
+		(void)[manager createDirectoryAtPath:tree withIntermediateDirectories:NO attributes:nil error:&ignored];
+		(void)[[@"x" dataUsingEncoding:NSUTF8StringEncoding]
+			writeToFile:[tree stringByAppendingPathComponent:@"x.txt"] atomically:NO];
+		fn_probe_handler_calls = 0;
+		copied = [manager copyPath:tree toPath:copy handler:^BOOL(NSString *path, NSError *error) {
+			(void)path;
+			(void)error;
+			fn_probe_handler_calls++;
+			return NO;	/* refuse everything */
+		}];
+		check("filemanager-legacy-copy-veto-leaves-nothing",
+		      !copied && fn_probe_handler_calls == 1 && ![manager fileExistsAtPath:copy],
+		      [NSString stringWithFormat:@"copied=%d handler-called=%d destination-exists=%d",
+			copied, fn_probe_handler_calls, [manager fileExistsAtPath:copy]]);
+	}
+	{
+		/* THE OTHER THREE DOORS, each asserted by its own observable: a hard link shares the bytes, a move
+		 * removes the source, a remove is a remove. */
+		NSFileManager *manager = [NSFileManager defaultManager];
+		NSString *file = fn_path(@"legacy-file.txt");
+		NSString *linked = fn_path(@"legacy-linked.txt");
+		NSString *moved = fn_path(@"legacy-moved.txt");
+		NSError *ignored = nil;
+		BOOL linkedOk;
+		BOOL movedOk;
+		BOOL removedOk;
+
+		[manager removeItemAtPath:file error:&ignored];
+		[manager removeItemAtPath:linked error:&ignored];
+		[manager removeItemAtPath:moved error:&ignored];
+		(void)[[@"body" dataUsingEncoding:NSUTF8StringEncoding] writeToFile:file atomically:NO];
+		linkedOk = [manager linkPath:file toPath:linked handler:nil];
+		movedOk = [manager movePath:linked toPath:moved handler:nil];
+		removedOk = [manager removeFileAtPath:moved handler:nil];
+		check("filemanager-legacy-link-move-and-remove",
+		      linkedOk && movedOk && removedOk && [manager fileExistsAtPath:file] &&
+		      ![manager fileExistsAtPath:linked] && ![manager fileExistsAtPath:moved],
+		      [NSString stringWithFormat:@"link=%d move=%d remove=%d source-kept=%d",
+			linkedOk, movedOk, removedOk, [manager fileExistsAtPath:file]]);
 	}
 
 	printf("FOUNDATION-FILEMANAGER RESULT ok=%d fail=%d\n", okc, failc);
