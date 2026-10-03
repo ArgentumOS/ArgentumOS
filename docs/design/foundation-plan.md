@@ -15969,6 +15969,34 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.140 — THE KEPT `NSURLConnection` IS BUILT ON THE CUT `NSURLSession`: A RE-ARCHITECTURE, NOT A DELETION (2026-10-01)
+
+**⚠⚠ MEASURED, AND IT IS THE MOST CONSEQUENTIAL FACT IN THIS WHOLE CUT. `NSURLConnection` IS A 10.2 CLASS WE KEEP — AND
+ITS IMPLEMENTATION IS A WRAPPER OVER `NSURLSession`, A 10.9 CLASS THE BASELINE REMOVES: 566 LINES, 34 REFERENCES TO THE
+SESSION, `@interface NSURLConnection () <NSURLSessionDataDelegate>`, an ivar pair `NSURLSession *session;
+NSURLSessionDataTask *task;`, and the engine itself — `[NSURLSession sharedSession]`,
+`[NSURLSession sessionWithConfiguration:]`, `[NSURLSessionConfiguration defaultSessionConfiguration]`.** *The kept class
+works TODAY only because it sits on the class we are cutting.*
+
+**AND THE SESSION-FREE PATH ALREADY EXISTS, WHICH IS WHY THIS IS A CHOICE RATHER THAN A WALL: `FNCURLURLProtocol` IS
+‘THE BRIDGE: libcurl behind the NSURLProtocol seam’ — an ordinary `NSURLProtocol` subclass whose transfer is driven by
+curl.** At a 10.2 baseline that is what `NSURLConnection` is SUPPOSED to drive: 10.2's connection ran on `NSURLProtocol`,
+not on a session that did not exist for seven more years. Its own 14 session references are the removable kind (the
+disposition enum and `NSURLSessionTaskTransactionMetrics`).
+
+**AND ONE MORE THING THE STEP FOUND: THE DISPOSITION ENUM IS *DECLARED IN `NSURLProtocol.h`* — a KEPT PUBLIC HEADER —
+because the tree moved it there deliberately to break an include cycle with `NSURLSession.h`.** So this type is not
+merely *used* by the kept API; **it is DECLARED by it**, and the move is a public-header edit rather than an internal one.
+
+***SO THE DECISION IS THE USER'S, AND IT IS A REAL TRADE: REWRITE THE URL ENGINE ONTO THE SEAM THAT ALREADY EXISTS
+(~566 lines of `NSURLConnection`, the disposition move, `FNCURLURLProtocol`'s 14 references, and the behavioural surface
+that flows through the session today — cookies, cache, credentials, redirects, downloads) OR NAME THE SESSION FAMILY AS
+AN EXCEPTION FOR THE ONE THING THE OS CANNOT DO WITHOUT.*** §63.130's own opening question predicted exactly this shape:
+*a literal 10.2 Foundation keeps networking, and the thing that makes networking work here is a class 10.2 did not
+have.*
+
+**NOTHING WAS CHANGED IN THIS STEP.**
+
 ## §63.139 — SLICE 2 REFRAMED: THE MEMBER CUT IS THE DOOR INTO THE URL SUBSYSTEM, AND ITS EASIEST PART IS DONE (2026-10-01)
 
 **LANDED: THE NINE DEDICATED SESSION PROBES AND THEIR NINE CASES, plus their 79-line clusters in `mk/20-userland.mk`
