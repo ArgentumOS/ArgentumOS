@@ -15982,6 +15982,40 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.102 — FIFTY-TWO ROWS LEAVE ON A *REFINED* GROUND, AND `NSValue` LEAVES THE WORK LIST (2026-10-01)
+
+**WHAT LANDED: fifty-two rows struck — `NSValue`'s ENTIRE twenty-eight-row block and twenty-four of `NSString`'s — AND
+THE GROUND THEY LAND ON IS A REFINEMENT OF §63.100'S, FORCED BY A HOLE THIS UNIT FOUND IN IT.**
+
+**MEASURED: `method open 419 → 381`, `struck 332 → 370`; `property open 200 → 186`, `struck 158 → 172` —
+FIFTY-TWO ROWS; `--check` consistent; **`NSValue` HAS LEFT THE WORK LIST** and **`NSString` fell from 28 rows to 4.**
+
+**⚠⚠ THE HOLE, AND IT IS THE REASON THE GROUND IS REFINED RATHER THAN EXTENDED: §63.100 STRUCK ROWS FOR BEING ABSENT
+FROM FOUNDATION'S CORPUS — AND ABSENCE IS ONLY AS GOOD AS THE CORPUS.** `NSPathUtilities.h` IS IN IT, **and it lacks
+`pathExtensionForType`**, which is Foundation's (macOS 11+). **So a per-header gap can read as a foreign framework,
+and §63.100's criterion was a NEGATIVE signal with an unmeasured coverage assumption behind it.**
+
+**AND THESE FIFTY-TWO ROWS ARE HELD BY A POSITIVE ONE: THEIR DECLARATIONS NAME TYPES THAT BELONG TO OTHER
+FRAMEWORKS** — `CATransform3D` (CoreAnimation), `CMTime` (CoreMedia), `MKCoordinate` (MapKit), `SCNVector3`
+(SceneKit), `UIEdgeInsets`/`UIOffset` (UIKit), `GCPoint2` (GameController), plus UIKit's entire `draw…`/`size…`/
+`boundingRect…` drawing and measuring family and Intents', UserNotifications' and SpriteKit's three.
+**A TYPE FROM ANOTHER FRAMEWORK IS A POSITIVE GROUND; AN ABSENCE IS A NEGATIVE ONE — and a partial corpus cannot fake
+a `CATransform3D`.**
+
+**⚠ AND THE TWO UNCERTAIN ROWS ARE LEFT OPEN ON PURPOSE, WHICH IS THE SAME CAVEAT SEEN FROM THE OTHER SIDE:
+`-stringByAppendingPathComponent:conformingToType:` and `-stringByAppendingPathExtensionForType:` ARE Foundation's, and
+their absence says the corpus's `NSPathUtilities.h` is incomplete — so they are the EVIDENCE FOR the refinement
+rather than patients of it.** A classifier that struck them would have been wrong in the way this whole session keeps
+finding: **a search that matched a property of the instrument instead of a property of the thing.**
+
+**AND THE CLASSIFIER HAS NOW BEEN CORRECTED FOUR TIMES, EVERY ONE FOUND BY A NUMBER THAT DID NOT MAKE SENSE:** it
+matched SUBSTRINGS (`-size` in prose), then could not see a PROPERTY, then tested only the FIRST KEYWORD of a
+selector, **and now it trusted an ABSENCE whose coverage nobody had measured.** *Four bugs, one instrument, and not one
+of them was found by re-reading its code.*
+
+**AND WHAT REMAINS ON `NSString` IS FOUR ROWS — TWO OURS AND TWO HELD BACK BY THE COVERAGE CAVEAT** — while the work
+list's top owner is now decided by the tool rather than by memory.
+
 ## §63.101 — `-mutableString` LANDS AS A LIVE PROXY, AND THE OWNER IS DONE (2026-10-01)
 
 **WHAT LANDED: `-mutableString`, in Apple's own category `NSMutableAttributedString (NSExtendedMutableAttributedString)`

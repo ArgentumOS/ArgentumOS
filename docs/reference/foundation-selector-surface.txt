@@ -25,9 +25,9 @@
 #                   which is how the declined families' whole selector surface is removed rather
 #                   than left open. The `why` column says which ground.
 #
-# why the struck rows are struck: declined 443, other-framework 47
+# why the struck rows are struck: declined 443, other-framework 99
 #
-# AND 575 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
+# AND 560 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): deprecated API is a PORTING TARGET here, so `deprecated` says what KIND of work a
 # row is, never that it is excluded.
 #
@@ -35,8 +35,8 @@
 #   (7 method/property nodes carried no enclosing class and are NOT rows)
 #
 # counts by kind:
-#   method     shipped 2177   open  419   struck  332
-#   property   shipped 1278   open  200   struck  158
+#   method     shipped 2177   open  381   struck  370
+#   property   shipped 1278   open  186   struck  172
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
 method	open	-concat	NSAffineTransform	Fundamentals / Geometry / Setting and Building the Current Transformation Matrix	-	objc
 method	shipped	-init	NSAffineTransform	Fundamentals / Geometry / Creating an Affine Transform	-	objc
@@ -3025,8 +3025,8 @@ property	shipped	delegate	NSStream	Low-Level Utilities / Streams / Configuring S
 property	shipped	streamError	NSStream	Low-Level Utilities / Streams / Getting Stream Information	-	objc
 property	shipped	streamStatus	NSStream	Low-Level Utilities / Streams / Getting Stream Information	-	objc
 method	shipped	-stream:handleEvent:	NSStreamDelegate	Low-Level Utilities / Streams / Using Streams	-	objc
-method	open	-boundingRectWithSize:options:attributes:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	-boundingRectWithSize:options:attributes:context:	NSString	Fundamentals / Strings / Sizing and Drawing Strings	-	objc
+method	struck	-boundingRectWithSize:options:attributes:	NSString	Fundamentals / Strings / Deprecated	other-framework	objc
+method	struck	-boundingRectWithSize:options:attributes:context:	NSString	Fundamentals / Strings / Sizing and Drawing Strings	other-framework	objc
 method	shipped	-cString	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-cStringLength	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-cStringUsingEncoding:	NSString	Fundamentals / Strings / Getting C Strings	-	objc
@@ -3045,20 +3045,20 @@ method	shipped	-componentsSeparatedByString:	NSString	Fundamentals / Strings / D
 method	shipped	-containsString:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	shipped	-dataUsingEncoding:	NSString	Fundamentals / Strings / Working with Encodings	-	objc
 method	shipped	-dataUsingEncoding:allowLossyConversion:	NSString	Fundamentals / Strings / Working with Encodings	-	objc
-method	open	+deferredLocalizedIntentsStringWithFormat:	NSString	Fundamentals / Strings / Type Methods	-	objc
-method	open	+deferredLocalizedIntentsStringWithFormat:fromTable:	NSString	Fundamentals / Strings / Type Methods	-	objc
-method	open	+deferredLocalizedIntentsStringWithFormat:fromTable:arguments:	NSString	Fundamentals / Strings / Type Methods	-	objc
-method	open	-drawAtPoint:forWidth:withFont:fontSize:lineBreakMode:baselineAdjustment:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	-drawAtPoint:forWidth:withFont:lineBreakMode:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	-drawAtPoint:forWidth:withFont:minFontSize:actualFontSize:lineBreakMode:baselineAdjustment:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	-drawAtPoint:withAttributes:	NSString	Fundamentals / Strings / Sizing and Drawing Strings	-	objc
-method	open	-drawAtPoint:withFont:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	-drawInRect:withAttributes:	NSString	Fundamentals / Strings / Sizing and Drawing Strings	-	objc
-method	open	-drawInRect:withFont:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	-drawInRect:withFont:lineBreakMode:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	-drawInRect:withFont:lineBreakMode:alignment:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	-drawWithRect:options:attributes:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	-drawWithRect:options:attributes:context:	NSString	Fundamentals / Strings / Sizing and Drawing Strings	-	objc
+method	struck	+deferredLocalizedIntentsStringWithFormat:	NSString	Fundamentals / Strings / Type Methods	other-framework	objc
+method	struck	+deferredLocalizedIntentsStringWithFormat:fromTable:	NSString	Fundamentals / Strings / Type Methods	other-framework	objc
+method	struck	+deferredLocalizedIntentsStringWithFormat:fromTable:arguments:	NSString	Fundamentals / Strings / Type Methods	other-framework	objc
+method	struck	-drawAtPoint:forWidth:withFont:fontSize:lineBreakMode:baselineAdjustment:	NSString	Fundamentals / Strings / Deprecated	other-framework	objc
+method	struck	-drawAtPoint:forWidth:withFont:lineBreakMode:	NSString	Fundamentals / Strings / Deprecated	other-framework	objc
+method	struck	-drawAtPoint:forWidth:withFont:minFontSize:actualFontSize:lineBreakMode:baselineAdjustment:	NSString	Fundamentals / Strings / Deprecated	other-framework	objc
+method	struck	-drawAtPoint:withAttributes:	NSString	Fundamentals / Strings / Sizing and Drawing Strings	other-framework	objc
+method	struck	-drawAtPoint:withFont:	NSString	Fundamentals / Strings / Deprecated	other-framework	objc
+method	struck	-drawInRect:withAttributes:	NSString	Fundamentals / Strings / Sizing and Drawing Strings	other-framework	objc
+method	struck	-drawInRect:withFont:	NSString	Fundamentals / Strings / Deprecated	other-framework	objc
+method	struck	-drawInRect:withFont:lineBreakMode:	NSString	Fundamentals / Strings / Deprecated	other-framework	objc
+method	struck	-drawInRect:withFont:lineBreakMode:alignment:	NSString	Fundamentals / Strings / Deprecated	other-framework	objc
+method	struck	-drawWithRect:options:attributes:	NSString	Fundamentals / Strings / Deprecated	other-framework	objc
+method	struck	-drawWithRect:options:attributes:context:	NSString	Fundamentals / Strings / Sizing and Drawing Strings	other-framework	objc
 method	shipped	-enumerateLinesUsingBlock:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	shipped	-enumerateLinguisticTagsInRange:scheme:options:orthography:usingBlock:	NSString	Fundamentals / Strings / Performing Linguistic Analysis	deprecated	objc
 method	shipped	-enumerateSubstringsInRange:options:usingBlock:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
@@ -3116,7 +3116,7 @@ method	shipped	-localizedStandardContainsString:	NSString	Fundamentals / Strings
 method	shipped	-localizedStandardRangeOfString:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	shipped	+localizedStringWithFormat:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	+localizedStringWithValidatedFormat:validFormatSpecifiers:error:	NSString	Fundamentals / Strings / Type Methods	-	objc
-method	open	+localizedUserNotificationStringForKey:arguments:	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
+method	struck	+localizedUserNotificationStringForKey:arguments:	NSString	Fundamentals / Strings / Creating and Initializing Strings	other-framework	objc
 method	shipped	-lossyCString	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-lowercaseStringWithLocale:	NSString	Fundamentals / Strings / Changing Case	-	objc
 method	shipped	-maximumLengthOfBytesUsingEncoding:	NSString	Fundamentals / Strings / Getting a String’s Length	-	objc
@@ -3133,13 +3133,13 @@ method	shipped	-rangeOfString:	NSString	Fundamentals / Strings / Finding Charact
 method	shipped	-rangeOfString:options:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	shipped	-rangeOfString:options:range:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	shipped	-rangeOfString:options:range:locale:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
-method	open	-sizeWithAttributes:	NSString	Fundamentals / Strings / Sizing and Drawing Strings	-	objc
-method	open	-sizeWithFont:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	-sizeWithFont:constrainedToSize:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	-sizeWithFont:constrainedToSize:lineBreakMode:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	-sizeWithFont:forWidth:lineBreakMode:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	-sizeWithFont:minFontSize:actualFontSize:forWidth:lineBreakMode:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
-method	open	-sr_sensorForDeletionRecordsFromSensor	NSString	Fundamentals / Strings / Instance Methods	deprecated	objc
+method	struck	-sizeWithAttributes:	NSString	Fundamentals / Strings / Sizing and Drawing Strings	other-framework	objc
+method	struck	-sizeWithFont:	NSString	Fundamentals / Strings / Deprecated	other-framework	objc
+method	struck	-sizeWithFont:constrainedToSize:	NSString	Fundamentals / Strings / Deprecated	other-framework	objc
+method	struck	-sizeWithFont:constrainedToSize:lineBreakMode:	NSString	Fundamentals / Strings / Deprecated	other-framework	objc
+method	struck	-sizeWithFont:forWidth:lineBreakMode:	NSString	Fundamentals / Strings / Deprecated	other-framework	objc
+method	struck	-sizeWithFont:minFontSize:actualFontSize:forWidth:lineBreakMode:	NSString	Fundamentals / Strings / Deprecated	other-framework	objc
+method	struck	-sr_sensorForDeletionRecordsFromSensor	NSString	Fundamentals / Strings / Instance Methods	other-framework	objc
 method	shipped	+string	NSString	Fundamentals / Strings / Creating and Initializing Strings	-	objc
 method	shipped	-stringByAddingPercentEncodingWithAllowedCharacters:	NSString	Fundamentals / Strings / Working with URL Strings	-	objc
 method	shipped	-stringByAddingPercentEscapesUsingEncoding:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
@@ -4323,51 +4323,51 @@ method	shipped	-initWithCoder:	NSValue	Low-Level Utilities / Value Wrappers and 
 method	shipped	-isEqualToValue:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Comparing Value Objects	-	objc
 method	shipped	+value:withObjCType:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Raw Values	-	objc
 method	shipped	+valueWithBytes:objCType:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Raw Values	-	objc
-method	open	+valueWithCATransform3D:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreAnimation Transform Values	-	objc
+method	struck	+valueWithCATransform3D:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreAnimation Transform Values	other-framework	objc
 method	struck	+valueWithCGAffineTransform:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	declined	objc
 method	struck	+valueWithCGPoint:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	declined	objc
 method	struck	+valueWithCGRect:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	declined	objc
 method	struck	+valueWithCGSize:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	declined	objc
 method	struck	+valueWithCGVector:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	declined	objc
-method	open	+valueWithCMTime:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Media Time Values	-	objc
-method	open	+valueWithCMTimeMapping:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Media Time Values	-	objc
-method	open	+valueWithCMTimeRange:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Media Time Values	-	objc
-method	open	+valueWithCMVideoDimensions:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Type Methods	-	objc
-method	open	+valueWithDirectionalEdgeInsets:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Type Methods	-	objc
+method	struck	+valueWithCMTime:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Media Time Values	other-framework	objc
+method	struck	+valueWithCMTimeMapping:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Media Time Values	other-framework	objc
+method	struck	+valueWithCMTimeRange:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Media Time Values	other-framework	objc
+method	struck	+valueWithCMVideoDimensions:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Type Methods	other-framework	objc
+method	struck	+valueWithDirectionalEdgeInsets:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Type Methods	other-framework	objc
 method	shipped	+valueWithEdgeInsets:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Type Methods	-	objc
-method	open	+valueWithGCPoint2:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Type Methods	-	objc
-method	open	+valueWithMKCoordinate:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Geographic Coordinate Values	-	objc
-method	open	+valueWithMKCoordinateSpan:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Geographic Coordinate Values	-	objc
+method	struck	+valueWithGCPoint2:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Type Methods	other-framework	objc
+method	struck	+valueWithMKCoordinate:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Geographic Coordinate Values	other-framework	objc
+method	struck	+valueWithMKCoordinateSpan:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Geographic Coordinate Values	other-framework	objc
 method	shipped	+valueWithNonretainedObject:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Pointer and Object Values	-	objc
 method	shipped	+valueWithPoint:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Foundation Geometry Values	-	objc
 method	shipped	+valueWithPointer:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Pointer and Object Values	-	objc
 method	shipped	+valueWithRange:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Range Values	-	objc
 method	shipped	+valueWithRect:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Foundation Geometry Values	-	objc
-method	open	+valueWithSCNMatrix4:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with SceneKit Vector and Matrix Values	-	objc
-method	open	+valueWithSCNVector3:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with SceneKit Vector and Matrix Values	-	objc
-method	open	+valueWithSCNVector4:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with SceneKit Vector and Matrix Values	-	objc
+method	struck	+valueWithSCNMatrix4:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with SceneKit Vector and Matrix Values	other-framework	objc
+method	struck	+valueWithSCNVector3:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with SceneKit Vector and Matrix Values	other-framework	objc
+method	struck	+valueWithSCNVector4:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with SceneKit Vector and Matrix Values	other-framework	objc
 method	shipped	+valueWithSize:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Foundation Geometry Values	-	objc
-method	open	+valueWithUIEdgeInsets:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with UIKit Geometry Values	-	objc
-method	open	+valueWithUIOffset:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with UIKit Geometry Values	-	objc
-property	open	CATransform3DValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreAnimation Transform Values	-	objc
+method	struck	+valueWithUIEdgeInsets:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with UIKit Geometry Values	other-framework	objc
+method	struck	+valueWithUIOffset:	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with UIKit Geometry Values	other-framework	objc
+property	struck	CATransform3DValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreAnimation Transform Values	other-framework	objc
 property	struck	CGAffineTransformValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	declined	objc
 property	struck	CGPointValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	declined	objc
 property	struck	CGRectValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	declined	objc
 property	struck	CGSizeValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	declined	objc
 property	struck	CGVectorValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with CoreGraphics Geometry Values	declined	objc
-property	open	CMTimeMappingValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Media Time Values	-	objc
-property	open	CMTimeRangeValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Media Time Values	-	objc
-property	open	CMTimeValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Media Time Values	-	objc
-property	open	CMVideoDimensionsValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Instance Properties	-	objc
-property	open	GCPoint2Value	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Instance Properties	-	objc
-property	open	MKCoordinateSpanValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Geographic Coordinate Values	-	objc
-property	open	MKCoordinateValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Geographic Coordinate Values	-	objc
-property	open	SCNMatrix4Value	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with SceneKit Vector and Matrix Values	-	objc
-property	open	SCNVector3Value	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with SceneKit Vector and Matrix Values	-	objc
-property	open	SCNVector4Value	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with SceneKit Vector and Matrix Values	-	objc
-property	open	UIEdgeInsetsValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with UIKit Geometry Values	-	objc
-property	open	UIOffsetValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with UIKit Geometry Values	-	objc
-property	open	directionalEdgeInsetsValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Instance Properties	-	objc
+property	struck	CMTimeMappingValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Media Time Values	other-framework	objc
+property	struck	CMTimeRangeValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Media Time Values	other-framework	objc
+property	struck	CMTimeValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Media Time Values	other-framework	objc
+property	struck	CMVideoDimensionsValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Instance Properties	other-framework	objc
+property	struck	GCPoint2Value	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Instance Properties	other-framework	objc
+property	struck	MKCoordinateSpanValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Geographic Coordinate Values	other-framework	objc
+property	struck	MKCoordinateValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Geographic Coordinate Values	other-framework	objc
+property	struck	SCNMatrix4Value	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with SceneKit Vector and Matrix Values	other-framework	objc
+property	struck	SCNVector3Value	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with SceneKit Vector and Matrix Values	other-framework	objc
+property	struck	SCNVector4Value	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with SceneKit Vector and Matrix Values	other-framework	objc
+property	struck	UIEdgeInsetsValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with UIKit Geometry Values	other-framework	objc
+property	struck	UIOffsetValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with UIKit Geometry Values	other-framework	objc
+property	struck	directionalEdgeInsetsValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Instance Properties	other-framework	objc
 property	shipped	edgeInsetsValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Instance Properties	-	objc
 property	shipped	nonretainedObjectValue	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Pointer and Object Values	-	objc
 property	shipped	objCType	NSValue	Low-Level Utilities / Value Wrappers and Transformations / Working with Raw Values	-	objc
