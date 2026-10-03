@@ -303,6 +303,24 @@ typedef NSString *NSURLFileResourceType;
  * assumed — which is the mistake this campaign has paid for six times.** */
 - (nullable NSData *)resourceDataUsingCache:(BOOL)shouldUseCache;
 - (BOOL)setResourceData:(NSData *)data;
+/* ⚠⚠ THE LAST OF THE DEPRECATED RESOURCE-DATA TRIO, AND IT IS IMPLEMENTED RATHER THAN REFUSED, ON A MEASUREMENT
+ * THAT CHANGED THE ANSWER (§63.110's instrument, taken before a line was written):
+ *
+ *   APPLE'S CONTRACT: "STARTS AN ASYNCHRONOUS LOAD of the data, REGISTERING DELEGATE to receive notification. Only one
+ *   such background load can proceed at a time." The delegate is an INFORMAL protocol — the corpus declares it as
+ *   `@interface NSObject (NSURLClient)` with `-URLResourceDidFinishLoading:`, `-URLResourceDidCancelLoading:` and
+ *   `-URL:resourceDidFailLoadingWithReason:`.
+ *
+ * ⚠⚠ AND THE MEASUREMENT: THIS LIBRARY'S URL LOADING IS SYNCHRONOUS AND ITS CLIENT MESSAGES ARE NOWHERE — the three
+ * names appear in no header except ONE (`NSURLHandle.h` carries `resourceDidFailLoadingWithReason`). **SO THE DOOR'S
+ * PROMISE IS NOT IMPOSSIBLE THE WAY A BOOKMARK IS: THE DATA IS PERFECTLY OBTAINABLE AND ONLY THE TIMING DIFFERS.**
+ *
+ * ⚠ AND THAT IS WHY IT IS IMPLEMENTED WITH A STATED DEVIATION RATHER THAN REFUSED: **THE LOAD IS PERFORMED
+ * SYNCHRONOUSLY AND THE CLIENT IS NOTIFIED BEFORE THE DOOR RETURNS.** Every observable of the contract holds except
+ * when the notification arrives — including “only one such background load at a time”, which is trivially true for
+ * a load that does not outlive the call (§11.6.1 D2: our reading, written down). **A REFUSAL WOULD HAVE BEEN THE
+ * WRONG SHAPE HERE: it is what a MISSING CAPABILITY gets, and this is a missing THREAD.** */
+- (void)loadResourceDataNotifyingClient:(id)client usingCache:(BOOL)shouldUseCache;
 @end
 
 extern NSURLResourceKey const NSURLNameKey;
