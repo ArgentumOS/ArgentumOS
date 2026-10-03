@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 /*
- * NSURLConnection — THE OLDER WAY TO PERFORMS AN EXCHANGE, LANDED BECAUSE THE DEPRECATION GROUND WAS
+ * NSURLConnection — THE OLDER WAY TO PERFORM AN EXCHANGE, LANDED BECAUSE THE DEPRECATION GROUND WAS
  * RETIRED. docs/design/foundation-plan.md §62.24 (the user's policy, 2026-09-26): "to support porting
  * older Mac applications, all items removed for being deprecated are un-deprecated in Argentum
  * Foundation, and added to the work list." THIS CLASS IS THE FIRST PAYMENT ON THAT LIST: Apple
@@ -11,105 +11,85 @@
  * is being ported very often calls it — including `+sendSynchronousRequest:returningResponse:error:`,
  * which is what that kind of code uses to fetch one thing.
  *
- * IT IS A FACADE, NOT A TRANSPORT, AND THAT IS DELIBERATE. The loading system already exists (§46
- * NSURLRequest/NSURLResponse, §52 the protocol, §53 the session, the bridge to libcurl): this class
- * runs an `NSURLSessionDataTask` and TRANSLATES the session's callbacks into the connection's delegate
- * protocol. Writing a second byte mover would have meant two places where a transfer's semantics live,
- * and the second one would be the one nobody tested.
+ * ⚠⚠ IT DRIVES `NSURLProtocol`, WHICH IS WHAT A 10.2 CONNECTION DID (§63.145, the user's decision
+ * dec-148b4598987d58c5). The loading system already exists (§46 NSURLRequest/NSURLResponse, §52 the
+ * protocol, and the bridge to libcurl behind it): this class finds the protocol class that claims the
+ * request, creates one instance WITH ITSELF AS THE CLIENT, calls `-startLoading`, and TRANSLATES the
+ * client doors into this class's delegate protocol. Writing a second byte mover would have meant two
+ * places where a transfer's semantics live, and the second one would be the one nobody tested.
+ *
+ * AND THE CHANGE IS NOT COSMETIC, WHICH IS WHY THIS COMMENT OPENS WITH IT: the class was 566 lines of
+ * `NSURLSessionDataDelegate` — a 10.2 class built on a class seven years newer, and therefore on the one
+ * family the 10.2 surface cut removes. THE ORIGINAL DESIGN IS ALSO THE CHEAPER ONE: 10.2's connection ran
+ * on `NSURLProtocol`, and this one does too.
  *
  * WHAT IT THEREFORE INHERITS, AND ONE BY ONE:
- *   * STREAMING IS REAL. The connection owns a PRIVATE `NSURLSession` with itself as its delegate, so
- *     the session's `-URLSession:dataTask:didReceiveData:` — which fires per chunk — becomes
- *     `-connection:didReceiveData:` per chunk. The completion-handler form of a data task cannot do
- *     this (it hands over the whole body at the end), which is why the private session exists at all.
- *   * THE REDIRECT DOOR MAPS EXACTLY, not approximately: `-connection:willSendRequest:
- *     redirectResponse:` RETURNS the request to run next and `nil` means "do not follow", which is
- *     literally the session's own completion-handler contract (`willPerformHTTPRedirection:newRequest:
- *     completionHandler:` takes `NSURLRequest *` and its `nil` is "do not follow"). No rule is
- *     re-invented here.
+ *   * STREAMING IS REAL. The bridge reports `-URLProtocol:didLoadData:` once per chunk curl hands over,
+ *     and that becomes `-connection:didReceiveData:` once per chunk. A completion-handler shape could
+ *     not do this (it hands over the whole body at the end), which is why the doors are the client's.
+ *   * THE REDIRECT DOOR MAPS, and it needs one sentence because THE SEAM REPORTS RATHER THAN DECIDES:
+ *     `-URLProtocol:wasRedirectedToRequest:redirectResponse:` is a NOTIFICATION (the bridge stops at the
+ *     3xx by design), so the connection asks its delegate and, if the delegate answers a request, ISSUES
+ *     THE NEXT TRANSFER ITSELF. Apple's contract is unchanged — the delegate's value is the request to
+ *     run next and `nil` means "do not follow" — but the following here is this class's act.
  *
  * THE TWO DEVIATIONS, AND BOTH ARE NECESSARY RATHER THAN CHOSEN (§11.6's register):
  *
- *   (1) THE DELEGATE IS CALLED ON THE LOADING SYSTEM'S THREAD - NOT ON "the thread whose run loop you
+ *   (1) THE DELEGATE IS CALLED ON THE TRANSPORT'S THREAD - NOT ON "the thread whose run loop you
  *       started the connection on", which is Apple's contract for this class. THE GROUND IS MEASURED:
  *       `NSRunLoop.h` names its own absence — "run-loop sources and observers, `-performSelector:…`
  *       and the block [forms]" are not shipped — so there is NO door to hand work to a run loop from
  *       another thread, which is exactly what Apple's delivery contract is built on. `-setDelegateQueue:`
- *       IS honoured (the session already dispatches through a delegate queue when one is set), so a
- *       caller that needs a specific thread has a way to name it; a caller that needs Apple's exact
- *       rule does not, and the header says so instead of pretending.
+ *       IS honoured and is the way a caller names a thread: when a queue is set, every delegate call goes
+ *       through `-addOperationWithBlock:`, and a SERIAL queue preserves the order the transfer reported in.
+ *       A caller that needs Apple's exact rule does not have it, and this header says so instead of
+ *       pretending.
  *   (2) `-scheduleInRunLoop:forMode:` AND `-unscheduleFromRunLoop:` ARE REFUSED BY NAME, for the same
  *       measured reason: they exist to direct the delivery above, and there is nothing to direct.
  *       DECLARING THEM AS NO-OPS WOULD BE THE WORSE OPTION — a caller would believe it had arranged
  *       delivery it had not.
  *
- * AUTHENTICATION IS HERE NOW, BECAUSE `-sender` LANDED (§62.27 — §62.24 had put it on the work list, and a
- * challenge that carries a working sender is what makes an answer possible from a delegate). THREE DOORS
- * ARE DECLARED BELOW, WITH APPLE'S OWN PRECEDENCE: the MODERN door
+ * AUTHENTICATION, WITH APPLE'S OWN PRECEDENCE WRITTEN OUT: the MODERN door
  * (`-connection:willSendRequestForAuthenticationChallenge:`) SUPERSEDES the deprecated pair, so a delegate
  * that implements it is the only one asked; otherwise `-connection:canAuthenticateAgainstProtectionSpace:`
  * is asked FIRST as a gate (a `NO` means "do not authenticate", and the transfer continues without
  * credentials), and then `-connection:didReceiveAuthenticationChallenge:`. A DELEGATE THAT IMPLEMENTS ONE OF
  * THESE MUST ANSWER, THROUGH THE CHALLENGE'S OWN SENDER — `[challenge.sender useCredential:…]` — because a
  * connection's delegate has no completion handler to answer with, and the transport is BLOCKED until the
- * challenge is answered.
+ * challenge is answered. THAT LAST FACT IS NOW TRUE OF THIS SEAM RATHER THAN OF A SESSION: the bridge asks
+ * its client through `-URLProtocol:didReceiveAuthenticationChallenge:completionHandler:` and waits, which
+ * is §48.6's registered deviation for that door.
  *
- * UPLOAD PROGRESS SHIPS TOO, AND ITS REFUSAL FELL THE SAME WAY THE DOWNLOAD'S DID: §62.25 refused
- * `-connection:didSendBodyData:totalBytesWritten:totalBytesExpectedToWrite:` on the ground that "the session
- * uploads from DATA, so the bytes are handed over before the transfer starts and there is no progressive
- * upload to report". THE TRANSPORT NOW COUNTS THE BYTES AS THEY LEAVE (§62.32: libcurl's own progress
- * callback, which fires for EVERY transfer and reports both directions), so the ground is retired by a
- * landing rather than by a decision here — the second time in two units, which is the point of a refusal
- * whose ground is a measurement.
- *
- * AND TWO OF THE FIVE AUTHENTICATION DOORS ARE STILL REFUSED, WITH GROUNDS THE LOADING SYSTEM MEASURES:
+ * AND TWO OF THE FIVE AUTHENTICATION DOORS ARE STILL REFUSED, WITH GROUNDS THAT REMAIN MEASURED:
  *   * `-connectionShouldUseCredentialStorage:` — THE LOADING SYSTEM CONSULTS NO CREDENTIAL STORE, so there is
  *     nothing for a delegate to permit or forbid: the transport's challenge carries a nil proposed credential
  *     and the store (`NSURLCredentialStorage`) is the caller's business, not the transfer's.
  *   * `-connection:didCancelAuthenticationChallenge:` — ONE CHALLENGE AT A TIME, ANSWERED SYNCHRONOUSLY: the
  *     transport waits for an answer, so a live challenge is never superseded by the connection and there is no
  *     cancellation for it to report. (A delegate's OWN cancel is its own act, and it answers with it.)
- * THE BODY-STREAM DOOR NOW SHIPS TOO (§62.35), and its ground fell the way the others did: §62.25 refused
- * `-connection:needNewBodyStream:` because the transport did not consume `HTTPBodyStream` at all, §62.34 made it
- * SEND one, and this unit is the RE-SEND — a stream is consumed by being sent, so the redirect the session
- * re-issues needs a fresh one, and Apple's door is the one that hands it over. ONE CASE REMAINS NAMED RATHER
- * THAN HIDDEN: the transport's own 401 re-issue replays the transfer INSIDE the bridge and cannot ask a delegate
- * anything, so a stream body re-sent after a challenge arrives empty — a work item (the bridge would need a
- * first-party door to ask through, in the shape of the metrics and body-data doors it already has).
- * THE CACHE-DECISION DOOR NOW SHIPS TOO (§62.33), and its refusal fell the way the two before it did: §62.25
- * refused `-connection:willCacheResponse:` because "the session offers no cache-decision door to translate",
- * and the session HAS one now (`-URLSession:dataTask:willCacheResponse:completionHandler:`) — so the ground is
- * retired by a landing. THREE OF THE REFUSALS this class's header once carried have fallen that way, and not
- * one of them by a decision taken here.
  *
- * AND THE DOWNLOAD HALF IS SLICE 2, WHICH LANDED BESIDE THIS COMMENT: `NSURLConnectionDownloadDelegate`
- * is declared below and the connection runs an `NSURLSessionDownloadTask` for it, stopping at the
- * session's own door (`-downloadTaskWithRequest:completionHandler:`), which writes the body to a file and
- * hands over its LOCATION — the caller moves it, as Apple's contract says.
+ * THE DOWNLOAD HALF IS KEPT, WHICH IS WHY THE PROTOCOL BELOW IS DECLARED: a delegate that implements
+ * `-connectionDidFinishDownloading:destinationURL:` downloads — this class writes the body to a file in
+ * `NSTemporaryDirectory()` and the caller moves it, exactly as Apple's contract says — and that delegate is
+ * NOT fed by the data doors. THE DISPATCH RULE IS STATED BECAUSE APPLE PUBLISHES THE DOOR AND NOT THE
+ * DISPATCH: asked by SELECTOR, and the reason is a measurement this tree already records (foundation_url.m):
+ * a protocol's metadata exists only when something in the process ADOPTS it, so a conformance test would
+ * make the dispatch depend on a linker detail.
  *
- * THE DISPATCH RULE IS STATED BECAUSE APPLE PUBLISHES THE DOOR AND NOT THE DISPATCH: A CONNECTION
- * DOWNLOADS WHEN ITS DELEGATE IMPLEMENTS `-connectionDidFinishDownloading:destinationURL:` — the door
- * that MEANS a download — and otherwise it receives bytes. Asked by SELECTOR, and the reason is a
- * measurement this tree already records (foundation_url.m): a protocol's metadata exists only when
- * something in the process ADOPTS it, so a conformance test would make the dispatch depend on a linker
- * detail. A delegate that implements both the data doors and the download door therefore downloads.
+ * AND ONE REFUSAL'S GROUND IS STRUCTURAL RATHER THAN INHERITED:
+ * `-connectionDidResumeDownloading:totalBytesWritten:expectedTotalBytes:`. **AN `NSURLConnection` CANNOT BE
+ * GIVEN RESUME DATA.** The class has no initializer that takes it — Apple never added one, and resume is the
+ * newer API's story — so a connection can only ever start from the beginning, and a door that announces a
+ * resume would be announcing something that cannot happen.
  *
- * AND THE PROGRESS DOOR THAT WAS REFUSED HERE NOW SHIPS, BECAUSE THE SESSION GAINED THE DOOR IT WAS
- * MISSING (§62.29): `NSURLSessionDownloadDelegate` declares
- * `-URLSession:downloadTask:didWriteData:totalBytesWritten:totalBytesExpectedToWrite:`, the session
- * dispatches it as the chunks arrive, and this class TRANSLATES it — the numbers are the TASK's own, so the
- * two doors cannot drift. The refusal's ground ("the session reports no download progress") is retired by
- * that landing rather than by a decision here, which is what a refusal with a measured ground is FOR.
- *
- * AND ONE IS STILL REFUSED, WHOSE GROUND §62.31 CORRECTED RATHER THAN INHERITED:
- * `-connectionDidResumeDownloading:totalBytesWritten:expectedTotalBytes:`. The old ground was "the SESSION has
- * no resume" — TRUE when §62.26 wrote it and FALSE now, since the session ships
- * `-downloadTaskWithResumeData:` and `-cancelByProducingResumeData:` (§62.31). THE GROUND THAT REMAINS IS
- * STRUCTURAL AND PAST THIS CLASS'S REACH: **AN `NSURLConnection` CANNOT BE GIVEN RESUME DATA.** The class has
- * no initializer that takes it — Apple never added one, and resume is the newer API's story — so a connection
- * can only ever start from the beginning, and a door that announces a resume would be announcing something
- * that cannot happen. THE FINISHING DOOR IS THE ONE THAT MATTERS AND IT IS IMPLEMENTED: Apple's own contract
- * makes receiving the finished file the delegate's essential act here.
+ * THE REGISTER'S ONE WORK ITEM, NAMED WHERE A CALLER MEETS IT RATHER THAN QUIETLY KEPT: the download
+ * protocol declares `-connection:willCacheResponse:` AND THE SEAM CANNOT CARRY IT. `NSURLProtocolClient`
+ * offers `-URLProtocol:cachedResponseIsValid:`, which is a NOTIFICATION ("the cached answer I was handed is
+ * still good") and not a QUESTION ("what should I store?"), so there is no door to ask a delegate through
+ * and no transfer for an answer to change. It stays declared because porting source compiles against it and
+ * because Apple's connection answers it; it is recorded here as a work item (§11.3) for whoever gives this
+ * seam a cache-decision door. `refused-doors-are-absent` does not speak about it — that check is about the
+ * DATA protocol, where the door is absent, and it stays absent.
  */
 
 #ifndef FOUNDATION_NSURLCONNECTION_H
@@ -118,6 +98,7 @@
 #import <Foundation/NSObject.h>
 
 @class NSData;
+@class NSMutableData;
 @class NSError;
 @class NSOperationQueue;
 @class NSInputStream;
@@ -125,10 +106,9 @@
 @class NSURLAuthenticationChallenge;
 @class NSURL;
 @class NSURLProtectionSpace;
+@class NSURLProtocol;
 @class NSURLRequest;
 @class NSURLResponse;
-@class NSURLSession;
-@class NSURLSessionTask;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -164,7 +144,9 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge;
 
 @end
 
-/* THE DATA-SIDE PROTOCOL: what an exchange that RECEIVES bytes is told. */
+/* THE DATA-SIDE PROTOCOL: what an exchange that RECEIVES bytes is told. WITH THE CONNECTION DRIVING A
+ * PROTOCOL, EVERY DOOR LIVES HERE: the redirect is a QUESTION (the seam reports the 3xx and this class runs
+ * the next transfer), the response and the chunks are notifications, and the ending is one of two. */
 @protocol NSURLConnectionDataDelegate <NSURLConnectionDelegate>
 
 @optional
@@ -190,28 +172,40 @@ didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge;
 @end
 
 /* THE DOWNLOAD PROTOCOL: a delegate that wants the body WRITTEN SOMEWHERE rather than handed to it as
- * bytes. The destination is the session's own temporary file — the caller is expected to MOVE it, exactly
- * as Apple's contract says, because the directory is temporary — and the connection hands it over at the
- * one door below. */
+ * bytes. The destination is a file this class creates in `NSTemporaryDirectory()` — the caller is
+ * expected to MOVE it, exactly as Apple's contract says, because the directory is temporary — and the
+ * connection hands it over at the one door below.
+ *
+ * ITS BODY-STREAM AND PROGRESS DOORS ARE THE ONES THE SEAM CAN HONESTLY CARRY, and the cache-decision door
+ * is the register's one work item (see the file's comment above): it is the only door here with no door on
+ * the other side of the seam. */
 @protocol NSURLConnectionDownloadDelegate <NSURLConnectionDelegate>
 
 @optional
 
-/* HOW THE TRANSFER IS GOING, AS THE CHUNKS ARRIVE. `bytesWritten` is the chunk, `totalBytesWritten` is the
- * task's own running total and `expectedTotalBytes` is what the response said (0 or negative means the
- * server never named a length). ALL THREE ARE THE TASK'S NUMBERS, translated rather than recounted, so this
- * door cannot disagree with the task about the same transfer. */
+/* THE RE-SEND'S BODY, ASKED OF THE CLIENT FOR THE ONE ATTEMPT NO OTHER DOOR CAN REACH (§62.36): the
+ * transport re-issues a 401 itself, so this class never sees the second attempt, and the bridge asks its
+ * client through the first-party door this method answers. Apple's contract for the replacement is "a new,
+ * UNOPENED stream". */
 - (nullable NSInputStream *)connection:(NSURLConnection *)connection
 	     needNewBodyStream:(NSURLRequest *)request;
 
 - (nullable NSCachedURLResponse *)connection:(NSURLConnection *)connection
 			  willCacheResponse:(NSCachedURLResponse *)cachedResponse;
 
+/* THE UPLOAD'S PROGRESS (§62.32), WHICH THE TRANSPORT COUNTS AS THE BYTES LEAVE: libcurl's own progress
+ * callback fires for every transfer and reports both directions, and the numbers travel through the seam's
+ * first-party door. Apple's connection door spells them NSInteger, so that is the spelling here, and
+ * `bytesWritten` is what left since the last report rather than the running total beside it. */
 - (void)connection:(NSURLConnection *)connection
   didSendBodyData:(NSInteger)bytesWritten
 totalBytesWritten:(NSInteger)totalBytesWritten
 totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite;
 
+/* THE DOWNLOAD'S PROGRESS, AND IT IS THIS CLASS'S OWN COUNT RATHER THAN A TRANSLATION: the seam reports
+ * neither progress nor the response's expected length, so these are the bytes written to the file so far.
+ * `expectedTotalBytes` is 0 when the response published no length, which is Apple's own way of saying the
+ * same thing (§62.29). */
 - (void)connection:(NSURLConnection *)connection
 	 didWriteData:(long long)bytesWritten
     totalBytesWritten:(long long)totalBytesWritten
@@ -223,8 +217,8 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite;
  * IT IS THE ONLY DOOR A DOWNLOAD DELEGATE HEARS. The data doors (`-connection:didReceiveResponse:`,
  * `-connection:didReceiveData:`, `-connectionDidFinishLoading:`) are NOT sent to it even when it
  * implements them, and it is NOT asked about a redirect - this protocol declares no such door, so the
- * redirect is followed. Both are stated because the session itself delivers its per-chunk doors for every
- * task it runs, download tasks included: the exclusion is this class's, and the probe asserts it. */
+ * redirect is followed. Both are stated because the transport delivers its per-chunk doors for every
+ * transfer it runs; the exclusion is this class's, and it is asserted. */
 - (void)connectionDidFinishDownloading:(NSURLConnection *)connection destinationURL:(NSURL *)destinationURL;
 
 @end
@@ -236,14 +230,30 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite;
  */
 @interface NSURLConnection : NSObject
 {
-	NSURLRequest *_request;		/* what the caller asked for: `originalRequest` */
+	NSURLRequest *_request;		/* what the caller asked for, and what a transfer starts from:
+					 * `originalRequest` */
 	NSURLRequest *_currentRequest;	/* moved by a followed redirect; see the property */
 	id _delegate;			/* UNRETAINED, as Apple's is: the delegate owns the connection */
-	NSURLSession *_session;		/* the private session that runs this connection's task */
-	NSURLSessionTask *_task;	/* a DATA task or a DOWNLOAD task: the connection runs one or the other,
-					 * and every door it uses (resume, cancel, the two request accessors) lives on
-					 * the base class. */
+	NSURLProtocol *_protocol;	/* THE TRANSPORT INSTANCE this connection drives, retained; nil before
+					 * `-start` and after the ending. IT RETAINS THIS OBJECT AS ITS CLIENT
+					 * (§52's `-client` is a strong property), so the pair is a cycle and the
+					 * ENDING is where it is broken. */
 	NSOperationQueue *_delegateQueue;
+	/* THE DOWNLOAD PATH'S STATE, non-empty only while a DOWNLOAD DELEGATE is being served: the body is
+	 * accumulated because the seam hands over chunks and the door takes a FILE, and the path is made
+	 * from NSTemporaryDirectory() at the moment the first chunk arrives. `_downloadExpected` is what the
+	 * response published (0 or negative means the server never named a length), which is the same thing
+	 * the progress door reports as `expectedTotalBytes`. */
+	NSMutableData *_downloadData;
+	NSString *_downloadPath;
+	long long _downloadExpected;
+	unsigned long long _downloadBytes;	/* what has gone into `_downloadData` so far, which is the
+						 * running total the progress door reports */
+	/* THE SYNCHRONOUS FORM'S WAIT, on the CALLER'S stack for as long as that call is blocked:
+	 * non-NULL only while `+sendSynchronousRequest:…` waits, and the ending is what signals it. A
+	 * raw pointer rather than an object because the struct's lifetime is the call's, not this
+	 * object's - and the caller outlives the signal by construction. */
+	void *_syncState;
 	BOOL _started;
 	BOOL _finished;
 	BOOL _cancelled;
@@ -266,7 +276,8 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite;
  * fill it, which turned a forgotten `+registerClass:` into NSURLErrorUnsupportedURL - a verdict about a URL that
  * was perfectly fine.
  *
- * THE REGISTRY STAYS THE AUTHORITY AND THE SEAM STAYS OPEN: this class asks the registry, a caller's later
+ * THE REGISTRY STAYS THE AUTHORITY AND THE SEAM STAYS OPEN: this class asks the registry through
+ * `+fnProtocolClassForRequest:` (the door §52 shipped for exactly this step), a caller's later
  * `+registerClass:` deliberately outranks the one made at load (the walk resolves most-recently-registered
  * first, NSURLProtocol.h), a caller that wants no transport can still `-unregisterClass:`, and a scheme no
  * registered class claims still answers NO - which is what keeps this from being a hardcoded list of schemes. */
@@ -275,8 +286,9 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite;
 /* THE SYNCHRONOUS FORM, AND IT BLOCKS THE CALLING THREAD until the transfer ends — that is its whole
  * contract, and the reason it is deprecated in favour of a session's block-based task. `response` and
  * `error` are OUT-PARAMETERS and may be `NULL`; the data is nil on failure, and a FAILURE IS REPORTED
- * ONLY THROUGH `error`, never as an exception. It uses the SHARED session with a completion-handler
- * task: there is no delegate to hand events to, so streaming has no meaning here. */
+ * ONLY THROUGH `error`, never as an exception. It runs an ORDINARY CONNECTION WITH NO DELEGATE and waits
+ * on a mutex and a condition variable that the connection's ending signals — there is no delegate to hand
+ * events to, so streaming has no meaning here and the bytes are accumulated. */
 + (nullable NSData *)sendSynchronousRequest:(NSURLRequest *)request
 			  returningResponse:(NSURLResponse *_Nullable *_Nullable)response
 				      error:(NSError *_Nullable *_Nullable)error;
@@ -288,12 +300,13 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite;
  * class is silent after one. Idempotent, and safe before `-start`. */
 - (void)cancel;
 
-/* WHERE THE DELEGATE IS CALLED. `nil` means the loading system's own thread (deviation (1) in the
- * header above); a serial queue means that queue. Only meaningful before `-start`. */
+/* WHERE THE DELEGATE IS CALLED. `nil` means the transport's own thread (deviation (1) in the header above);
+ * a serial queue means that queue, and the order the transfer reported in is preserved. Only meaningful
+ * before `-start`. */
 - (void)setDelegateQueue:(nullable NSOperationQueue *)queue;
 
 /* WHAT THE CALLER ASKED FOR, and what the connection is running NOW — the two differ after a followed
- * redirect, which is the whole reason both exist (§54's rule, inherited through the task). */
+ * redirect, which is the whole reason both exist. */
 @property (nullable, readonly, copy) NSURLRequest *originalRequest;
 @property (nullable, readonly, copy) NSURLRequest *currentRequest;
 

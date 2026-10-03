@@ -15969,6 +15969,86 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.153 — THE ENGINE IS REBUILT ON NSURLProtocol AND IS GREEN, AND THE TWO "CAUSES" BEFORE IT WERE BOTH MEASURING FAULTS (2026-10-03)
+
+**LANDED: `NSURLConnection` IS AN `NSURLProtocolClient` AGAIN, AND THE WHOLE URL FAMILY IS GREEN.** `-start` finds
+the protocol class through `+fnProtocolClassForRequest:`, creates ONE instance with `self` as its client, and calls
+`-startLoading`; the seven `NSURLProtocolClient` doors are the delegate translations they always were. **The class no
+longer mentions `NSURLSession` in code at all** — the four remaining occurrences are prose in two comments. The
+previous implementation was 566 lines of `NSURLSessionDataDelegate`, i.e. a 10.2 class built on the one family §63.130's
+cut removes, and that is why this step was §63.145's step 2 rather than an optional cleanup.
+
+**MEASURED, AND THIS IS THE UNIT'S GATE:** `make testimg` EXIT 0; `foundation_urlconnection` **13/13 probe checks,
+6/6 case checks**; and the family this change can reach, in ONE shared guest: `foundation_url*` **14/14 cases, 72/72
+checks**, `foundation_auth*` **2/2, 6/6**, `foundation_connectionauth` **1/1, 6/6**. The library file compiles with
+**zero** warnings at the standing flags.
+
+**⚠⚠ AND THE CRASH §63.150/§63.151/§63.152 HUNTED IS GONE, BUT NEITHER OF THEIR TWO DIAGNOSES WAS ITS CAUSE.** §63.152's
+stale-artefact theory is **disproved by the build rules themselves**: `mk/00-base.mk:392` is `.PHONY: userland64`,
+`mk/50-tests.mk:57-58` is `.PHONY: testimg` with `testimg: userland64`, and the probe's compile AND link lines are
+uncompiled recipe lines under `userland64` — so they re-run on **every** `make testimg` and the probe inside the image
+is by construction the one just built. The proposed touch-the-probe-and-compare run would have proved nothing.
+
+**AND THE REAL CAUSE WAS §63.149'S OWN RETIREMENT, WHICH STOPPED AT THE STATEMENTS.** That unit removed **seventeen
+`check(…)` calls and nothing else** — deliberately, because three scope removals had damaged probes that same day — so
+`foundation_urlconnection.m` kept **four sections of scaffolding whose checks no longer existed**:
+ * section 5 created **four `+connectionWithRequest:` connections that AUTO-START** (the initializer is
+   `startImmediately:YES`), each with a delegate allocated and never released, ran them against `file:///dev/null`,
+   and then did **nothing** with them — the three `if (mode == 0) {} else if … {} else {}` arms were empty;
+ * section 8 made the same abandoned download;
+ * **section 9's FOURTH BLOCK CALLED `objc_msgSend` WITH NO `-respondsToSelector:` GUARD** on the session selector
+   `URLSession:task:didReceiveChallenge:completionHandler:` — which under this engine **does not exist**, so it was a
+   guaranteed `doesNotRecognizeSelector:`; the other three blocks in that section were guarded;
+ * sections 10 and 11 were the same shape, guarded and inert.
+**So the retirement is now COMPLETE rather than by statement: 295 lines removed, 1 comment line rewritten, and the
+probe's behaviour is exactly its thirteen checks.** No check was added, removed or renamed (verified: the probe's
+thirteen names and the case's `CHECKS` tuple are the same set). *Where the crash actually was: the log's last printed
+line is check 8 (`original-and-current-request`) and the next is check 9, so the fault was in section 5 — the first
+place in that probe that ABANDONS a live transfer, which is exactly what an engine whose teardown is wrong would
+notice first.*
+
+**⚠⚠ AND RIGOUR PAID FOR ITSELF: THE FIRST "FAILURES" WERE A MEASURING FAULT, CAUGHT BY AN IMPOSSIBLE NUMBER.** Running
+the family through `python3 tests/run.py --only …` **directly** reported two cases failing — and the failing
+`foundation_urlconnection` printed `RESULT ok=30` while its source has **thirteen** checks, and `foundation_url`
+reported `ok=15` while its source has **forty-three**. **`make test` is what sets `FNX_TEST_ROOTIMG`; a direct
+`tests/run.py` invocation boots the DEFAULT image, which is stale** — so the guest was running month-old probes and
+the "regressions" were the mismatch between an old binary and a new case. I then spent an A/B on it (reverted the
+engine, rebuilt, re-ran) and **that A/B was equally worthless, because it booted the same stale image**. The general
+rule is §63.152's own family, one level up: **A GREEN OR RED LINE FROM A GUEST IS EVIDENCE ABOUT THE IMAGE THAT RAN,
+AND THE IMAGE IS NOT ALWAYS THE ONE YOU BUILT — so read the PROBE'S OWN TALLY against its own source before blaming a
+change.** `make testimg` writes `.build/rootagfs-test.img`; only `make test` points the runner at it.
+
+**WHAT THE ENGINE KEEPS, AND THE FOUR DECISIONS IT NEEDED** (all in the .m's opening comment): (1) the transport is a
+protocol and this class is its client; (2) the ENDING owns the lifetime — `-start` retains self, the protocol retains
+this object as its client, so releasing the protocol is what gives up that retain, and every ending takes a GUARD
+retain first because the teardown can be the release that frees `self`; (3) **`-cancel` ENTERS THE ENDING ITSELF**,
+because the bridge reports NOTHING for a stopped transfer (`transfer.stopped` is a branch in its own ending), so a
+cancel that only called `-stopLoading` would never return the self-retain — and a cancel before `-start` returns
+without entering it, because there is no retain to return; (4) the challenge answers through its SENDER and the
+completion handler is NOT also called when a delegate door exists, since the sender IS that continuation.
+**AND THE ONE SWAP THAT NEEDED CARE: a redirect gives up the OLD protocol while its own frame is still on the stack**
+(the bridge reports the 3xx from inside `curl_easy_perform` and goes on to report its metrics and its ending), so
+`fnBeginTransferWithRequest:` **autoreleases** the previous protocol rather than releasing it — the bridge's transfer
+runs inside an autorelease pool of its own and drains it at the very end, which is exactly the lifetime the old
+protocol needs.
+
+**AND THE HEADER'S DECLARED SURFACE IS UNCHANGED, WITH ONE WORK ITEM NAMED RATHER THAN HIDDEN:** the three protocols
+and every door in them are byte-identical, because §63.149's four surviving inventory checks pin them. The one door
+the seam cannot carry is the download protocol's `-connection:willCacheResponse:` — `NSURLProtocolClient` offers
+`cachedResponseIsValid:`, a NOTIFICATION, not a question (§63.141's finding, now stated at the declaration) — so it
+stays declared, stays absent from the DATA protocol where `refused-doors-are-absent` requires it, and is recorded in
+the header as the work item whoever gives this seam a cache-decision door inherits.
+
+**NOT YET DONE, AND NAMED: §63.145's steps 1, 3, 5 AND 6.** The member cut (the four session-era doors), the
+download-to-`NSURLDownload` move, the disposition enum's move out of the public `NSURLProtocol.h`, and the probe
+re-pointing are all still owed — and **the retired redirect / authentication / cache / body-stream checks can now be
+RE-POINTED at this class's OWN doors rather than deleted**, which is what step 6 said and what §63.149's fixtures
+(`FNRedirectAnswerer`, `FNSenderRecorder`, `FNAuthDelegate`, `FNCacheAnswerer`, `FNBodyStreamAnswerer`) are still
+sitting in the file for.
+
+**NOTHING IS COMMITTED BEYOND THIS UNIT: the three modified files are `userland/Foundation/NSURLConnection.h`,
+`userland/Foundation/NSURLConnection.m` and `userland/tests/foundation_urlconnection.m`.**
+
 ## §63.152 — TWO HYPOTHESES DISPROVEN BY BYTE-IDENTICAL CRASHES, WHICH POINTS AT A STALE ARTEFACT (2026-10-01)
 
 **⚠⚠ THREE ENGINE VARIANTS, ONE CRASH, AND THE ADDRESSES ARE IDENTICAL EVERY TIME.** §63.150 ran the engine as designed.
