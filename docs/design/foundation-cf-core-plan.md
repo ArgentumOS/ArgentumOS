@@ -257,6 +257,29 @@ in the image, and a guest smoke test that creates/destroys a CFString and a CFAr
 libdispatch question with a build**, not a guess: either dispatch is vendored, or the CF paths that
 need it are compiled out and the gap recorded.
 
+### M4 — THE GATE, MEASURED, AND IT CHANGED THE EDIT
+
+**CF's OWN ARRAY CALLBACKS DO NOT RETAIN THIS LIBRARY'S OBJECTS.** The measurement (now permanent in
+corefoundation_bridge): put an object this library built into a CFArray created with kCFTypeArrayCallBacks,
+drop our reference, and ask whether it is still alive. It is NOT - the object dies while the CFArray holds
+it. So an NSArray re-based on CFArray with CF's own callbacks would DROP EVERY ITEM, and the edit that was
+about to be written would have been wrong in its first line. This is the third time in this milestone that
+measuring beat assuming (the NoCopy deallocator, the packed-literal string, and now this).
+
+**AND THE SAME MEASUREMENT SHOWS THE DESIGN THAT WORKS**, which is now checked too: CF takes the array's
+callbacks FROM THE CALLER, so the storage can be CF's STRUCTURE with this library's retain/release POLICY -
+`fn_probe_retain`/`fn_probe_release` are three lines, and with them a CFArray keeps our object alive and
+releases it when the array goes. That is what "CF is the structural and behavioural core" means in practice
+where the two disagree: CF owns the SHAPE, Foundation owns the OBJECT LIFETIME, because CF's plain-C
+callbacks cannot know about an Objective-C object this library made.
+
+**A TRAP THE MEASUREMENT ALSO EXPOSED, RECORDED SO THE EDIT DOES NOT PAY FOR IT:** `CFSTR("...")` in a
+translation unit NOT built with -fconstant-cfstrings becomes a reference to the CF constant string CLASS,
+and in swift-corelibs-foundation that class is Swift's - the link asked for
+`$s10Foundation19_NSCFConstantStringCN` and failed. Foundation's own compile flags do NOT carry the switch,
+so either they gain it or the re-base builds its descriptions without CFSTR. (CF's own sources are built
+with it, which is why this only appears outside them.)
+
 ### M4 — THE COLLECTIONS, RECONNOITRED BEFORE THE EDIT (and why NSArray goes first)
 
 **THE FAMILY'S SHAPE, TAKEN FROM THE TREE:** `NSArray` owns `_items`/`_capacity`/`_count`;

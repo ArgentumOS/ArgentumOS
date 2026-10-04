@@ -42,6 +42,56 @@ static void check(const char *name, int ok, const char *detail) {
 	fflush(stdout);
 }
 
+
+/*
+ * A PROBE-LOCAL CLASS WHOSE DEALLOC IS OBSERVABLE, for the check that decides M4's first edit. NSArray
+ * retains its items BY HAND today, while kCFTypeArrayCallBacks makes CF do the retaining - and those must
+ * not BOTH happen, or every item is double-retained. Whether CF's callbacks actually reach an object built
+ * by THIS library (rather than by Swift's, which is what upstream's CF was written against) is exactly the
+ * kind of thing this session has twice found to be an assumption rather than a fact, so it is measured.
+ */
+static int bridge_probe_deallocs = 0;
+
+@interface FNBridgeProbeObject : NSObject
+@end
+
+@implementation FNBridgeProbeObject
+- (void)dealloc
+{
+	bridge_probe_deallocs++;
+	[super dealloc];
+}
+@end
+
+/* THIS LIBRARY'S OWN CF CALLBACKS, which is what the measurement above says the re-base needs: CF's
+ * structure with Objective-C's lifetime policy, so a CFArray can hold this library's objects safely. */
+static const void *fn_probe_retain(CFAllocatorRef allocator, const void *value)
+{
+	(void)allocator;
+	return [(id)value retain];
+}
+
+static void fn_probe_release(CFAllocatorRef allocator, const void *value)
+{
+	(void)allocator;
+	[(id)value release];
+}
+
+/* THE copyDescription CALLBACK IS NULL, and NOT because it is unimportant: `CFSTR("...")` compiles to a
+ * reference to the CF CONSTANT STRING CLASS unless the translation unit is built with -fconstant-cfstrings,
+ * and in swift-corelibs-foundation that class is Swift's -> the link asked for `$s10Foundation19_NSCFConstantStringCN`
+ * and failed. A NULL copyDescription is legal in CFArrayCallBacks, and the real callbacks the re-base writes
+ * will need either that flag on the translation unit or a description built without CFSTR. Recorded in the
+ * plan, because Foundation's own compile flags did NOT carry the switch. */
+static const CFArrayCallBacks fn_probe_array_callbacks = {
+	0, fn_probe_retain, fn_probe_release, NULL, NULL
+};
+
+static const CFArrayCallBacks *fn_probe_callbacks(void)
+{
+	return &fn_probe_array_callbacks;
+}
+
 int main(void) {
 	/* THE LITERAL FIRST, because it is the one CF string that arrives with an isa the COMPILER chose
 	 * (-fconstant-string-class=NSConstantString), which is a different path from a factory method's. */
@@ -139,6 +189,50 @@ int main(void) {
 		CFRelease(native);
 	}
 
+
+	/* THE MEASUREMENT M4'S FIRST EDIT DEPENDS ON, AND ITS ANSWER CHANGED THE EDIT: CF's OWN array callbacks
+	 * do NOT retain an object this library built - the object dies while the CFArray holds it. So an NSArray
+	 * re-based on CFArray with kCFTypeArrayCallBacks would DROP EVERY ITEM. The second check is the design
+	 * that works, and it is the one the edit will use: CF takes the callbacks FROM THE CALLER, so the array
+	 * can be CF's STRUCTURE with this library's retain/release POLICY.
+	 *
+	 * THE PAIR IS DELIBERATE, and the first version of this measurement was one check pair with a flaw worth
+	 * recording: when the object died early, the "released when the array goes" check passed VACUOUSLY - a
+	 * freed object counts as deallocated. The two facts are now separate checks with separate objects, so
+	 * neither can pass on the other's failure. */
+	{
+		CFMutableArrayRef cfCallbacks = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+		id victim = [[FNBridgeProbeObject alloc] init];
+
+		bridge_probe_deallocs = 0;
+		if (cfCallbacks != NULL) {
+			CFArrayAppendValue(cfCallbacks, victim);
+			[victim release];
+			victim = nil;
+			check("a-cf-array-with-cfs-own-callbacks-drops-this-librarys-object",
+			      bridge_probe_deallocs == 1,
+			      "the object SURVIVED - so CF's callbacks do retain this library's objects after all, and the "
+			      "callbacks below are unnecessary");
+			CFRelease(cfCallbacks);
+		}
+	}
+	{
+		CFMutableArrayRef ours = CFArrayCreateMutable(kCFAllocatorDefault, 0, fn_probe_callbacks());
+		id held = [[FNBridgeProbeObject alloc] init];
+
+		bridge_probe_deallocs = 0;
+		if (ours != NULL) {
+			CFArrayAppendValue(ours, held);
+			[held release];
+			held = nil;
+			check("a-cf-array-with-this-librarys-callbacks-retains-its-item", bridge_probe_deallocs == 0,
+			      "the object died though our own callbacks should have retained it");
+			CFRelease(ours);
+			check("a-cf-array-with-this-librarys-callbacks-releases-when-it-goes",
+			      bridge_probe_deallocs == 1,
+			      "the object outlived the array - our release callback did not run");
+		}
+	}
 	printf("COREFOUNDATION-BRIDGE RESULT ok=%d fail=%d\n", ok_count, fail_count);
 	printf("COREFOUNDATION-BRIDGE DONE\n");
 	fflush(stdout);

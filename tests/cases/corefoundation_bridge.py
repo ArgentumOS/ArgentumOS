@@ -45,6 +45,9 @@ CHECKS = (
     "a-cf-capitalize-crosses-the-bridge",
     "a-cf-trim-whitespace-crosses-the-bridge",
     "a-cf-trim-characters-crosses-the-bridge",
+    "a-cf-array-with-cfs-own-callbacks-drops-this-librarys-object",
+    "a-cf-array-with-this-librarys-callbacks-retains-its-item",
+    "a-cf-array-with-this-librarys-callbacks-releases-when-it-goes",
     "a-cf-native-string-still-takes-cfs-own-path",
 )
 
