@@ -35,9 +35,15 @@
 
 @interface _NSCFConstantString : NSString
 {
-	long _flags;			/* offset 8  — clang's __CFConstantString: flags */
-	const unsigned char *_bytes;	/* offset 16 — and its pointer */
-	long _count;			/* offset 24 — and its length */
+	/* THE OFFSETS COME FROM CFString.h's OWN CFSTR MACRO, not from Apple's documentation and not from
+	 * memory — which is where the first version of this class got them wrong, with _flags reading the
+	 * retain count. The macro builds:
+	 *     struct __CFConstStr str = {{ (isa), (rc), 0x07C8 }, bytes, sizeof(cStr) - 1 };
+	 * so after the isa the superclass contributes there are exactly four fields, in this order. */
+	unsigned long _rc;		/* offset 8  */
+	unsigned long _flags;		/* offset 16 — 0x07C8, and the 0x08 bit means UTF-16 */
+	const unsigned char *_bytes;	/* offset 24 */
+	unsigned long _count;		/* offset 32 */
 }
 - (unsigned long)length;
 - (unsigned short)characterAtIndex:(unsigned long)index;
