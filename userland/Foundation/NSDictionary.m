@@ -1097,6 +1097,44 @@ static void fn_append_indent(NSMutableString *out, NSUInteger level)
 	[answer appendString:@"}"];
 	return answer;
 }
+
+/* §63.236: -descriptionInStringsFileFormat's escaping. The two characters the strings grammar reads specially
+ * are the backslash and the double quote; everything else, INCLUDING a newline, is literal inside a quoted
+ * strings-file value, so nothing else is touched and the UTF-8 bytes pass through unchanged. */
+static void fn_append_strings_escaped(NSMutableString *out, NSString *s)
+{
+	const char *utf8 = [s UTF8String];
+	size_t i;
+
+	for (i = 0; utf8 != NULL && utf8[i] != '\0'; i++) {
+		if (utf8[i] == '\\' || utf8[i] == '"') {
+			[out appendString:@"\\"];
+		}
+		[out appendFormat:@"%c", utf8[i]];
+	}
+}
+
+/* §63.236: see NSDictionary.h. The ORDER is this implementation's (the keys sorted by -compare:), the entry
+ * shape and the escaping are the strings grammar's, and the value is rendered with -description so a
+ * non-string value still produces a well-formed line rather than being dropped. */
+- (NSString *)descriptionInStringsFileFormat
+{
+	NSMutableString *answer = [NSMutableString string];
+	NSArray *keys = [[self allKeys] sortedArrayUsingSelector:@selector(compare:)];
+	NSUInteger i;
+
+	for (i = 0; i < [keys count]; i++) {
+		id key = [keys objectAtIndex:i];
+		id value = [self objectForKey:key];
+
+		[answer appendString:@"\""];
+		fn_append_strings_escaped(answer, [key description]);
+		[answer appendString:@"\" = \""];
+		fn_append_strings_escaped(answer, [value description]);
+		[answer appendString:@"\";\n"];
+	}
+	return answer;
+}
 @end
 
 @implementation NSMutableDictionary

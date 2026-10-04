@@ -33,8 +33,8 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1758	open	38	struck	418
-# property	shipped	740	open	15	struck	181
+# method	shipped	1759	open	37	struck	418
+# property	shipped	742	open	13	struck	181
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -885,7 +885,7 @@ property	shipped	allKeys	NSDictionary	Fundamentals / Basic Collections / Accessi
 property	shipped	allValues	NSDictionary	Fundamentals / Basic Collections / Accessing Keys and Values	-	objc
 property	shipped	count	NSDictionary	Fundamentals / Basic Collections / Counting Entries	-	objc
 property	shipped	description	NSDictionary	Fundamentals / Basic Collections / Describing a Dictionary	-	objc
-property	open	descriptionInStringsFileFormat	NSDictionary	Fundamentals / Basic Collections / Describing a Dictionary	-	objc
+property	shipped	descriptionInStringsFileFormat	NSDictionary	Fundamentals / Basic Collections / Describing a Dictionary	-	objc
 method	shipped	-skipDescendants	NSDirectoryEnumerator	Files and Data Persistence / File system operations / Discovering directory contents / Skipping Subdirectories	-	objc
 method	shipped	-skipDescendents	NSDirectoryEnumerator	Files and Data Persistence / File system operations / Discovering directory contents / Skipping Subdirectories	-	objc
 property	shipped	directoryAttributes	NSDirectoryEnumerator	Files and Data Persistence / File system operations / Discovering directory contents / Getting File and Directory Attributes	-	objc
@@ -1114,7 +1114,7 @@ method	shipped	-savePresentedItemChangesWithCompletionHandler:	NSFilePresenter	F
 property	shipped	observedPresentedItemUbiquityAttributes	NSFilePresenter	Files and Data Persistence / Coordinated file access / Ubiquity Change Notifications	-	objc
 property	shipped	presentedItemOperationQueue	NSFilePresenter	Files and Data Persistence / Coordinated file access / Accessing File Presenter Attributes	-	objc
 property	shipped	presentedItemURL	NSFilePresenter	Files and Data Persistence / Coordinated file access / Accessing File Presenter Attributes	-	objc
-property	open	primaryPresentedItemURL	NSFilePresenter	Files and Data Persistence / Coordinated file access / Accessing File Presenter Attributes	-	objc
+property	shipped	primaryPresentedItemURL	NSFilePresenter	Files and Data Persistence / Coordinated file access / Accessing File Presenter Attributes	-	objc
 method	shipped	-addFileWithPath:	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing File-Wrapper Information	deprecated	objc
 method	shipped	-addFileWrapper:	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing File-Wrapper Information	-	objc
 method	shipped	-addRegularFileWithContents:preferredFilename:	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing File-Wrapper Information	-	objc
@@ -2396,7 +2396,7 @@ method	shipped	-substringFromIndex:	NSString	Fundamentals / Strings / Dividing S
 method	shipped	-substringToIndex:	NSString	Fundamentals / Strings / Dividing Strings	-	objc
 method	shipped	-substringWithRange:	NSString	Fundamentals / Strings / Dividing Strings	-	objc
 method	shipped	-uppercaseStringWithLocale:	NSString	Fundamentals / Strings / Changing Case	-	objc
-method	open	-variantFittingPresentationWidth:	NSString	Fundamentals / Strings / Sizing and Drawing Strings	-	objc
+method	shipped	-variantFittingPresentationWidth:	NSString	Fundamentals / Strings / Sizing and Drawing Strings	-	objc
 method	shipped	-writeToFile:atomically:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc
 method	shipped	-writeToFile:atomically:encoding:error:	NSString	Fundamentals / Strings / Writing to a File or URL	-	objc
 method	shipped	-writeToURL:atomically:	NSString	Fundamentals / Strings / Deprecated	deprecated	objc

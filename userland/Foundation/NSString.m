@@ -3772,6 +3772,14 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	return nil;
 }
 
+/* §63.236: see NSString.h — a string this library builds carries no width variants, so the spelling that fits
+ * the requested width is the receiver. */
+- (NSString *)variantFittingPresentationWidth:(NSInteger)width
+{
+	(void)width;
+	return self;
+}
+
 /* ------------------------------------------------------------------ composition */
 - (NSString *)stringByAppendingPathExtension:(NSString *)extension
 {

@@ -14,9 +14,10 @@
  * to a locale DATABASE — display names, collation, currency, delimiters, the measurement system, the ISO
  * registries — and this library LINKS that database (libicuuc/libicui18n; NSLocale.m is in the build's
  * per-file ICU table). So the boundary is no longer "a RULE instead of a TABLE": the property doors below
- * read ICU's data. TWO rows stay open, each named in NSLocale.m: +preferredLanguages (a user preference
- * list, not locale data) and -localizedStringForVariantCode: (ICU's variant display table answers EMPTY
- * here). The RULE half is still the one drawn first:
+ * read ICU's data. ONE row stays open, named in NSLocale.m: -localizedStringForVariantCode: (ICU's variant
+ * display table answers EMPTY here). +preferredLanguages USED TO BE the other one and SHIPPED in §63.235 —
+ * its reading is stated at the door: the list this system answers is the ONE locale it resolves rather than
+ * an ordering invented here. The RULE half is still the one drawn first:
  *
  *   - CASE is localised. The Turkic languages (tr, az) are the locales whose case
  *     mapping is CONDITIONAL in Unicode's SpecialCasing: upper-case i is İ, and

@@ -123,6 +123,7 @@ static NSString *fn_movedTo = nil;
 	BOOL _defer;
 }
 - (id)initWithItem:(NSURL *)item deferred:(BOOL)defer;
+- (NSURL *)primaryPresentedItemURL;
 @end
 
 @implementation TestPresenter
@@ -139,6 +140,13 @@ static NSString *fn_movedTo = nil;
 }
 
 - (NSURL *)presentedItemURL
+{
+	return _item;
+}
+
+/* §63.236: THE OPTIONAL PROTOCOL PROPERTY. Apple declares -primaryPresentedItemURL on NSFilePresenter for the
+ * package case; the presented item IS the primary here, so the two answer the same URL. */
+- (NSURL *)primaryPresentedItemURL
 {
 	return _item;
 }
@@ -335,6 +343,13 @@ int main(void)
 	      [[[NSFileCoordinator filePresenters] objectAtIndex:0] isEqual:presenter] &&
 	      [[NSFileCoordinator filePresenters] count] == 1,
 	      @"the registry holds one entry for one add, and answers the objects it holds");
+
+	/* §63.236: THE OPTIONAL PRIMARY-ITEM PROPERTY, declared on the protocol and answered by a presenter whose
+	 * presented item is a package's main item. The declaration IS the door; this pins that it is live. */
+	check("presenter-primary-presented-item-url-is-declared",
+	      [presenter respondsToSelector:@selector(primaryPresentedItemURL)] &&
+	      [[presenter primaryPresentedItemURL] isEqual:item],
+	      @"the optional protocol property answers the primary item's URL");
 
 	{
 		__block int accessor = 0;

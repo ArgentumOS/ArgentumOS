@@ -53,6 +53,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 @optional
 
+/* THE PRIMARY PRESENTED ITEM (§63.236, the tail of slice 7c): for a presented item that IS a package, the URL
+ * of the package's own main item — the door a presenter answers when its presented item is a subitem of one.
+ * Apple declares it OPTIONAL, so it lives here beside the other presenter-supplied answers. */
+@property (nullable, readonly, copy) NSURL *primaryPresentedItemURL;
+
 /* STEPPING ASIDE: the two forms the coordinator's doors cause, and the reacquirer that comes back. */
 - (void)relinquishPresentedItemToReader:(void (^)(void (^ _Nullable reacquirer)(void)))reader;
 - (void)relinquishPresentedItemToWriter:(void (^)(void (^ _Nullable reacquirer)(void)))writer;

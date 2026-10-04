@@ -170,6 +170,14 @@ struct FNDictEntry;			/* opaque; defined in NSDictionary.m */
  * for a POSIX locale — and the indent form is the one place indentation is expressed. */
 - (NSString *)descriptionWithLocale:(nullable id)locale;
 - (NSString *)descriptionWithLocale:(nullable id)locale indent:(NSUInteger)level;
+
+/* §63.236: THE DICTIONARY AS A STRINGS FILE — a DIFFERENT grammar from the property-list description above,
+ * which is why it takes its own writer rather than the plist one. Apple's whole contract is one sentence
+ * ("the contents of the dictionary formatted as a strings file") and it fixes no ORDER, so this implementation
+ * makes one — the keys sorted by -compare: — because a rendering whose order moved between runs could not be
+ * asserted at all. Each entry is `"key" = "value";` on its own line, with the BACKSLASH and the DOUBLE QUOTE
+ * escaped in both halves (the two characters the strings grammar reads specially). */
+- (NSString *)descriptionInStringsFileFormat;
 @end
 
 @interface NSMutableDictionary<KeyType, ObjectType> : NSDictionary<KeyType, ObjectType> <NSMutableCopying>

@@ -852,6 +852,14 @@ typedef enum {
 	      contentsEnd:(nullable NSUInteger *)contentsEndPtr
 		 forRange:(NSRange)range;
 - (NSRange)paragraphRangeForRange:(NSRange)range;
+
+/* §63.236: THE WIDTH-VARIANT DOOR. Apple's contract is one sentence — "Returns a string that fits the
+ * specified width" — and it is meaningful only for a string that CARRIES variant spellings, which come from a
+ * bundle's localisation table. THIS LIBRARY ATTACHES NO VARIANT DATA TO ANY STRING IT BUILDS, so for every
+ * string that can reach this door the only spelling that fits is the receiver. That IS the answer Apple's own
+ * contract gives for the no-variant case rather than a boundary invented here: a variant-bearing string cannot
+ * be built in this tree, so there is no input for which a different answer is specified. */
+- (NSString *)variantFittingPresentationWidth:(NSInteger)width;
 @end
 
 @interface NSOwnedString : NSString

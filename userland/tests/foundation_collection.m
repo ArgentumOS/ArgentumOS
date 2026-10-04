@@ -1215,6 +1215,9 @@ NULL
 			 * immutable dictionary. Both sat in the excluded list below for as long
 			 * as KVC was a missing dependency. */
 			"valueForKey:", "setValue:forKey:",
+			/* §63.236 WROTE THE STRINGS-FILE WRITER, so this door moved UP out of the excluded list below:
+			 * what ships must be DEMANDED, and what does not must be ABSENT. */
+			"descriptionInStringsFileFormat",
 			"countByEnumeratingWithState:objects:count:", NULL
 		};
 		static const char *mutableClassSelectors[] = {
@@ -1227,9 +1230,8 @@ NULL
 			"removeObjectsForKeys:", NULL
 		};
 		static const char *excluded[] = {
-			/* A strings-file form is NOT a property list: it needs its own
-			 * writer, so it stays excluded while the plist forms above ship. */
-			"descriptionInStringsFileFormat",
+			/* THE STRINGS-FILE FORM USED TO BE NAMED HERE — "it needs its own writer" was TRUE, and §63.236
+			 * wrote it, so -descriptionInStringsFileFormat is DEMANDED in the required list above now. */
 			/* NSURL SHIPS (F8); the URL-taking FORM is what is absent, and the plist
 			 * forms above take paths. */
 			/* THE THREE URL FORMS USED TO BE LISTED HERE as not shipped. They are
@@ -1274,6 +1276,21 @@ NULL
 		}
 		check("dict-api-complete", complete,
 		      "the audited Cocoa inventory for NSDictionary/NSMutableDictionary");
+	}
+
+	{
+		/* §63.236: -descriptionInStringsFileFormat — the dictionary AS A STRINGS FILE, a different grammar
+		 * from the property-list description. TWO entries, so the SORTED order is observable, and a value
+		 * holding a double quote AND a backslash, so the escaping is asserted rather than assumed. */
+		NSDictionary *d = [NSDictionary dictionaryWithObjectsAndKeys:
+			@"plain", @"a.key",
+			@"she said \"hi\"\\", @"b.key", nil];
+		NSString *expected = @"\"a.key\" = \"plain\";\n"
+				     @"\"b.key\" = \"she said \\\"hi\\\"\\\\\";\n";
+		NSString *got = [d descriptionInStringsFileFormat];
+
+		check("dict-strings-file-format", [got isEqual:expected],
+		      [[NSString stringWithFormat:@"got: %@", got] UTF8String]);
 	}
 
 

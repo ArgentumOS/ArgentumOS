@@ -325,6 +325,8 @@ int main(void)
 			"rangeOfCharacterFromSet:",
 			"componentsSeparatedByCharactersInSet:",
 			"stringByTrimmingCharactersInSet:",
+			/* §63.236: the width-variant door, DEMANDED here because it ships now. */
+			"variantFittingPresentationWidth:",
 			NULL
 		};
 		static const char *mutableClassSelectors[] = {
@@ -390,6 +392,17 @@ int main(void)
 		}
 		check("string-api-complete", complete,
 		      "the audited Cocoa inventory: every implemented selector exists, and nothing listed as excluded does");
+	}
+
+	{
+		/* §63.236: -variantFittingPresentationWidth: — a string this library builds carries no width
+		 * variants, so the spelling that fits any width is the receiver ITSELF (Apple's answer for the
+		 * no-variant case), and the check asserts identity rather than merely equality. */
+		NSString *s = @"presentation";
+
+		check("string-variant-fitting-presentation-width",
+		      [s variantFittingPresentationWidth:40] == s,
+		      "a string with no variants answers itself, identically, for every width");
 	}
 
 
@@ -1094,14 +1107,17 @@ NULL
 			"availableLocaleIdentifiers",
 			"componentsFromLocaleIdentifier:", "localeIdentifierFromComponents:",
 			"canonicalLanguageIdentifierFromString:",
-			"canonicalLocaleIdentifierFromString:", NULL
+			"canonicalLocaleIdentifierFromString:",
+			/* §63.235 SHIPPED the ordered-preference door with its reading stated: the list this system
+			 * answers is the ONE locale it RESOLVES rather than an ordering invented here. It moved UP out
+			 * of classExcluded below, which is what the inventory rule asks for. */
+			"preferredLanguages", NULL
 		};
 		static const char *classExcluded[] = {
-			/* The ONE class-side row the data still does NOT reach: a user's ordered
-			 * PREFERRED-LANGUAGE LIST is a PREFERENCE, not locale data (Apple backs it with
-			 * AppleLanguages in the global defaults, and nothing here writes that), and ICU has no
-			 * API for it. It stays asserted ABSENT. */
-			"preferredLanguages", NULL
+			/* EMPTY NOW, and that is the point: the one class-side row that used to be named here was
+			 * +preferredLanguages ("a user's ordered PREFERRED-LANGUAGE LIST is a PREFERENCE, not locale
+			 * data ... and ICU has no API for it"), and §63.235 shipped it. */
+			NULL
 		};
 		static const char *instanceSelectors[] = {
 			"initWithLocaleIdentifier:", "localeIdentifier", "objectForKey:",

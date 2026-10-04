@@ -75,6 +75,7 @@ CHECKS = ("debt-the-handshake-is-synchronous-measured",
           "willMove-has-no-purpose-on-a-system-without-a-sandbox",
           "cancel-with-nothing-active-does-not-stop-the-next-call",
           "prepare-batches-the-presenters-around-one-block", "prepare-takes-both-lists",
+          "presenter-primary-presented-item-url-is-declared",
           "prepare-refuses-a-bad-url-without-running-the-block", "probe-tree-removed")
 
 
