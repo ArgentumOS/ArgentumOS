@@ -121,10 +121,11 @@ $(HOST_OBJDIR)/ninvoke-asm.o: $(FOUNDATION_SRC)/NSInvocation_amd64.S
 	@mkdir -p $(HOST_OBJDIR)
 	$(HOST_CC) -c -fPIC $< -o $@
 
-$(HOST_FOUNDATION_LIB): $(FN_HOST_OBJS)
-	@mkdir -p $(HOST_LIBDIR)
-	$(HOST_CC) -shared -Wl,-soname,libfoundation.so $(FN_HOST_OBJS) \
-		$(HOST_LDFLAGS) $(HOST_ICU_LIBS) -lz -o $@
+# FNX-ARCHIVED: $(HOST_FOUNDATION_LIB) (the three families moved to archive/ by the CF-Foundation experiment)
+# $(HOST_FOUNDATION_LIB): $(FN_HOST_OBJS)
+# 	@mkdir -p $(HOST_LIBDIR)
+# 	$(HOST_CC) -shared -Wl,-soname,libfoundation.so $(FN_HOST_OBJS) \
+# 		$(HOST_LDFLAGS) $(HOST_ICU_LIBS) -lz -o $@
 
 # THE HOST-CLEAN PROBES. Each is built from its own translation unit plus its `_support` half, which
 # is MRC - the same two-file split the guest rules use, and ARC is a per-file choice here exactly as
@@ -156,37 +157,40 @@ $(HOST_FOUNDATION_LIB): $(FN_HOST_OBJS)
 # the whole tier fail at the FIRST one (`clang: error: no input files`), which is how this was found: the tier
 # could not run at all.
 HOST_PROBES ?= foundation_backgroundactivity foundation_attributedstring foundation_pointers foundation_calendar foundation_calendardate foundation_codecs foundation_decimal foundation_decimalnumber foundation_notification foundation_notificationqueue foundation_coder foundation_core foundation_dateformatter foundation_error foundation_formatters foundation_host foundation_kvc foundation_kvo foundation_numberformatter foundation_nsvalue foundation_operation foundation_orderedset foundation_processinfo foundation_regex foundation_runloop foundation_set foundation_sort foundation_thread foundation_distributednotification foundation_spellserver foundation_archiver foundation_ubiquitousstore foundation_useractivity foundation_distantobjectrequest foundation_json foundation_jsonwrite foundation_tableoptions foundation_transformers foundation_dataoptions foundation_constants
-define FN_HOST_PROBE_rule
-$(HOST_BINDIR)/$(1): $(HOST_FOUNDATION_LIB) $(wildcard userland/tests/$(1).m) $(wildcard userland/tests/$(1)_support.m)
-	@mkdir -p $(HOST_BINDIR) $(HOST_OBJDIR)
+# FNX-ARCHIVED: the host toolkit probe rule (the three families moved to archive/)
+# define FN_HOST_PROBE_rule
+# FNX-ARCHIVED: $(HOST_BINDIR)/$(1) (the three families moved to archive/ by the CF-Foundation experiment)
+# $(HOST_BINDIR)/$(1): $(HOST_FOUNDATION_LIB) $(wildcard userland/tests/$(1).m) $(wildcard userland/tests/$(1)_support.m)
+# 	@mkdir -p $(HOST_BINDIR) $(HOST_OBJDIR)
 # PER-UNIT COMPILES, WHICH IS NOT COSMETIC: one driver invocation with both sources does NOT
 # apply -fobjc-arc and -fno-objc-arc per file, so the probe main came out MRC and `c = nil`
 # released nothing. The guest mk compiles per file too. THE SUPPORT HALF IS OPTIONAL: 21 of
 # the 28 probes are a single translation unit (measured 2026-09-26).
-	$$(HOST_CC) $$(HOST_CFLAGS) -Iuserland/tests -fobjc-arc -c $$(wildcard userland/tests/$(1).m) -o $(HOST_OBJDIR)/probe-$(1).o
-	@if [ -f userland/tests/$(1)_support.m ]; then \
-		$$(HOST_CC) $$(HOST_CFLAGS) -Iuserland/tests -fno-objc-arc -c userland/tests/$(1)_support.m \
-			-o $(HOST_OBJDIR)/probe-$(1)-support.o; \
-	fi
+# 	$$(HOST_CC) $$(HOST_CFLAGS) -Iuserland/tests -fobjc-arc -c $$(wildcard userland/tests/$(1).m) -o $(HOST_OBJDIR)/probe-$(1).o
+# 	@if [ -f userland/tests/$(1)_support.m ]; then \
+# 		$$(HOST_CC) $$(HOST_CFLAGS) -Iuserland/tests -fno-objc-arc -c userland/tests/$(1)_support.m \
+# 			-o $(HOST_OBJDIR)/probe-$(1)-support.o; \
+# 	fi
 # WHETHER THERE IS A SUPPORT OBJECT IS DECIDED AT PARSE TIME, on the SOURCE (which exists by then),
 # not on the object (which does not) and not by a shell variable: `$$support` reaches make as
 # `$support`, whose `$s` is an empty make variable, leaving the literal `upport` as an argument.
-	$$(HOST_CC) $$(HOST_RPATH) $$(HOST_LDFLAGS) -o $$@ $(HOST_OBJDIR)/probe-$(1).o \
-		$(if $(wildcard userland/tests/$(1)_support.m),$(HOST_OBJDIR)/probe-$(1)-support.o) \
-		-lfoundation -lcoregraphics $$(HOST_ICU_LIBS) -lz -lm
+# 	$$(HOST_CC) $$(HOST_RPATH) $$(HOST_LDFLAGS) -o $$@ $(HOST_OBJDIR)/probe-$(1).o \
+# 		$(if $(wildcard userland/tests/$(1)_support.m),$(HOST_OBJDIR)/probe-$(1)-support.o) \
+# 		-lfoundation -lcoregraphics $$(HOST_ICU_LIBS) -lz -lm
 # `-lm` IS HERE FOR THE PROBES THAT COMPUTE A TRIG-OR-ROOT RELATION rather than quoting a decimal:
 # foundation_formatters takes `sqrt` for the crossing NSUnitFuelEfficiency is anchored at, and glibc keeps
 # libm SEPARATE from libc, so the link failed with "DSO missing from command line" while the same probe is
 # fine on the guest (musl carries the maths in libc). The alternative was to quote the anchor as a literal,
 # which would have weakened the check from a relation to a number.
-endef
-$(foreach p,$(HOST_PROBES),$(eval $(call FN_HOST_PROBE_rule,$(p))))
+# endef
+# $(foreach p,$(HOST_PROBES),$(eval $(call FN_HOST_PROBE_rule,$(p))))
 
 HOST_PROBE_BINS = $(addprefix $(HOST_BINDIR)/,$(HOST_PROBES))
 
 .PHONY: host-foundation host-foundation-run
-host-foundation: $(HOST_FOUNDATION_LIB) $(HOST_PROBE_BINS)
-	@echo "host-foundation: $(words $(FN_HOST_SRCS)) library source(s), $(words $(HOST_PROBES)) probe(s) in $(HOST_BINDIR)"
+# FNX-ARCHIVED: host-foundation (the three families moved to archive/ by the CF-Foundation experiment)
+# host-foundation: $(HOST_FOUNDATION_LIB) $(HOST_PROBE_BINS)
+# 	@echo "host-foundation: $(words $(FN_HOST_SRCS)) library source(s), $(words $(HOST_PROBES)) probe(s) in $(HOST_BINDIR)"
 
 # TZ=UTC IS PART OF MIRRORING THE GUEST, NOT A CONVENIENCE (2026-09-20). `foundation_calendar`
 # asserts `[[NSTimeZone systemTimeZone] secondsFromGMT] == 0`, and that claim is TRUE ABOUT THIS OS:
@@ -232,15 +236,17 @@ HOST_CG_CFLAGS  ?= -std=gnu11 -fPIC -g -Wall -Wextra -Iuserland -I/usr/include/p
 # the GUEST library links the vendored 3.2.0 that tools/libjpeg-build.sh installs. Two builds would
 # be waste here — the reason lcms2 needed two was that this host had no lcms2 DEVELOPMENT HEADER.
 HOST_CG_LDFLAGS ?= -lpixman-1 -lpng16 -ljpeg -lm -L$(CURDIR)/$(HOST_LCMS2_PREFIX)/lib -llcms2 \
-		   -L$(HOST_LIBDIR) -lfoundation -L$(CURDIR)/$(HOST_OBJCPFX)/lib -lobjc $(HOST_ICU_LIBS) \
+		   -L$(HOST_LIBDIR) -L$(CURDIR)/$(HOST_OBJCPFX)/lib -lobjc $(HOST_ICU_LIBS) \
 		   -Wl,-rpath,$(CURDIR)/$(HOST_LCMS2_PREFIX)/lib
-HOST_CG_SRCS    := $(wildcard userland/CoreGraphics/*.c)
+# FNX-ARCHIVED: HOST_CG_SRCS     (the three families moved to archive/ by the CF-Foundation experiment)
+# HOST_CG_SRCS    := $(wildcard userland/CoreGraphics/*.c)
 # THE OBJECTIVE-C HALF. IT CANNOT BE ADDED TO THE C SOURCES' ONE-COMMAND LINK: a single clang
 # invocation over two sources does NOT apply per-file options, which this tree already knows from
 # the Foundation probes — so the `.m` is compiled by a rule of its own and only the OBJECT joins
 # the link. The probes need none of this: they pass the names through as opaque pointers, which is
 # what the C-side spelling in CGColorSpace.h is for.
-HOST_CG_MSRCS   := $(wildcard userland/CoreGraphics/*.m)
+# FNX-ARCHIVED: HOST_CG_MSRCS    (the three families moved to archive/ by the CF-Foundation experiment)
+# HOST_CG_MSRCS   := $(wildcard userland/CoreGraphics/*.m)
 HOST_CG_LIB     ?= $(HOST_LIBDIR)/libcoregraphics.so
 HOST_CG_OBJDIR  := $(HOST_OBJDIR)/coregraphics
 # `=` AND NOT `:=`, WHICH IS NOT A STYLE CHOICE: the object list needs $(HOST_CG_OBJDIR), and an
@@ -252,10 +258,11 @@ HOST_CG_MOBJS    = $(patsubst userland/CoreGraphics/%.m,$(HOST_CG_OBJDIR)/coregr
 # `pixman-version.h` from its own directory and is NOT self-contained.
 HOST_CG_PROBES  ?= coregraphics_context coregraphics_stroke coregraphics_stroke_context coregraphics_curve coregraphics_arc coregraphics_color coregraphics_color_foundation coregraphics_image coregraphics_image_png coregraphics_image_jpeg coregraphics_gradient coregraphics_gradient_colors coregraphics_shading coregraphics_pattern coregraphics_nsvalue
 
-$(HOST_CG_OBJDIR)/coregraphics-%.o: userland/CoreGraphics/%.m
-	@mkdir -p $(HOST_CG_OBJDIR)
-	$(HOST_CC) $(HOST_CG_CFLAGS) $(HOST_OBJCFLAGS) -I$(CURDIR)/$(HOST_OBJCPFX)/include \
-		-c $< -o $@
+# FNX-ARCHIVED: $(HOST_CG_OBJDIR)/coregraphics-%.o (the three families moved to archive/ by the CF-Foundation experiment)
+# $(HOST_CG_OBJDIR)/coregraphics-%.o: userland/CoreGraphics/%.m
+# 	@mkdir -p $(HOST_CG_OBJDIR)
+# 	$(HOST_CC) $(HOST_CG_CFLAGS) $(HOST_OBJCFLAGS) -I$(CURDIR)/$(HOST_OBJCPFX)/include \
+# 		-c $< -o $@
 
 # THE LIBRARY IS BUILT ONCE AND LINKED FIVE TIMES, the same shape as Foundation's: compiling
 # the eight sources into each probe would also work and would take five times as long.
@@ -281,7 +288,7 @@ $(HOST_BINDIR)/$(1): $(HOST_CG_LIB) $(wildcard userland/tests/$(1).c) $(wildcard
 # be written under ARC at all, because `-release` is forbidden there.
 	$$(HOST_CC) $$(HOST_RPATH) $$(HOST_CG_CFLAGS) $(if $(wildcard userland/tests/$(1).m),$$(HOST_OBJCFLAGS) -I$(CURDIR)/$(HOST_OBJCPFX)/include -fno-objc-arc) \
 		$(if $(wildcard userland/tests/$(1).m),userland/tests/$(1).m,userland/tests/$(1).c) \
-		-L$(HOST_LIBDIR) -lcoregraphics $$(HOST_CG_LDFLAGS) -o $$@
+		-L$(HOST_LIBDIR) $$(HOST_CG_LDFLAGS) -o $$@
 endef
 $(foreach p,$(HOST_CG_PROBES),$(eval $(call CG_HOST_PROBE_rule,$(p))))
 
@@ -308,34 +315,39 @@ host-coregraphics-run: host-coregraphics
 # (`objc_msgSend`, the class metadata) would otherwise be undefined.
 HOST_APPKIT_LIB    ?= $(HOST_LIBDIR)/libappkit.so
 HOST_APPKIT_CFLAGS ?= -std=gnu11 -fPIC -g -Wall -Wextra -Iuserland
-HOST_APPKIT_MSRCS  := $(wildcard userland/AppKit/*.m)
+# FNX-ARCHIVED: HOST_APPKIT_MSRCS   (the three families moved to archive/ by the CF-Foundation experiment)
+# HOST_APPKIT_MSRCS  := $(wildcard userland/AppKit/*.m)
 HOST_APPKIT_OBJDIR := $(HOST_OBJDIR)/appkit
 HOST_APPKIT_MOBJS   = $(patsubst userland/AppKit/%.m,$(HOST_APPKIT_OBJDIR)/appkit-%.o,$(HOST_APPKIT_MSRCS))
 HOST_APPKIT_PROBES ?= appkit_graphicscontext appkit_color appkit_bezierpath appkit_bitmapimagerep appkit_image appkit_view
-HOST_APPKIT_LDFLAGS = -L$(HOST_LIBDIR) -lappkit -lcoregraphics -lfoundation \
+HOST_APPKIT_LDFLAGS = -L$(HOST_LIBDIR) \
 		      -L$(CURDIR)/$(HOST_OBJCPFX)/lib -lobjc $(HOST_ICU_LIBS)
 
-$(HOST_APPKIT_OBJDIR)/appkit-%.o: userland/AppKit/%.m
-	@mkdir -p $(HOST_APPKIT_OBJDIR)
-	$(HOST_CC) $(HOST_APPKIT_CFLAGS) $(HOST_OBJCFLAGS) -I$(CURDIR)/$(HOST_OBJCPFX)/include \
-		-c $< -o $@
+# FNX-ARCHIVED: $(HOST_APPKIT_OBJDIR)/appkit-%.o (the three families moved to archive/ by the CF-Foundation experiment)
+# $(HOST_APPKIT_OBJDIR)/appkit-%.o: userland/AppKit/%.m
+# 	@mkdir -p $(HOST_APPKIT_OBJDIR)
+# 	$(HOST_CC) $(HOST_APPKIT_CFLAGS) $(HOST_OBJCFLAGS) -I$(CURDIR)/$(HOST_OBJCPFX)/include \
+# 		-c $< -o $@
 
-$(HOST_APPKIT_LIB): $(HOST_APPKIT_MOBJS) $(HOST_CG_LIB)
-	@mkdir -p $(HOST_LIBDIR)
-	$(HOST_CC) $(HOST_APPKIT_CFLAGS) $(HOST_OBJCFLAGS) -I$(CURDIR)/$(HOST_OBJCPFX)/include \
-		-shared -o $@ $(HOST_APPKIT_MOBJS) $(HOST_APPKIT_LDFLAGS)
+# FNX-ARCHIVED: $(HOST_APPKIT_LIB) (the three families moved to archive/ by the CF-Foundation experiment)
+# $(HOST_APPKIT_LIB): $(HOST_APPKIT_MOBJS) $(HOST_CG_LIB)
+# 	@mkdir -p $(HOST_LIBDIR)
+# 	$(HOST_CC) $(HOST_APPKIT_CFLAGS) $(HOST_OBJCFLAGS) -I$(CURDIR)/$(HOST_OBJCPFX)/include \
+# 		-shared -o $@ $(HOST_APPKIT_MOBJS) $(HOST_APPKIT_LDFLAGS)
 
 define APPKIT_HOST_PROBE_rule
-$(HOST_BINDIR)/$(1): $(HOST_APPKIT_LIB) $$(wildcard userland/tests/$(1).m)
-	@mkdir -p $(HOST_BINDIR)
-	$$(HOST_CC) $$(HOST_RPATH) $$(HOST_APPKIT_CFLAGS) $$(HOST_OBJCFLAGS) -I$(CURDIR)/$(HOST_OBJCPFX)/include -fno-objc-arc \
-		userland/tests/$(1).m -L$(HOST_LIBDIR) -lappkit $$(HOST_APPKIT_LDFLAGS) -o $$@
+# FNX-ARCHIVED: $(HOST_BINDIR)/$(1) (the three families moved to archive/ by the CF-Foundation experiment)
+# $(HOST_BINDIR)/$(1): $(HOST_APPKIT_LIB) $$(wildcard userland/tests/$(1).m)
+# 	@mkdir -p $(HOST_BINDIR)
+# 	$$(HOST_CC) $$(HOST_RPATH) $$(HOST_APPKIT_CFLAGS) $$(HOST_OBJCFLAGS) -I$(CURDIR)/$(HOST_OBJCPFX)/include -fno-objc-arc \
+# 		userland/tests/$(1).m -L$(HOST_LIBDIR) -lappkit $$(HOST_APPKIT_LDFLAGS) -o $$@
 endef
 $(foreach p,$(HOST_APPKIT_PROBES),$(eval $(call APPKIT_HOST_PROBE_rule,$(p))))
 
 .PHONY: host-appkit host-appkit-run
-host-appkit: $(HOST_APPKIT_LIB) $(addprefix $(HOST_BINDIR)/,$(HOST_APPKIT_PROBES))
-	@echo "host-appkit: $(words $(HOST_APPKIT_MSRCS)) library source(s), $(words $(HOST_APPKIT_PROBES)) probe(s) in $(HOST_BINDIR)"
+# FNX-ARCHIVED: host-appkit (the three families moved to archive/ by the CF-Foundation experiment)
+# host-appkit: $(HOST_APPKIT_LIB) $(addprefix $(HOST_BINDIR)/,$(HOST_APPKIT_PROBES))
+# 	@echo "host-appkit: $(words $(HOST_APPKIT_MSRCS)) library source(s), $(words $(HOST_APPKIT_PROBES)) probe(s) in $(HOST_BINDIR)"
 
 # A PROBE THAT EXITS NON-ZERO IS A FAILURE, the same rule host-coregraphics-run states: this is a
 # GATE, not a report.

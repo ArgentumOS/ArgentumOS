@@ -190,11 +190,19 @@ int main(void) {
 	}
 
 
-	/* THE MEASUREMENT M4'S FIRST EDIT DEPENDS ON, AND ITS ANSWER CHANGED THE EDIT: CF's OWN array callbacks
-	 * do NOT retain an object this library built - the object dies while the CFArray holds it. So an NSArray
-	 * re-based on CFArray with kCFTypeArrayCallBacks would DROP EVERY ITEM. The second check is the design
-	 * that works, and it is the one the edit will use: CF takes the callbacks FROM THE CALLER, so the array
-	 * can be CF's STRUCTURE with this library's retain/release POLICY.
+	/* THE OWNERSHIP HALF OF TOLL-FREE BRIDGING: WHERE IT STANDS, MEASURED, BOTH WAYS. CF's OWN array
+	 * callbacks DROP an object this library built - CFRetain is TYPE-AGNOSTIC, so it reads a CF header a
+	 * bridged object does not have (CFEqual, by contrast, dispatches: CFTYPE_OBJC_FUNCDISPATCH1). That is why
+	 * an NSArray on CFArray with kCFTypeArrayCallBacks would have dropped every item, and it is why the pair
+	 * below is the design the re-base uses: CF's STRUCTURE with this library's lifetime POLICY.
+	 *
+	 * AND THE ARM THAT FIXES IT WAS BUILT AND MEASURED, THEN REVERTED: CF modification 8 put
+	 * objc_retain/objc_release in CFRetain/CFRelease (the arm upstream spells swift_retain in its other mode),
+	 * and it WORKED - this check flipped to "CF's own callbacks retain this library's object" and passed with
+	 * its release twin. But it broke Foundation: foundation_string (167/167 before it) went red and
+	 * foundation_collection died with SIGSEGV in the array-plist-file phase, so it is NOT LANDED. The next
+	 * unit is to diagnose that rather than re-derive it: the plist path is where two lifetimes first collided,
+	 * which is exactly what the arm changes.
 	 *
 	 * THE PAIR IS DELIBERATE, and the first version of this measurement was one check pair with a flaw worth
 	 * recording: when the object died early, the "released when the array goes" check passed VACUOUSLY - a
@@ -211,8 +219,8 @@ int main(void) {
 			victim = nil;
 			check("a-cf-array-with-cfs-own-callbacks-drops-this-librarys-object",
 			      bridge_probe_deallocs == 1,
-			      "the object SURVIVED - so CF's callbacks do retain this library's objects after all, and the "
-			      "callbacks below are unnecessary");
+			      "the object SURVIVED - so CF's own callbacks DO retain this library's objects, which means the "
+			      "ownership arm was landed after all; invert this check back and delete the note above");
 			CFRelease(cfCallbacks);
 		}
 	}

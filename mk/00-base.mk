@@ -323,7 +323,7 @@ CG_CFLAGS = -I$(LCMS2_PREFIX)/include -I$(LIBJPEG_PREFIX)/include -I$(X11PREFIX)
 # tools/libjpeg-build.sh into a prefix of its own — so it needs an include path (on the line above) and
 # this link line, and mk/20-userland.mk stages its SONAME into /System/Libraries for the guest.
 LIBJPEG_PREFIX = .build/libjpeg-prefix
-CG_LDFLAGS = -L$(X11PREFIX)/lib -lpixman-1 -lpng16 -L$(LCMS2_PREFIX)/lib -llcms2 -L$(LIBJPEG_PREFIX)/lib -ljpeg -L$(FNXLIB) -lfoundation
+CG_LDFLAGS = -L$(X11PREFIX)/lib -lpixman-1 -lpng16 -L$(LCMS2_PREFIX)/lib -llcms2 -L$(LIBJPEG_PREFIX)/lib -ljpeg -L$(FNXLIB) 
 
 define CG_rule
 $(FNXLIB)/coregraphics-$(1:.c=.o): $(CG_SRC)/$(1)
@@ -371,7 +371,7 @@ APPKIT_OBJS  = $(addprefix $(FNXLIB)/appkit-,$(APPKIT_MSRCS:.m=.o))
 # include path the rule already passes. `-lfoundation` is what pulls the runtime in transitively —
 # the same arrangement the CoreGraphics objective-C file relies on, and the reason no `-lobjc`
 # appears on the GUEST link line (the host link needs it explicitly; see mk/60-host.mk).
-APPKIT_LDFLAGS = -L$(FNXLIB) -lcoregraphics -lfoundation
+APPKIT_LDFLAGS = -L$(FNXLIB) 
 
 define APPKIT_objc_rule
 $(FNXLIB)/appkit-$(1:.m=.o): $(APPKIT_SRC)/$(1)
@@ -380,10 +380,11 @@ $(FNXLIB)/appkit-$(1:.m=.o): $(APPKIT_SRC)/$(1)
 endef
 $(foreach f,$(APPKIT_MSRCS),$(eval $(call APPKIT_objc_rule,$(f))))
 
-$(APPKIT_LIB): $(APPKIT_OBJS)
-	@mkdir -p $(FNXLIB)
-	$(MUSL64_OBJC) -fPIC -shared -Wl,-soname,libappkit.so.1 $(APPKIT_OBJS) $(APPKIT_LDFLAGS) -o $@
-	ln -sf libappkit.so.1 $(FNXLIB)/libappkit.so
+# FNX-ARCHIVED: $(APPKIT_LIB) (the three families moved to archive/ by the CF-Foundation experiment)
+# $(APPKIT_LIB): $(APPKIT_OBJS)
+# 	@mkdir -p $(FNXLIB)
+# 	$(MUSL64_OBJC) -fPIC -shared -Wl,-soname,libappkit.so.1 $(APPKIT_OBJS) $(APPKIT_LDFLAGS) -o $@
+# 	ln -sf libappkit.so.1 $(FNXLIB)/libappkit.so
 LLVM_CXX_SRC    = .build/llvm-src
 LLVM_CXX_CFG    = .build/llvm-cxx/Makefile
 LLVM_CXX_PREFIX = .build/llvm-cxx-prefix
