@@ -15962,6 +15962,55 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.242 — THE AUDIT THAT FOLLOWED THE AUDIT: a parameter-scanner over all of Foundation, and the MUTABLE twin of §63.241's bug
+
+**§63.241 found the SHAPE — a shipped, declared, gate-green door that never reads one of its parameters — and this
+turned the shape into a MEASUREMENT.** A scanner over `userland/Foundation/*.m` walks each method DEFINITION (a `{`
+before any `;`, so a declaration inside a private class's method list cannot be mistaken for a body), collects the
+parameter names from the signature in BOTH spellings (`type)name,` and `: (type)name`) and reports any name that
+does not appear in the body. **32 definitions came back.** Every one was then READ, because the scanner proposes
+and only reading disposes.
+
+**THE ONE THAT WAS A REAL BUG WAS THE DOOR §63.241 FIXED THE SIBLING OF.** `NSMutableString
+-replaceOccurrencesOfString:withString:options:range:` ignored its `range` in exactly the same way, and it is the
+MUTABLE twin of the immutable `-stringByReplacingOccurrencesOfString:…` that §63.241 closed. §63.241's own audit had
+checked every `utf8_substring`/`utf8_find` CALL SITE for the unit/byte confusion — and this door PASSES that check,
+because its offsets are consistently bytes, while still never reading the parameter. **A CALL-SITE AUDIT IS NOT A
+CONTRACT AUDIT: the first asks whether the numbers are the right KIND, the second whether the argument is used at
+all.** It now maps both edges, copies the prefix, confines the search to `[start, end)`, copies the tail whole, and
+counts only what happened inside the range.
+
+**TWO FINDINGS THAT LOOKED LIKE BUGS AND ARE STATED READINGS — the filter the scan needs.** `NSArray
+-sortWithOptions:usingComparator:` drops `options`, and NSArray.m says why in as many words: the option "is a FACT
+about it rather than a branch — the insertion sort keeps equal elements in the order they arrived, which is what
+`NSSortStable` asks for", and nothing here sorts concurrently. `NSString -initWithValidatedFormat:…locale:…` drops
+`locale`, and NSString.h says why: the locale-taking pair "accepts a locale and IGNORES it, exactly as
+`-initWithFormat:locale:arguments:` does". **A DROPPED PARAMETER IS A DEFECT ONLY WHEN THE DROP IS UNSTATED** — the
+rule §11.6 applies to a deviation, one level down.
+
+**AND MOST OF THE 32 WERE NEITHER.** They are the AppKit- and substrate-shaped rows this tree refuses by design (the
+`NSURL.m` bookmark cluster, `NSURLConnection`'s delegate no-ops), doors whose last parameter is a callback signature
+the callee has no use for, and base-class `-forwardInvocation:` implementations that exist to be overridden. The
+scan's value is that it is CHEAP and EXHAUSTIVE over the file set; its limit is that it cannot tell an unstated drop
+from a stated one — which is exactly why every hit was read rather than batched.
+
+**ONE CANDIDATE IS LEFT OPEN AND NAMED, NOT HALF-FIXED.** `NSXMLNode -canonicalXMLStringPreservingComments:`
+ignores `comments` and answers the same string for both values, while `fnCanonicalStringDepth:` DOES emit comment
+nodes (`case NSXMLCommentKind`). Apple's contract is that the flag decides whether comments survive, so `NO` should
+strip them — but that is a C14N behaviour question (what the canonical form does with a comment it has been told to
+drop) rather than a mechanical fix, so it is recorded with its exact site rather than guessed at.
+
+**WHAT SHIPPED.** `NSString.m` (the mutable door) and `foundation_string`'s new
+`string-mutable-replace-honours-its-range`: a range covering only the first `"a"` replaces ONCE and leaves the
+second, the whole-string range replaces twice and says so in its COUNT, and on an ASCII-only `"éaéa"` oracle the
+in-range replacement touches unit 3 while the first two units come back byte-for-byte. **NO LEDGER CHANGE** — this
+row was already `shipped` too. Counts stand at **method 1760 / 33 / 421**, property 742 / 12 / 182.
+
+**AND THE SCANNER IS NOT COMMITTED.** It is reconnaissance, not a gate: the tree's rule is that a gate is built when
+a change can affect it, and a heuristic that cannot tell a stated drop from an unstated one would fire on every
+design refusal this tree ships. It is recorded here as a METHOD — walk definitions, both parameter spellings, read
+every hit — rather than left behind as a file.
+
 ## §63.241 — THE AUDIT §63.240 OWED: the range that was IGNORED, and the check that had been passing on a whole-string range
 
 **§63.240 found one bug and fixed five sites; this is the sweep for the rest of the family, and it found a SIXTH —

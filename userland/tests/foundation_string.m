@@ -2182,6 +2182,40 @@ NULL
 	}
 
 	{
+		/* §63.242: THE MUTABLE TWIN. -replaceOccurrencesOfString:withString:options:range: ignored its range
+		 * exactly as the immutable door §63.241 fixed did, so the SAME assertions apply — and the COUNT it
+		 * answers must cover the range only, which is the half the immutable door does not have. */
+		NSMutableString *scoped = [NSMutableString stringWithString:@"a-b-a"];
+		NSUInteger inRange = [scoped replaceOccurrencesOfString:@"a"
+							    withString:@"X"
+							       options:NSLiteralSearch
+								 range:NSMakeRange(0, 1)];
+		NSMutableString *wholeRange = [NSMutableString stringWithString:@"a-b-a"];
+		NSUInteger inWhole = [wholeRange replaceOccurrencesOfString:@"a"
+								withString:@"X"
+								   options:NSLiteralSearch
+								     range:NSMakeRange(0, 5)];
+		/* AND ON A MULTIBYTE RECEIVER: "\u00e9a\u00e9a" is 4 units and 6 bytes, so unit 3 is the LAST "a" and
+		 * byte 3 is inside "\u00e9". */
+		NSString *mbSource = [NSString stringWithUTF8String:"\xc3\xa9" "a" "\xc3\xa9" "a"];
+		NSMutableString *mb = [NSMutableString stringWithString:mbSource];
+		NSUInteger inMb = [mb replaceOccurrencesOfString:@"a"
+						     withString:@"Z"
+							options:NSLiteralSearch
+							  range:NSMakeRange(3, 1)];
+
+		check("string-mutable-replace-honours-its-range",
+		      [scoped isEqualToString:@"X-b-a"] && inRange == 1 &&
+		      [wholeRange isEqualToString:@"X-b-X"] && inWhole == 2 &&
+		      inMb == 1 && [mb length] == 4 &&
+		      [[mb substringFromIndex:3] isEqualToString:@"Z"] &&
+		      [[mb substringToIndex:2] isEqualToString:[mbSource substringToIndex:2]],
+		      [[NSString stringWithFormat:@"scoped=\"%@\" (%lu) whole=\"%@\" (%lu) mb=\"%@\" (%lu)",
+			[scoped description], (unsigned long)inRange, [wholeRange description],
+			(unsigned long)inWhole, [mb description], (unsigned long)inMb] UTF8String]);
+	}
+
+	{
 		/* THE LOCALE-AWARE CASE DOORS (§63.25): ONE LIVE DOOR AND THREE DEPRECATED SPELLINGS, MEASURED WHERE THE
 		 * LOCALE ACTUALLY CHANGES THE ANSWER. This library's case mapping is ASCII except for the one localised
 		 * rule it ships (the Turkic i/İ and I/ı pairing, which the NSLocale checks above already prove), so the

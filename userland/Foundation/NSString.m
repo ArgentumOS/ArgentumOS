@@ -5194,15 +5194,32 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:""];
 	size_t size = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];	/* BYTES */
 	size_t targetSize = [target lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
-	size_t cursor = 0;
+	/* §63.242: THE RANGE IS HONOURED — this is the MUTABLE twin of the immutable door §63.241 fixed, with
+	 * the same defect in the same shape: the range comes in UNITS, the walk is in BYTES, and the parameter was
+	 * never read at all. Both edges are mapped, the prefix is copied first, the search is confined to
+	 * [start, end), the tail is copied whole, and `replaced` counts only what happened INSIDE the range. */
+	size_t start = fn_unit_to_byte(self, range.location);
+	size_t end = fn_unit_to_byte(self, range.location + range.length);
+	size_t cursor;
 	NSUInteger replaced = 0;
 
 	if (targetSize == 0) {
 		return 0;
 	}
-	while (cursor < size) {
+	if (start > size) {
+		start = size;
+	}
+	if (end > size) {
+		end = size;
+	}
+	if (end < start) {
+		end = start;
+	}
+	cursor = start;
+	[built appendString:utf8_substring(self, 0, start)];
+	while (cursor < end) {
 		NSUInteger found = utf8_find(self, target,
-					     NSMakeRange(cursor, size - cursor), options);
+					     NSMakeRange(cursor, end - cursor), options);
 
 		if (found == NSNotFound) {
 			break;
