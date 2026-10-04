@@ -124,6 +124,27 @@ void _CFNXBridgeAllClasses(void)
 	 * nowhere and the registration registered nothing, silently, because the door's own guard skips a Nil
 	 * class. Two characters of instrument ('Hnz') said all of that after a great deal of reasoning had not. */
 	CFNXBridgeClassToType([NSString class], CFStringGetTypeID());
+
+	/* AND THE CONSTANT STRINGS, WHICH CF'S OWN CODE HAS BEEN WAITING FOR. Four of CF's lines describe this
+	 * mechanism exactly, and in this build none of them was doing anything:
+	 *
+	 *   CFRuntime.c:274   the Swift arm sets __CFConstantStringClassReferencePtr = &_CF_CONSTANT_STRING_SWIFT_CLASS
+	 *   CFRuntime.c:291   THIS arm sets the same pointer to NULL
+	 *   CFRuntime.c:1956  CF already compares an object's isa against that pointer ("is this a constant string")
+	 *   CFInternal.h:546  CF's own CFSTR macro builds its isa as &__CFConstantStringClassReference
+	 *
+	 * THE ARRAY IS DELIBERATE: the isa IS ITS ADDRESS, so a message send reads the class out of the array's
+	 * FIRST WORD -- which is why it is declared as an array of ints, a fake object big enough to be read as
+	 * one. Pointing the pointer at the array satisfies CF's own test; putting the class in the first word
+	 * makes the message send work. Neither line is invented: each is the counterpart of a line CF already has.
+	 */
+	{
+		extern void *__CFConstantStringClassReferencePtr;
+		extern int __CFConstantStringClassReference[];
+
+		__CFConstantStringClassReferencePtr = (void *)&__CFConstantStringClassReference;
+		((void **)&__CFConstantStringClassReference)[0] = objc_getClass("NSConstantString");
+	}
 }
 
 - (unsigned long)length

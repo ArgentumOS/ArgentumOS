@@ -993,3 +993,23 @@ only exists once Foundation is loaded.
 
 Both symbols are CF_EXPORTed, so Foundation may write them, and neither line is a guess: each is the
 counterpart of a line CF already contains.
+
+
+**THE TWO ASSIGNMENTS RAN, THE ISA IS CORRECTLY UNCHANGED — AND THAT IS WHAT NAMES THE LAST STEP.** Measured:
+libfoundation now REFERENCES both symbols (U in its dynamic table, so the hook's writes are real), and the
+probe's isa is still &__CFConstantStringClassReference, which is right: the isa IS that ADDRESS. Putting the
+class in the array's CONTENTS was therefore the wrong half of the mechanism -- a message send reads the isa
+FIELD, that address, and treats it as a Class, so WHAT IS NEEDED IS FOR THE ADDRESS TO *BE* THE CLASS.
+
+THAT IS THE ALIAS -- the mechanism already measured to work in this tree two turns ago:
+
+    libfoundation:  0x61c8 D _CF_CONSTANT_STRING_SWIFT_CLASS
+                    0x61c8 D ._OBJC_CLASS_NSConstantString        the SAME ADDRESS
+
+So the last step is the same .set, aimed at __CFConstantStringClassReference instead of the symbol that turned
+out not to be the one the compiler uses. AND IT BELONGS IN FOUNDATION, NOT CF, WHICH REVERSES THE EARLIER
+NOTE'S ASSIGNMENT OF OWNERSHIP: CoreFoundation *defines* the array, so CF cannot alias it without CF naming
+Foundation's class -- and CF must not depend on Foundation. The clean division is therefore the opposite of
+what that note said: LET FOUNDATION DEFINE THE SYMBOL. CF's own uses of it are ADDRESS-ONLY (the comparison at
+CFRuntime.c:1956 and the macro's isa construction at CFInternal.h:546, both of which take &X), so an alias
+satisfies every one of them, and the storage belongs to whoever has the class.
