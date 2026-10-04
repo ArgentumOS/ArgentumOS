@@ -15962,6 +15962,42 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.226 — THE FIX THAT WORKED, AND THE ACCEPTANCE CRITERION THAT CAUGHT IT BEING TOO LOOSE
+
+**No code, no ledger change; the tree is green.** This closes the four-turn tool thread with the diagnosis
+finished and the discriminator identified — and, notably, the *criterion* written down in §63.222 is what did
+the catching.
+
+**WHAT WAS ESTABLISHED, IN ORDER:**
+1. The sweep's parser is **SOUND** (measured): it records `-getRelationship:ofDirectory:inDomain:toItemAtURL:error:`
+   and `-URLForDirectory:inDomain:appropriateForURL:create:error:` whole. §63.224's "it truncates" was wrong.
+2. The active path is **`check_selectors()`** (line 1811), not `check()` — which is why three patches to
+   `check()` did nothing. It already compares `(sign, selector)` **pairs**, and even has a getter fallback
+   (`isFinished` for a property documented as `finished`).
+3. The ledger's rows carry **Apple's DOCUMENTATION spelling**: for a single-keyword selector the index appends the
+   **parameter name** — `-makeNewConnection:sender:` is the selector `-makeNewConnection:`. That is the gap.
+
+**THE FIX THAT WORKED, AND WHY IT IS WRONG:** adding a fallback that also tries the selector with its last part
+removed made `-makeNewConnection:sender:` resolve — **and immediately flagged three more rows as
+`PRESENT BUT LISTED OPEN`**. Spot-checking one falsified it: `-stringByAppendingPathComponent:conformingToType:` is
+**not declared** in `NSString.h`; the fallback had matched it against the *different* method
+`-stringByAppendingPathComponent:`. That is precisely the failure mode §63.222's acceptance criterion named in
+advance — *"a loosened `--check` would let genuinely-missing declarations through, and that is worse than two
+stuck rows"* — and running that criterion is what caught it, not my reading of the patch.
+
+**THE DISCRIMINATOR, WHICH IS THE HAND-OVER:** the two cases are not distinguishable by NAME SHAPE — both are
+`a:b:` — but they are distinguishable by the DECLARATION: in Apple's doc spelling the appended part **is that
+declaration's last PARAMETER NAME**. So the fallback should accept a truncated match **only when the row's
+trailing part equals the parameter name the declaration gives its last parameter**:
+* `-makeNewConnection:sender:` ↔ `- (nullable id)makeNewConnection:(NSConnection *)sender;` — the parameter IS
+  `sender`, so this is the doc spelling of that declaration.
+* `-stringByAppendingPathComponent:conformingToType:` ↔ `- (NSString *)stringByAppendingPathComponent:(NSString *)component;`
+  — the parameter is `component`, NOT `conformingToType`, so the row names a method that does not exist.
+
+That needs the parser to expose parameter names (it records `(sign, selector)` pairs today), which is a small,
+bounded change with a two-row test pair ready-made. **Until it lands, the two rows stay `open`** — they are
+implemented and correct, and the ledger is not lying about them.
+
 ## §63.225 — THE MEASUREMENT THAT SETTLES IT, AND WHY THE PATCH IS NOT MINE TO LAND AT THE END OF A TURN
 
 **No code, no ledger change; the tree is green.** Three turns have now gone into this tool, and the honest
