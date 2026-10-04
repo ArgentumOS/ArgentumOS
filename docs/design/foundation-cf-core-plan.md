@@ -1222,3 +1222,88 @@ a message that something happened.
   that is deliberate (it documents the gap) but it should be stated in the commit that does it.
 * NSArray's factory methods (+array and relatives) are still absent: they return AUTORELEASED under Apple's
   contract and this library has no autorelease pool. That is a basis gap, not an omission.
+
+
+# RESULT — the NSArray re-base is DONE, and the handover above was wrong in one load-bearing way
+
+**`foundation_collection` 14/14 and `foundation_object` 18/18. The whole Foundation/smoke tier is green**
+(foundation_object, foundation_collection, corefoundation_smoke, objc_smoke, icu_smoke, curl_smoke).
+
+## THE HANDOVER'S "ONE CHANGE" WAS NOT THE BLOCKER, AND THE REAL ONE WAS INVISIBLE
+
+The handover said the remaining failure was pure ordering and that a load-time constructor would close it.
+The constructor was right and is now in the tree — but it *could not* have fixed the check on its own, because
+the committed source of **CF LOCAL MODIFICATION 10 was an EMPTY FUNCTION**. `CFNXSetInstanceTypeIDAndIsa`
+contained its whole comment — including the sentence "the write below is the same one line :677 performs" —
+and no write at all: a pattern-based edit had stripped the bounds HALT and the `__CFRuntimeSetValue` call and
+left the prose standing. It compiled, it linked, and it did nothing.
+
+**AND IT WAS INVISIBLE BECAUSE THE ARTEFACT WAS STALE.** `.build/corefoundation-prefix/lib/…so.1.1.0` still
+carried the previous build, in which the function *did* write — so every measurement the handover quotes was
+taken against a library the source no longer described. This is the third loss of this exact kind in this
+stretch (the CFSTR pointer assignment, `_FNXBridgeClass([NSArray class], …)`, and now the write), and the
+first one that a *rebuild* was needed to expose.
+
+**THE CHECK THAT CATCHES IT, AND IT COSTS ONE COMMAND.** After any rebuild of CoreFoundation:
+
+    objdump -d --disassemble=CFNXSetInstanceTypeIDAndIsa .build/corefoundation-prefix/lib/libcorefoundation.so.1.1.0
+
+`__CFRuntimeSetValue` must appear in that symbol. A comment that says "the write below" is not a write, and
+`grep` cannot tell the difference — the disassembly can.
+
+## THE ORDERING FIX, AND WHY IT NEEDED A SECOND HALF
+
+`_FNXRegisterAllBridgedClasses` is now also called from `__attribute__((constructor))`, so registration is
+complete before any allocation exists (measured: word 1 of the very first NSArray went from `0x0` to a real
+info word). **AND THE OLD FUNCTION HAD TO CHANGE, NOT JUST GAIN A CALLER:** it advanced to its "done" state
+even when the classes were Nil, so an early constructor would have made the one later caller skip a
+registration that registered nothing — the silent-nothing failure the old comment describes. It now resolves
+`objc_getClass("NSString")`/`objc_getClass("NSArray")` FIRST and returns without claiming to have run if they
+are not realised yet, so an early constructor costs a retry and never a lost registration.
+
+## THE REAL BLOCKER: THE REGISTERED CLASS AND THE INSTANTIATED CLASS WERE THE SAME
+
+With the type word written and CF agreeing the object was a CFArray (`CFGetTypeID` = `0x13`), CF's own door
+*still* did not see it:
+
+    word 1 of the NSArray (CF's info word) = 0x1300      the write, working
+    CFGetTypeID of the NSArray             = 0x13        CF agrees what it is
+    CFArrayGetCount on the NSArray         = 0x1         ... and read the object's RETAIN COUNT
+
+`CF_IS_OBJC(typeID, obj)` (modification 5) is an ISA comparison: true when the object's isa is **not** the
+class registered for that type. Registration made `__CFISAForTypeID(CFArrayGetTypeID())` equal to
+`[NSArray class]` — and the array the probe held *had* that isa — so the comparison was FALSE, CF took its
+native C path, and read `struct __CFArray`'s `_count` out of the third word, which on an Objective-C object
+is the retain count. The array was a *wrapper around* a CFArray; CF could tell, because it looks at the object.
+
+**THE FIX IS THE SHAPE, AND THE USER CHOSE IT (`dec-cc90496b5cdedbc0`): the object IS the CFArray.** NSArray
+now declares NO IVARS (NSString's precedent), `-initWithObjects:count:` builds the CF array and returns IT
+(disposing the +alloc'd shell with `object_dispose`, NOT `-release`, which now belongs to CF), `-retain` and
+`-release` are `CFRetain`/`CFRelease` because the object's second and third words are CF's header rather than
+a private count, and every door casts `self` — never a field — to `CFArrayRef`. After the re-base:
+
+    word 1 of the NSArray (CF's info word) = 0x10000138c   CF's array flags AND type ID — this is a real CFArray
+    word 2 of the NSArray (the count)      = 0x3           CF's own count field
+    CFArrayGetCount on the NSArray         = 0x3           CF's C path, on CF's own storage
+
+**AND THAT IS ALSO WHAT MAKES THE DOORS NON-RECURSIVE**, which is worth stating because it looks like a bug
+otherwise: `-count` calls `CFArrayGetCount((CFArrayRef)self)`, and CF takes its C path rather than dispatching
+back into `-count`, precisely BECAUSE the isa equals the registered class. The same comparison that broke the
+wrapper is what the CF-shaped class needs.
+
+## ONE RULE WORTH CARRYING TO EVERY LATER CLASS IN THIS RE-BASE
+
+The registered class is what CF stamps on the objects IT allocates, so a class that is both registered for a
+type and instantiated by this library has to BE CF-shaped — a field in it is an object that is not the thing
+its isa claims. A class that holds a bridged object as a field instead must NOT be the registered one, or CF
+will read its header as the CF object's.
+
+## STILL OWED, CORRECTED
+
+* **Modification 10's record is PAID** — the README now lists 8–11 and states that `fnx-modifications.patch`
+  is the pre-freeze record of 1, 3, 4, 5, 6, 7 only (the upstream subtree is no longer vendored, so the patch
+  cannot be regenerated here).
+* `NSString -characterAtIndex:` is a DECLARED-BUT-UNIMPLEMENTED selector, and it is a **pre-existing** red:
+  `tools/foundation-sweep.py --unimplemented` reports the same single hit with this change set stashed. It is
+  the twin whose name the file's own comment records as GUESSED once and left unwritten.
+* NSArray's factory methods (+array and relatives) remain absent — the autorelease-pool reason above stands.

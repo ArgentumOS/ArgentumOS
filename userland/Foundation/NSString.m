@@ -111,21 +111,25 @@ extern CFHashCode CFStringHashNSString(CFStringRef str);
 	return self;
 }
 
-/* NOT static, AND NOT A CONSTRUCTOR: CF calls this BY NAME, weakly, from inside object creation and only
- * once its runtime is initialised. A constructor was tried first and MEASURED TOO EARLY -- at that point
- * [NSString class] is Nil and the registration silently did nothing. This is called at the moment CF needs
- * the answer, which is the only moment guaranteed to be late enough and early enough at once. */
-/*
- * THE REGISTRATION, AND WHY IT IS CALLED FROM TWO PLACES. CF calls _CFNXBridgeAllClasses when IT finishes
- * initializing, but CF only initializes on its FIRST CALL -- and for the first object of a bridged class that
- * first call is CFArrayCreate INSIDE the initialiser, i.e. AFTER +alloc has already asked what type its class
- * is and been told 0. That is measured: the header word of the first NSArray was zero the instant it existed,
- * while later arrays carried 0x1300 correctly.
+/* NOT static, AND REACHED FROM TWO PLACES: the library constructor below, and CF's own hook when it finishes
+ * initializing. The flag makes both orders safe. Re-entrancy here is the normal case rather than an
+ * edge: the CF calls below start CF's initialization, CF calls the hook, and the hook arrives back here while
+ * this call is still running -- which must do nothing and let THIS call finish, which it does, because the
+ * state only reaches 2 after every class has been registered.
  *
- * So +alloc may pull this forward, and the flag makes BOTH orders safe. Re-entrancy here is the normal case
- * rather than an edge: the CF call below starts CF's initialization, CF calls the hook, and the hook arrives
- * back here while this call is still running -- which must do nothing and let THIS call finish, which it does,
- * because the state only reaches 2 after every class has been registered.
+ * WHY IT IS CALLED FROM TWO PLACES, AND WHY THAT IS THE WHOLE BUG THIS CLASS HAD. CF initializes on its
+ * FIRST CALL, and for the first object of a bridged class that first call is CFArrayCreate INSIDE the
+ * initialiser -- i.e. AFTER +alloc has already asked what type its class is and been told 0. Measured: the
+ * header word of the first NSArray was zero the instant it existed, while later arrays carried 0x1300. So
+ * registration must complete BEFORE any allocation, which only a load-time constructor can guarantee; CF's
+ * hook is the fallback for the one order a constructor cannot control -- a class its runtime had not realised
+ * yet when the constructor ran.
+ *
+ * A CONSTRUCTOR WAS TRIED ONCE BEFORE AND MEASURED TOO EARLY -- [NSString class] was Nil at load, because this
+ * root class had no +class then -- and the failure was SILENT in the worst way: the old code advanced to the
+ * done state anyway, so the only later caller skipped a registration that had registered nothing. Both halves
+ * of that are fixed here: the class IS resolved before the state is claimed (a class the runtime has not
+ * realised yet leaves the state at 0 so the next caller retries), and +class exists on both root classes.
  */
 void _FNXRegisterAllBridgedClasses(void)
 {
@@ -134,6 +138,18 @@ void _FNXRegisterAllBridgedClasses(void)
 	if (state != 0) {
 		return;
 	}
+
+	/* RESOLVE BEFORE CLAIMING TO HAVE RUN. objc_getClass is asked rather than the class messaged, because a
+	 * class the runtime has not realised answers nil to both, and nil must NOT look like "registered". */
+	{
+		Class str = objc_getClass("NSString");
+		Class arr = objc_getClass("NSArray");
+
+		if (str == Nil || arr == Nil) {
+			return;
+		}
+	}
+
 	state = 1;
 
 	{
@@ -159,12 +175,28 @@ void _FNXRegisterAllBridgedClasses(void)
 
 void _CFNXBridgeAllClasses(void)
 {
-	/* THE CLASS IS LOOKED UP BY NAME, NOT MESSAGED, AND THE REASON IS MEASURED. `[NSString class]` returned
-	 * NIL here -- twice: once from a constructor and once from this hook -- while objc_getClass("NSString")
-	 * answers in the same process. The compiler had said why in a warning worth reading: "class method
-	 * '+class' not found". THIS CLASS IS A ROOT CLASS AND DOES NOT IMPLEMENT +class, so the message went
-	 * nowhere and the registration registered nothing, silently, because the door's own guard skips a Nil
-	 * class. Two characters of instrument ('Hnz') said all of that after a great deal of reasoning had not. */
+	/* CF CALLS THIS BY NAME, WEAKLY, FROM INSIDE OBJECT CREATION, and it is the fallback rather than the
+	 * primary route now that the constructor below registers at load. It still matters for the orders a
+	 * constructor cannot control: a class the runtime had not realised when the constructor ran leaves the
+	 * state at 0, and this is what then completes the registration -- now with the classes realised, because
+	 * CF is inside object creation and the image is fully loaded. */
+	_FNXRegisterAllBridgedClasses();
+}
+
+/*
+ * THE ORDERING FIX, AND THE ONLY REASON THIS IS A CONSTRUCTOR. CF's runtime registers our classes only when
+ * it FINISHES INITIALIZING, and CF initializes on its FIRST CALL -- which, for the first object of a bridged
+ * class, is a CF call made from inside that object's initialiser, i.e. AFTER +alloc has already asked its
+ * class's type ID and been told 0. A constructor runs at image load, before any allocation exists, so the
+ * registration is complete by the time the first +alloc asks. Measured before this was added: the first
+ * NSArray's type word was 0x0 while later arrays carried 0x1300.
+ *
+ * IT IS SAFE TO RUN TOO EARLY: _FNXRegisterAllBridgedClasses resolves its classes first and returns WITHOUT
+ * marking itself done if the runtime has not realised them yet, so an early constructor costs a retry and
+ * never a silently-skipped registration.
+ */
+__attribute__((constructor)) static void _FNXRegisterBridgedClassesAtLoad(void)
+{
 	_FNXRegisterAllBridgedClasses();
 }
 

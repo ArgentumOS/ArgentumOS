@@ -916,7 +916,17 @@ void CFNXSetInstanceTypeIDAndIsa(void *obj, unsigned long typeID) {
      *
      * The legal question that guard asks is about converting a CF object BETWEEN types; an object that has
      * never had a type is not being converted. The write below is the same one line :677 performs, through
-     * CF's own macro, so the bit layout is still CF's and nothing here is hand-packed. */
+     * CF's own macro, so the bit layout is still CF's and nothing here is hand-packed.
+     *
+     * AND THIS BODY WAS ONCE LOST WHILE ITS COMMENT SURVIVED: a pattern-based edit stripped the guard and the
+     * write and left the paragraph above standing, so the function compiled, linked and did NOTHING -- the
+     * "after" half of the trace this comment quotes vanished with it. It is restored here, and a rebuild of
+     * this file must be followed by disassembling this symbol: `__CFRuntimeSetValue` on the object must be in
+     * it, or the type ID is never written and every bridged object answers 0. */
+    if (__CFRuntimeClassTableSize <= typeID) {
+        HALT;
+    }
+    __CFRuntimeSetValue((CFTypeRef)obj, TYPE_ID_END, TYPE_ID_START, (uint8_t)typeID);
 }
 
 CFTypeRef _CFNonObjCRetain(CFTypeRef cf) {

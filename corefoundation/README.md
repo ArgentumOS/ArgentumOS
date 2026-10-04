@@ -14,12 +14,17 @@ source: buildable from this directory, patchable in place, and free to diverge.
 
 ## The modifications, stated
 
-`fnx-modifications.patch` is the record: it is the exact diff from upstream `44cd6163` to the sources in
-this directory, taken before the fork was frozen. **Six modifications across five files**, and every one of
-them is marked IN PLACE with a comment naming it and citing the clause — the form is
+Every modification is marked IN PLACE with a comment naming it and citing the clause — the form is
 `/* FNX LOCAL MODIFICATION <n> (Apache-2.0 §4(b)): ... */`, which is what the licence's section 4(b) asks a
-modified file to carry. The patch file and those six comments are the same notice stated twice, once as a
-diff and once where a reader of the file will actually be standing.
+modified file to carry.
+
+`fnx-modifications.patch` is the frozen record of the FIRST SIX — **1, 3, 4, 5, 6, 7**, six modifications
+across five files — taken before the fork was frozen, and still applied idempotently by `build.sh`. The
+modifications made after the freeze — **8, 9, 10, 11** — are marked in place in the sources and listed below;
+they are NOT in that patch, and it cannot be regenerated here because the upstream tree
+(`third_party/swift-corelibs-foundation`) is no longer vendored. The patch and the in-place comments are the
+same notice stated twice, once as a diff and once where a reader of the file will actually be standing.
+(There is no modification 2: no file carries that marker.)
 
 * **1** `include/ForSwiftFoundationOnly.h` — `<fts.h>` guarded by `__has_include` (this tree has no fts,
   and there are zero fts call sites).
@@ -42,6 +47,17 @@ diff and once where a reader of the file will actually be standing.
   of Foundation's. The arm makes `CFRetain(obj)` and `[obj retain]` the same operation on the same word,
   which is the one-lifetime rule the new library is designed around. Upstream names the hole it fills: its
   own note about "a race between CFRetain / CFRelease (which call CF_IS_OBJC) and _CFRuntimeBridgeClasses".
+* **9** `CFRuntime.c` — **THE BRIDGING DOOR**, the other half of free casting: `CFNXBridgeClassToType(Class,
+  CFTypeID)` registers a class for a CF type, so CF-native objects are created with that class as their isa
+  and `(NSString *)cfStr` becomes a messageable object while CF's own isa-comparing doors keep their C path.
+* **10** `CFRuntime.c` — **THE HEADER WRITER**, exported: `CFNXSetInstanceTypeIDAndIsa` is
+  `_CFRuntimeSetInstanceTypeIDAndIsa` (hidden-visibility upstream) made reachable, so Foundation writes the
+  type-ID bits into an object's header through CF's own `__CFRuntimeSetValue` rather than packing them by
+  hand. It deliberately does NOT route through `_CFRuntimeSetInstanceTypeID`, whose "is this transition
+  legal" guard returns before its own write on an object that has no header yet.
+* **11** `CFRuntime.c` — **THE CLASSES MUST EXIST BEFORE AN ISA IS COMPUTED**: CF asks Foundation to register
+  its classes from INSIDE `_CFRuntimeCreateInstance` (weakly, so this package keeps NO dependency on
+  Foundation), gated on `__CFInitialized` so the ask cannot arrive while the runtime is still being built.
 
 ## What is ours
 

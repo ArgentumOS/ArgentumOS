@@ -61,7 +61,6 @@ void _FNXBridgeClass(Class cls, unsigned long typeID)
 		fnx_bridged_types[fnx_bridged_count] = typeID;
 		fnx_bridged_count++;
 	}
-	/* TEMPORARY: what the map holds once the write is done. */
 }
 
 /* A SUBCLASS OF A BRIDGED CLASS IS BRIDGED TOO, by walking up: an NSArray's subclass is still a CFArray. The
