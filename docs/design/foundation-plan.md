@@ -16018,24 +16018,21 @@ unit used a **line-anchored** guard (`(?m)^\+ \(instancetype\)allocWithZone:`) r
 which matters here because the header's own note spells both names in prose, and a substring test is satisfied
 by a comment.
 
-**THE GUEST CHECK FOR THESE TWO IS OWED, AND TWO ATTEMPTS AT IT FAILED FOR A REASON WORTH RECORDING.** The
-subclass such a check needs (`FnMrrProxy`) lives in `foundation_core_support.m` — a SUPPORT unit with no case of
-its own — so the check went into `foundation_core.m` with its own small `NSProxy` subclass. Both attempts
-aborted the probe: `FAIL foundation_core/probe-ran: no FOUNDATION-CORE DONE`, a memory-map dump and 65 of 67
-checks printed, i.e. a SIGSEGV in the new code path and not a failed assertion.
+**THE GUEST CHECK FOR THESE TWO: TWO ATTEMPTS SEGFAULTED, A THIRD RUNS — AND FAILS, WHICH IS WHERE IT STANDS.**
+The first two wrote the check inline in the ARC probe (`foundation_core.m`) and aborted it
+(`no FOUNDATION-CORE DONE`, a memory-map dump, 65 of 67 checks printed). §63.206 found why that shape cannot
+work: under ARC `-allocWithZone:` is unavailable, so MRC work in this tree belongs in
+`foundation_core_support.m` as a `BOOL foundation_mrr_*` function that the ARC probe merely CALLS. Written that
+way — reusing the file's own `FnMrrProxy` fixture, whose `-class` forwards through a real target — the check
+BUILDS, RUNS, and the probe reaches its end marker; it reports a plain **FAIL**, so the assertion is false
+rather than fatal.
 
-**AND I MISREAD THE FIRST ATTEMPT, WHICH IS THE PART WORTH KEEPING:** the harness line
-`TESTS-FAIL 0/1 case(s), 1/2 check(s)` is the CASE'S OWN two checks (`shell-ready`, `probe-ran`), **not** the
-probe's tally. I concluded that inserting a check "breaks the case harness's expectation parsing" and spent a
-round on the `CHECKS` tuple and its count — the tuple was never the problem, and the case file's own
-`result-line` assertion had already told me the pairing rule (`ok=<len(CHECKS)>`). The lesson is the same one
-as §63.204's: read the instrument's own output before theorising about it. The tuple is now correct at 67 names
-(true of the tree at any commit after this one), and the probe still aborts, so the next attempt starts from
-`allocWithZone:` itself — an NSProxy SUBCLASS with no overrides is a sharper thing to exercise than it looks
-(its `-class` forwards, and `-forwardInvocation:` defaults to raising), and that is its own investigation.
-
-Acceptance: `make testimg` green (status-checked); `tools/foundation-sweep.py --check` and `--unimplemented`
-both clean (the pair, run together); no guest gate is affected by these two doors yet — see the paragraph above.
+**WHICH PART IS UNRESOLVED, WITH THE SUSPECTS NAMED RATHER THAN GUESSED AT:** the assertion is
+`proxy != nil && [proxy class] == [real class]`, and the candidates are (a) `+allocWithZone:` answering nil
+for a bare `NSProxy` subclass — our NSProxy is a second ROOT class, and its `+alloc` is the question — and
+(b) `-class` not taking the forwarding path. A diagnostic `printf` from the MRC function did not reach the
+case's captured output, which is itself the next thing to fix: that log is where the answer is. So this is no
+longer "a check is owed" but a small, well-posed investigation with one log line to obtain.
 
 ## §63.204 — NSProxy's four rows are graded, not uniform — and two sweep modes read OPPOSITE directions
 
