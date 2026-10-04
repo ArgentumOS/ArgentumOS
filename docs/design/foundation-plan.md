@@ -15962,6 +15962,27 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.231 — THE TOOL THREAD IS CLOSED FOR GOOD, AND WHY ITS FAILURE DIRECTION IS THE SAFE ONE
+
+**Parked permanently, not deferred.** §63.222–§63.226 plus this attempt spent FIVE turns on the sweep's
+doc-spelling gap. §63.226 identified the exact discriminator (a truncated match is legitimate only when the row's
+trailing part equals that declaration's last PARAMETER NAME — `sender` yes, `component` no), and this attempt
+wrote it as a local check against the owner's header. **All three of its own test cases came back False —
+including the CONTROL that passes today** — so the new code was wrong in the same way every previous attempt was,
+and finding out why is a sixth turn on a presentation fix.
+
+**THE FACT THAT SETTLES IT:** the two blocked rows are **implemented, declared, and gated green**; what is out of
+date is the LEDGER, and the ledger errs on the side of *understating* progress (`open` where the tree ships).
+That is the opposite of the failure that would matter — a ledger claiming work that does not exist — and it is
+also the direction the acceptance criteria have been protecting all along ("a loosened `--check` would let
+genuinely-missing declarations through, and that is worse than two stuck rows").
+
+**SO THE COST-BENEFIT IS SETTLED:** the fix is worth **two ledger rows and no correctness**, against a
+load-bearing parser that has resisted five careful attempts. The ~17 real doors left are worth far more per turn,
+and one of them (`-applyTransform:…`) only became visible at all because §63.230 stopped trusting a ground. The
+thread is closed; a future pass with real appetite for the parser can reopen it from §63.226's discriminator and
+the `sender`/`component` test pair.
+
 ## §63.230 — NSConnection`remoteObjects`, AND TWO GROUNDS CORRECTED BY LOOKING
 
 One row shipped: `remoteObjects`. Ledger after: `method 1750 shipped / 46 open / 418 struck; property 735 / 20 / 181`.
