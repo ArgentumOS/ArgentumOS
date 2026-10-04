@@ -257,6 +257,11 @@ static NSArray *fn_cal_symbols(NSString *identifier, NSLocale *locale,
 	return out;
 }
 
+@interface NSCalendar (FNNextDate)
+- (NSUInteger)fnNextDateHorizonDays;
+- (void)fnApplyTimePartsOf:(NSDateComponents *)source to:(NSDateComponents *)target;
+@end
+
 @implementation NSCalendar
 
 NSNotificationName const NSCalendarDayChangedNotification = @"NSCalendarDayChangedNotification";
@@ -1688,6 +1693,143 @@ toUnitGranularity:(NSCalendarUnit)unit
 	return [self components:units fromDate:start toDate:end options:options];
 }
 
+
+- (NSDate *)nextDateAfterDate:(NSDate *)date
+	    matchingComponents:(NSDateComponents *)components
+		       options:(NSCalendarOptions)options
+{
+	/* THE DATE PARTS COME FROM THE START DATE, THE TIME PARTS FROM WHAT WAS ASKED FOR — which is what makes a
+	 * day-sized step enough for both "the next 9:30" and "the next 15 March". A candidate that is not after the
+	 * start moves a day forward before the search begins. */
+	NSDateComponents *walk;
+	NSDate *candidate;
+	NSUInteger guard = 0;
+	NSUInteger horizon = [self fnNextDateHorizonDays];
+
+	(void)options;
+	walk = [self components:(NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay)
+		       fromDate:date];
+	[self fnApplyTimePartsOf:components to:walk];
+	candidate = [self dateFromComponents:walk];
+	while (candidate != nil && [candidate compare:date] != NSOrderedDescending && guard <= horizon) {
+		NSDateComponents *one = [[NSDateComponents alloc] init];
+
+		[one setDay:1];
+		candidate = [self dateByAddingComponents:one toDate:candidate options:0];
+		[one release];
+		guard++;
+	}
+	for (guard = 0; candidate != nil && guard <= horizon; guard++) {
+		if ([self date:candidate matchesComponents:components]) {
+			return candidate;
+		}
+		{
+			NSDateComponents *one = [[NSDateComponents alloc] init];
+
+			[one setDay:1];
+			candidate = [self dateByAddingComponents:one toDate:candidate options:0];
+			[one release];
+		}
+	}
+	return nil;
+}
+
+- (NSDate *)nextDateAfterDate:(NSDate *)date
+		   matchingHour:(NSInteger)hourValue
+		       minute:(NSInteger)minuteValue
+		       second:(NSInteger)secondValue
+		      options:(NSCalendarOptions)options
+{
+	NSDateComponents *components = [[NSDateComponents alloc] init];
+
+	[components setHour:hourValue];
+	[components setMinute:minuteValue];
+	[components setSecond:secondValue];
+	{
+		NSDate *answer = [self nextDateAfterDate:date matchingComponents:components options:options];
+
+		[components release];
+		return answer;
+	}
+}
+
+- (NSDate *)nextDateAfterDate:(NSDate *)date
+		   matchingUnit:(NSCalendarUnit)unit
+			value:(NSInteger)value
+		      options:(NSCalendarOptions)options
+{
+	NSDateComponents *components = [[NSDateComponents alloc] init];
+
+	/* THE UNIT NAMES ITS OWN COMPONENT, so the predicate below is exactly the unit asked for. */
+	if (unit == NSCalendarUnitEra) { [components setEra:value]; }
+	else if (unit == NSCalendarUnitYear) { [components setYear:value]; }
+	else if (unit == NSCalendarUnitMonth) { [components setMonth:value]; }
+	else if (unit == NSCalendarUnitDay) { [components setDay:value]; }
+	else if (unit == NSCalendarUnitHour) { [components setHour:value]; }
+	else if (unit == NSCalendarUnitMinute) { [components setMinute:value]; }
+	else if (unit == NSCalendarUnitSecond) { [components setSecond:value]; }
+	else if (unit == NSCalendarUnitWeekday) { [components setWeekday:value]; }
+	else if (unit == NSCalendarUnitWeekdayOrdinal) { [components setWeekdayOrdinal:value]; }
+	else if (unit == NSCalendarUnitQuarter) { [components setQuarter:value]; }
+	{
+		NSDate *answer = [self nextDateAfterDate:date matchingComponents:components options:options];
+
+		[components release];
+		return answer;
+	}
+}
+
+- (void)enumerateDatesStartingAfterDate:(NSDate *)startDate
+		     matchingComponents:(NSDateComponents *)components
+				options:(NSCalendarOptions)options
+			     usingBlock:(void (^)(NSDate *, BOOL *))block
+{
+	/* THE SAME SEARCH, REPEATED: the block is handed each match until it sets *stop, or the calendar's horizon
+	 * runs out — the bound that keeps an unsatisfiable match from looping forever. */
+	NSDate *cursor = startDate;
+	NSUInteger guard = 0;
+	NSUInteger horizon = [self fnNextDateHorizonDays];
+
+	if (block == NULL) {
+		return;
+	}
+	while (guard <= horizon) {
+		NSDate *match = [self nextDateAfterDate:cursor matchingComponents:components
+						options:options];
+		BOOL stop = NO;
+
+		if (match == nil) {
+			return;
+		}
+		block(match, &stop);
+		if (stop) {
+			return;
+		}
+		cursor = match;
+		guard++;
+	}
+}
+
+/* §63.207: THE SEARCH'S TWO PRIVATE PIECES. The horizon is a STATED BOUND (ten years), so an unsatisfiable
+ * match answers nil instead of looping; the time-part copy is what lets a day-sized step find "the next 9:30"
+ * as well as "the next 15 March". */
+- (NSUInteger)fnNextDateHorizonDays
+{
+	return 3660;
+}
+
+- (void)fnApplyTimePartsOf:(NSDateComponents *)source to:(NSDateComponents *)target
+{
+	if ([source hour] != NSDateComponentUndefined) {
+		[target setHour:[source hour]];
+	}
+	if ([source minute] != NSDateComponentUndefined) {
+		[target setMinute:[source minute]];
+	}
+	if ([source second] != NSDateComponentUndefined) {
+		[target setSecond:[source second]];
+	}
+}
 @end
 
 /*

@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1708	open	105	struck	401
+# method	shipped	1712	open	95	struck	407
 # property	shipped	729	open	28	struck	179
 
 
@@ -136,8 +136,8 @@ property	struck	richTextSource	NSAppleScript	App Support / Script Execution / In
 property	struck	source	NSAppleScript	App Support / Script Execution / Getting Information About a Script	declined	objc
 method	shipped	+archiveRootObject:toFile:	NSArchiver	Files and Data Persistence / Deprecated / Archiving data	deprecated	objc
 method	shipped	+archivedDataWithRootObject:	NSArchiver	Files and Data Persistence / Deprecated / Archiving data	deprecated	objc
-method	open	-classNameEncodedForTrueClassName:	NSArchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	objc
-method	open	-encodeClassName:intoClassName:	NSArchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	objc
+method	struck	-classNameEncodedForTrueClassName:	NSArchiver	declined: class-name translation is a RECORDED REFUSAL in both archivers (NSArchiver.h, WHAT IS ABSENT: one that says yes while the other says no would be an accident)	deprecated	objc
+method	struck	-encodeClassName:intoClassName:	NSArchiver	declined: class-name translation is a RECORDED REFUSAL in both archivers (NSArchiver.h, WHAT IS ABSENT: one that says yes while the other says no would be an accident)	deprecated	objc
 method	shipped	-encodeConditionalObject:	NSArchiver	Files and Data Persistence / Deprecated / Archiving data	deprecated	objc
 method	shipped	-encodeRootObject:	NSArchiver	Files and Data Persistence / Deprecated / Archiving data	deprecated	objc
 method	shipped	-initForWritingWithMutableData:	NSArchiver	Files and Data Persistence / Deprecated / Initializing an NSArchiver	deprecated	objc
@@ -384,7 +384,7 @@ method	shipped	-dateBySettingUnit:value:ofDate:options:	NSCalendar	Fundamentals 
 method	shipped	-dateFromComponents:	NSCalendar	Fundamentals / Calendrical Calculations / Calculating Dates	-	objc
 method	shipped	-dateWithEra:year:month:day:hour:minute:second:nanosecond:	NSCalendar	Fundamentals / Calendrical Calculations / Calculating Dates	-	objc
 method	shipped	-dateWithEra:yearForWeekOfYear:weekOfYear:weekday:hour:minute:second:nanosecond:	NSCalendar	Fundamentals / Calendrical Calculations / Calculating Dates	-	objc
-method	open	-enumerateDatesStartingAfterDate:matchingComponents:options:usingBlock:	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates	-	objc
+method	shipped	-enumerateDatesStartingAfterDate:matchingComponents:options:usingBlock:	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates	-	objc
 method	shipped	-getEra:year:month:day:fromDate:	NSCalendar	Fundamentals / Calendrical Calculations / Extracting Components	-	objc
 method	shipped	-getEra:yearForWeekOfYear:weekOfYear:weekday:fromDate:	NSCalendar	Fundamentals / Calendrical Calculations / Extracting Components	-	objc
 method	shipped	-getHour:minute:second:nanosecond:fromDate:	NSCalendar	Fundamentals / Calendrical Calculations / Extracting Components	-	objc
@@ -397,9 +397,9 @@ method	shipped	-isDateInWeekend:	NSCalendar	Fundamentals / Calendrical Calculati
 method	shipped	-isDateInYesterday:	NSCalendar	Fundamentals / Calendrical Calculations / Comparing Dates	-	objc
 method	shipped	-maximumRangeOfUnit:	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
 method	shipped	-minimumRangeOfUnit:	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
-method	open	-nextDateAfterDate:matchingComponents:options:	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates	-	objc
-method	open	-nextDateAfterDate:matchingHour:minute:second:options:	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates	-	objc
-method	open	-nextDateAfterDate:matchingUnit:value:options:	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates	-	objc
+method	shipped	-nextDateAfterDate:matchingComponents:options:	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates	-	objc
+method	shipped	-nextDateAfterDate:matchingHour:minute:second:options:	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates	-	objc
+method	shipped	-nextDateAfterDate:matchingUnit:value:options:	NSCalendar	Fundamentals / Calendrical Calculations / Scanning Dates	-	objc
 method	shipped	-nextWeekendStartDate:interval:options:afterDate:	NSCalendar	Fundamentals / Calendrical Calculations / Calculating Dates	-	objc
 method	shipped	-ordinalityOfUnit:inUnit:forDate:	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
 method	shipped	-rangeOfUnit:inUnit:forDate:	NSCalendar	Fundamentals / Calendrical Calculations / Getting Calendar Information	-	objc
@@ -2814,10 +2814,10 @@ property	shipped	URL	NSURLResponse	Networking / Requests and responses / Getting
 property	shipped	expectedContentLength	NSURLResponse	Networking / Requests and responses / Getting the response properties	-	objc
 property	shipped	suggestedFilename	NSURLResponse	Networking / Requests and responses / Getting the response properties	-	objc
 property	shipped	textEncodingName	NSURLResponse	Networking / Requests and responses / Getting the response properties	-	objc
-method	open	+classNameDecodedForArchiveClassName:	NSUnarchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	swift-page
-method	open	-classNameDecodedForArchiveClassName:	NSUnarchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	swift-page
-method	open	+decodeClassName:asClassName:	NSUnarchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	swift-page
-method	open	-decodeClassName:asClassName:	NSUnarchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	swift-page
+method	struck	+classNameDecodedForArchiveClassName:	NSUnarchiver	declined: class-name translation is a RECORDED REFUSAL in both archivers (NSArchiver.h, WHAT IS ABSENT: one that says yes while the other says no would be an accident)	deprecated	swift-page
+method	struck	-classNameDecodedForArchiveClassName:	NSUnarchiver	declined: class-name translation is a RECORDED REFUSAL in both archivers (NSArchiver.h, WHAT IS ABSENT: one that says yes while the other says no would be an accident)	deprecated	swift-page
+method	struck	+decodeClassName:asClassName:	NSUnarchiver	declined: class-name translation is a RECORDED REFUSAL in both archivers (NSArchiver.h, WHAT IS ABSENT: one that says yes while the other says no would be an accident)	deprecated	swift-page
+method	struck	-decodeClassName:asClassName:	NSUnarchiver	declined: class-name translation is a RECORDED REFUSAL in both archivers (NSArchiver.h, WHAT IS ABSENT: one that says yes while the other says no would be an accident)	deprecated	swift-page
 method	shipped	-initForReadingWithData:	NSUnarchiver	Files and Data Persistence / Deprecated / Initializing an NSUnarchiver	deprecated	objc
 method	struck	-objectZone	NSUnarchiver	Files and Data Persistence / Deprecated / Managing an NSUnarchiver	32-bit-only	objc
 method	shipped	-replaceObject:withObject:	NSUnarchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	objc

@@ -41,7 +41,7 @@ CHECKS = ("tz-offset", "calendar-convert", "calendar-roundtrip",
           "calendar-extraction", "calendar-date-with-week", "calendar-range-and-ordinality",
           "calendar-setting-and-granularity", "calendar-today-and-weekend",
           "calendar-symbols", "calendar-matches-and-comp-diff", "datecomponents-unit-accessors",
-          "datecomponents-calendar-and-date", "datecomponents-invalid-day")
+          "datecomponents-calendar-and-date", "datecomponents-invalid-day", "calendar-next-date-matching-components", "calendar-next-date-keeps-the-start-time", "calendar-next-date-matching-unit-and-time", "calendar-enumerate-next-dates")
 
 
 class Case(BaseCase):

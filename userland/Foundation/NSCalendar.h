@@ -405,6 +405,28 @@ yearForWeekOfYear:(NSInteger *)yearForWeekOfYearValuePointer
  * rather than `self`. */
 - (id)copy;
 
+
+/* §63.207: THE NEXT-DATE FAMILY. One algorithm serves all four: build a candidate whose DATE parts come from the
+ * start date and whose TIME parts are the ones asked for, then step one day at a time until the candidate
+ * matches. -matchesComponents: (below) is the same predicate, so what the search returns and what that door
+ * says cannot disagree, and the step is bounded (a ten-year horizon) rather than unbounded: an unsatisfiable
+ * match answers nil, which is the documented shape. */
+- (nullable NSDate *)nextDateAfterDate:(NSDate *)date
+		    matchingComponents:(NSDateComponents *)components
+			       options:(NSCalendarOptions)options;
+- (nullable NSDate *)nextDateAfterDate:(NSDate *)date
+			   matchingHour:(NSInteger)hourValue
+			       minute:(NSInteger)minuteValue
+			       second:(NSInteger)secondValue
+			      options:(NSCalendarOptions)options;
+- (nullable NSDate *)nextDateAfterDate:(NSDate *)date
+			   matchingUnit:(NSCalendarUnit)unit
+				value:(NSInteger)value
+			      options:(NSCalendarOptions)options;
+- (void)enumerateDatesStartingAfterDate:(NSDate *)startDate
+		     matchingComponents:(NSDateComponents *)components
+				options:(NSCalendarOptions)options
+			     usingBlock:(void (^)(NSDate * _Nullable, BOOL *stop))block;
 @end
 
 /*

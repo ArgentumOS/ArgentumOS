@@ -15962,6 +15962,38 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.207 — TWELVE ROWS IN ONE BITE: NSCalendar's next-date family ships, the archivers' class-name
+translation is declined
+
+Four rows shipped (`-nextDateAfterDate:matchingComponents:options:`, `…matchingHour:minute:second:options:`,
+`…matchingUnit:value:options:`, `-enumerateDatesStartingAfterDate:matchingComponents:options:usingBlock:`) and
+six declined (`NSArchiver`'s two and `NSUnarchiver`'s four class-name doors). Ledger after:
+**method 1712 shipped / 95 open / 407 struck; property 729 / 28 / 179**.
+
+**ONE ALGORITHM SERVES ALL FOUR, WHICH IS WHY THEY WERE ONE UNIT.** The DATE parts come from the start date and
+the TIME parts from what was asked for, so a day-sized step finds "the next 9:30" and "the next 15 March"
+alike; the predicate is `-matchesComponents:`, the SAME door the class already exposes publicly, so what the
+search returns and what that door says cannot disagree. The step is bounded by a stated horizon (3660 days) and
+an unsatisfiable match answers nil, which is the documented shape; `-enumerateDatesStartingAfterDate:…` is the
+same search repeated, stopping on the block's flag. The three convenience forms build components and delegate.
+
+**THE SIX DECLINES ARE THE HEADER'S OWN DECISION, NOT MY CONVENIENCE.** `NSArchiver.h` records that class-name
+translation is NOT DECLARED, with the reason that `NSKeyedArchiver` already refuses its equivalent: *"Two
+archivers in one library that both say no to one feature is a decision; one that says yes while the other says
+no would be an accident."* That is a refusal by design, which is `declined` with the citation — not owed work —
+and the ledger now says so.
+
+**AND THE BITE'S OWN LESSON, WHICH ANSWERS "can we take bigger bites?": YES, AND THE COST IS PROCESS, NOT SIZE.**
+Twelve rows took three rounds — recon, edit, verify — because every edit was confirmed by an INSTRUMENT in the
+same round (line-anchored guards, `grep` on the header and the ledger, both sweep modes) rather than by my own
+print. The library edit and the search's algorithm were right the first time; the only round lost was two KNOWN
+classes of probe mistake — a `-release` in an ARC probe, and a `_Nullable`-returning `+timeZoneForSecondsFromGMT:`
+passed to a non-null parameter. Both are in the session's trap list already, which is exactly why they cost one
+round and not four.
+
+Acceptance: `make testimg` green (status-checked); `make test TESTS=foundation_calendar` → `TESTS-OK 1/1 case(s),
+6/6 check(s)` with the four new checks ok; `tools/foundation-sweep.py --check` and `--unimplemented` clean.
+
 ## §63.206 — NSAutoreleasePool: the legacy trio defined anyway, and HOW this tree writes an MRC check
 
 Three rows shipped: `+addObject:`, `-addObject:`, `+showPools`. Ledger after: **method 1708 shipped / 105 open / 401 struck; property 729 / 28 / 179**.

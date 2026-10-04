@@ -772,6 +772,105 @@ int main(void)
 			(long)[delta month], (long)[delta day]] UTF8String]);
 	}
 
+	{
+		/* §63.207: THE NEXT-DATE FAMILY. The calendar is put in UTC so every expectation below is a number
+		 * rather than a hope, and the dates are built WITH the calendar (dateFromComponents:) rather than from
+		 * epoch arithmetic. */
+		NSCalendar *cal = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];
+		NSDateComponents *start = [[NSDateComponents alloc] init];
+		NSDate *midnight;
+
+		[cal setTimeZone:(NSTimeZone *)[NSTimeZone timeZoneForSecondsFromGMT:0]];
+		[start setYear:2024];
+		[start setMonth:1];
+		[start setDay:1];
+		[start setHour:0];
+		[start setMinute:0];
+		[start setSecond:0];
+		midnight = [cal dateFromComponents:start];
+		{
+			/* TIME PARTS ASKED FOR, DATE PARTS FROM THE START: the same day, 9:30. */
+			NSDateComponents *want = [[NSDateComponents alloc] init];
+			NSDate *next;
+
+			[want setHour:9];
+			[want setMinute:30];
+			[want setSecond:0];
+			next = [cal nextDateAfterDate:midnight matchingComponents:want options:0];
+			{
+				NSDateComponents *got = [cal components:(NSCalendarUnitYear | NSCalendarUnitMonth |
+					NSCalendarUnitDay | NSCalendarUnitHour | NSCalendarUnitMinute)
+					fromDate:next];
+
+				check("calendar-next-date-matching-components",
+				      next != nil && [got year] == 2024 && [got month] == 1 && [got day] == 1 &&
+				      [got hour] == 9 && [got minute] == 30,
+				      [[NSString stringWithFormat:@"next=%@ y=%ld m=%ld d=%ld h=%ld min=%ld", next,
+					(long)[got year], (long)[got month], (long)[got day], (long)[got hour],
+					(long)[got minute]] UTF8String]);
+			}
+		}
+		{
+			/* A DATE IN THE FUTURE, with the time taken from the start (00:00): 15 March 2024. */
+			NSDateComponents *want = [[NSDateComponents alloc] init];
+			NSDate *next;
+
+			[want setMonth:3];
+			[want setDay:15];
+			next = [cal nextDateAfterDate:midnight matchingComponents:want options:0];
+			{
+				NSDateComponents *got = [cal components:(NSCalendarUnitMonth | NSCalendarUnitDay)
+					fromDate:next];
+
+				check("calendar-next-date-keeps-the-start-time",
+				      next != nil && [got month] == 3 && [got day] == 15,
+				      [[NSString stringWithFormat:@"next=%@ m=%ld d=%ld", next, (long)[got month],
+					(long)[got day]] UTF8String]);
+			}
+		}
+		{
+			/* THE UNIT FORM, and the hour/minute/second form, both delegating to the search. 2024-01-01 was a
+			 * Monday; Apple numbers Sunday as 1, so the NEXT Monday is the 8th. */
+			NSDate *byUnit = [cal nextDateAfterDate:midnight matchingUnit:NSCalendarUnitWeekday
+							  value:2 options:0];
+			NSDate *byTime = [cal nextDateAfterDate:midnight matchingHour:18 minute:45 second:0 options:0];
+			NSDateComponents *unitParts = [cal components:(NSCalendarUnitMonth | NSCalendarUnitDay)
+							       fromDate:byUnit];
+			NSDateComponents *timeParts = [cal components:(NSCalendarUnitHour | NSCalendarUnitMinute)
+							       fromDate:byTime];
+
+			check("calendar-next-date-matching-unit-and-time",
+			      byUnit != nil && [unitParts month] == 1 && [unitParts day] == 8 &&
+			      byTime != nil && [timeParts hour] == 18 && [timeParts minute] == 45,
+			      [[NSString stringWithFormat:@"unit=%@/%ld/%ld time=%@/%ld:%ld", byUnit,
+				(long)[unitParts month], (long)[unitParts day], byTime, (long)[timeParts hour],
+				(long)[timeParts minute]] UTF8String]);
+		}
+		{
+			/* AND THE ENUMERATION IS THE SAME SEARCH REPEATED: three matches, each after the one before. */
+			NSDateComponents *want = [[NSDateComponents alloc] init];
+			__block NSDate *previous = nil;
+			__block int count = 0;
+			__block int ordered = 1;
+
+			[want setHour:6];
+			[want setMinute:0];
+			[want setSecond:0];
+			[cal enumerateDatesStartingAfterDate:midnight matchingComponents:want options:0
+						  usingBlock:^(NSDate *result, BOOL *stop) {
+				if (result == nil) { *stop = YES; return; }
+				if (previous != nil && [result compare:previous] != NSOrderedDescending) { ordered = 0; }
+				previous = result;
+				count++;
+				if (count >= 3) { *stop = YES; }
+			}];
+			check("calendar-enumerate-next-dates",
+			      count == 3 && ordered == 1,
+			      [[NSString stringWithFormat:@"count=%d ordered=%d", count, ordered] UTF8String]);
+		}
+	}
+
+
 	printf("FOUNDATION-CALENDAR RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness
