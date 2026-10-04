@@ -34,7 +34,7 @@
 #
 # kind	status	name	owner	family	why	src
 # method	shipped	1750	open	46	struck	418
-# property	shipped	734	open	21	struck	181
+# property	shipped	735	open	20	struck	181
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -611,7 +611,7 @@ property	shipped	independentConversationQueueing	NSConnection	Low-Level Utilitie
 property	shipped	localObjects	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting a Remote Object	deprecated	objc
 property	shipped	multipleThreadsEnabled	NSConnection	Low-Level Utilities / Legacy / Legacy / Running the Connection in a New Thread	deprecated	objc
 property	shipped	receivePort	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting Ports	deprecated	objc
-property	open	remoteObjects	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting a Remote Object	deprecated	objc
+property	shipped	remoteObjects	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting a Remote Object	deprecated	objc
 property	shipped	replyTimeout	NSConnection	Low-Level Utilities / Legacy / Legacy / Configuring Instances	deprecated	objc
 property	shipped	requestModes	NSConnection	Low-Level Utilities / Legacy / Legacy / Configuring Instances	deprecated	objc
 property	shipped	requestTimeout	NSConnection	Low-Level Utilities / Legacy / Legacy / Configuring Instances	deprecated	objc

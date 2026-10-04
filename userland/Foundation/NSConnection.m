@@ -741,4 +741,11 @@ static NSConnection *fn_default_connection = nil;
 	[[NSRunLoop currentRunLoop] run];
 	[pool drain];
 }
+
+- (NSArray *)remoteObjects
+{
+	/* ONE ROOT OR NONE: -rootObject IS what this connection makes available, so the list is that object when it
+	 * has one and empty when it does not. */
+	return _rootObject != nil ? [NSArray arrayWithObject:_rootObject] : [NSArray array];
+}
 @end

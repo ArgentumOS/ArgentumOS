@@ -15962,6 +15962,28 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.230 — NSConnection`remoteObjects`, AND TWO GROUNDS CORRECTED BY LOOKING
+
+One row shipped: `remoteObjects`. Ledger after: `method 1750 shipped / 46 open / 418 struck; property 735 / 20 / 181`.
+
+**THE ROW IS "ONE ROOT OR NONE":** Apple's door lists the objects a connection VENDS, and this class answers for
+exactly one (`-rootObject`), so the list is that object when it has one and empty when it does not. The reading
+is written at the property rather than implied, and it is the whole of the service side this implementation has.
+
+**AND TWO OF §63.220's GROUNDS WERE WRONG, WHICH IS WHY THE LIST GETS RE-READ:**
+* `NSMutableString -applyTransform:reverse:range:updatedRange:` — I wrote "needs ICU's transform engine" as
+  though that settled it. **ICU IS HERE**: `mk/00-base.mk` builds `ICUPREFIX = .build/icu-prefix` and five
+  Foundation files already include `<unicode/...>`. The row is implementable; only the engine's API needs care.
+* `NSXMLDocument -validateAndReturnError:` — the ground is real but not the one I implied. `NSXMLDTD.h` says it
+  outright: the DTD family is "AS A DATA MODEL", XML-a's parser "SKIPS a document's internal subset" and the six
+  DTD events "are declared and never fired". **THE PARSER-SIDE HALF IS NOT BUILT** — that is the boundary, cited
+  from the header, and validation belongs to it.
+* The session-task pair's ground still holds: there is no `NSURLSession*` in the tree at all.
+
+**THE LESSON WORTH KEEPING FROM THIS ONE:** a ground that names a dependency must say whether the dependency is
+ABSENT or merely UNUSED — "needs ICU" and "ICU is here, the door is unwritten" are different facts, and only the
+second is a work item.
+
 ## §63.229 — THE TWO CalendarFormat: DOORS, AND §63.197's GROUND OVERTURNED
 
 Two rows shipped: `-dateWithCalendarFormat:timeZone:`, `-descriptionWithCalendarFormat:timeZone:locale:`.

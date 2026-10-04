@@ -241,6 +241,11 @@ extern NSString *const NSFailedAuthenticationException;
  * everywhere else (Apple's own documented answer). */
 + (nullable NSConnection *)currentConversation;
 - (void)runInNewThread;
+
+/* §63.230: WHAT THIS CONNECTION MAKES AVAILABLE. Apple's door lists the objects the connection VENDS, and this
+ * class answers for exactly ONE root (`-rootObject`), so the list is that object or empty — the reading is
+ * stated here rather than implied, and it is the whole of the service side this implementation has. */
+@property (readonly, copy) NSArray *remoteObjects;
 @end
 
 NS_ASSUME_NONNULL_END
