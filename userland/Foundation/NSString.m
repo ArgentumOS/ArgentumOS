@@ -2105,10 +2105,12 @@ static BOOL fn_format_is_allowed(NSString *format, NSString *validFormatSpecifie
 - (NSString *)stringByReplacingOccurrencesOfString:(NSString *)target
 					 withString:(NSString *)replacement
 {
+	/* §63.241: A UNIT RANGE, because that is what -length speaks — the convenience form used to pass a
+	 * BYTE count as a unit range, which this file's own -rangeOfString:options:range: note calls out. */
 	return [self stringByReplacingOccurrencesOfString:target
 					       withString:replacement
 						  options:NSLiteralSearch
-						    range:NSMakeRange(0, [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding])];
+						    range:NSMakeRange(0, [self length])];
 }
 
 - (NSString *)stringByReplacingOccurrencesOfString:(NSString *)target
@@ -2119,14 +2121,31 @@ static BOOL fn_format_is_allowed(NSString *format, NSString *validFormatSpecifie
 	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:""];
 	size_t size = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 	size_t targetSize = [target lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
-	size_t cursor = 0;
+	/* §63.241: THE RANGE COMES IN UNITS AND THE WALK IS IN BYTES — the rule -rangeOfString:options:range:
+	 * states above and which THIS door did not follow: it ignored `range` altogether and replaced through the
+	 * WHOLE string, so a caller that confined the search got every occurrence anyway. Both edges are mapped
+	 * now, the prefix before the range is copied first, and the tail after it is copied whole. */
+	size_t start = fn_unit_to_byte(self, range.location);
+	size_t end = fn_unit_to_byte(self, range.location + range.length);
+	size_t cursor;
 
 	if (targetSize == 0) {
 		return [[NSOwnedString alloc] initWithUTF8String:[self UTF8String]];
 	}
-	while (cursor < size) {
+	if (start > size) {
+		start = size;
+	}
+	if (end > size) {
+		end = size;
+	}
+	if (end < start) {
+		end = start;
+	}
+	cursor = start;
+	[built appendString:utf8_substring(self, 0, start)];
+	while (cursor < end) {
 		NSUInteger found = utf8_find(self, target,
-					     NSMakeRange(cursor, size - cursor), options);
+					     NSMakeRange(cursor, end - cursor), options);
 
 		if (found == NSNotFound) {
 			break;

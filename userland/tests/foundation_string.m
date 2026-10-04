@@ -2150,6 +2150,38 @@ NULL
 	}
 
 	{
+		/* §63.241: THE RANGE IS HONOURED. -stringByReplacingOccurrencesOfString:withString:options:range:
+		 * used to IGNORE its range and replace through the whole receiver — which the check above could not
+		 * see, because the range it passed WAS the whole string. A range covering only the first "a" must
+		 * leave the second alone, and one covering only the middle must change nothing at all. */
+		NSString *whole = @"a-b-a";
+		NSString *firstOnly = [whole stringByReplacingOccurrencesOfString:@"a"
+								      withString:@"X"
+									 options:NSLiteralSearch
+									   range:NSMakeRange(0, 1)];
+		NSString *middle = [whole stringByReplacingOccurrencesOfString:@"a"
+							    withString:@"X"
+							       options:NSLiteralSearch
+								 range:NSMakeRange(1, 3)];
+		/* AND ON A MULTIBYTE RECEIVER, where a byte-shaped range would land in the wrong place entirely:
+		 * "\u00e9a\u00e9a" is 4 units and 6 bytes, so unit 3 is the LAST "a" and byte 3 is inside "\u00e9". */
+		NSString *mb = [NSString stringWithUTF8String:"\xc3\xa9" "a" "\xc3\xa9" "a"];
+		NSString *mbLast = [mb stringByReplacingOccurrencesOfString:@"a"
+							       withString:@"Z"
+								  options:NSLiteralSearch
+								    range:NSMakeRange(3, 1)];
+
+		check("string-range-is-honoured-by-replacement",
+		      [firstOnly isEqualToString:@"X-b-a"] &&
+		      [middle isEqualToString:@"a-b-a"] &&
+		      /* the multibyte case: the last "a" became "Z" and EVERYTHING BEFORE IT came back untouched */
+		      [mbLast length] == 4 &&
+		      [[mbLast substringFromIndex:3] isEqualToString:@"Z"] &&
+		      [[mbLast substringToIndex:2] isEqualToString:[mb substringToIndex:2]],
+		      "a replacement confined to a range must leave the rest of the receiver alone");
+	}
+
+	{
 		/* THE LOCALE-AWARE CASE DOORS (§63.25): ONE LIVE DOOR AND THREE DEPRECATED SPELLINGS, MEASURED WHERE THE
 		 * LOCALE ACTUALLY CHANGES THE ANSWER. This library's case mapping is ASCII except for the one localised
 		 * rule it ships (the Turkic i/İ and I/ı pairing, which the NSLocale checks above already prove), so the

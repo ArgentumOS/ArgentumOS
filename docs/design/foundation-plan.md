@@ -15962,6 +15962,41 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.241 — THE AUDIT §63.240 OWED: the range that was IGNORED, and the check that had been passing on a whole-string range
+
+**§63.240 found one bug and fixed five sites; this is the sweep for the rest of the family, and it found a SIXTH —
+a different shape, in a door whose ledger row already said `shipped`.** `-stringByReplacingOccurrencesOfString:
+withString:options:range:` **NEVER READ ITS `range:` PARAMETER.** It walked the whole receiver from byte 0, so a
+caller who confined the search got every occurrence anyway: `[@"a-b-a" … range:NSMakeRange(0, 1)]` answered
+`"X-b-X"` instead of `"X-b-a"`, and a range covering only the middle changed the string instead of leaving it
+alone. Its convenience form compounded it by handing a **BYTE count** to a parameter that speaks **units**
+(`range:NSMakeRange(0, [self lengthOfBytesUsingEncoding:…])`) — precisely the confusion this file's own
+`-rangeOfString:options:range:` comment warns about ("THE RANGE COMES IN UNITS, THE SEARCH WALKS BYTES, THE ANSWER
+GOES BACK IN UNITS"), which is the model the broken doors should have followed.
+
+**AND THE PROBE HAD A CHECK FOR THIS DOOR THAT COULD NOT FAIL.** `string-transform` asserts
+`[@"a-b-a" stringByReplacingOccurrencesOfString:@"A" withString:@"X" options:NSCaseInsensitiveSearch
+range:NSMakeRange(0, 5)]` equals `"X-b-X"` — a range that IS the whole string, so IGNORING the range answers the
+same thing. **A CHECK WHOSE INPUT MAKES THE BUG INVISIBLE IS NOT EVIDENCE THAT THE DOOR WORKS** — the lesson
+§63.240's probe taught about the ORACLE, one level down: there the oracle was wrong, here the RANGE was.
+
+**WHAT SHIPPED.** The door maps both range edges through `fn_unit_to_byte()` (the helper the correct doors already
+used), copies the prefix untouched, confines the search to `[start, end)`, and copies the tail whole; the
+convenience form passes a unit range. The probe gains `string-range-is-honoured-by-replacement`: a range covering
+only the first `"a"` leaves the second, a range covering only the middle changes nothing at all, and on an
+**ASCII-only oracle** of `"éaéa"` (4 units, 6 bytes) replacing unit 3 changes that unit while everything before it
+comes back byte-for-byte. **NO LEDGER CHANGE** — the row was already `shipped`, which is exactly why the defect
+survived: a shipped row is judged by its DECLARATION, and nothing in the sweep asks whether the body reads its
+arguments.
+
+**AND THE REST OF THE AUDIT, RECORDED BECAUSE IT WAS CLEAN.** Every `utf8_substring` and `utf8_find` call site in
+`NSString.m` was checked for the unit/byte confusion: `-lastPathComponent`, `-pathExtension`,
+`-stringByDeletingLastPathComponent`, `-stringByDeletingPathExtension`, `-componentsSeparatedByString:`,
+`-hasPrefix:`, both `-…replaceOccurrences…:` forms and `-rangeOfString:options:range:` are all CONSISTENT — the
+path doors walk `byteAtIndex:` throughout, and `utf8_find`'s range is byte-based **by its callers' design**.
+`-substringToIndex:` / `-substringFromIndex:` / `-substringWithRange:` convert properly. **THE FAMILY IS CLOSED:
+six sites fixed across §63.240 and §63.241, and the survivors are consistent rather than lucky.**
+
 ## §63.240 — THE IN-PLACE TRANSFORM DOOR, AND THE VALIDATION `-substringWithRange:` DOES NOT DO
 
 **One row SHIPS, with real behaviour: `NSMutableString -applyTransform:reverse:range:updatedRange:`** — the mutable
