@@ -275,6 +275,14 @@ extern NSString *const NSLoadedClasses;
  * so nothing consults them — the same honest shape NSThread's qualityOfService uses. */
 - (double)preservationPriorityForTag:(NSUInteger)tag;
 - (void)setPreservationPriority:(double)priority forTags:(NSIndexSet *)tags;
+
+/* §63.227: THE FRAMEWORKS AMONG THE OPEN BUNDLES, and the RECEIPT URL. Apple's +allFrameworks answers what is
+ * loaded in this process, and +allBundles is this library's record of that — so this FILTERS rather than keeping
+ * a second list (a framework being a bundle whose path is a `.framework` directory). -appStoreReceiptURL is the
+ * receipt inside the bundle or nil: with no App Store mechanism here, nil is the honest answer for a bundle that
+ * does not carry the file. */
++ (NSArray *)allFrameworks;
+@property (readonly, nullable) NSURL *appStoreReceiptURL;
 @end
 
 NS_ASSUME_NONNULL_END

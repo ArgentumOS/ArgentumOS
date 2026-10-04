@@ -15962,6 +15962,26 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.227 — NSBundle's framework list and receipt URL, and the tool thread parked on purpose
+
+Two rows shipped: `+allFrameworks`, `appStoreReceiptURL`. Ledger after:
+`method 1747 shipped / 49 open / 418 struck; property 733 / 22 / 181`.
+
+**`+allFrameworks` IS A FILTER, NOT A SECOND REGISTRY:** the class already keeps `fn_open_bundles` behind
+`+allBundles`, so this selects the bundles whose path is a `.framework` directory — the only thing the name
+means — rather than recording frameworks twice and letting the two lists drift.
+
+**`-appStoreReceiptURL` IS AN EXISTENCE CHECK:** the receipt inside the bundle, or **nil**. This system has no
+App Store receipt mechanism to produce one, so nil is what a bundle without the file honestly answers — and the
+door does not pretend otherwise.
+
+**AND THE TOOL THREAD IS PARKED, DELIBERATELY.** §63.222–§63.226 spent four turns on `--check`'s doc-spelling
+gap and ended with the diagnosis finished and the discriminator exact (a truncated match is legitimate **only
+when the row's trailing part equals the declaration's last PARAMETER NAME** — `sender` yes, `component` no), but
+not with a landed patch. It is worth **two rows**; the ~30 unimplemented doors left are worth far more per turn,
+and none of them depends on it. So it waits for a pass that can give it a quiet moment, and the ledger keeps
+telling the truth about those two rows (implemented, correct, listed open) in the meantime.
+
 ## §63.226 — THE FIX THAT WORKED, AND THE ACCEPTANCE CRITERION THAT CAUGHT IT BEING TOO LOOSE
 
 **No code, no ledger change; the tree is green.** This closes the four-turn tool thread with the diagnosis

@@ -1074,4 +1074,40 @@ static NSArray *fn_urls_for_paths(NSArray *paths)
 				  forKey:[NSNumber numberWithUnsignedInteger:tag]];
 	}
 }
+
++ (NSArray *)allFrameworks
+{
+	/* A FILTER OVER +allBundles, not a second registry: a framework is a bundle whose path is a .framework
+	 * directory, which is the only thing the name means. */
+	NSMutableArray *answer = [NSMutableArray array];
+	NSArray *bundles = [self allBundles];
+	NSUInteger i;
+
+	for (i = 0; i < [bundles count]; i++) {
+		NSBundle *bundle = [bundles objectAtIndex:i];
+		NSString *path = [bundle bundlePath];
+
+		if (path != nil && [path hasSuffix:@".framework"]) {
+			[answer addObject:bundle];
+		}
+	}
+	return answer;
+}
+
+- (NSURL *)appStoreReceiptURL
+{
+	/* THE RECEIPT INSIDE THE BUNDLE, or nil when it is not there — Apple's own answer. This system has no App
+	 * Store receipt mechanism to produce one, so nil is what a bundle without the file honestly answers. */
+	NSString *path = [self bundlePath];
+	NSString *receipt;
+
+	if (path == nil) {
+		return nil;
+	}
+	receipt = [[path stringByAppendingPathComponent:@"_MASReceipt"] stringByAppendingPathComponent:@"receipt"];
+	if (![[NSFileManager defaultManager] fileExistsAtPath:receipt]) {
+		return nil;
+	}
+	return (NSURL *)[NSURL fileURLWithPath:receipt];
+}
 @end

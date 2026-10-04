@@ -34,7 +34,7 @@
 #
 # kind	status	name	owner	family	why	src
 # method	shipped	1747	open	49	struck	418
-# property	shipped	732	open	23	struck	181
+# property	shipped	734	open	21	struck	181
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -336,8 +336,8 @@ method	shipped	-preservationPriorityForTag:	NSBundle	App Support / Bundle Resour
 method	shipped	-setPreservationPriority:forTags:	NSBundle	App Support / Bundle Resources / Managing preservation priority for on-demand resources	deprecated	objc
 method	shipped	-unload	NSBundle	App Support / Bundle Resources / Loading code from a bundle	-	objc
 property	shipped	allBundles	NSBundle	App Support / Bundle Resources / Getting standard bundle objects	-	objc
-property	open	allFrameworks	NSBundle	App Support / Bundle Resources / Getting standard bundle objects	-	objc
-property	open	appStoreReceiptURL	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	deprecated	objc
+property	shipped	allFrameworks	NSBundle	App Support / Bundle Resources / Getting standard bundle objects	-	objc
+property	shipped	appStoreReceiptURL	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	deprecated	objc
 property	shipped	builtInPlugInsPath	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
 property	shipped	builtInPlugInsURL	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
 property	shipped	bundleIdentifier	NSBundle	App Support / Bundle Resources / Getting bundle information	-	objc
