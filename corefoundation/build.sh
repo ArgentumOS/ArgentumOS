@@ -1,5 +1,5 @@
 #!/bin/sh
-# Build the vendored CoreFoundation (swift-corelibs-foundation's Sources/CoreFoundation) FOR THE GUEST.
+# Build CoreFoundation FOR THE GUEST — this tree's OWN package (corefoundation/), forked from
 #
 # Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
 # SPDX-License-Identifier: MIT
@@ -40,7 +40,7 @@
 #                       clang does not. (Measured by the M0 spike, before this script existed.)
 #
 # AND ONE LOCAL MODIFICATION, WHICH THIS SCRIPT APPLIES RATHER THAN ASSUMES. The vendored tree is
-# pristine in git; third_party/swift-corelibs-foundation-fnx.patch carries our two changes (a guarded
+# pristine in git; corefoundation/fnx-modifications.patch carries our two changes (a guarded
 # <fts.h> include and the strerror_r ABI guard) and is applied idempotently, on the pattern
 # mk/10-toolchain.mk already uses for libobjc2. Modifying files under Sources/CoreFoundation means
 # Apache-2.0 §4(b) obliges us to SAY SO, which the README beside the pin and the plan's D1 both do.
@@ -53,24 +53,24 @@
 set -e
 
 R="$(cd "$(dirname "$0")/.." && pwd)"
-CF="$R/third_party/swift-corelibs-foundation/Sources/CoreFoundation"
+CF="$R/corefoundation/Sources/CoreFoundation"
 DISP="$R/third_party/swift-corelibs-libdispatch"
 ICU="$R/.build/icu-prefix"
 SHIM="$R/.build/cf-shim"
 OBJ="$R/.build/cfobj"
 GUEST="$R/.build/corefoundation-prefix"
 LOG="$R/.build"
-PATCH="$R/third_party/swift-corelibs-foundation-fnx.patch"
+PATCH="$R/corefoundation/fnx-modifications.patch"
 CC="$R/tools/musl-clang64.sh"
 OBJCCC="$R/tools/musl-clang-objc64.sh"
 OBJDIR="$R/.build/cf-objc"
 OBJC="$R/.build/objc-prefix"
-BRIDGE_H="$R/third_party/swift-corelibs-foundation-fnx-bridge.h"
+BRIDGE_H="$R/corefoundation/fnx-bridge.h"
 DISPATCH="$R/.build/libdispatch-prefix"
 SONAME="libcorefoundation.so.1"
 
 if [ ! -f "$CF/CFBase.c" ]; then
-	echo "CoreFoundation is not vendored - run: git submodule update --init third_party/swift-corelibs-foundation" >&2
+	echo "corefoundation/Sources/CoreFoundation is missing - the package is part of this tree; restore it with git" >&2
 	exit 1
 fi
 if [ ! -f "$DISP/dispatch/dispatch.h" ]; then
@@ -85,7 +85,7 @@ fi
 echo "=== applying $PATCH (idempotently) ==="
 # The reverse-check is the point: `git apply --reverse --check` SUCCEEDS only if the patch is already in
 # the tree, so re-running this script is safe and a half-applied tree is caught before the compiler sees it.
-cd "$R/third_party/swift-corelibs-foundation"
+cd "$R/corefoundation"
 if git apply --reverse --check "$PATCH" 2>/dev/null; then
 	echo "already applied"
 else
@@ -184,7 +184,7 @@ echo "compiled $count objects"
 # THE SEAM IS COMPILED WITH THE SAME FLAGS AS UPSTREAM'S FILES, and it lives OUTSIDE the vendored subtree
 # on purpose (see the file header): our own file, so the C-only path is fixed by adding something of ours
 # rather than by a third and fourth patch to somebody else's source.
-SEAM="$R/third_party/swift-corelibs-foundation-fnx-seam.m"
+SEAM="$R/corefoundation/fnx-seam.m"
 if [ ! -f "$SEAM" ]; then
 	echo "missing $SEAM" >&2
 	exit 1

@@ -19,10 +19,18 @@ index cc03d66..95c7ee7 100644
      } else if (CF_IS_SWIFT(_kCFRuntimeIDCFArray, array)) {
  #if DEPLOYMENT_RUNTIME_SWIFT
 diff --git a/Sources/CoreFoundation/CFRuntime.c b/Sources/CoreFoundation/CFRuntime.c
-index 5a5ee09..b73e243 100644
+index 5a5ee09..c439655 100644
 --- a/Sources/CoreFoundation/CFRuntime.c
 +++ b/Sources/CoreFoundation/CFRuntime.c
-@@ -1716,7 +1716,14 @@ static void _CFRelease(CFTypeRef CF_RELEASES_ARGUMENT cf) {
+@@ -778,6 +778,7 @@ CFStringRef CFCopyTypeIDDescription(CFTypeID type) {
+ 
+ static CFTypeRef _CFRetain(CFTypeRef cf, Boolean tryR);
+ 
++
+ CFTypeRef _CFNonObjCRetain(CFTypeRef cf) {
+     __CFGenericAssertIsCF(cf);
+     return _CFRetain(cf, false);
+@@ -1716,7 +1717,14 @@ static void _CFRelease(CFTypeRef CF_RELEASES_ARGUMENT cf) {
              allocator = CFGetAllocator(cf);
              usesSystemDefaultAllocator = _CFAllocatorIsSystemDefault(allocator);
  

@@ -460,7 +460,7 @@ $(foreach f,$(FN_FOUNDATION_SRCS),$(eval $(call FN_FOUNDATION_rule,$(f))))
 # 	# direction is one-way and clean because CF no longer references any Foundation symbol. The gate is
 # 	# the staging blocks' gate: a missing prefix should name its own fix.
 # 	@if [ ! -d "$(COREFOUNDATION_PREFIX)/lib" ]; then \
-# 		echo "CoreFoundation prefix missing - run tools/corefoundation-build.sh first"; \
+# 		echo "CoreFoundation prefix missing - run corefoundation/build.sh first"; \
 # 		exit 1; \
 # 	fi
 # 	$(MUSL64_OBJC) -shared -Wl,-soname,libfoundation.so.1 \
@@ -2063,7 +2063,7 @@ $(foreach f,$(FN_FOUNDATION_SRCS),$(eval $(call FN_FOUNDATION_rule,$(f))))
 	# AND its own SONAME, not a link-time symlink to a versioned one. The `libfoo.so.*` glob the other
 	# blocks use would copy NOTHING here, which is why these are named outright.
 	@if [ ! -d "$(COREFOUNDATION_PREFIX)/lib" ]; then \
-		echo "CoreFoundation prefix missing - run tools/corefoundation-build.sh first"; \
+		echo "CoreFoundation prefix missing - run corefoundation/build.sh first"; \
 		exit 1; \
 	fi
 	@if [ ! -d "$(LIBDISPATCH_PREFIX)/lib" ]; then \
@@ -2094,7 +2094,7 @@ $(foreach f,$(FN_FOUNDATION_SRCS),$(eval $(call FN_FOUNDATION_rule,$(f))))
 	# linked against a prefix that is not there fails in the LINKER with a missing -lcorefoundation, which
 	# names the symptom rather than the fix.
 	@if [ ! -d "$(COREFOUNDATION_PREFIX)/lib" ]; then \
-		echo "CoreFoundation prefix missing - run tools/corefoundation-build.sh first"; \
+		echo "CoreFoundation prefix missing - run corefoundation/build.sh first"; \
 		exit 1; \
 	fi
 	# THE OBJC WRAPPER AND NOT THE C ONE, BECAUSE libobjc2 ITSELF NEEDS THE C++ RUNTIME: this probe links
@@ -2126,7 +2126,7 @@ $(foreach f,$(FN_FOUNDATION_SRCS),$(eval $(call FN_FOUNDATION_rule,$(f))))
 	# C implementation. The smoke probe next door is deliberately C and Foundation-free; this one is the
 	# check the two halves of the bridge exist.
 	@if [ ! -d "$(COREFOUNDATION_PREFIX)/lib" ]; then \
-		echo "CoreFoundation prefix missing - run tools/corefoundation-build.sh first"; \
+		echo "CoreFoundation prefix missing - run corefoundation/build.sh first"; \
 		exit 1; \
 	fi
 	$(MUSL64_OBJC) userland/tests/corefoundation_bridge.m \

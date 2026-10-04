@@ -1,0 +1,6 @@
+
+#ifdef _POSIX_THREADS
+AT_END _DEFINED
+#else
+AT_END _MISSING
+#endif

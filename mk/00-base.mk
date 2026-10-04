@@ -231,7 +231,7 @@ X11PREFIX     = .build/x11-prefix
 # copy, and a host copy that the host CoreGraphics library and its probes link).
 LCMS2_PREFIX  = .build/lcms2-prefix
 COREFOUNDATION_PREFIX = .build/corefoundation-prefix
-COREFOUNDATION_SRC    = third_party/swift-corelibs-foundation/Sources/CoreFoundation
+COREFOUNDATION_SRC    = corefoundation/Sources/CoreFoundation
 LIBDISPATCH_PREFIX    = .build/libdispatch-prefix
 # libcurl third-party prefix (built by tools/curl-build.sh, GUEST ONLY - the Foundation's HTTP
 # transport: docs/design/foundation-transport-plan.md, W7 slice 2b). One build rather than lcms2's
