@@ -65,8 +65,7 @@ CHECKS = ("thread-current-and-main", "lock-serialises-two-threads", "lock-try-lo
           "condition-lock-try-when-condition", "condition-lock-unlock-sets-the-value",
           "condition-lock-before-date-times-out",
           "condition-lock-when-condition-before-date-times-out",
-          "the-name-setter-copies-for-the-whole-family",
-          )
+          "the-name-setter-copies-for-the-whole-family", "thread-block-body-runs", "thread-main-is-the-overridable-hook", "thread-priority-and-service-round-trip")
 
 
 class Case(BaseCase):

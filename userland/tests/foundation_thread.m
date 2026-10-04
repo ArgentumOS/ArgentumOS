@@ -54,6 +54,20 @@
 - (id)argument;
 @end
 
+
+/* §63.195: a subclass whose ONLY difference is the body — which is what -main being the hook MEANS. */
+@interface FNProbeThread : NSThread
+@end
+
+static volatile int fn_probe_main_ran = 0;
+
+@implementation FNProbeThread
+- (void)main
+{
+	fn_probe_main_ran = 1;
+}
+@end
+
 @implementation ThreadWork
 
 - (instancetype)init
@@ -447,6 +461,51 @@ int main(void)
 		      [[conditionLock name] isEqualToString:@"before"],
 		      [NSString stringWithFormat:@"lock=%@ recursive=%@ conditionLock=%@",
 			[plain name], [recursive name], [conditionLock name]]);
+	}
+
+
+	{
+		/* §63.195: A THREAD WHOSE BODY IS A BLOCK, and the flag that says a second thread has RUN. */
+		__block int fired = 0;
+		int spins = 0;
+
+		[NSThread detachNewThreadWithBlock:^{ fired = 1; }];
+		while (fired == 0 && spins < 200) {
+			[NSThread sleepForTimeInterval:0.01];
+			spins++;
+		}
+		check("thread-block-body-runs", fired == 1 && [NSThread isMultiThreaded],
+		      [NSString stringWithFormat:@"fired=%d spins=%d multi=%d", fired, spins, [NSThread isMultiThreaded]]);
+	}
+	{
+		/* AND -main IS THE HOOK: a subclass overriding ONLY the body runs. It has no target, no selector and
+		 * no block, and that must be LEGAL — which is the case the first pass of -start refused. */
+		FNProbeThread *thread = [[FNProbeThread alloc] init];
+		int spins = 0;
+
+		fn_probe_main_ran = 0;
+		[thread setStackSize:262144];
+		[thread start];
+		while (fn_probe_main_ran == 0 && spins < 200) {
+			[NSThread sleepForTimeInterval:0.01];
+			spins++;
+		}
+		check("thread-main-is-the-overridable-hook", fn_probe_main_ran == 1 && [thread stackSize] == 262144,
+		      [NSString stringWithFormat:@"main-ran=%d stackSize=%lu spins=%d", fn_probe_main_ran,
+			(unsigned long)[thread stackSize], spins]);
+	}
+	{
+		/* THE VALUES A THREAD CARRIES: priority (0.0-1.0, mapped to nice with a stated reading), service, and
+		 * the stack size — asserted as round trips, which is what this tree can promise. */
+		NSThread *current = [NSThread currentThread];
+
+		(void)[NSThread setThreadPriority:0.75];
+		[current setQualityOfService:NSQualityOfServiceUtility];
+		check("thread-priority-and-service-round-trip",
+		      [NSThread threadPriority] == 0.75 && [current threadPriority] == 0.75 &&
+		      [current qualityOfService] == NSQualityOfServiceUtility,
+		      [NSString stringWithFormat:@"class=%g instance=%g qos=%d", [NSThread threadPriority],
+			[current threadPriority], (int)[current qualityOfService]]);
 	}
 
 	printf("FOUNDATION-THREAD RESULT ok=%d fail=%d\n", okc, failc);

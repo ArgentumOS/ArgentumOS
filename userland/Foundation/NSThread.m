@@ -17,6 +17,8 @@
  */
 
 #import <Foundation/NSThread.h>
+#include <Block.h>	/* Block_copy/Block_release: the runtime's own entry points, per the house rule */
+#include <sys/resource.h>
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSNotificationCenter.h>
@@ -29,6 +31,7 @@
 static pthread_key_t fn_thread_key;
 static pthread_once_t fn_thread_key_once = PTHREAD_ONCE_INIT;
 static BOOL fn_thread_key_ready = NO;
+static BOOL fn_multi_threaded = NO;	/* §63.195: set when a thread other than the main one RUNS */
 static pthread_t fn_main_thread_id;
 static BOOL fn_main_captured = NO;
 static NSThread *fn_main_thread_object = nil;
@@ -36,6 +39,7 @@ static NSThread *fn_main_thread_object = nil;
 @interface NSThread (FNPrivate)
 - (instancetype)fnInitForCurrentThread;
 - (void)fnRun;
+- (BOOL)fnSetPriority:(double)priority;
 @end
 
 static void fn_make_key(void)
@@ -59,6 +63,7 @@ static void *fn_thread_entry(void *context)
 	NSThread *thread = (NSThread *)context;
 
 	fn_ensure_key();
+	fn_multi_threaded = YES;
 	if (fn_thread_key_ready) {
 		pthread_setspecific(fn_thread_key, (void *)thread);
 	}
@@ -193,6 +198,70 @@ static void *fn_thread_entry(void *context)
 	return self;
 }
 
+- (instancetype)initWithBlock:(void (^)(void))block
+{
+	self = [super init];
+	if (self != nil) {
+		_block = Block_copy(block);
+		_priority = 0.5;
+		_qualityOfService = NSQualityOfServiceDefault;
+		_stackSize = 0;
+	}
+	return self;
+}
+
+- (void)dealloc
+{
+	/* ONLY WHAT THIS CLASS OWNS: nothing else in this file retains an ivar. */
+	Block_release(_block);
+	[super dealloc];
+}
+
+- (double)threadPriority
+{
+	return _priority;
+}
+
+- (void)setThreadPriority:(double)priority
+{
+	(void)[self fnSetPriority:priority];
+}
+
+- (BOOL)fnSetPriority:(double)priority
+{
+	/* 0.0-1.0 ONTO nice -20..19, clamped: a stated reading (§63.195) — the value is always recorded and the
+	 * syscall is best effort, because Apple's scale names a scheduling class this kernel has no equivalent. */
+	int nice = (int)((0.5 - priority) * 39.0);
+
+	if (nice < -20) { nice = -20; }
+	if (nice > 19) { nice = 19; }
+	_priority = priority;
+	if (pthread_equal(pthread_self(), fn_main_thread_id)) {
+		return YES;	/* a thread does not re-nice its own process here; recorded, not applied */
+	}
+	return setpriority(PRIO_PROCESS, (id_t)(uintptr_t)pthread_self(), nice) == 0;
+}
+
+- (NSUInteger)stackSize
+{
+	return _stackSize;
+}
+
+- (void)setStackSize:(NSUInteger)size
+{
+	_stackSize = size;
+}
+
+- (NSQualityOfService)qualityOfService
+{
+	return _qualityOfService;
+}
+
+- (void)setQualityOfService:(NSQualityOfService)qos
+{
+	_qualityOfService = qos;
+}
+
 + (void)detachNewThreadSelector:(SEL)selector
 		       toTarget:(id)target
 		     withObject:(nullable id)argument
@@ -212,11 +281,39 @@ static void *fn_thread_entry(void *context)
  * one thread (the one running) to one with two — which is the first -start, not every -start. */
 static int fn_thread_count = 0;
 
++ (void)detachNewThreadWithBlock:(void (^)(void))block
+{
+	NSThread *thread = [[self alloc] initWithBlock:block];
+
+	[thread start];
+	[thread release];	/* -start retains it for the duration; this gives up the caller's reference */
+}
+
++ (void)exit
+{
+	pthread_exit(NULL);
+}
+
++ (BOOL)isMultiThreaded
+{
+	return fn_multi_threaded;
+}
+
++ (double)threadPriority
+{
+	return [[self currentThread] threadPriority];
+}
+
++ (BOOL)setThreadPriority:(double)priority
+{
+	return [[self currentThread] fnSetPriority:priority];
+}
+
 - (void)start
 {
 	pthread_t id;
 
-	if (_target == nil || _selector == NULL || _executing || _finished) {
+	if (_executing || _finished) {
 		return;
 	}
 	_executing = YES;
@@ -225,7 +322,23 @@ static int fn_thread_count = 0;
 	 * caller releasing it as its scope ends would free the table the thread is about to run on.
 	 * The pair is the release at the end of fn_thread_entry. */
 	[self retain];
-	if (pthread_create(&id, NULL, fn_thread_entry, (void *)self) != 0) {
+	{
+		pthread_attr_t attr;
+
+		pthread_attr_init(&attr);
+		if (_stackSize > 0) {
+			/* §63.195: `stackSize` IS APPLIED for the threads this class creates, not merely recorded. */
+			(void)pthread_attr_setstacksize(&attr, (size_t)_stackSize);
+		}
+		if (pthread_create(&id, &attr, fn_thread_entry, (void *)self) != 0) {
+			pthread_attr_destroy(&attr);
+			_executing = NO;
+			[self release];
+			return;
+		}
+		pthread_attr_destroy(&attr);
+	}
+	if (0) {
 		_executing = NO;
 		[self release];
 		return;
@@ -242,6 +355,17 @@ static int fn_thread_count = 0;
 - (void)fnRun
 {
 	_executing = YES;
+	[self main];
+}
+
+- (void)main
+{
+	/* THE DEFAULT BODY: a block if the thread was born with one, otherwise the target/selector pair. A
+	 * subclass overriding THIS runs instead, which is what makes -main public. */
+	if (_block != nil) {
+		((void (^)(void))_block)();
+		return;
+	}
 	if (_target != nil && _selector != NULL) {
 		[_target performSelector:_selector withObject:_argument];
 	}

@@ -50,6 +50,11 @@ NS_ASSUME_NONNULL_BEGIN
 	BOOL _cancelled;
 	BOOL _executing;
 	BOOL _finished;
+	/* §63.195: a thread whose body is a BLOCK, and the values a thread carries about itself. */
+	id _block;
+	double _priority;
+	NSUInteger _stackSize;
+	NSQualityOfService _qualityOfService;
 }
 
 + (NSThread *)currentThread;
@@ -72,6 +77,23 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (void)sleepForTimeInterval:(NSTimeInterval)interval;
 + (void)sleepUntilDate:(NSDate *)date;
+
+/* -main IS THE BODY, which is why a subclass may override it: the default runs the target/selector or the
+ * block, and the pthread entry calls THIS. `+exit` terminates the current thread.
+ * PRIORITY IS 0.0-1.0, Apple's scale, MAPPED onto this kernel's nice range — a stated reading, because
+ * Apple's scale names a scheduling class this kernel has no equivalent of. `qualityOfService` is recorded
+ * and used as the same hint, and `stackSize` is applied through the pthread this class creates. */
+- (void)main;
++ (void)exit;
++ (BOOL)isMultiThreaded;
++ (double)threadPriority;
++ (BOOL)setThreadPriority:(double)priority;
+@property (readwrite) double threadPriority;
+@property (readwrite) NSUInteger stackSize;
+@property (readwrite) NSQualityOfService qualityOfService;
+
++ (void)detachNewThreadWithBlock:(void (^)(void))block;
+- (instancetype)initWithBlock:(void (^)(void))block;
 
 - (instancetype)initWithTarget:(id)target
 		      selector:(SEL)selector

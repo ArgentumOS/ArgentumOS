@@ -33,8 +33,8 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1672	open	143	struck	399
-# property	shipped	719	open	45	struck	172
+# method	shipped	1679	open	136	struck	399
+# property	shipped	722	open	42	struck	172
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -2465,18 +2465,18 @@ property	shipped	terminationReason	NSTask	Low-Level Utilities / Scripts and Exte
 property	shipped	terminationStatus	NSTask	Low-Level Utilities / Scripts and External Tasks / Querying the process state	-	objc
 method	shipped	-cancel	NSThread	Low-Level Utilities / Threads and Locking / Stopping a Thread	-	objc
 method	shipped	+detachNewThreadSelector:toTarget:withObject:	NSThread	Low-Level Utilities / Threads and Locking / Starting a Thread	-	objc
-method	open	+detachNewThreadWithBlock:	NSThread	Low-Level Utilities / Threads and Locking / Type Methods	-	objc
-method	open	+exit	NSThread	Low-Level Utilities / Threads and Locking / Stopping a Thread	-	objc
+method	shipped	+detachNewThreadWithBlock:	NSThread	Low-Level Utilities / Threads and Locking / Type Methods	-	objc
+method	shipped	+exit	NSThread	Low-Level Utilities / Threads and Locking / Stopping a Thread	-	objc
 method	shipped	-init	NSThread	Low-Level Utilities / Threads and Locking / Initializing an NSThread Object	-	objc
-method	open	-initWithBlock:	NSThread	Low-Level Utilities / Threads and Locking / Instance Methods	-	objc
+method	shipped	-initWithBlock:	NSThread	Low-Level Utilities / Threads and Locking / Instance Methods	-	objc
 method	shipped	-initWithTarget:selector:object:	NSThread	Low-Level Utilities / Threads and Locking / Initializing an NSThread Object	-	objc
-method	open	+isMultiThreaded	NSThread	Low-Level Utilities / Threads and Locking / Querying the Environment	-	objc
-method	open	-main	NSThread	Low-Level Utilities / Threads and Locking / Starting a Thread	-	objc
-method	open	+setThreadPriority:	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work	-	objc
+method	shipped	+isMultiThreaded	NSThread	Low-Level Utilities / Threads and Locking / Querying the Environment	-	objc
+method	shipped	-main	NSThread	Low-Level Utilities / Threads and Locking / Starting a Thread	-	objc
+method	shipped	+setThreadPriority:	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work	-	objc
 method	shipped	+sleepForTimeInterval:	NSThread	Low-Level Utilities / Threads and Locking / Stopping a Thread	-	objc
 method	shipped	+sleepUntilDate:	NSThread	Low-Level Utilities / Threads and Locking / Stopping a Thread	-	objc
 method	shipped	-start	NSThread	Low-Level Utilities / Threads and Locking / Starting a Thread	-	objc
-method	open	+threadPriority	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work	-	objc
+method	shipped	+threadPriority	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work	-	objc
 property	open	callStackReturnAddresses	NSThread	Low-Level Utilities / Threads and Locking / Querying the Environment	-	objc
 property	open	callStackSymbols	NSThread	Low-Level Utilities / Threads and Locking / Querying the Environment	-	objc
 property	shipped	cancelled	NSThread	Low-Level Utilities / Threads and Locking / Determining the Thread’s Execution State	-	objc
@@ -2486,10 +2486,10 @@ property	shipped	finished	NSThread	Low-Level Utilities / Threads and Locking / D
 property	shipped	isMainThread	NSThread	Low-Level Utilities / Threads and Locking / Working with the Main Thread	-	swift-page
 property	shipped	mainThread	NSThread	Low-Level Utilities / Threads and Locking / Working with the Main Thread	-	objc
 property	shipped	name	NSThread	Low-Level Utilities / Threads and Locking / Working with Thread Properties	-	objc
-property	open	qualityOfService	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work	-	objc
-property	open	stackSize	NSThread	Low-Level Utilities / Threads and Locking / Working with Thread Properties	-	objc
+property	shipped	qualityOfService	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work	-	objc
+property	shipped	stackSize	NSThread	Low-Level Utilities / Threads and Locking / Working with Thread Properties	-	objc
 property	shipped	threadDictionary	NSThread	Low-Level Utilities / Threads and Locking / Working with Thread Properties	-	objc
-property	open	threadPriority	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work	-	objc
+property	shipped	threadPriority	NSThread	Low-Level Utilities / Threads and Locking / Prioritizing Thread Work	-	objc
 method	shipped	-abbreviationForDate:	NSTimeZone	Fundamentals / Calendrical Calculations / Getting Time Zone Information	-	objc
 method	shipped	-daylightSavingTimeOffsetForDate:	NSTimeZone	Fundamentals / Calendrical Calculations / Working with Daylight Savings	-	objc
 method	shipped	-initWithName:	NSTimeZone	Fundamentals / Calendrical Calculations / Creating Time Zones	-	objc
