@@ -1013,3 +1013,25 @@ Foundation's class -- and CF must not depend on Foundation. The clean division i
 what that note said: LET FOUNDATION DEFINE THE SYMBOL. CF's own uses of it are ADDRESS-ONLY (the comparison at
 CFRuntime.c:1956 and the macro's isa construction at CFInternal.h:546, both of which take &X), so an alias
 satisfies every one of them, and the storage belongs to whoever has the class.
+
+
+**THE .set WAS THE RIGHT IDEA AND THE WRONG TOOL — the last step is `--defsym`.** Measured after the attempt:
+
+    CF:             0x2b43a0 V __CFConstantStringClassReference     WEAK -- the weak edit took
+    libfoundation:  U __CFConstantStringClassReferencePtr           references the Ptr, NOT the array
+    the CFSTR's isa 0x4000002bb3a0                                  unchanged
+
+So the strong definition never materialised: **`.set` only emits a symbol the translation unit actually
+references**, and nothing in NSString.m's text references that array, so the assembler discarded the alias.
+(A rule worth knowing before reaching for .set again.)
+
+AND EVERYTHING ELSE IS NOW IN PLACE, each part measured rather than assumed: CF's own definition is WEAK, so a
+strong definition elsewhere wins; the Ptr assignment points CF's own test (CFRuntime.c:1956) at the class; and
+the class exists and answers.
+
+THE LAST STEP IS ONE LINKER FLAG, where the linker can see both symbols at once:
+
+    -Wl,--defsym,__CFConstantStringClassReference=._OBJC_CLASS_NSConstantString
+
+applied at THIS LIBRARY's link, where the class's own symbol is defined. `--defsym` is the linker's alias and
+it lands for the same reason .set did not: the linker does not need anyone to have referenced it first.

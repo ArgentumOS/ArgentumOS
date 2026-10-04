@@ -142,8 +142,9 @@ void _CFNXBridgeAllClasses(void)
 		extern void *__CFConstantStringClassReferencePtr;
 		extern int __CFConstantStringClassReference[];
 
-		__CFConstantStringClassReferencePtr = (void *)&__CFConstantStringClassReference;
-		((void **)&__CFConstantStringClassReference)[0] = objc_getClass("NSConstantString");
+		/* THE POINTER IS THE CLASS, because with the alias below an object's isa IS the class -- and CF's
+		 * own test (CFRuntime.c:1956) compares exactly `obj->isa == __CFConstantStringClassReferencePtr`. */
+		__CFConstantStringClassReferencePtr = objc_getClass("NSConstantString");
 	}
 }
 
@@ -159,3 +160,20 @@ void _CFNXBridgeAllClasses(void)
  */
 
 @end
+
+/*
+ * AND THE SYMBOL ITSELF IS AN ALIAS TO THE CLASS — THE LAST LINE OF THE CFSTR DEBT.
+ *
+ * The isa clang puts in every constant-string struct is `&__CFConstantStringClassReference`, and a message
+ * send reads that isa FIELD and treats it as a Class. So the address must BE the class, not hold one — which
+ * is the same .set this library already uses for _CF_CONSTANT_STRING_SWIFT_CLASS, where it was MEASURED to
+ * take: that symbol and ._OBJC_CLASS_NSConstantString sat at the same address.
+ *
+ * CoreFoundation defines that symbol itself and cannot alias it, because CF cannot name a class this library
+ * owns without depending on it. So CF's own definition is now WEAK and this STRONG one wins — the same
+ * weak-owner/strong-provider arrangement this tree already relies on for _CFNXBridgeAllClasses.
+ */
+__asm__(
+    ".globl __CFConstantStringClassReference\n"
+    ".set   __CFConstantStringClassReference, ._OBJC_CLASS_NSConstantString\n"
+);

@@ -276,16 +276,16 @@ void *__CFConstantStringClassReferencePtr = &_CF_CONSTANT_STRING_SWIFT_CLASS;
 #ifndef __CONSTANT_CFSTRINGS__
 // Compiler uses this symbol name; must match compiler built-in decl, so we use 'int'
 #if TARGET_RT_64_BIT
-int __CFConstantStringClassReference[24] = {0};
+__attribute__((weak)) int __CFConstantStringClassReference[24] = {0};
 #else
-int __CFConstantStringClassReference[12] = {0};
+__attribute__((weak)) int __CFConstantStringClassReference[12] = {0};
 #endif
 #endif
 
 #if TARGET_RT_64_BIT
-int __CFConstantStringClassReference[24] = {0};
+__attribute__((weak)) int __CFConstantStringClassReference[24] = {0};
 #else
-int __CFConstantStringClassReference[12] = {0};
+__attribute__((weak)) int __CFConstantStringClassReference[12] = {0};
 #endif
 
 void *__CFConstantStringClassReferencePtr = NULL;
