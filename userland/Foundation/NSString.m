@@ -125,6 +125,13 @@ void _CFNXBridgeAllClasses(void)
 	 * class. Two characters of instrument ('Hnz') said all of that after a great deal of reasoning had not. */
 	CFNXBridgeClassToType([NSString class], CFStringGetTypeID());
 
+	/* THE OTHER CLASSES REGISTER THE SAME WAY, from their own files. */
+	{
+		extern void _CFNXBridgeArrayClasses(void);
+
+		_CFNXBridgeArrayClasses();
+	}
+
 	/* AND THE CONSTANT STRINGS, WHICH CF'S OWN CODE HAS BEEN WAITING FOR. Four of CF's lines describe this
 	 * mechanism exactly, and in this build none of them was doing anything:
 	 *
