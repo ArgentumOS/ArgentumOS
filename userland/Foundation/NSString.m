@@ -35,7 +35,7 @@
 /* THE TWO DECLARATIONS THIS FILE NEEDS, both ours, both with the same provenance: the bridging door is
  * this tree's addition to the CF package (modification 9), and the twin is upstream's, declared in CF's
  * INTERNAL headers because upstream expects its own Foundation to be the caller. */
-extern void CFNXBridgeClassToType(Class cls, CFTypeID typeID);
+extern unsigned long CFNXBridgeClassToType(Class cls, CFTypeID typeID);
 extern CFIndex _CFStringGetLength2(CFStringRef str);
 
 __attribute__((objc_root_class))
@@ -66,7 +66,13 @@ __attribute__((objc_root_class))
  * the answer, which is the only moment guaranteed to be late enough and early enough at once. */
 void _CFNXBridgeAllClasses(void)
 {
-	CFNXBridgeClassToType([NSString class], CFStringGetTypeID());
+	/* THE CLASS IS LOOKED UP BY NAME, NOT MESSAGED, AND THE REASON IS MEASURED. `[NSString class]` returned
+	 * NIL here -- twice: once from a constructor and once from this hook -- while objc_getClass("NSString")
+	 * answers in the same process. The compiler had said why in a warning worth reading: "class method
+	 * '+class' not found". THIS CLASS IS A ROOT CLASS AND DOES NOT IMPLEMENT +class, so the message went
+	 * nowhere and the registration registered nothing, silently, because the door's own guard skips a Nil
+	 * class. Two characters of instrument ('Hnz') said all of that after a great deal of reasoning had not. */
+	CFNXBridgeClassToType(objc_getClass("NSString"), CFStringGetTypeID());
 }
 
 - (unsigned long)length
