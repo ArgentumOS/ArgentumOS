@@ -23,11 +23,24 @@
  * here is one more place the two worlds must agree. -length returns UNITS, which is what CFStringGetLength
  * and NSString's own contract both mean. */
 __attribute__((objc_root_class))
-@interface NSString
+@interface NSString <NSObject>
 {
 	Class isa;		/* the CF object's own first word: CF's header IS the object here */
 }
 - (unsigned long)length;
+
+/* THE PROTOCOL'S DOORS, WHICH THIS CLASS MUST ANSWER ITSELF BECAUSE IT INHERITS NOTHING. Each one delegates
+ * to a NON-DISPATCHING twin or to CF's own C entry point, never to the public door that would call back:
+ * -isEqual: via CFEqual(self, ...) would be the same self-delegation loop that once cost this library an
+ * objc_retain recursion. */
+- (BOOL)isEqual:(id)other;
+- (NSUInteger)hash;
++ (Class)class;
+- (BOOL)isKindOfClass:(Class)cls;
+- (unsigned short)characterAtIndex:(unsigned long)index;
+- (NSString *)description;
+- (id)retain;
+- (void)release;
 
 /* +class IS APPLE'S DOOR AND ITS ABSENCE COST THIS PROJECT A SEARCH. A class that inherits from NSObject
  * answers +class through NSObject; a ROOT class does not, so `[NSString class]` sent a message nothing

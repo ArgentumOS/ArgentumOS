@@ -37,10 +37,71 @@
  * INTERNAL headers because upstream expects its own Foundation to be the caller. */
 extern unsigned long CFNXBridgeClassToType(Class cls, CFTypeID typeID);
 extern CFIndex _CFStringGetLength2(CFStringRef str);
+/* THE HASH TWIN, named FOR THE CLASS IT SERVES -- the same convention as the length twin above. CF keeps it
+ * internal because upstream expects its own Foundation to be the caller. */
+extern CFHashCode CFStringHashNSString(CFStringRef str);
 
 #import <Foundation/NSString.h>
 
 @implementation NSString
+
+/* THE PROTOCOL'S DOORS, ANSWERED HERE BECAUSE THIS CLASS INHERITS NOTHING. Each delegates to a
+ * NON-DISPATCHING entry point, never to the public door that would call back into the method:
+ *   -retain/-release -> CFRetain/CFRelease, which is SAFE and does not loop because this class is REGISTERED
+ *      for CFStringGetTypeID(): CF_IS_OBJC is FALSE for it, so CF's own C path runs rather than the arm
+ *      returning here. One count -- CF's -- reached from both sides.
+ *   -hash -> CFStringHashNSString, the twin upstream names for exactly this class.
+ *   -isEqual: -> this class's OWN -length and -characterAtIndex:, deliberately: comparing through CFEqual
+ *      would dispatch on the first argument and call this very method again. */
+- (id)retain
+{
+	return (id)CFRetain((CFTypeRef)self);
+}
+
+- (void)release
+{
+	CFRelease((CFTypeRef)self);
+}
+
+- (NSUInteger)hash
+{
+	return (NSUInteger)CFStringHashNSString((CFStringRef)self);
+}
+
+- (BOOL)isKindOfClass:(Class)cls
+{
+	return FNXClassIsKindOfClass(object_getClass(self), cls);
+}
+
+- (BOOL)isEqual:(id)other
+{
+	unsigned long n;
+	unsigned long i;
+
+	if (other == self) {
+		return YES;
+	}
+	if (other == nil || ![(id)other isKindOfClass:[NSString class]]) {
+		return NO;
+	}
+	n = (unsigned long)[self length];
+	if ((unsigned long)[(NSString *)other length] != n) {
+		return NO;
+	}
+	for (i = 0; i < n; i++) {
+		if ([self characterAtIndex:i] != [(NSString *)other characterAtIndex:i]) {
+			return NO;
+		}
+	}
+	return YES;
+}
+
+/* A STRING'S DESCRIPTION IS ITSELF, which is Apple's contract for this door and is also the only answer that
+ * cannot disagree with anything: it is the same object. */
+- (NSString *)description
+{
+	return (NSString *)CFRetain((CFTypeRef)self);
+}
 
 /* THE ROOT CLASS ANSWERS +class ITSELF. A class inheriting from NSObject gets this for free; a root class
  * does not, and the failure is quiet: `[NSString class]` returned NIL, the registration read that as "no

@@ -106,10 +106,48 @@ extern "C" {
 typedef unsigned long NSUInteger;
 @class NSString;
 
+/*
+ * THE PROTOCOL, AND IN THIS DESIGN IT IS NOT DECORATION BUT THE ONLY BINDER THERE CAN BE.
+ *
+ * On Apple the protocol exists for the EXCEPTION: ordinary classes inherit the class, and NSProxy -- the other
+ * root class -- CONFORMS instead, which is what makes a proxy interchangeable with an NSObject-derived object.
+ * Here every class that stands for a CoreFoundation type is a root class BY NECESSITY, because its memory is
+ * CF's and it cannot inherit this class's field (an NSObject base would expect one at offset 8, where CF keeps
+ * the object's info word). So the protocol is what binds them, and until it exists what binds them is only
+ * the CF runtime and the runtime's count.
+ *
+ * IT DECLARES ONLY WHAT EVERY ROOT CLASS HERE CAN ACTUALLY IMPLEMENT -- eight doors, no stubs. -retainCount is
+ * deliberately NOT among them: CF's count is not readable through a portable door, and declaring one this
+ * library cannot answer would be a promise it does not keep.
+ */
+@protocol NSObject
+- (BOOL)isEqual:(id)other;
+- (NSUInteger)hash;
+- (Class)class;
++ (Class)class;
+- (BOOL)isKindOfClass:(Class)cls;
+- (NSString *)description;
+- (id)retain;
+- (void)release;
+@end
+
+/* WHETHER ONE CLASS IS A KIND OF ANOTHER, as a plain C function so BOTH root classes answer -isKindOfClass:
+ * with the same walk rather than two copies of it. */
+static inline BOOL FNXClassIsKindOfClass(Class cls, Class wanted)
+{
+	while (cls != Nil) {
+		if (cls == wanted) {
+			return YES;
+		}
+		cls = class_getSuperclass(cls);
+	}
+	return NO;
+}
+
 /* THE ROOT CLASS, and it is a ROOT: it inherits from nothing, which is why libobjc2 needs to be told so
  * (objc_root_class) rather than being handed a superclass that does not exist in this library. */
 __attribute__((objc_root_class))
-@interface NSObject
+@interface NSObject <NSObject>
 {
 	Class isa;			/* THE FIRST WORD, as CF_IS_OBJC requires: CF compares it against its own table */
 	unsigned int _refcount;		/* THE ONE COUNT — see the note below on who may touch it */

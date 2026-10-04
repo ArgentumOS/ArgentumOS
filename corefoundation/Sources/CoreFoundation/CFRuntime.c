@@ -453,6 +453,32 @@ CF_INLINE CFRuntimeBase *_cf_aligned_calloc(size_t align, CFIndex size, const ch
 extern Boolean __CFInitialized;
 extern void _CFNXBridgeAllClasses(void) __attribute__((weak));
 static Boolean _fnxClassesBridged = false;
+
+/* THE REGISTERED CLASSES, KEPT BESIDE THE TABLE SO THE ARM CAN ASK THE QUESTION IT NEEDS.
+ *
+ * The arm's first test was merely "the first word is non-zero", which is enough to recognise an Objective-C
+ * object and NOT enough to decide whose lifetime it has. Once a class is registered for a type, objects of
+ * that type ARE CF objects: their count is CF's, and CFRelease must take its C path. Without this list the arm
+ * fires on them, and then CFRelease -> objc_release -> -release -> CFRelease, forever. That is not a
+ * hypothetical: this tree's bridged NSString implements -release as CFRelease(self), which is the RIGHT
+ * implementation and loops without this check.
+ *
+ * A small list rather than a scan of the table: registration happens once per type, and this is consulted on
+ * every retain and release. */
+static uintptr_t _fnxRegisteredClasses[64];
+static int _fnxRegisteredClassCount = 0;
+
+static CF_INLINE Boolean _fnxIsRegisteredClass(uintptr_t isa) {
+    int i;
+
+    for (i = 0; i < _fnxRegisteredClassCount; i++) {
+        if (_fnxRegisteredClasses[i] == isa) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static CF_INLINE void _fnxBridgeClassesIfPresent(void) {
     if (!_fnxClassesBridged && __CFInitialized && _CFNXBridgeAllClasses != NULL) {
         _CFNXBridgeAllClasses();
@@ -836,6 +862,11 @@ static CF_INLINE Boolean _fnx_cf_is_object(CFTypeRef cf) {
     if (FNX_CF_IS_SMALL_OBJECT(cf)) {
         return false;
     }
+    /* NOT AN OBJECT TO BRIDGE IF IT IS A CF OBJECT: a registered class means CF's own count and CF's own C
+     * path, and returning true here would send CFRelease back into the method that called it. */
+    if (_fnxIsRegisteredClass(((CFRuntimeBase *)cf)->_cfisa)) {
+        return false;
+    }
     return ((CFRuntimeBase *)cf)->_cfisa != 0;
 }
 #endif
@@ -861,6 +892,9 @@ uintptr_t CFNXBridgeClassToType(Class cls, CFTypeID typeID) {
         return 0;
     }
     _SetCFRuntimeObjcClass((uintptr_t)cls, typeID);
+    if (_fnxRegisteredClassCount < 64) {
+        _fnxRegisteredClasses[_fnxRegisteredClassCount++] = (uintptr_t)cls;
+    }
     /* AND IT READS BACK, SO THE CALLER CAN TELL WHICH HALF IS BROKEN: a table the write did not reach, or
      * a reader looking somewhere else (__CFISAForTypeID returns 0 by design when its guard
      * `typeID < __CFRuntimeClassTableSize` is false, which in this tree is a question nothing has asked
