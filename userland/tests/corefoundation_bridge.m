@@ -67,6 +67,16 @@ int main(void) {
 	/* AND THE OTHER HALF OF THE COIN: a string CF made ITSELF must still take CF's OWN path. If the
 	 * bridge's check were wrong - true for everything - the two halves would be indistinguishable, and
 	 * this is the check that says so. */
+	/* A SECOND BRIDGED TYPE, because one door proved is one door. CFArray's dispatch was compiled from the
+	 * first day of this work and had never RUN until this check: an NSArray literal handed to CF as a
+	 * CFArrayRef, answered by -count. The comment is the point - the array is built by the COMPILER
+	 * (@[...]), so its class is the literal array class, a different path again from a factory result. */
+	NSArray *array = @[@"Bridge", @"x"];
+	CFArrayRef bridgedArray = (CFArrayRef)array;
+	check("an-nsarray-dispatches-to-its-class",
+	      array != nil && CFArrayGetCount(bridgedArray) == 2,
+	      "CFArrayGetCount did not answer 2 through the bridge");
+
 	CFStringRef native = CFStringCreateWithCString(kCFAllocatorDefault, "Bridge", kCFStringEncodingUTF8);
 	check("a-cf-native-string-still-takes-cfs-own-path",
 	      native != NULL && CFStringGetLength(native) == 6,

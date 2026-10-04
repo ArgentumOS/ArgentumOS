@@ -14,6 +14,9 @@ it claims. So the probe checks BOTH DIRECTIONS, and the second is what makes the
 
   * `a-literal-string-dispatches-to-its-class` — a `@"..."` literal, whose isa the COMPILER chose;
   * `a-factory-string-dispatches-to-its-class` — so the result does not rest on the constant-string path;
+  * `an-nsarray-dispatches-to-its-class` — a SECOND bridged type, so the result does not rest on
+    CFString's doors alone: an `NSArray` literal answered by `-count` (`CFArray`'s dispatch was compiled
+    from the first day of this work and had never run);
   * `a-parameterised-site-crosses-the-bridge` — the dispatch with an ARGUMENT, not only a receiver
     (`-characterAtIndex:` with the answer cast to `UniChar`);
   * `a-cf-native-string-still-takes-cfs-own-path` — a string CF created ITSELF must still run CF's C
@@ -35,6 +38,7 @@ CHECKS = (
     "a-literal-string-dispatches-to-its-class",
     "a-factory-string-dispatches-to-its-class",
     "a-parameterised-site-crosses-the-bridge",
+    "an-nsarray-dispatches-to-its-class",
     "a-cf-native-string-still-takes-cfs-own-path",
 )
 
