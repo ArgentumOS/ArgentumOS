@@ -1,0 +1,227 @@
+# Foundation on a permissive CoreFoundation — plan
+
+Status: **CONDITIONAL, and one decision is OWED BY THE USER BEFORE ANY OF IT STARTS.**
+This plan proposes adopting **swift-corelibs-foundation's Apache-2.0 CoreFoundation** as the C
+core of this tree's Objective-C Foundation, and exposing the CF API surface as a first-party tier.
+
+**IT ASKS FOR THE REVERSAL OF A RECORDED DECISION.** `docs/design/corefoundation-plan.md` is
+**RETRACTED (2026-09) by the user's direction**, in the user's own words:
+
+> *"why do we need CoreFoundation at all, if everything is meant to be ObjC anyway? We aren't
+> Apple, we don't have the same pressures and needs as Apple. What we need is a CoreGraphics-shaped
+> API that uses Foundation objects."*
+
+So §1 below is not preamble: it is the whole first question. Read §1 before §3, and treat §10's
+Q1 as the gate on every milestone.
+
+## 1. What this reverses, and what it does not
+
+The retraction's three measured arguments, re-tested against *this* proposal:
+
+| The retraction said | Does this proposal contradict it? |
+|---|---|
+| CoreGraphics here declares `NSArray *`, `NSData *`, `NSString *` — **Foundation types** | **NO.** CG's public surface does not change. CF would sit *under* Foundation, and CG keeps its own signatures. |
+| `CFRelease` is unnecessary — CG carries **43 of its own** `CG…Retain`/`CG…Release` functions | **NO.** Those stay exactly as they are. Nothing obsoletes them. |
+| "unmodified modern Apple source compiles" is a goal **this project never set** | **NO — and this plan keeps it unset.** The goal here is *behavioural* conformance (what our own API does), not source compatibility with Apple's call sites. CF is adopted as an implementation substrate, not as a compatibility surface for Apple source. |
+
+**What it DOES reverse is narrower and must be said plainly:** the retraction concluded *"no CF
+layer, no CF type identities, no `CFRetain`/`CFRelease`"*. This plan wants CF's **implementation**
+under ours, and CF's **API** exposed as a new tier. That is a real reversal of "no CF layer" — not
+of the three arguments, which survive intact.
+
+**And it reverses one more thing, which is the expensive one:** the ~29% of Foundation whose value
+would become CF's behaviour stops being *original work* and becomes a *thin layer over
+Apple-derived, Apache-2.0 code*. That is a provenance change, recorded here so it is decided and
+not absorbed.
+
+## 2. Current state (all figures measured in this tree)
+
+- `userland/Foundation`: **74,935 lines** of `.m` across **170 public headers**.
+- The **toll-free-bridged** class set — the only classes a bridge can reach — is **21,474 lines,
+  ≈ 29%**: `NSString 5569, NSURL 2169, NSArray 1845, NSCalendar 1722, NSDictionary 1427,
+  NSOrderedSet 1399, NSData 1058, NSRunLoop 1016, NSCharacterSet 976, NSLocale 945, NSSet 834,
+  NSNumber 655, NSTimeZone 534, NSError 329, NSInputStream 324, NSSortDescriptor 246, NSDate 235,
+  NSCountedSet 191`.
+- **The other ≈71% is untouched by this decision** — NSCoder/NSKeyedArchiver, NSFileManager,
+  NSNotification, NSOperation, URL loading, text and formatting. The live work list (141 open
+  methods + 45 open properties) lives almost entirely there, which is why this plan can be taken
+  **later without stalling the campaign**.
+- There is **no CF tier today**: `userland/` has CoreGraphics and Foundation, no CoreFoundation,
+  and no CF ledger under `docs/reference/`.
+- The ledger surface **does not move** under this plan: the ObjC selectors are unchanged, so
+  `foundation-selector-surface.txt` neither gains nor loses rows. **The probes are the gate.**
+
+## 3. Which CF, precisely — and which one is only a reference
+
+**Adopted (shippable): `swift-corelibs-foundation` → `Sources/CoreFoundation`**, Apache License 2.0
+**with the Runtime Library Exception** (per-file header, read from the source: *Copyright (c)
+1998-2019, Apple Inc. and the Swift project authors … Portions Copyright (c) 2014-2019 … Licensed
+under Apache License v2.0 with Runtime Library Exception*). Apache-2.0 is MIT-compatible; the
+obligations are the notices, a NOTICE-style attribution, and **stating modified files (Apache
+§4(b))** — the same shape the BSD-driver policy already imposes on this tree.
+
+**Reference only, never copied: `opensource-apple/CF`** (Apple's 10.7 release) is under the **APSL**,
+which is *not* permissive for this tree's purposes: it obliges publication of modifications to
+covered files and carries patent/notification terms. The precedent is already set — a GPL-3.0
+terminal fork was superseded, and GPL Doxygen was replaced with clang-doc. **APSL source may be
+read; nothing from it may enter the tree.**
+
+Measured, and this is why the distinction matters:
+
+| | Apple's CF (APSL 10.7) | swift-corelibs CF (Apache) |
+|---|---|---|
+| `CF_OBJC_FUNCDISPATCH*` (the ObjC bridge) | **214 sites, 18 files** | **0** |
+| `__CFRuntimeClassTable` | 48 | 0 |
+| `_cfisa` uses | 18 | 5 (field kept, users gone) |
+| `NSCFString`, `__CFStringClass` | 5, 2 | 2 (remnants) |
+| ObjC source inside CF | `CFBasicHashFindBucket.m` | none |
+
+So: **the architecture we must re-create is READABLE (APSL), and the code we may ship is NOT the
+one that has it (Apache).** That is the plan's central practical fact.
+
+## 4. What it buys, and what it does not
+
+**Buys — behavioural conformance for the C layer**, including at least one item this tree is
+currently *blocked* on: `-dataUsingEncoding:` supports only UTF-8 and ASCII because the
+converter/repertoire tables are missing, and CF owns those tables. The rest of the value is the
+same kind: `CFString`'s Unicode algorithms, `CFNumber`/`CFDecimal` semantics, formatters, locale,
+`CFRunLoop`, `CFStream`.
+
+**Does not buy — the Objective-C surface.** CFArray/CFString are different types from
+NSArray/NSString, and every row in the ledger is ObjC. This plan closes **no work-list rows**; it
+re-bases how some of them are implemented.
+
+## 5. Decisions this plan proposes (D1–D8)
+
+**D1 — CF is vendored under `third_party/`, pinned to a commit**, subtree `Sources/CoreFoundation`
+only, with upstream `LICENSE` verbatim, the Apple/Swift copyright lines intact, the pin recorded,
+and every local modification listed (Apache §4(b)). Not the whole repo: the `Foundation/` half is
+Swift and is not wanted.
+
+**D2 — CF builds as its own shared library (`libcorefoundation.so.1`)**, staged beside
+`libfoundation`/`libconfig`/`libobjc`, rather than being compiled into `libfoundation`. "Exposing
+the CF APIs" is then a real linkable tier, and the ObjC Foundation links it.
+
+**D3 — Toll-free bridging is implemented; conversion functions are NOT the plan.** The reason is a
+compatibility contract, not taste: `(CFStringRef)someNSString` is a *free cast* on Apple platforms
+and code depends on it. Conversion helpers would compile where a cast is required to. See §6.
+
+**D4 — CoreGraphics does not migrate.** Its signatures keep Foundation types and its 43
+`CG…Retain`/`CG…Release` stay. The retraction's standing choice is preserved; if CG is ever
+re-based, that is a separate plan.
+
+**D5 — The 71% is out of scope.** Nothing outside the bridged set is touched, including everything
+the current work list is made of.
+
+**D6 — The ObjC class identity, nullability annotations, cluster structure and probes are kept.**
+CF replaces *internals*, not the classes' public shape; the ledger is unaffected.
+
+**D7 — A CoreFoundation sweep and ledger are added** (`tools/corefoundation-sweep.py`,
+`docs/reference/corefoundation-apple-surface.txt`), mirroring coregraphics-sweep.py, and CF's public
+headers are staged to the guest at `/System/Shared/Headers/CoreFoundation/`. Without this, "the CF
+APIs are exposed" is an unmeasured claim.
+
+**D8 — APSL sources are read, never copied, and the reading is recorded** on the model of the
+existing standing grant for Apple's *public headers*: this extends the grant to a *second* kind of
+document, so it needs the user's word, not mine (§10 Q2).
+
+## 6. The bridging problem, stated honestly
+
+On Darwin a bridged object *is* an ObjC object, and the header says so:
+
+```c
+typedef struct __CFRuntimeBase {
+    __ptrauth_cf_objc_isa_pointer uintptr_t _cfisa;   /* the isa slot, named for it */
+    _Atomic(uint64_t) _cfinfoa;                        /* type ID + flags */
+} CFRuntimeBase;
+```
+with `INIT_CFRUNTIME_BASE` setting `_cfinfoa = …0x80` — CF's immortal/constant bit.
+
+The port **keeps this layout** but has **removed the binding half**: there is no
+`objc_getClass`/`sel_registerName`/`CF_OBJC_CLASS` in it, because its interop targets **Swift**.
+So three things are new work here, in ascending difficulty:
+
+1. **The type→class binding**, per bridged type (≈18), at load time: CF-created objects must carry
+   an isa pointing at a real ObjC class so `objc_msgSend` reaches them, and the class table must be
+   registered in the right order relative to libobjc2's own class registration.
+2. **Coherence of the two dispatch paths**: CF's inline fast paths read `_cfinfoa` and may bypass
+   the runtime; ObjC messages must land on the same storage. The rules for which side may take the
+   fast path are exactly what the Apache port dropped, and exactly what the APSL source documents.
+3. **The constant-string substitution**: clang compiles every `@"…"` literal into an
+   `NSConstantString` object, so a literal must *also* be a valid CFString. On Apple systems that is
+   the `__CFConstantStringClassReference` linker symbol; here it is a load-time dance with
+   `-fconstant-string-class`.
+
+Plus a dependency the measurement surfaced: **libdispatch** (`dispatch_` appears 26 times in
+`CFStream.c` alone), which would be a new runtime on a kernel whose loop is `select`-based.
+
+## 7. Milestones
+
+**M0 — The spike that prices everything (host only, no FNX change).** Build `CFString.c` +
+`CFRuntime.c` on the host with clang; implement exactly one bridge pair — `CFString` ↔ `NSString` —
+covering `CFStringCreateWithCString`, a CF-backed `-length` and `-UTF8String` reached through
+`objc_msgSend`, and one `@"literal"` answering CF. **Deliverable: a line count and a list of what
+had to be re-plumbed.** This is the go/no-go gate; everything below is written as if it passes.
+
+**M1 — Vendor and build CF for FNX.** The subtree, the pin, the notices, `libcorefoundation.so.1`
+in the image, and a guest smoke test that creates/destroys a CFString and a CFArray. **Answers the
+libdispatch question with a build**, not a guess: either dispatch is vendored, or the CF paths that
+need it are compiled out and the gap recorded.
+
+**M2 — The bridge.** The class table, the isa handling, the two-path coherence, and constant
+strings. Gated by existing probes, not new ones: `foundation_string`'s 26 checks must pass against
+CF-backed strings.
+
+**M3 — NSString and the string cluster (5,569 lines, the largest single step).** Includes the
+converter/repertoire tables that unblock `-dataUsingEncoding:`.
+
+**M4 — The collections**: NSArray, NSDictionary, NSSet, NSOrderedSet, NSCountedSet, NSEnumerator.
+
+**M5 — The value and service types**: NSNumber, NSData, NSDate, NSURL, NSError, NSLocale,
+NSTimeZone, NSCharacterSet, NSInputStream, NSRunLoop, NSCalendar.
+
+**M6 — Expose and track**: D7's staging, sweep and ledger, plus the differential oracle (§8).
+
+## 8. Verification, and why it is unusually strong here
+
+The tree already owns the instrument: **40+ probes and their guest cases assert the behaviour of
+exactly the classes this plan re-bases.** They become the conformance gate for every milestone —
+`make test TESTS=<probe>` after each class, with the probe's own tally as the acceptance line. A
+re-base that passes the existing probes has changed *no behaviour the tree has ever asserted*.
+
+On top of that, CF itself is a **differential oracle we may ship**: because the adopted CF is
+Apache-2.0, we can run it on the host and diff against our own results, and where they disagree
+either fix ours or **record a measured deviation** in the standing-policy style. That converts
+"conformance to Apple's behaviour" from a hope into a number.
+
+## 9. Risks
+
+- **libdispatch** is the largest unknown: a second runtime with its own conformance obligations.
+- **Load order and isa**: class registration versus CF's init, and `+initialize` on CF-created
+  objects.
+- **Constant strings** touch every literal in the tree, so a mistake there is not local.
+- **Two dispatch paths** disagreeing silently — the failure mode is a wrong answer, not a crash.
+- **Provenance**: ~29% of Foundation stops being original MIT work; the licence record must say so
+  (D1/D8), and the in-tree licence statement changes accordingly.
+- **Duplication while it lasts**: until M3–M5 complete, the tree carries both implementations.
+
+## 10. Open items (user decisions)
+
+- **Q1 — Does the retraction stand?** This plan requires reversing "no CF layer" from
+  `corefoundation-plan.md`. Its *three arguments* survive (§1); the *conclusion* does not.
+- **Q2 — Is reading APSL source admissible?** The bridging architecture is only in the APSL release.
+  Reading it is licit (it is published), and the clean-room line for *our* code is `docs/design/`'s
+  existing grant for Apple's public headers extended to a second document kind. The user's call.
+- **Q3 — CF as a shared library (D2) or folded into `libfoundation`?** D2 is recommended because
+  "expose the APIs" implies linkability.
+- **Q4 — libdispatch: vendor it, or compile the CF paths that need it out and record the gap?**
+- **Q5 — Does CoreGraphics ever follow (D4)?** Explicitly out of scope here; asked so it is not
+  assumed.
+
+## 11. Non-goals
+
+- No source-compatibility goal for Apple's call sites (the retraction was right about that).
+- No CF type surface in CoreGraphics.
+- No changes to the ledger's ObjC surface, and no claim that CF closes work-list rows.
+- No Swift: the C subtree only, built by clang, so the toolchain doctrine is untouched.
+- Nothing outside the bridged set of classes.
