@@ -457,6 +457,51 @@ int main(void)
 		      "a bundle never asked to load reports isLoaded NO and unload answers NO");
 	}
 
+	{
+		/* §63.198: THE LEGACY PAIR ROUND-TRIPS, and reports the format it read — the half the modern door
+		 * does through a pointer. */
+		NSDictionary *source = [NSDictionary dictionaryWithObjectsAndKeys:@"v", @"k", nil];
+		NSString *problem = nil;
+		NSData * _Nullable data = [NSPropertyListSerialization dataFromPropertyList:source
+									  format:NSPropertyListXMLFormat_v1_0
+								errorDescription:&problem];
+		NSPropertyListFormat seen = 0;
+		id _Nullable back = [NSPropertyListSerialization propertyListFromData:(NSData *)(data != nil ? data : [NSData data])
+							    mutabilityOption:NSPropertyListImmutable
+								      format:&seen
+							    errorDescription:&problem];
+
+		check("plist-legacy-data-door-round-trips",
+		      data != nil && back != nil && [back isEqual:source] && seen == NSPropertyListXMLFormat_v1_0 &&
+		      problem == nil,
+		      [[NSString stringWithFormat:@"data=%lu seen=%d back=%@ problem=%@",
+			(unsigned long)[data length], (int)seen, back, problem] UTF8String]);
+	}
+	{
+		/* THE OUT-PARAM IS A STRING, not an NSError, and garbage must fill it. */
+		NSString *problem = nil;
+		id _Nullable bad = [NSPropertyListSerialization propertyListFromData:
+				(NSData *)[@"this is not a property list" dataUsingEncoding:NSUTF8StringEncoding]
+			   mutabilityOption:NSPropertyListImmutable format:NULL
+			     errorDescription:&problem];
+
+		check("plist-legacy-error-description-is-a-string", bad == nil && problem != nil && [problem length] > 0,
+		      [[NSString stringWithFormat:@"bad=%@ problem=%@", bad, problem] UTF8String]);
+	}
+	{
+		/* THE STATED READING: this tree WRITES XML, so the binary format answers nil WITH a description
+		 * rather than quietly writing XML and calling it binary. */
+		NSString *problem = nil;
+		NSData * _Nullable binary = [NSPropertyListSerialization dataFromPropertyList:[NSArray array]
+									    format:NSPropertyListBinaryFormat_v1_0
+								  errorDescription:&problem];
+
+		check("plist-binary-write-is-refused-with-a-description",
+		      binary == nil && problem != nil && [problem rangeOfString:@"binary"].location != NSNotFound,
+		      [[NSString stringWithFormat:@"binary=%@ problem=%@", binary, problem] UTF8String]);
+	}
+
+
 	printf("FOUNDATION-BUNDLE RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-BUNDLE-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-BUNDLE DONE\n");

@@ -11,6 +11,8 @@
  */
 
 #import <Foundation/NSPropertyListSerialization.h>
+#import "NSInputStream.h"
+#import "NSOutputStream.h"
 #import <Foundation/NSURL.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSNumber.h>
@@ -360,6 +362,103 @@ static NSData *fn_plist_data_from_object(id object)
 	}
 }
 
+
++ (id)propertyListFromData:(NSData *)data
+	  mutabilityOption:(NSPropertyListMutabilityOptions)opt
+		    format:(NSPropertyListFormat *)format
+	  errorDescription:(NSString **)errorString
+{
+	NSError *error = nil;
+	id plist = [self propertyListWithData:data options:(NSPropertyListReadOptions)opt format:format
+					error:&error];
+
+	if (plist == nil && errorString != NULL) {
+		/* THE OUT-PARAM IS A PLAIN STRING, not an NSError: Apple's legacy spelling. */
+		*errorString = [error localizedDescription];
+	}
+	return plist;
+}
+
++ (NSData *)dataFromPropertyList:(id)plist
+			  format:(NSPropertyListFormat)format
+		errorDescription:(NSString **)errorString
+{
+	NSPropertyListFormat chosen = (format == 0) ? NSPropertyListXMLFormat_v1_0 : format;
+	NSError *error = nil;
+	NSData *data;
+
+	if (chosen == NSPropertyListBinaryFormat_v1_0) {
+		/* STATED READING: this tree writes the XML format; asking for the binary one answers nil with a
+		 * description instead of quietly writing XML and calling it binary. */
+		if (errorString != NULL) {
+			*errorString = @"the binary property list format is not written by this implementation";
+		}
+		return nil;
+	}
+	data = [self dataWithPropertyList:plist format:chosen options:0 error:&error];
+	if (data == nil && errorString != NULL) {
+		*errorString = [error localizedDescription];
+	}
+	return data;
+}
+
++ (id)propertyListWithStream:(NSInputStream *)stream
+		     options:(NSPropertyListReadOptions)options
+		      format:(NSPropertyListFormat *)format
+		       error:(NSError **)error
+{
+	NSMutableData *buffer = [NSMutableData data];
+	uint8_t chunk[4096];
+	NSInteger got;
+
+	if (stream == nil) {
+		if (error != NULL) {
+			*error = fn_plist_error(1, "no stream to read");
+		}
+		return nil;
+	}
+	while ((got = [stream read:chunk maxLength:sizeof(chunk)]) > 0) {
+		[buffer appendBytes:chunk length:(NSUInteger)got];
+	}
+	if (got < 0) {
+		if (error != NULL) {
+			*error = [stream streamError];
+		}
+		return nil;
+	}
+	return [self propertyListWithData:buffer options:options format:format error:error];
+}
+
++ (NSInteger)writePropertyList:(id)plist
+		      toStream:(NSOutputStream *)stream
+			format:(NSPropertyListFormat)format
+		       options:(NSPropertyListWriteOptions)options
+			 error:(NSError **)error
+{
+	NSError *local = nil;
+	NSData *data;
+
+	if (stream == nil) {
+		if (error != NULL) {
+			*error = fn_plist_error(1, "no stream to write");
+		}
+		return -1;
+	}
+	data = [self dataWithPropertyList:plist format:format options:options error:&local];
+	if (data == nil) {
+		if (error != NULL) {
+			*error = local;
+		}
+		return -1;
+	}
+	if ([stream write:[data bytes] maxLength:[data length]] != (NSInteger)[data length]) {
+		if (error != NULL) {
+			*error = [stream streamError];
+		}
+		return -1;
+	}
+	return (NSInteger)[data length];
+}
 @end
 
 /* ---- the convenience forms (declared as categories in the header) ---------
@@ -504,4 +603,10 @@ static NSData *fn_plist_data_from_object(id object)
 	return (data != nil) && [data writeToURL:url atomically:useAuxiliaryFile];
 }
 
+
+/* §63.198: THE LEGACY DOORS ARE WRAPPERS, and the only judgement in them is what to do when the caller asks
+ * for a format this tree's writer cannot produce. */
+
+/* §63.198: THE STREAM DOORS READ TO THE END AND THEN USE THE DATA DOORS. The plist reader wants a buffer;
+ * an incremental parser for this door would be a second reader with its own bugs. */
 @end

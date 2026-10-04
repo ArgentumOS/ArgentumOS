@@ -67,6 +67,9 @@ typedef enum {
 typedef NSUInteger NSPropertyListReadOptions;
 typedef NSUInteger NSPropertyListWriteOptions;
 
+@class NSInputStream;	/* §63.198: named by the stream doors; the concrete headers carry -read:maxLength: */
+@class NSOutputStream;
+
 @interface NSPropertyListSerialization : NSObject
 
 /*
@@ -90,6 +93,23 @@ typedef NSUInteger NSPropertyListWriteOptions;
  * every integer/real/boolean/dictionary KEY can be spelled in the format. */
 + (BOOL)propertyList:(id)plist isValidForFormat:(NSPropertyListFormat)format;
 
+
++ (nullable id)propertyListFromData:(NSData *)data
+		    mutabilityOption:(NSPropertyListMutabilityOptions)opt
+			      format:(nullable NSPropertyListFormat *)format
+		    errorDescription:(NSString * _Nullable * _Nullable)errorString;
++ (nullable NSData *)dataFromPropertyList:(id)plist
+				   format:(NSPropertyListFormat)format
+			 errorDescription:(NSString * _Nullable * _Nullable)errorString;
++ (nullable id)propertyListWithStream:(NSInputStream *)stream
+		     options:(NSPropertyListReadOptions)options
+		      format:(nullable NSPropertyListFormat *)format
+		       error:(NSError * _Nullable * _Nullable)error;
++ (NSInteger)writePropertyList:(id)plist
+		      toStream:(NSOutputStream *)stream
+			format:(NSPropertyListFormat)format
+		       options:(NSPropertyListWriteOptions)options
+			 error:(NSError * _Nullable * _Nullable)error;
 @end
 
 /*
@@ -158,6 +178,12 @@ typedef NSUInteger NSPropertyListWriteOptions;
 + (nullable NSMutableDictionary<KeyType, ObjectType> *)dictionaryWithContentsOfURL:(NSURL *)url;
 - (nullable NSMutableDictionary<KeyType, ObjectType> *)initWithContentsOfFile:(NSString *)path;
 - (nullable NSMutableDictionary<KeyType, ObjectType> *)initWithContentsOfURL:(NSURL *)url;
+
+/* THE LEGACY DOORS (§63.198). Each is a thin wrapper over the typed pair above — the split Apple itself
+ * keeps — with one stated reading: the WRITE side is XML, so a request for the binary format answers nil
+ * with a description rather than pretending. */
+
+
 @end
 
 NS_ASSUME_NONNULL_END

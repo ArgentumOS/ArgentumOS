@@ -15962,6 +15962,44 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.198 — NSPropertyListSerialization: the four legacy doors, and two traps about WHERE code goes
+
+Four rows: `+propertyListFromData:mutabilityOption:format:errorDescription:`,
+`+dataFromPropertyList:format:errorDescription:`, `+propertyListWithStream:options:format:error:`,
+`+writePropertyList:toStream:format:options:error:`. Ledger after: **method 1694 shipped / 121 open / 399 struck; property 727 / 37 / 172**.
+
+**EACH IS A WRAPPER, WHICH IS THE WHOLE POINT.** The plist core does the parsing and writing; the typed modern
+pair (`+propertyListWithData:…`, `+dataWithPropertyList:…`) does the mapping and the NSError; these four add
+the legacy spellings — a `NSString **` out-param instead of an NSError, and streams. The stream doors read to
+the END and then use the data doors, because the reader wants a buffer and an incremental parser for this door
+would be a second reader with its own bugs.
+
+**THE ONE STATED READING:** this tree's writer produces XML, so `+dataFromPropertyList:` asked for the
+**binary** format answers nil WITH a description rather than quietly writing XML and calling it binary. The
+probe asserts exactly that, including that the description says "binary".
+
+**AND THE TWO TRAPS THIS UNIT PAID FOR, BOTH ABOUT WHERE CODE LANDS — neither of which the build detected as a
+misplacement:**
+* The header has `NSPropertyListSerialization`'s interface and then THREE MORE `@interface` blocks (the
+  `NSPropertyListAdditions` categories). A declaration appended at the file's end is outside the owner's
+  block, and **the sweep says so only once the row is `shipped`** — so four rows read `STALE SHIPPED CLAIM`
+  the moment I flipped them. The three earlier units could have hit this; the rule that catches it is
+  "a declaration must be inside the owner's block", and the instrument to check it is the sweep AFTER the
+  flip, not the build.
+* The `.m` has the same shape — the class's `@implementation` and then the categories' — so four method
+  BODIES appended at the end compiled as category methods, where `self` is not this class. Clang's only
+  complaint was a warning that the class methods were "not found" (fatal here, because warnings are errors),
+  which is a *wrong-receiver* diagnosis: read it as "this body is not where you think it is".
+
+**THE NULLABILITY TRAP, AGAIN, IN ITS ARGUMENT FORM:** `-dataUsingEncoding:` returns `NSData * _Nullable` in
+this tree, so a value built from a string literal cannot be passed to a non-null parameter without an
+explicit cast — the same class as the standing "annotate what the implementation accepts" rule.
+
+Left open, unchanged: nothing from this family.
+
+Acceptance: `make testimg` green (status-checked); `make test TESTS=foundation_bundle` → `TESTS-OK` with three
+new checks; `tools/foundation-sweep.py --check` consistent.
+
 ## §63.197 — NSDate: the SR absolute time, `now`, `+dateWithString:`, and `-addTimeInterval:`
 
 Six rows: `+dateWithSRAbsoluteTime:`, `-initWithSRAbsoluteTime:`, `srAbsoluteTime`, `now`,

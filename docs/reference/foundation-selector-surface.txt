@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1690	open	125	struck	399
+# method	shipped	1694	open	121	struck	399
 # property	shipped	727	open	37	struck	172
 
 
@@ -1965,13 +1965,13 @@ property	shipped	processorCount	NSProcessInfo	App Support / System Interaction /
 property	shipped	systemUptime	NSProcessInfo	App Support / System Interaction / Getting computer information	-	objc
 property	shipped	thermalState	NSProcessInfo	App Support / System Interaction / Getting the thermal state	-	swift-page
 property	shipped	userName	NSProcessInfo	App Support / System Interaction / Accessing user information	-	objc
-method	open	+dataFromPropertyList:format:errorDescription:	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Obsolete Methods	deprecated	objc
+method	shipped	+dataFromPropertyList:format:errorDescription:	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Obsolete Methods	deprecated	objc
 method	shipped	+dataWithPropertyList:format:options:error:	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Serializing a Property List	-	objc
 method	shipped	+propertyList:isValidForFormat:	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Validating a Property List	-	objc
-method	open	+propertyListFromData:mutabilityOption:format:errorDescription:	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Obsolete Methods	deprecated	objc
+method	shipped	+propertyListFromData:mutabilityOption:format:errorDescription:	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Obsolete Methods	deprecated	objc
 method	shipped	+propertyListWithData:options:format:error:	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Deserializing a Property List	-	objc
-method	open	+propertyListWithStream:options:format:error:	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Deserializing a Property List	-	objc
-method	open	+writePropertyList:toStream:format:options:error:	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Serializing a Property List	-	objc
+method	shipped	+propertyListWithStream:options:format:error:	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Deserializing a Property List	-	objc
+method	shipped	+writePropertyList:toStream:format:options:error:	NSPropertyListSerialization	Files and Data Persistence / Property Lists / Serializing a Property List	-	objc
 method	shipped	-initWithTarget:protocol:	NSProtocolChecker	Low-Level Utilities / Legacy / Legacy / Creating a checker	deprecated	objc
 method	shipped	+protocolCheckerWithTarget:protocol:	NSProtocolChecker	Low-Level Utilities / Legacy / Legacy / Creating a checker	deprecated	objc
 property	shipped	protocol	NSProtocolChecker	Low-Level Utilities / Legacy / Legacy / Getting information	deprecated	objc

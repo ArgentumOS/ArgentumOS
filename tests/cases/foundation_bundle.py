@@ -52,7 +52,7 @@ CHECKS = ("bundle-rejects-a-directory-with-no-manifest", "bundle-accepts-both-la
           "bundle-load-refuses-a-payload-that-is-not-code", "bundle-load-brings-in-real-code",
           "bundle-principal-class-comes-from-the-manifest", "bundle-loaded-class-is-usable",
           "class-lookup-and-bundle-for-class", "bundle-load-posts-its-notification-with-the-classes",
-          "loading-doors-report-their-error", "bundle-unload-answers-no-when-nothing-was-loaded")
+          "loading-doors-report-their-error", "bundle-unload-answers-no-when-nothing-was-loaded", "plist-legacy-data-door-round-trips", "plist-legacy-error-description-is-a-string", "plist-binary-write-is-refused-with-a-description")
 
 
 class Case(BaseCase):
