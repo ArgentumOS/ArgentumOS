@@ -167,6 +167,16 @@ typedef enum {
 - (NSString *)XMLStringWithOptions:(NSXMLNodeOptions)options;
 - (NSString *)description;
 
+
+/* §63.233: CANONICAL XML, AS A STATED READING. Canonical XML is a specification with its own rules, and the ones
+ * this door implements are written here because the others are visible in its output: UTF-8 with no XML
+ * declaration, attributes ordered by (URI, local name), empty elements EXPANDED (never `<a/>`), the minimal
+ * escapes (`&`, `<`, `>` in text; `&`, `<`, `"`, TAB/LF/CR in attribute values), and comments PRESERVED — which
+ * is what the door's name says and what distinguishes it from the sibling that drops them.
+ * THE ONE RULE IT DOES NOT IMPLEMENT: namespace DECLARATIONS are not synthesised; a namespace must already be
+ * written as an ordinary attribute, so a caller relying on inherited prefix resolution gets the attributes as
+ * they stand rather than a rewritten set. */
+- (NSString *)canonicalXMLStringPreservingComments:(BOOL)comments;
 @end
 
 /* "The element nodes in an XML tree structure" - children and attributes, which is what an element ADDS. */

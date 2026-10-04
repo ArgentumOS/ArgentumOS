@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1753	open	43	struck	418
+# method	shipped	1754	open	42	struck	418
 # property	shipped	735	open	20	struck	181
 
 
@@ -3058,7 +3058,7 @@ method	shipped	+DTDNodeWithXMLString:	NSXMLNode	Files and Data Persistence / XML
 method	shipped	-XMLStringWithOptions:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Emitting Node Content	-	objc
 method	shipped	+attributeWithName:URI:stringValue:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
 method	shipped	+attributeWithName:stringValue:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
-method	open	-canonicalXMLStringPreservingComments:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Emitting Node Content	-	objc
+method	shipped	-canonicalXMLStringPreservingComments:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Emitting Node Content	-	objc
 method	shipped	-childAtIndex:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Navigating the Tree of Nodes	-	objc
 method	shipped	+commentWithStringValue:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
 method	shipped	-detach	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Navigating the Tree of Nodes	-	objc

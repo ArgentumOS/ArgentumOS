@@ -70,6 +70,10 @@ static NSString *fn_xml_escape_attribute(NSString *text, BOOL singleQuoted)
 	return answer;
 }
 
+@interface NSXMLNode (FNCanonical)
+- (NSString *)fnCanonicalStringDepth:(NSUInteger)depth;
+@end
+
 @implementation NSXMLNode
 
 /* A NODE IS MADE PRIVATELY AND ANSWERED THROUGH THE FACTORIES, which is what keeps the kinds consistent
@@ -739,6 +743,109 @@ static NSString *fn_xml_escape_attribute(NSString *text, BOOL singleQuoted)
 	[super dealloc];
 }
 
+/* §63.233: THE CANONICAL WALK. The rules are stated at the declaration; what matters here is that it is ONE
+ * recursion over the same children every other serializer walks, so the canonical string cannot disagree with the
+ * document about what the tree holds. */
+static NSString *fn_canonical_escape_text(NSString *text)
+{
+	NSMutableString *out = [NSMutableString stringWithString:(text != nil ? text : @"")];
+
+	[out replaceOccurrencesOfString:@"&" withString:@"&amp;" options:0 range:NSMakeRange(0, [out length])];
+	[out replaceOccurrencesOfString:@"<" withString:@"&lt;" options:0 range:NSMakeRange(0, [out length])];
+	[out replaceOccurrencesOfString:@">" withString:@"&gt;" options:0 range:NSMakeRange(0, [out length])];
+	return out;
+}
+
+static NSString *fn_canonical_escape_attribute(NSString *text)
+{
+	NSMutableString *out = [NSMutableString stringWithString:(text != nil ? text : @"")];
+
+	[out replaceOccurrencesOfString:@"&" withString:@"&amp;" options:0 range:NSMakeRange(0, [out length])];
+	[out replaceOccurrencesOfString:@"<" withString:@"&lt;" options:0 range:NSMakeRange(0, [out length])];
+	[out replaceOccurrencesOfString:@"\"" withString:@"&quot;" options:0 range:NSMakeRange(0, [out length])];
+	[out replaceOccurrencesOfString:@"\t" withString:@"&#x9;" options:0 range:NSMakeRange(0, [out length])];
+	[out replaceOccurrencesOfString:@"\n" withString:@"&#xA;" options:0 range:NSMakeRange(0, [out length])];
+	[out replaceOccurrencesOfString:@"\r" withString:@"&#xD;" options:0 range:NSMakeRange(0, [out length])];
+	return out;
+}
+
+- (NSString *)canonicalXMLStringPreservingComments:(BOOL)comments
+{
+	return [self fnCanonicalStringDepth:0];
+}
+
+- (NSString *)fnCanonicalStringDepth:(NSUInteger)depth
+{
+	NSXMLNodeKind kind = [self kind];
+
+	(void)depth;
+	if (kind == NSXMLDocumentKind) {
+		/* A DOCUMENT IS ITS CHILDREN: canonical XML has no XML declaration and no prologue. */
+		NSMutableString *out = [NSMutableString string];
+		NSArray *kids = [self children];
+		NSUInteger i;
+
+		for (i = 0; i < [kids count]; i++) {
+			[out appendString:[[kids objectAtIndex:i] fnCanonicalStringDepth:0]];
+		}
+		return out;
+	}
+	if (kind == NSXMLCommentKind) {
+		/* PRESERVED: this door's whole distinction from its sibling. */
+		return [NSString stringWithFormat:@"<!--%@-->", _stringValue != nil ? _stringValue : @""];
+	}
+	if (kind == NSXMLTextKind) {
+		return fn_canonical_escape_text(_stringValue);
+	}
+	if (kind == NSXMLAttributeKind) {
+		return [NSString stringWithFormat:@" %@=\"%@\"", _name != nil ? _name : @"",
+			fn_canonical_escape_attribute(_stringValue)];
+	}
+	{
+		NSMutableString *out = [NSMutableString stringWithFormat:@"<%@", _name != nil ? _name : @""];
+		NSMutableArray *ordered = [NSMutableArray array];
+		NSArray *kids = [self children];
+		NSUInteger i, j;
+		id selfAsElement = self;
+
+		if ([selfAsElement respondsToSelector:@selector(attributes)]) {
+			NSArray *attrs = [selfAsElement attributes];
+
+			for (i = 0; attrs != nil && i < [attrs count]; i++) {
+				[ordered addObject:[attrs objectAtIndex:i]];
+			}
+			/* (URI, LOCAL NAME) ORDER — an insertion sort, because these lists are small. */
+			for (i = 1; i < [ordered count]; i++) {
+				id key = [ordered objectAtIndex:i];
+				NSString *keyURI = (NSString *)[key URI];
+				NSString *keyLocal = (NSString *)[[key class] localNameForName:[key name]];
+
+				for (j = i; j > 0; j--) {
+					id prev = [ordered objectAtIndex:j - 1];
+					NSString *prevURI = (NSString *)[prev URI];
+					NSString *prevLocal = (NSString *)[[prev class] localNameForName:[prev name]];
+					NSComparisonResult byURI = [(prevURI != nil ? prevURI : @"") compare:(keyURI != nil ? keyURI : @"")];
+					NSComparisonResult byLocal = [(prevLocal != nil ? prevLocal : @"") compare:(keyLocal != nil ? keyLocal : @"")];
+
+					if (byURI < 0 || (byURI == 0 && byLocal <= 0)) {
+						break;
+					}
+					[ordered replaceObjectAtIndex:j withObject:prev];
+				}
+				[ordered replaceObjectAtIndex:j withObject:key];
+			}
+			for (i = 0; i < [ordered count]; i++) {
+				[out appendString:[[ordered objectAtIndex:i] fnCanonicalStringDepth:0]];
+			}
+		}
+		[out appendString:@">"];
+		for (i = 0; kids != nil && i < [kids count]; i++) {
+			[out appendString:[[kids objectAtIndex:i] fnCanonicalStringDepth:0]];
+		}
+		[out appendFormat:@"</%@>", _name != nil ? _name : @""];
+		return out;
+	}
+}
 @end
 
 @implementation NSXMLElement

@@ -15962,6 +15962,21 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.233 — NSXMLNode's canonical form, with its rules on the record
+
+One row shipped: `-canonicalXMLStringPreservingComments:`. Ledger after:
+`method 1754 shipped / 42 open / 418 struck; property 735 / 20 / 181`.
+
+**CANONICAL XML IS A SPECIFICATION, so the door is a STATED READING of it** — written at the declaration because
+the rest is visible in the output: UTF-8 with no XML declaration, attributes ordered by **(URI, local name)**,
+empty elements **expanded** (never `<a/>`), the minimal escapes (`&`, `<`, `>` in text; `&`, `<`, `"`, TAB/LF/CR
+in attribute values), and **comments preserved**, which is this door's own distinction from the sibling that
+drops them. **The one rule it does not implement is stated too:** namespace *declarations* are not synthesised, so
+a namespace must already be written as an ordinary attribute.
+
+**AND IT IS ONE RECURSION** over the same children every other serializer walks, so the canonical string cannot
+disagree with the document about what the tree holds.
+
 ## §63.231 — THE TOOL THREAD IS CLOSED FOR GOOD, AND WHY ITS FAILURE DIRECTION IS THE SAFE ONE
 
 **Parked permanently, not deferred.** §63.222–§63.226 plus this attempt spent FIVE turns on the sweep's
