@@ -104,3 +104,18 @@ __asm__(
     ".globl _CF_CONSTANT_STRING_SWIFT_CLASS\n"
     ".set   _CF_CONSTANT_STRING_SWIFT_CLASS, ._OBJC_CLASS_NSConstantString\n"
 );
+
+/*
+ * AND THE SAME ALIAS FOR THE SYMBOL CLANG ACTUALLY EMITS. Every constant-string struct carries
+ * &__CFConstantStringClassReference as its isa -- that is what the relocation in a one-line CFSTR object
+ * says -- so THAT symbol must be the class, not the one above, which nothing references.
+ *
+ * IT IS HERE RATHER THAN IN NSString.m ON MEASURED GROUNDS: an identical block in that file emitted NOTHING,
+ * with and without a C-level reference to the symbol, while this block -- in the file that owns
+ * ._OBJC_CLASS_NSConstantString -- emits. The surviving hypothesis is that an assembler .set resolves only
+ * within its own assembly unit, so the alias has to live where the class's symbol is defined.
+ */
+__asm__(
+    ".globl __CFConstantStringClassReference\n"
+    ".set   __CFConstantStringClassReference, ._OBJC_CLASS_NSConstantString\n"
+);

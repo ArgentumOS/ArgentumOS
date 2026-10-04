@@ -1119,3 +1119,29 @@ resolvable -- 'unresolvable symbol ._OBJC_CLASS_NSConstantString referenced in e
 --defsym ABORTS RESOLUTION OF EVERYTHING ELSE AT THAT LINK, which is why the probe's own relocation to
 __CFConstantStringClassReference also read as unresolvable. Removing the flag fixed both symptoms at once: one
 cause, two errors, and the second looked like an independent failure.
+
+
+**THE CFSTR DEBT: THE MECHANISM, ESTABLISHED AND REPRODUCED.** The alias works when it lives WHERE THE CLASS'S
+SYMBOL IS DEFINED, and not otherwise. An assembler .set resolves only within its own assembly unit, so a block
+aliasing ._OBJC_CLASS_NSConstantString from a file that does not own that symbol emits nothing.
+
+THE MEASUREMENT, AT OBJECT LEVEL, IS WHAT SETTLES IT:
+
+    .build/foundation-NSCFConstantString.o   D __CFConstantStringClassReference  0x148    the file that OWNS the class
+    .build/foundation-NSString.o             (no such symbol at all)                        the file that did not
+
+and the identical block in NSString.m produced nothing WHETHER OR NOT a C-level reference to the symbol was
+present -- which falsified the earlier "the .set needs a real use" reading, recorded two attempts ago and now
+withdrawn. That reading had one supporting observation (a single green run); it had no mechanism, and a moved
+block reproduces the green with no use at all.
+
+AND IT WAS VERIFIED TWICE, BECAUSE ONE GREEN RUN IS NOT A PROPERTY. The first run gave 18/18; then every
+Foundation object and the library were DELETED and the whole thing rebuilt from scratch (3 class files), after
+which all three symbols were again D at the same address 0x61d0 and the probe was again ok=18 fail=0.
+
+WHY IT APPEARED TO WORK ONCE BEFORE, in NSString.m: that link resolved the alias anyway, which is an ordering
+accident and not a property of the code. The debt was called closed on that single run and the claim was
+withdrawn; this note replaces it with a mechanism that holds across a forced rebuild.
+
+REMAINING, SMALL AND NAMED: NSString.m still carries the .set block that emits nothing. It is dead and it reads
+as though it does something, so it should be deleted rather than left as a trap for the next reader.
