@@ -17,6 +17,49 @@
 
 extern unsigned long CFNXBridgeClassToType(Class cls, CFTypeID typeID);
 
+/*
+ * THE COMPARISON IS OURS; EVERYTHING ELSE IN THE PAIR IS CF'S. This was decided by measurement.
+ *
+ * kCFTypeArrayCallBacks' equal is CFEqual (CFArray.c:23), and CFEqual's ObjC dispatch only fires for a class
+ * CF's runtime has been told about (CFRuntime.c:1078) -- for any other class it falls through to
+ * __CFGenericAssertIsCF (CFRuntime.c:1082) and TRAPS. So -containsObject: died with SIGILL on the first
+ * object of an unregistered class, while -count and -objectAtIndex: were fine: they never compare.
+ *
+ * The shim below is the missing half of CF's own delegation rather than a replacement for it: CFEqual MEANT to
+ * send -isEqual:, and that is exactly what this sends, for any class. Apple's NSArray compares with -isEqual:
+ * too, so the two worlds agree here rather than one being worked around.
+ *
+ * RETAIN AND RELEASE STAY CF'S OWN. They are the half the object probe measured as working -- a CF array holds
+ * an object of this library and is what ends it -- so they are copied verbatim from kCFTypeArrayCallBacks
+ * rather than rewritten. Nothing about ownership changes here; only where the comparison comes from.
+ */
+static Boolean fnx_array_equal(const void *value1, const void *value2)
+{
+	if (value1 == value2) {
+		return true;
+	}
+	if (value1 == NULL || value2 == NULL) {
+		return false;
+	}
+	return [(id)value1 isEqual:(id)value2] ? true : false;
+}
+
+/* Built once, on first use, from CF's own pair. A plain flag is enough: the two threads that raced here would
+ * write the same values, and a HALF-built pair is the one failure that would matter, so the ready flag is set
+ * only after every field is in place. */
+static CFArrayCallBacks fnx_array_callbacks;
+static Boolean fnx_array_callbacks_ready = false;
+
+static const CFArrayCallBacks *fnx_array_callbacks_get(void)
+{
+	if (!fnx_array_callbacks_ready) {
+		fnx_array_callbacks = kCFTypeArrayCallBacks;
+		fnx_array_callbacks.equal = fnx_array_equal;
+		fnx_array_callbacks_ready = true;
+	}
+	return &fnx_array_callbacks;
+}
+
 @implementation NSArray
 
 - (instancetype)initWithObjects:(const id _Nonnull * _Nullable)objects count:(NSUInteger)count
@@ -26,9 +69,9 @@ extern unsigned long CFNXBridgeClassToType(Class cls, CFTypeID typeID);
 		return nil;
 	}
 
-	/* CF's own callbacks retain each item as CFArrayCreate places it, so no slot is retained here. A count of
-	 * zero is legal with a NULL vector, which is what CFArrayCreate expects. */
-	_storage = CFArrayCreate(kCFAllocatorDefault, (const void **)objects, (CFIndex)count, &kCFTypeArrayCallBacks);
+	/* CF's own retain/release callbacks hold each item as CFArrayCreate places it, so no slot is retained
+	 * here; only the comparison is ours (see fnx_array_equal). A count of zero is legal with a NULL vector. */
+	_storage = CFArrayCreate(kCFAllocatorDefault, (const void **)objects, (CFIndex)count, fnx_array_callbacks_get());
 	if (_storage == NULL) {
 		[self release];
 		return nil;
@@ -98,7 +141,15 @@ extern unsigned long CFNXBridgeClassToType(Class cls, CFTypeID typeID);
  */
 void _CFNXBridgeArrayClasses(void)
 {
-	CFNXBridgeClassToType([NSArray class], CFArrayGetTypeID());
+	/* Warm the callback pair too, so a caller that somehow reaches -initWithObjects:count: first still gets
+	 * a complete pair rather than the all-zero one a static starts as. */
+	(void)fnx_array_callbacks_get();
+	extern void _FNXBridgeClass(Class cls, unsigned long typeID);
+
+	/* THE REGISTRATION ITSELF. A pattern-based edit removed this line while stripping a diagnostic that sat
+	 * beside it -- the second time in one session that a regex took a load-bearing line with it. If this call
+	 * disappears, NSArray silently stops being a CFArray to CF and nothing else looks wrong. */
+	_FNXBridgeClass([NSArray class], (unsigned long)CFArrayGetTypeID());
 }
 
 @end

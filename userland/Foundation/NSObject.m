@@ -26,6 +26,60 @@
 
 #import <Foundation/NSObject.h>
 #include <stdlib.h>
+#include <objc/runtime.h>
+
+/* CF'S OWN DOOR FOR WRITING THE HEADER, so the bit layout is CF's rather than one packed here by hand. */
+extern void CFNXSetInstanceTypeIDAndIsa(void *obj, unsigned long typeID);
+extern unsigned long CFNXBridgeClassToType(Class cls, unsigned long typeID);
+
+/* THE CLASSES THIS LIBRARY HAS BRIDGED, AND THE TYPE EACH WAS BRIDGED TO. CF keeps the reverse lookup
+ * (type -> class) and not this one, and +alloc needs exactly this direction, so the mapping is recorded here
+ * BY THE SAME CALL that does the CF-side registration -- two separate records could disagree about which
+ * classes are bridged, and the disagreement would show up as one class behaving unlike its neighbours. */
+#define FNX_BRIDGED_MAX 64
+
+static Class fnx_bridged_classes[FNX_BRIDGED_MAX];
+static unsigned long fnx_bridged_types[FNX_BRIDGED_MAX];
+static int fnx_bridged_count = 0;
+
+void _FNXBridgeClass(Class cls, unsigned long typeID)
+{
+	int i;
+
+	if (cls == Nil || typeID == 0) {
+		return;
+	}
+	(void)CFNXBridgeClassToType(cls, typeID);
+	for (i = 0; i < fnx_bridged_count; i++) {
+		if (fnx_bridged_classes[i] == cls) {
+			fnx_bridged_types[i] = typeID;
+			return;
+		}
+	}
+	if (fnx_bridged_count < FNX_BRIDGED_MAX) {
+		fnx_bridged_classes[fnx_bridged_count] = cls;
+		fnx_bridged_types[fnx_bridged_count] = typeID;
+		fnx_bridged_count++;
+	}
+	/* TEMPORARY: what the map holds once the write is done. */
+}
+
+/* A SUBCLASS OF A BRIDGED CLASS IS BRIDGED TOO, by walking up: an NSArray's subclass is still a CFArray. The
+ * walk is deliberate rather than a lookup that would miss, so a class added later needs no second entry. */
+static unsigned long fnx_typeid_for_class(Class cls)
+{
+	int i;
+
+	while (cls != Nil) {
+		for (i = 0; i < fnx_bridged_count; i++) {
+			if (fnx_bridged_classes[i] == cls) {
+				return fnx_bridged_types[i];
+			}
+		}
+		cls = class_getSuperclass(cls);
+	}
+	return 0;
+}
 
 @implementation NSObject
 
@@ -37,7 +91,16 @@
 
 	/* class_createInstance ZEROES THE STORAGE, so the count is 1 only because this line says so. */
 	if (obj != nil) {
+		unsigned long typeID = fnx_typeid_for_class(self);
+
 		((NSObject *)obj)->_refcount = 1;
+
+		/* AND CF'S HEADER WORD, written through CF's own door. An unbridged class leaves it zero, which is
+		 * the same "not a CF object" answer CF gave before this existed -- the class is simply not one CF
+		 * has been told about, and nothing here guesses otherwise. */
+		if (typeID != 0) {
+			CFNXSetInstanceTypeIDAndIsa(obj, typeID);
+		}
 	}
 	return obj;
 }
@@ -45,6 +108,19 @@
 - (id)init
 {
 	return self;
+}
+
+/* CF'S OWN PROTOCOL FOR OBJC OBJECTS, AND IT IS NOT OPTIONAL. CFGetTypeID sends -_cfTypeID rather than reading
+ * the object's header when it recognises an object as Objective-C (CFRuntime.c:793), so a class that does not
+ * implement this answers ZERO to every question about its type -- which is what CFGetTypeID returned for an
+ * NSArray, and what made CFArrayGetCount treat the object as a native CFArray and read a garbage count from a
+ * header that was never there. Upstream's NSCF classes all implement this door for the same reason.
+ *
+ * It answers with the type recorded for the object's class, and returns 0 for a class this library never
+ * bridged -- which is the same "not a CF object" answer CF gives, arrived at by CF's own route. */
+- (unsigned long)_cfTypeID
+{
+	return fnx_typeid_for_class(object_getClass(self));
 }
 
 /* THE ONE COUNTER, AND WHY THESE DO NOT CALL objc_retain/objc_release — the short version is that doing so

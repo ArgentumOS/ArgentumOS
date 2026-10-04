@@ -78,17 +78,20 @@ $(FN_STAGED_LIB): $(FOUNDATION_LIB)
 
 # THE FIRST ACCEPTANCE, and it is staged with its library: a probe that cannot find libfoundation at RUN
 # time would fail for a reason that has nothing to do with what it asserts.
-FOUNDATION_OBJECT_PROBE = foundation_object
+FOUNDATION_PROBES = foundation_object foundation_collection
 
-$(ROOTFS64)/System/Shared/tests/$(FOUNDATION_OBJECT_PROBE): userland/tests/$(FOUNDATION_OBJECT_PROBE).m $(FOUNDATION_LIB) $(FN_STAGED_LIB) $(CF_STAGED_LIB)
+# A STATIC PATTERN RULE, not a broad one: it matches exactly the probes named above, so adding a probe cannot
+# accidentally claim some unrelated target under System/Shared/tests. Two probes sharing one recipe is also
+# what stops the second from drifting away from the first's flags.
+$(addprefix $(ROOTFS64)/System/Shared/tests/,$(FOUNDATION_PROBES)): $(ROOTFS64)/System/Shared/tests/%: userland/tests/%.m $(FOUNDATION_LIB) $(FN_STAGED_LIB) $(CF_STAGED_LIB)
 	@mkdir -p "$(ROOTFS64)/System/Shared/tests"
-	$(MUSL64_OBJC) userland/tests/$(FOUNDATION_OBJECT_PROBE).m $(FOUNDATION_CFLAGS) \
+	$(MUSL64_OBJC) $< $(FOUNDATION_CFLAGS) \
 		-L$(FNXLIB) -lfoundation $(FOUNDATION_CF_LIBS) \
 		-Wl,-rpath-link,$(FNXLIB) \
 		-o "$@"
 
 .PHONY: foundation2 cf-staged
-foundation2: $(ROOTFS64)/System/Shared/tests/$(FOUNDATION_OBJECT_PROBE) $(FN_STAGED_LIB) $(CF_STAGED_LIB)
+foundation2: $(addprefix $(ROOTFS64)/System/Shared/tests/,$(FOUNDATION_PROBES)) $(FN_STAGED_LIB) $(CF_STAGED_LIB)
 
 # A NAME FOR THE STAGING ALONE, so a change to CoreFoundation can be verified without relinking a probe.
 cf-staged:  $(CF_STAGED_LIB)

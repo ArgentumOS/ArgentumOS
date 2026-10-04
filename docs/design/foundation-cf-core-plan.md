@@ -1145,3 +1145,80 @@ withdrawn; this note replaces it with a mechanism that holds across a forced reb
 
 REMAINING, SMALL AND NAMED: NSString.m still carries the .set block that emits nothing. It is dead and it reads
 as though it does something, so it should be deleted rather than left as a trap for the next reader.
+
+
+# HANDOVER — the NSArray re-base, 2026 (pick up here)
+
+## WHAT IS IN THE TREE, AND WHAT IS VERIFIED
+
+Uncommitted-with-this-note, in one change set:
+
+  * NSObject.h/.m      — the root class now carries CF's header: word 0 Class isa (which IS CF's _cfisa and what
+                         CF_IS_OBJC compares), word 1 `unsigned long long _cfinfoa`, word 2 the count. +alloc
+                         writes the type ID into word 1 through CF's own door; -_cfTypeID is implemented;
+                         _FNXBridgeClass records class -> type; +alloc pulls registration forward on a miss.
+  * NSArray.h/.m       — the CFArray-backed class, 14 doors, our own `equal` callback over CF's retain/release.
+  * NSString.m         — _FNXRegisterAllBridgedClasses (one idempotent, re-entrant-safe registration entry
+                         point) which the CF hook calls; the CFSTR pointer assignment lives inside it.
+  * CFRuntime.c        — CF LOCAL MODIFICATION 10: CFNXSetInstanceTypeIDAndIsa, exported, writing the type-ID
+                         bits with CF's own __CFRuntimeSetValue.
+  * mk/25-foundation.mk — FOUNDATION_PROBES + a static pattern rule (add a probe to the list, nothing else).
+  * tests/…            — foundation_collection probe + case.
+
+VERIFIED: foundation_object 18/18, 6/6 checks — the CFSTR debt and the object model are intact THROUGH every
+change above, including the root-class layout change. foundation_collection is 13/14: every door passes and
+the ownership pair passes; the one red check is and-CFs-own-C-door-sees-this-object-as-a-CFArray.
+
+## THE DIAGNOSIS, COMPLETE AND MEASURED
+
+CFGetTypeID sends -_cfTypeID to an object it recognises as ObjC (CFRuntime.c:793) and only reads the header on
+the ELSE branch, so a class without that door answers ZERO. That is now implemented.
+
+With that in place, the header word is written correctly and the failure is pure ORDERING. Measured, with raw
+write(2) traces:
+
+    +alloc lookup=0x0  (x5)                       allocations before registration completes
+    IMMEDIATELY after creation: word 1 = 0x0      THE FIRST OBJECT of a bridged class
+    +alloc lookup=0x13 (x2)                       later objects, correct
+
+That is: CF initializes on its FIRST CALL, the hook runs then, and for the first object of a bridged class the
+first CF call is CFArrayCreate INSIDE -initWithObjects:count: -- i.e. AFTER +alloc has already asked its class's
+type and been told 0. Later objects are fine. Nothing about the map, the layout, the door or the bit field is
+wrong; CF-side the door is entered with before=0x0 after=0x1300.
+
+Adding a lazy retry in +alloc did NOT fix it, and the reason is worth keeping: the retry's own first CF call is
+what starts CF's initialization, so allocations happen DURING the registration call and the retry's second
+lookup is still inside that window.
+
+## THE NEXT STEP (one change)
+
+Register from a LIBRARY CONSTRUCTOR instead of on demand: `__attribute__((constructor)) void f(void) {
+_FNXRegisterAllBridgedClasses(); }` in NSString.m. That runs at load, before any user allocation exists, so CF
+initializes then, the hook arrives (state is 1, it returns), and every later +alloc finds 0x13. Then re-run both
+cases: the red check should go green at 14/14.
+
+## THE INSTRUMENT, IF IT IS NEEDED AGAIN
+
+printf/stderr FROM THIS LIBRARY PRODUCES NOTHING on the guest console; use raw write(2) on fd 1 with the case's
+prefix ("FOUNDATION-COLLECTION note …") so the case surfaces it. Print the value that decides the question, not
+a message that something happened.
+
+## TWO TRAPS THIS STRETCH SPRANG, BOTH WORTH MORE THAN THE BUG
+
+1. PATTERN-BASED EDITS TO THESE FILES HAVE TWICE REMOVED A LOAD-BEARING LINE. A regex used to strip a
+   diagnostic took the CFSTR pointer assignment with it (caught by re-running foundation_object, which is the
+   only reason a closed debt was not silently reopened), and a second one took _FNXBridgeClass([NSArray class],
+   CFArrayGetTypeID()) -- leaving _CFNXBridgeArrayClasses an EMPTY FUNCTION that still compiled and linked.
+   AFTER ANY regex/replace on a Foundation source, grep for the load-bearing lines by name.
+
+2. `make test TESTS=` TAKES ONE CASE. "TESTS=a b" does not error usefully; it prints "no cases selected" and
+   EXECUTES NOTHING, so an empty grep looks like a passing run. Two make invocations, or check the output.
+
+## STILL OWED
+
+* CF LOCAL MODIFICATION 10 must be added to the CoreFoundation package's own modification list/README and to
+  fnx-modifications.patch, which the other modifications are documented in.
+* foundation_collection is red at 13/14 in the working tree. Committing it changes make test-all's baseline;
+  that is deliberate (it documents the gap) but it should be stated in the commit that does it.
+* NSArray's factory methods (+array and relatives) are still absent: they return AUTORELEASED under Apple's
+  contract and this library has no autorelease pool. That is a basis gap, not an omission.

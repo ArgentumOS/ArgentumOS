@@ -115,6 +115,48 @@ extern CFHashCode CFStringHashNSString(CFStringRef str);
  * once its runtime is initialised. A constructor was tried first and MEASURED TOO EARLY -- at that point
  * [NSString class] is Nil and the registration silently did nothing. This is called at the moment CF needs
  * the answer, which is the only moment guaranteed to be late enough and early enough at once. */
+/*
+ * THE REGISTRATION, AND WHY IT IS CALLED FROM TWO PLACES. CF calls _CFNXBridgeAllClasses when IT finishes
+ * initializing, but CF only initializes on its FIRST CALL -- and for the first object of a bridged class that
+ * first call is CFArrayCreate INSIDE the initialiser, i.e. AFTER +alloc has already asked what type its class
+ * is and been told 0. That is measured: the header word of the first NSArray was zero the instant it existed,
+ * while later arrays carried 0x1300 correctly.
+ *
+ * So +alloc may pull this forward, and the flag makes BOTH orders safe. Re-entrancy here is the normal case
+ * rather than an edge: the CF call below starts CF's initialization, CF calls the hook, and the hook arrives
+ * back here while this call is still running -- which must do nothing and let THIS call finish, which it does,
+ * because the state only reaches 2 after every class has been registered.
+ */
+void _FNXRegisterAllBridgedClasses(void)
+{
+	static int state = 0;	/* 0 = not started, 1 = running, 2 = done */
+
+	if (state != 0) {
+		return;
+	}
+	state = 1;
+
+	{
+		extern void _FNXBridgeClass(Class cls, unsigned long typeID);
+		extern void _CFNXBridgeArrayClasses(void);
+
+		_FNXBridgeClass([NSString class], (unsigned long)CFStringGetTypeID());
+		_CFNXBridgeArrayClasses();
+	}
+
+	/* AND THE CONSTANT STRINGS, WHICH CF'S OWN CODE HAS BEEN WAITING FOR -- restored here because a regex
+	 * edit removed it from the hook, which is exactly the kind of silent loss this file has suffered before.
+	 * Why the pointer matters: CF already compares an object's isa against it (CFRuntime.c:1956), and the
+	 * symbol it compares is the one clang puts in every CFSTR struct as its isa. The alias that makes that
+	 * symbol BE the class lives in NSCFConstantString.m; this is the other half. */
+	{
+		extern void *__CFConstantStringClassReferencePtr;
+
+		__CFConstantStringClassReferencePtr = objc_getClass("NSConstantString");
+	}
+	state = 2;
+}
+
 void _CFNXBridgeAllClasses(void)
 {
 	/* THE CLASS IS LOOKED UP BY NAME, NOT MESSAGED, AND THE REASON IS MEASURED. `[NSString class]` returned
@@ -123,35 +165,7 @@ void _CFNXBridgeAllClasses(void)
 	 * '+class' not found". THIS CLASS IS A ROOT CLASS AND DOES NOT IMPLEMENT +class, so the message went
 	 * nowhere and the registration registered nothing, silently, because the door's own guard skips a Nil
 	 * class. Two characters of instrument ('Hnz') said all of that after a great deal of reasoning had not. */
-	CFNXBridgeClassToType([NSString class], CFStringGetTypeID());
-
-	/* THE OTHER CLASSES REGISTER THE SAME WAY, from their own files. */
-	{
-		extern void _CFNXBridgeArrayClasses(void);
-
-		_CFNXBridgeArrayClasses();
-	}
-
-	/* AND THE CONSTANT STRINGS, WHICH CF'S OWN CODE HAS BEEN WAITING FOR. Four of CF's lines describe this
-	 * mechanism exactly, and in this build none of them was doing anything:
-	 *
-	 *   CFRuntime.c:274   the Swift arm sets __CFConstantStringClassReferencePtr = &_CF_CONSTANT_STRING_SWIFT_CLASS
-	 *   CFRuntime.c:291   THIS arm sets the same pointer to NULL
-	 *   CFRuntime.c:1956  CF already compares an object's isa against that pointer ("is this a constant string")
-	 *   CFInternal.h:546  CF's own CFSTR macro builds its isa as &__CFConstantStringClassReference
-	 *
-	 * NOTE: an earlier version of this comment claimed the class lived in the array's FIRST WORD. That was
-	 * wrong and it is recorded here only so the wrong idea is not re-derived -- writes into that array changed
-	 * nothing. What matters is the ADDRESS of the symbol, which the alias in NSCFConstantString.m makes equal
-	 * to the class. The array's contents are irrelevant.
-	 */
-	{
-		extern void *__CFConstantStringClassReferencePtr;
-
-		/* THE POINTER IS THE CLASS, because with that alias an object's isa IS the class -- and CF's own
-		 * test (CFRuntime.c:1956) compares exactly `obj->isa == __CFConstantStringClassReferencePtr`. */
-		__CFConstantStringClassReferencePtr = objc_getClass("NSConstantString");
-	}
+	_FNXRegisterAllBridgedClasses();
 }
 
 - (unsigned long)length

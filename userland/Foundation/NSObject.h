@@ -149,8 +149,14 @@ static inline BOOL FNXClassIsKindOfClass(Class cls, Class wanted)
 __attribute__((objc_root_class))
 @interface NSObject <NSObject>
 {
-	Class isa;			/* THE FIRST WORD, as CF_IS_OBJC requires: CF compares it against its own table */
-	unsigned int _refcount;		/* THE ONE COUNT — see the note below on who may touch it */
+	Class isa;			/* THE FIRST WORD — and it IS CF's _cfisa: CF_IS_OBJC compares it to its own table */
+	unsigned long long _cfinfoa;	/* THE SECOND WORD, WHICH IS CF'S. CF's own C doors read a TYPE ID out of this
+					 * word, so an object of this library is acceptable to them only when the word is
+					 * CF's. The first word already agreed -- which is why class registration worked --
+					 * and this is the word that did not: CFGetTypeID answered 0 for an NSArray because
+					 * it was reading a retain count. Eight bytes, the width of CFRuntimeBase's field. */
+	unsigned int _refcount;		/* THE ONE COUNT — kept AFTER the CF header, so CF's doors can read the
+					 * object's front without walking into the count. */
 }
 
 /* LIFETIME — the runtime's counter, shared with CF (see the contract above). */

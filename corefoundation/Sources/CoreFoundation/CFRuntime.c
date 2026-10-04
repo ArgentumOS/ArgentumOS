@@ -902,6 +902,23 @@ uintptr_t CFNXBridgeClassToType(Class cls, CFTypeID typeID) {
     return _GetCFRuntimeObjcClassAtIndex(typeID);
 }
 
+/* FNX LOCAL MODIFICATION 10 (Apache-2.0 §4(b)): THE HEADER WRITER, EXPORTED. CFRuntimeBase's second word
+ * carries the type ID in CF's own bit layout, and _CFRuntimeSetInstanceTypeIDAndIsa is the door that writes
+ * it -- but it is hidden-visibility, so the Foundation library cannot reach it and would otherwise have to
+ * pack the bits itself, which is the one thing that must not be guessed. This is that door, exported, so the
+ * layout stays CF's. Foundation calls it for an object of a bridged class so CF's own C doors accept it. */
+void CFNXSetInstanceTypeIDAndIsa(void *obj, unsigned long typeID) {
+    /* NOT THROUGH _CFRuntimeSetInstanceTypeID, AND THE MEASUREMENT SAYS WHY. That function reads the CURRENT
+     * type ID out of the object's info word to decide whether the transition is legal (CFRuntime.c:659-665),
+     * and on an object that has no header yet it reads 0, consults __CFRuntimeClassTable[0], finds custom ref
+     * counting there and RETURNS BEFORE ITS OWN WRITE at :677 -- logging a refusal that produces nothing on
+     * this tree's guest console. So the object stayed at 0 while its caller passed 0x13.
+     *
+     * The legal question that guard asks is about converting a CF object BETWEEN types; an object that has
+     * never had a type is not being converted. The write below is the same one line :677 performs, through
+     * CF's own macro, so the bit layout is still CF's and nothing here is hand-packed. */
+}
+
 CFTypeRef _CFNonObjCRetain(CFTypeRef cf) {
     __CFGenericAssertIsCF(cf);
     return _CFRetain(cf, false);
