@@ -15962,6 +15962,41 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.204 — NSProxy's four rows are graded, not uniform — and two sweep modes read OPPOSITE directions
+
+No code landed; the tree is green and this records what the next attempt must know. Ledger unchanged:
+**method 1703 shipped / 110 open / 401 struck; property 729 / 28 / 179**.
+
+**THE FOUR ROWS ARE NOT ONE KIND, AND THE HEADER ALREADY SAYS SO** (its own note, lines 14-21):
+* `+allocWithZone:` — *"the zone API is out, §11.5"*. **Deprecated, therefore OWED** under
+  `dec-1a00739ebd0bdc05`, exactly like NSUserDefaults' four: the zone API is gone from this runtime, so the door
+  is `+alloc` with that reading stated, and its note needs the same rewrite §63.200 gave.
+* `-finalize` — *"deprecated"*. The same grading applies: it belongs to the collector, which does not exist
+  here, so the door is defined for compatibility (source implementing it compiles and links) and is never
+  called — which is a body that does nothing for a reason a reader can check.
+* `-allowsWeakReference` / `-retainWeakReference` — *"marked unavailable in the modern SDK"*. **UNAVAILABLE IS
+  NOT DEPRECATED**: Apple removed these doors with the collector, so they are a §11-style absence with the
+  tree's own citation, and the rows stay open carrying that ground rather than being implemented into a
+  runtime that has no weak-removal semantics to answer about.
+
+**AND THE INSTRUMENT LESSON, WHICH COST THIS UNIT ITS FIRST ATTEMPT: THE TWO SWEEP MODES READ OPPOSITE
+DIRECTIONS.** I declared the four in the header (or believed I had) and implemented them in the `.m`, then read
+`--unimplemented`'s `0 NEW` as "both halves landed". It is not: `--unimplemented` counts **declarations with no
+definition**, while `STALE SHIPPED CLAIM` (inside `--check`) counts **definitions the owner's block does not
+declare**. The first attempt had the second condition, the first instrument said `0 NEW` because the header
+edit had silently no-opped, and the build failed on `STALE SHIPPED CLAIM` for all four — the mirror image. The
+lesson: after a two-sided edit, run `--unimplemented` AND `--check`, and read them as a pair.
+
+**AND THE GUARD TRAP, ONE LAST TIME, WITH ITS FIX:** my presence test was `if "- (BOOL)allowsWeakReference;"
+not in s`, and the header's PROSE at line 20 spells that exact string — so the guard said "already there" and
+the declaration was never written. This session has now paid for that four times (§63.200 header, §63.202 `.m`,
+§63.206 `.h`). The fix is mechanical and is the rule from here on: **test with a LINE-ANCHORED pattern**
+(`(?m)^- \(BOOL\)allowsWeakReference;`). Prose in this tree is indented and starts with `*`; a declaration at
+column 0 can never be satisfied by a comment.
+
+Acceptance: no code changed; `make testimg` green (status-checked); `tools/foundation-sweep.py --check`
+consistent.
+
 ## §63.203 — NSRunLoop: Apple's one-turn door, the limit date, and a no-op Apple documents as one
 
 Three rows shipped: `-acceptInputForMode:beforeDate:`, `-limitDateForMode:`, `-configureAsServer`. Ledger
