@@ -47,17 +47,36 @@ $(FOUNDATION_LIB): $(FOUNDATION_OBJS)
 	$(MUSL64_OBJC) -shared -Wl,-soname,libfoundation.so.1 $(FOUNDATION_OBJS) $(FOUNDATION_CF_LIBS) -o $@
 	@echo "foundation: $(words $(FOUNDATION_MSRCS)) class file(s) -> $(FOUNDATION_LIB)"
 
+# STAGING, AND THE PREREQUISITE IS THE WHOLE POINT OF THESE TWO RULES. mk/20-userland.mk:2073 copies
+# $(COREFOUNDATION_PREFIX)/lib/libcorefoundation.so.* into the image WITHOUT naming the file as a
+# dependency, so a rebuilt CoreFoundation reaches the prefix and never reaches the guest. That is stale by
+# construction, and it cost three guest runs to notice: runs 181 and 182 reported, accurately, that
+# CFRetain did not reach this library — because in the library THAT IMAGE carried, it did not. A copy rule
+# that names its input cannot lie that way, so these two do, and they live here rather than in the tangle.
+CF_STAGED_LIB = $(ROOTFS64)/System/Libraries/libcorefoundation.so.1.1.0
+FN_STAGED_LIB = $(ROOTFS64)/System/Libraries/libfoundation.so.1
+
+$(CF_STAGED_LIB): $(COREFOUNDATION_PREFIX)/lib/libcorefoundation.so.1.1.0
+	@mkdir -p "$(ROOTFS64)/System/Libraries"
+	cp -a $(COREFOUNDATION_PREFIX)/lib/libcorefoundation.so.* "$(ROOTFS64)/System/Libraries/"
+
+$(FN_STAGED_LIB): $(FOUNDATION_LIB)
+	@mkdir -p "$(ROOTFS64)/System/Libraries"
+	cp -a $(FOUNDATION_LIB) "$(ROOTFS64)/System/Libraries/libfoundation.so.1"
+
 # THE FIRST ACCEPTANCE, and it is staged with its library: a probe that cannot find libfoundation at RUN
 # time would fail for a reason that has nothing to do with what it asserts.
 FOUNDATION_OBJECT_PROBE = foundation_object
 
-$(ROOTFS64)/System/Shared/tests/$(FOUNDATION_OBJECT_PROBE): userland/tests/$(FOUNDATION_OBJECT_PROBE).m $(FOUNDATION_LIB)
-	@mkdir -p "$(ROOTFS64)/System/Shared/tests" "$(ROOTFS64)/System/Libraries"
-	@cp $(FOUNDATION_LIB) "$(ROOTFS64)/System/Libraries/libfoundation.so.1"
+$(ROOTFS64)/System/Shared/tests/$(FOUNDATION_OBJECT_PROBE): userland/tests/$(FOUNDATION_OBJECT_PROBE).m $(FOUNDATION_LIB) $(FN_STAGED_LIB) $(CF_STAGED_LIB)
+	@mkdir -p "$(ROOTFS64)/System/Shared/tests"
 	$(MUSL64_OBJC) userland/tests/$(FOUNDATION_OBJECT_PROBE).m $(FOUNDATION_CFLAGS) \
 		-L$(FNXLIB) -lfoundation $(FOUNDATION_CF_LIBS) \
 		-Wl,-rpath-link,$(FNXLIB) \
 		-o "$@"
 
-.PHONY: foundation2
-foundation2: $(ROOTFS64)/System/Shared/tests/$(FOUNDATION_OBJECT_PROBE)
+.PHONY: foundation2 cf-staged
+foundation2: $(ROOTFS64)/System/Shared/tests/$(FOUNDATION_OBJECT_PROBE) $(FN_STAGED_LIB) $(CF_STAGED_LIB)
+
+# A NAME FOR THE STAGING ALONE, so a change to CoreFoundation can be verified without relinking a probe.
+cf-staged:  $(CF_STAGED_LIB)
