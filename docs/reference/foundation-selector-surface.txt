@@ -33,8 +33,8 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1744	open	52	struck	418
-# property	shipped	731	open	24	struck	181
+# method	shipped	1746	open	50	struck	418
+# property	shipped	732	open	23	struck	181
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -2197,12 +2197,12 @@ property	shipped	socket	NSSocketPort	Low-Level Utilities / Sockets / Getting Inf
 property	shipped	socketType	NSSocketPort	Low-Level Utilities / Sockets / Getting Information	-	objc
 method	shipped	-portForName:	NSSocketPortNameServer	Low-Level Utilities / Legacy / Legacy / Looking up Ports	deprecated	objc
 method	shipped	-portForName:host:	NSSocketPortNameServer	Low-Level Utilities / Legacy / Legacy / Looking up Ports	deprecated	objc
-method	open	-portForName:host:nameServerPortNumber:	NSSocketPortNameServer	Low-Level Utilities / Legacy / Legacy / Looking up Ports	deprecated	objc
+method	shipped	-portForName:host:nameServerPortNumber:	NSSocketPortNameServer	Low-Level Utilities / Legacy / Legacy / Looking up Ports	deprecated	objc
 method	shipped	-registerPort:name:	NSSocketPortNameServer	Low-Level Utilities / Legacy / Legacy / Registering and Removing Ports	deprecated	objc
-method	open	-registerPort:name:nameServerPortNumber:	NSSocketPortNameServer	Low-Level Utilities / Legacy / Legacy / Registering and Removing Ports	deprecated	objc
+method	shipped	-registerPort:name:nameServerPortNumber:	NSSocketPortNameServer	Low-Level Utilities / Legacy / Legacy / Registering and Removing Ports	deprecated	objc
 method	shipped	-removePortForName:	NSSocketPortNameServer	Low-Level Utilities / Legacy / Legacy / Registering and Removing Ports	deprecated	objc
 method	shipped	+sharedInstance	NSSocketPortNameServer	Low-Level Utilities / Legacy / Legacy / Getting the Server Object	deprecated	objc
-property	open	defaultNameServerPortNumber	NSSocketPortNameServer	Low-Level Utilities / Legacy / Legacy / Configuring the Default Port Number	deprecated	objc
+property	shipped	defaultNameServerPortNumber	NSSocketPortNameServer	Low-Level Utilities / Legacy / Legacy / Configuring the Default Port Number	deprecated	objc
 method	struck	-allowEvaluation	NSSortDescriptor	Fundamentals / Sorting / Using Sort Descriptors	refused	objc
 method	shipped	-compareObject:toObject:	NSSortDescriptor	Fundamentals / Sorting / Using Sort Descriptors	-	objc
 method	shipped	-initWithCoder:	NSSortDescriptor	Fundamentals / Sorting / Creating a Sort Descriptor	-	objc

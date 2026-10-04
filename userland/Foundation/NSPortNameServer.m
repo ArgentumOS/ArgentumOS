@@ -143,6 +143,28 @@ static NSMachBootstrapServer *gBootstrapServer = nil;
 	return [super registerPort:port name:name];
 }
 
+
++ (unsigned short)defaultNameServerPortNumber
+{
+	/* THIS NAME SERVER IS IN-PROCESS, so there is no well-known remote port to answer — the number is ours and
+	 * it is stated here rather than implied. */
+	return 0;
+}
+
+- (NSPort *)portForName:(NSString *)name host:(NSString *)host nameServerPortNumber:(unsigned short)portNumber
+{
+	(void)portNumber;	/* see +defaultNameServerPortNumber: an in-process registry has nothing to address */
+	return [self portForName:name host:host];
+}
+
+- (BOOL)registerPort:(NSPort *)port name:(NSString *)name nameServerPortNumber:(unsigned short)portNumber
+{
+	(void)portNumber;
+	/* THROUGH THIS CLASS'S OWN DOOR, NOT super's: the door above REFUSES a socket port on purpose ("there is no
+	 * far end for this process to hand out"), and calling super would store a name that cannot be sent to —
+	 * exactly the state that refusal exists to prevent. */
+	return [self registerPort:port name:name];
+}
 @end
 
 @implementation NSMachBootstrapServer

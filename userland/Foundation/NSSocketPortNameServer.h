@@ -28,6 +28,18 @@ NS_ASSUME_NONNULL_BEGIN
 /* Answers NO when the port is not one whose far end this process holds — see the header note. */
 - (BOOL)registerPort:(NSPort *)port name:(NSString *)name;
 
+
+/* §63.218: THE THREE DOORS. THIS NAME SERVER IS IN-PROCESS, so the port NUMBER that would address a remote one
+ * has nothing to address here: both doors take it and delegate to the local registry, and
+ * +defaultNameServerPortNumber answers 0 because there is no well-known remote port — the one argument this
+ * class cannot use, stated where it is taken. */
+@property (class, readonly) unsigned short defaultNameServerPortNumber;
+- (nullable NSPort *)portForName:(NSString *)name
+			    host:(nullable NSString *)host
+	     nameServerPortNumber:(unsigned short)portNumber;
+- (BOOL)registerPort:(NSPort *)port
+		name:(NSString *)name
+  nameServerPortNumber:(unsigned short)portNumber;
 @end
 
 NS_ASSUME_NONNULL_END
