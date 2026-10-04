@@ -1,6 +1,12 @@
 # Foundation on a permissive CoreFoundation — plan
 
-Status: **CONDITIONAL, and one decision is OWED BY THE USER BEFORE ANY OF IT STARTS.**
+Status: **ACCEPTED (user decisions, 2026-10-03, `dec-d359e3f82bf8b95e`).** M0 is running.
+
+**THE TWO DECISIONS, recorded verbatim in effect:** (Q1) **the 2026-09 retraction is SUPERSEDED** —
+this plan governs, and §1's three surviving arguments are the reason it is a reversal of the
+*conclusion* rather than of the reasoning; (Q2) **APSL source is NOT admissible as a reference —
+the bridge is designed CLEAN-ROOM.** Q2 changes the plan's central practical fact, and §3 and §6
+below have been corrected to say so.
 This plan proposes adopting **swift-corelibs-foundation's Apache-2.0 CoreFoundation** as the C
 core of this tree's Objective-C Foundation, and exposing the CF API surface as a first-party tier.
 
@@ -60,7 +66,7 @@ under Apache License v2.0 with Runtime Library Exception*). Apache-2.0 is MIT-co
 obligations are the notices, a NOTICE-style attribution, and **stating modified files (Apache
 §4(b))** — the same shape the BSD-driver policy already imposes on this tree.
 
-**Reference only, never copied: `opensource-apple/CF`** (Apple's 10.7 release) is under the **APSL**,
+**NOT admissible at all — not even as a reading: `opensource-apple/CF`** (user decision Q2, 2026-10-03) (Apple's 10.7 release) is under the **APSL**,
 which is *not* permissive for this tree's purposes: it obliges publication of modifications to
 covered files and carries patent/notification terms. The precedent is already set — a GPL-3.0
 terminal fork was superseded, and GPL Doxygen was replaced with clang-doc. **APSL source may be
@@ -76,8 +82,11 @@ Measured, and this is why the distinction matters:
 | `NSCFString`, `__CFStringClass` | 5, 2 | 2 (remnants) |
 | ObjC source inside CF | `CFBasicHashFindBucket.m` | none |
 
-So: **the architecture we must re-create is READABLE (APSL), and the code we may ship is NOT the
-one that has it (Apache).** That is the plan's central practical fact.
+So: **the half we may ship does NOT contain the bridge, and the half that contains it is off limits
+even for reading** (Q2). The table's right-hand column is therefore the whole of our evidence, and
+the bridge is designed from it plus our own reasoning: the flags exist and are named there, the isa
+slot exists there, the dispatch sites are ABSENT there. **That is the plan's central practical fact,
+and it is why M0's line count is the go/no-go gate rather than a formality.**
 
 ## 4. What it buys, and what it does not
 
@@ -121,9 +130,10 @@ CF replaces *internals*, not the classes' public shape; the ledger is unaffected
 headers are staged to the guest at `/System/Shared/Headers/CoreFoundation/`. Without this, "the CF
 APIs are exposed" is an unmeasured claim.
 
-**D8 — APSL sources are read, never copied, and the reading is recorded** on the model of the
-existing standing grant for Apple's *public headers*: this extends the grant to a *second* kind of
-document, so it needs the user's word, not mine (§10 Q2).
+**D8 — APSL SOURCES ARE NOT READ AT ALL (user decision, Q2, 2026-10-03).** The bridge is designed
+clean-room: from the Apache port's own remnants (`__CFRuntimeBase`, `_cfisa`, the `NSCFString` /
+`__CFStringClass` references), from the measurements in §3, and from the behaviour the existing
+probes already assert. The standing grant for Apple's *public headers* is NOT extended here.
 
 ## 6. The bridging problem, stated honestly
 
@@ -156,6 +166,35 @@ Plus a dependency the measurement surfaced: **libdispatch** (`dispatch_` appears
 `CFStream.c` alone), which would be a new runtime on a kernel whose loop is `select`-based.
 
 ## 7. Milestones
+
+### M0 — RESULT (host spike, run 2026-10-03)
+
+**The mechanism is PROVEN, clean-room, in 44 non-blank lines.** A C-allocated object whose first word is an
+ObjC class answers `objc_msgSend`: the probe prints `it knows its class: BRBridged` and gets a second
+method's answer back (`its bytes, via the class: cf-shaped`), with the CF header and the ObjC object header
+the same size (16 bytes on LP64). **Toll-free bridging needs no conversion layer — the cast is free.**
+
+**AND THE FIRST RE-PLUMB RULE, which the probe discovered by being wrong first:** CF's `_cfisa` slot IS the
+object's isa, so **it cannot be declared as an ivar**. Declaring it (as I did) makes the class's ivars
+`{isa, _cfisa, _cfinfoa}` — 24 bytes, with `_cfinfoa` at the wrong offset — and the probe's two values came
+back as `0` while the two *messages* worked. A bridged class declares only the words AFTER the isa.
+
+**THE BUILD GAP IS SMALL AND ENUMERATED.** The Apache subtree (86 `.c`, 83 headers, **97,217 lines of C** —
+larger than this tree's whole Foundation) **configures standalone** (`cmake rc=0`, no Swift needed) and its
+four core files compile clean with two include paths — including `CFStringEncodingConverter.c`, the tables
+the campaign is currently blocked on for `-dataUsingEncoding:`. The whole-library build needs exactly two
+things so far: **precompiled headers off**, and **`-D__LITTLE_ENDIAN__=1 -D__BIG_ENDIAN__=0`** — because
+`CFTargetConditionals.h` tests `__LITTLE_ENDIAN__`/`__BIG_ENDIAN__`, which Darwin's SDK defines and Linux's
+clang does not. With those supplied it proceeds past that header; the next failure is recorded in §10 Q6
+and is the first thing M1 answers.
+
+**What that does to the estimate:** the two unknowns that could have killed the plan — "does the C core
+build without Swift" and "does the bridge work on libobjc2" — are both answered YES, and the bridge's glue
+is a class per bridged type plus one mechanism, not a per-pair conversion layer.
+
+**M0's honest scope note:** the spike proves the mechanism, NOT CF's integration — the object it proves is
+ours, not `CFString`. Wiring a real `CFStringCreateWithCString` through it is M2's first task, and it is
+where the class-table work (one entry per bridged type, in load order) begins.
 
 **M0 — The spike that prices everything (host only, no FNX change).** Build `CFString.c` +
 `CFRuntime.c` on the host with clang; implement exactly one bridge pair — `CFString` ↔ `NSString` —
@@ -207,14 +246,14 @@ either fix ours or **record a measured deviation** in the standing-policy style.
 
 ## 10. Open items (user decisions)
 
-- **Q1 — Does the retraction stand?** This plan requires reversing "no CF layer" from
-  `corefoundation-plan.md`. Its *three arguments* survive (§1); the *conclusion* does not.
-- **Q2 — Is reading APSL source admissible?** The bridging architecture is only in the APSL release.
-  Reading it is licit (it is published), and the clean-room line for *our* code is `docs/design/`'s
-  existing grant for Apple's public headers extended to a second document kind. The user's call.
+- **Q1 — ANSWERED (2026-10-03, `dec-d359e3f82bf8b95e`): the retraction is SUPERSEDED.** This plan
+  governs; M0 started.
+- **Q2 — ANSWERED: APSL is NOT read, not even as a reference.** The bridge is clean-room (D8).
 - **Q3 — CF as a shared library (D2) or folded into `libfoundation`?** D2 is recommended because
   "expose the APIs" implies linkability.
 - **Q4 — libdispatch: vendor it, or compile the CF paths that need it out and record the gap?**
+- **Q6 — What does CF's build stop on after the two platform defines?** The first failure past
+  `CFTargetConditionals.h` (log: the M0 spike's `cfbuild3`), which M1 answers.
 - **Q5 — Does CoreGraphics ever follow (D4)?** Explicitly out of scope here; asked so it is not
   assumed.
 
