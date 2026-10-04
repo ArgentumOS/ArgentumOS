@@ -15,8 +15,11 @@ source: buildable from this directory, patchable in place, and free to diverge.
 ## The modifications, stated
 
 `fnx-modifications.patch` is the record: it is the exact diff from upstream `44cd6163` to the sources in
-this directory, taken before the fork was frozen. Apache-2.0 section 4(b) requires modified files to carry
-notice of the modification; this file and the `FNX MODIFICATION` comments at each site are that notice.
+this directory, taken before the fork was frozen. **Six modifications across five files**, and every one of
+them is marked IN PLACE with a comment naming it and citing the clause — the form is
+`/* FNX LOCAL MODIFICATION <n> (Apache-2.0 §4(b)): ... */`, which is what the licence's section 4(b) asks a
+modified file to carry. The patch file and those six comments are the same notice stated twice, once as a
+diff and once where a reader of the file will actually be standing.
 
 * **1** `include/ForSwiftFoundationOnly.h` — `<fts.h>` guarded by `__has_include` (this tree has no fts,
   and there are zero fts call sites).
