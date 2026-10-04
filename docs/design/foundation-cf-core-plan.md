@@ -831,3 +831,24 @@ length twin already taught, a function named for the class it is FOR.)
 AND THE CONFORMANCE SHAPE IS NSProxy's: `@interface NSString <NSObject>` -- a ROOT class declaring a protocol
 rather than inheriting a class. That is the pattern Apple uses for its second root class, and this design has
 several.
+
+
+**AND THE LAST LINE OF THE DEBT IS `NSConstantString`, WHICH THIS PLAN PREDICTED.** The probe's CFSTR landed
+in a section the ObjC RUNTIME owns:
+
+    libfoundation.so:  __start___objc_constant_string / __stop___objc_constant_string
+
+so its isa is not set by the linker at all -- THE RUNTIME SETS IT, to the class named by
+-fconstant-string-class, WHICH tools/musl-clang-objc64.sh:82 SETS TO NSConstantString. And that class does not
+exist in this tree, which is why the isa the probe printed (0x4000002bb3a0) is not a class and why messaging
+it faults.
+
+So the two debts that looked like one are TWO, exactly as the earlier note said they would be, and the
+measurement has now chosen which class each takes:
+
+    @"..." literals   -> NSConstantString      (the wrapper's -fconstant-string-class, and now the CFSTR path too)
+    the CFSTR struct  -> the same section and the same runtime initialisation
+
+The class to write is therefore NSConstantString, with the same four fields and the same doors as
+_NSCFConstantString beside it -- and the layout is no longer a guess: the flags the probe printed (0x7c8) are
+Apple's 8-bit constant-string value, which is the four-word struct this library now declares.
