@@ -15962,6 +15962,47 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.196 — NSXMLNode: the URI constructors, the node's own options, the name's parts, XPath, and a real entity resolver
+
+Ten rows: `+attributeWithName:URI:stringValue:`, `+elementWithName:URI:`, `-initWithKind:options:` (plus its
+inherited rows on `NSXMLElement`/`NSXMLDTD`/`NSXMLDTDNode`), `-setStringValue:resolvingEntities:`,
+`localName`, `prefix`, `XPath`. Ledger after: **method 1686 shipped / 129 open / 399 struck; property 725 / 39 / 172**.
+
+**A DECLARED-BUT-UNDEFINED METHOD WAS REACHED AT RUN TIME, AND ONLY THE PROBE FOUND IT.** `-initWithKind:` is
+declared in the header and nothing implemented it; my `-initWithKind:options:` routes through it, so the
+probe died with `STATUS=134` (SIGABRT — `doesNotRecognizeSelector:`) while the build and the ledger were both
+quiet. `tools/foundation-sweep.py --unimplemented` reports 0 NEW (its one entry is baselined with a reason),
+so this was not a gate miss: the door had simply never been called. Both ends are implemented now —
+`NSXMLNode`'s routes to its designated initializer, and `NSXMLElement`'s routes to `-initWithName:`, because
+an element's own ivars are made there.
+
+**TWO MORE BUGS THE NEW CHECKS CAUGHT, BOTH MINE:**
+* `-XMLString` reached the internal serializer DIRECTLY, so `-initWithKind:options:` had no effect through that
+  door — a node built with `NSXMLNodeCompactEmptyElement` still serialized `<a></a>`. Both public doors merge
+  the node's options now, and the check asserts the pair (`<a></a>` vs `<a/>`), which is what showed it.
+* My `XPath` walk required a parent of every step, which dropped the TOPMOST element: a root read `nil` and a
+  child read `/child[1]`. The walk now includes the node itself and stops at the document. The positional
+  predicate is ALWAYS emitted (`/root[1]/child[1]`) — a stated reading of a door Apple leaves
+  under-specified.
+
+**AND THE ENTITY RESOLVER'S ONE REQUIREMENT: ONE FORWARD PASS.** A resolver that re-scans its own output
+turns `&amp;` into an ampersand and then finds an ampersand. `-setStringValue:resolvingEntities:` builds the
+answer left to right, handles the five XML 1.0 predefines plus decimal and hex numeric references (with a
+surrogate pair beyond the BMP), and leaves an unresolvable reference AS WRITTEN.
+
+**AND ONE GAP THIS UNIT FOUND AND DID NOT PAPER OVER:** `-addAttribute:` keeps no parent link (and this tree
+has no `-setParent:` to give it one), so an ATTRIBUTE's `XPath` stops at its own step (`/@attr`) where an
+element's walks to the root. The probe asserts the measured behaviour and names why; giving attributes a
+parent is its own change, touching every path that already reads `-parent`.
+
+Left open, with the grounds: `-canonicalXMLStringPreservingComments:` (C14N is a specification with its own
+attribute ordering, namespace and escaping rules — a unit of its own, not a flag on this serializer) and the
+three query doors `-nodesForXPath:error:`, `-objectsForXQuery:constants:error:`, `-objectsForXQuery:error:`
+(XPath/XQuery are QUERY LANGUAGES, not accessors).
+
+Acceptance: `make testimg` green (status-checked); `make test TESTS=foundation_xmltree` → `TESTS-OK` with four
+new checks; `tools/foundation-sweep.py --check` and `--unimplemented` both clean.
+
 ## §63.195 — NSThread: a block body, `-main` as the overridable hook, `+exit`, and the values a thread carries
 
 Ten rows: seven methods (`+detachNewThreadWithBlock:`, `-initWithBlock:`, `-main`, `+exit`,

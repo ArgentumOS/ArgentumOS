@@ -116,6 +116,22 @@ static NSString *fn_xml_escape_attribute(NSString *text, BOOL singleQuoted)
 	return [[[NSXMLElement alloc] initWithName:name children:children attributes:attributes] autorelease];
 }
 
++ (id)attributeWithName:(NSString *)name URI:(NSString *)URI stringValue:(NSString *)stringValue
+{
+	id node = [[[NSXMLNode alloc] initWithKind:NSXMLAttributeKind name:name value:stringValue] autorelease];
+
+	[node setURI:URI];
+	return node;
+}
+
++ (id)elementWithName:(NSString *)name URI:(NSString *)URI
+{
+	id node = [[[NSXMLElement alloc] initWithName:name] autorelease];
+
+	[node setURI:URI];
+	return node;
+}
+
 + (id)attributeWithName:(NSString *)name stringValue:(NSString *)stringValue
 {
 	return [[[NSXMLNode alloc] initWithKind:NSXMLAttributeKind name:name value:stringValue] autorelease];
@@ -205,6 +221,133 @@ static NSString *fn_xml_escape_attribute(NSString *text, BOOL singleQuoted)
 }
 - (nullable id)objectValue { return self; }
 - (nullable NSString *)URI { return _uri; }
+
+- (NSString *)localName
+{
+	return (NSString *)[[self class] localNameForName:[self name]];
+}
+
+- (NSString *)prefix
+{
+	return (NSString *)[[self class] prefixForName:[self name]];
+}
+
+- (NSString *)XPath
+{
+	NSMutableString *path = [NSMutableString string];
+	NSXMLNode *node = self;
+
+	while (node != nil && [node kind] != NSXMLDocumentKind) {	/* §63.196: the topmost ELEMENT is a step; the document is not */
+		NSXMLNodeKind kind = [node kind];
+		NSString *name = [node name] != nil ? [node name] : @"";
+
+		if (kind == NSXMLAttributeKind) {
+			[path insertString:[NSString stringWithFormat:@"/@%@" , name] atIndex:0];
+		} else if (kind == NSXMLNamespaceKind) {
+			[path insertString:[NSString stringWithFormat:@"/namespace::%@" , name] atIndex:0];
+		} else if (kind == NSXMLElementKind) {
+			NSUInteger index = 1;
+			NSXMLNode *sibling = [node previousSibling];
+
+			while (sibling != nil) {
+				if ([sibling kind] == NSXMLElementKind && [[sibling name] isEqual:name]) {
+					index++;
+				}
+				sibling = [sibling previousSibling];
+			}
+			[path insertString:[NSString stringWithFormat:@"/%@[%lu]", name, (unsigned long)index] atIndex:0];
+		} else {
+			[path insertString:[NSString stringWithFormat:@"/%@" , name] atIndex:0];
+		}
+		node = [node parent];
+	}
+	if ([path length] == 0) {
+		return ([self kind] == NSXMLDocumentKind) ? @"/" : nil;
+	}
+	return path;
+}
+
+- (void)setStringValue:(NSString *)string resolvingEntities:(BOOL)resolve
+{
+	if (resolve == NO) {
+		[self setStringValue:string];
+		return;
+	}
+	/* ONE FORWARD PASS, which is the whole point: a resolver that re-scans its own output turns "&amp;"
+	 * into an ampersand and then finds an ampersand. Entity references here are the five XML 1.0
+	 * predefines plus the numeric forms, which is the set that needs no DTD. */
+	{
+		NSUInteger i, n = [string length];
+		NSMutableString *answer = [NSMutableString stringWithCapacity:n];
+
+		for (i = 0; i < n; i++) {
+			unichar c = [string characterAtIndex:i];
+
+			if (c != '&') {
+				[answer appendFormat:@"%C", c];
+				continue;
+			}
+			{
+				NSRange semi = [string rangeOfString:@";" options:0
+							       range:NSMakeRange(i, n - i)];
+				NSString *replacement = nil;
+
+				if (semi.location != NSNotFound && semi.location > i + 1) {
+					NSString *ref = [string substringWithRange:
+						NSMakeRange(i + 1, semi.location - i - 1)];
+
+					if ([ref isEqual:@"amp"]) replacement = @"&";
+					else if ([ref isEqual:@"lt"]) replacement = @"<";
+					else if ([ref isEqual:@"gt"]) replacement = @">";
+					else if ([ref isEqual:@"quot"]) replacement = @"\"";
+					else if ([ref isEqual:@"apos"]) replacement = @"'";
+					else if ([ref length] > 1 && [ref characterAtIndex:0] == '#') {
+						unsigned long scalar = 0;
+						NSUInteger j = 1;
+						BOOL hex = NO;
+						BOOL ok = YES;
+
+						if ([ref characterAtIndex:1] == 'x' || [ref characterAtIndex:1] == 'X') {
+							hex = YES;
+							j = 2;
+						}
+						for (; j < [ref length]; j++) {
+							unichar d = [ref characterAtIndex:j];
+							unsigned long v;
+
+							if (d >= '0' && d <= '9') v = d - '0';
+							else if (hex && d >= 'a' && d <= 'f') v = 10 + d - 'a';
+							else if (hex && d >= 'A' && d <= 'F') v = 10 + d - 'A';
+							else { ok = NO; break; }
+							scalar = scalar * (hex ? 16 : 10) + v;
+							if (scalar > 0x10FFFF) { ok = NO; break; }
+						}
+						if (ok && scalar > 0 && j > (hex ? 2 : 1)) {
+							unichar buffer[2];
+							NSUInteger used = 0;
+
+							if (scalar <= 0xFFFF) {
+								buffer[used++] = (unichar)scalar;
+							} else {
+								unsigned long v = scalar - 0x10000;
+								buffer[used++] = (unichar)(0xD800 + (v >> 10));
+								buffer[used++] = (unichar)(0xDC00 + (v & 0x3FF));
+							}
+							replacement = [NSString stringWithCharacters:buffer length:used];
+						}
+					}
+					if (replacement != nil) {
+						[answer appendString:replacement];
+						i = semi.location;
+						continue;
+					}
+				}
+			}
+			[answer appendString:@"&"];	/* an unresolvable reference is LEFT AS WRITTEN */
+		}
+		[self setStringValue:answer];
+	}
+}
 - (void)setURI:(nullable NSString *)URI { [_uri release]; _uri = [URI copy]; }
 
 - (NSUInteger)index
@@ -552,12 +695,33 @@ static NSString *fn_xml_escape_attribute(NSString *text, BOOL singleQuoted)
 
 - (NSString *)XMLString
 {
-	return [self fnXMLStringWithOptions:0 depth:0];
+	/* THE NODE'S OWN OPTIONS ARE PART OF THIS DOOR TOO: -XMLString used to reach the internal serializer
+	 * directly, so a node built with NSXMLNodeCompactEmptyElement serialized as if it had none. */
+	return [self XMLStringWithOptions:0];
+}
+
+- (instancetype)initWithKind:(NSXMLNodeKind)kind
+{
+	/* THE DESIGNATED INITIALIZER THE DECLARATION PROMISED AND NOTHING IMPLEMENTED: this is what -initWithKind:
+	 * options: routes through, so without it that door reached doesNotRecognizeSelector: at RUN time while the
+	 * ledger and the build were both quiet. */
+	return [self initWithKind:kind name:nil value:nil];
+}
+
+- (instancetype)initWithKind:(NSXMLNodeKind)kind options:(NSXMLNodeOptions)options
+{
+	/* THE NODE'S OWN OPTIONS, AND THEY DO SOMETHING: they are merged over whatever the caller passes, which is
+	 * how a node created with NSXMLNodeCompactEmptyElement serializes as "<a/>" wherever it is written. */
+	self = [self initWithKind:kind];
+	if (self != nil) {
+		_options = options;
+	}
+	return self;
 }
 
 - (NSString *)XMLStringWithOptions:(NSXMLNodeOptions)options
 {
-	return [self fnXMLStringWithOptions:options depth:0];
+	return [self fnXMLStringWithOptions:(options | _options) depth:0];
 }
 
 - (NSString *)description
@@ -578,6 +742,13 @@ static NSString *fn_xml_escape_attribute(NSString *text, BOOL singleQuoted)
 @end
 
 @implementation NSXMLElement
+
+- (instancetype)initWithKind:(NSXMLNodeKind)kind
+{
+	/* §63.196: an element's own ivars are made by -initWithName:, so the KIND door — declared on this class too
+	 * — must route there rather than to the node's plain initializer. */
+	return [self initWithName:nil];
+}
 
 - (id)initWithName:(NSString *)name
 {

@@ -85,6 +85,7 @@ typedef enum {
 	NSString *_name;			/* retained */
 	NSString *_stringValue;			/* retained; nil for a node that has none */
 	NSString *_uri;				/* retained */
+	NSXMLNodeOptions _options;		/* §63.196: this node's own serialization options, merged over the caller's */
 	id _objectValue;			/* retained */
 	id _parent;				/* WEAK BY AGREEMENT: a child does not own its parent */
 	NSMutableArray *_children;		/* retained, always present (empty for a leaf) */
@@ -97,6 +98,8 @@ typedef enum {
 + (id)elementWithName:(NSString *)name children:(nullable NSArray *)children
 	   attributes:(nullable NSArray *)attributes;
 + (id)attributeWithName:(NSString *)name stringValue:(NSString *)stringValue;
++ (id)attributeWithName:(NSString *)name URI:(NSString *)URI stringValue:(NSString *)stringValue;
++ (id)elementWithName:(NSString *)name URI:(NSString *)URI;
 + (id)namespaceWithName:(NSString *)name stringValue:(NSString *)stringValue;
 + (id)processingInstructionWithName:(NSString *)name stringValue:(nullable NSString *)stringValue;
 + (id)commentWithStringValue:(NSString *)stringValue;
@@ -107,16 +110,27 @@ typedef enum {
 + (nullable id)predefinedNamespaceForPrefix:(NSString *)name;
 
 /* "Managing XML Node Objects": what a node IS. */
+- (instancetype)initWithKind:(NSXMLNodeKind)kind options:(NSXMLNodeOptions)options;
+
 - (NSXMLNodeKind)kind;
 - (nullable NSString *)name;
 - (void)setName:(nullable NSString *)name;
 - (nullable NSString *)stringValue;
 - (void)setStringValue:(nullable NSString *)stringValue;
+- (void)setStringValue:(NSString *)string resolvingEntities:(BOOL)resolve;
 /* APPLE'S TYPE FOR THIS DOOR IS `id`, NOT NSString, and the difference is this class's answer: a node's object
  * value IS the node when the node has no Cocoa object of its own - which is every node here, since this tree's
  * XML classes hold strings. Declaring a narrow type made the return a lie the compiler reported. */
 - (nullable id)objectValue;
 - (nullable NSString *)URI;
+
+/* THE NAME'S PARTS AND THE NODE'S PATH. `localName` and `prefix` are the class-side helpers applied to
+ * this node's own name; `XPath` is the path this tree can PROMISE — the element steps carry a positional
+ * predicate ALWAYS ([name[1]] even when unambiguous), which is a stated reading of a door Apple leaves
+ * under-specified. */
+@property (readonly, nullable) NSString *localName;
+@property (readonly, nullable) NSString *prefix;
+@property (readonly, nullable) NSString *XPath;
 - (void)setURI:(nullable NSString *)URI;
 - (NSUInteger)index;
 - (NSUInteger)level;

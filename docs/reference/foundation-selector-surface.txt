@@ -33,8 +33,8 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1679	open	136	struck	399
-# property	shipped	722	open	42	struck	172
+# method	shipped	1686	open	129	struck	399
+# property	shipped	725	open	39	struck	172
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -2983,7 +2983,7 @@ method	shipped	-entityDeclarationForName:	NSXMLDTD	Files and Data Persistence / 
 method	shipped	-init	NSXMLDTD	Files and Data Persistence / XML / Tree-Based Processing / Instance Methods	-	objc
 method	shipped	-initWithContentsOfURL:options:error:	NSXMLDTD	Files and Data Persistence / XML / Tree-Based Processing / Initializing an NSXMLDTD Object	-	objc
 method	shipped	-initWithData:options:error:	NSXMLDTD	Files and Data Persistence / XML / Tree-Based Processing / Initializing an NSXMLDTD Object	-	objc
-method	open	-initWithKind:options:	NSXMLDTD	Files and Data Persistence / XML / Tree-Based Processing / Instance Methods	-	objc
+method	shipped	-initWithKind:options:	NSXMLDTD	Files and Data Persistence / XML / Tree-Based Processing / Instance Methods	-	objc
 method	shipped	-insertChild:atIndex:	NSXMLDTD	Files and Data Persistence / XML / Tree-Based Processing / Manipulating Child Nodes	-	objc
 method	shipped	-insertChildren:atIndex:	NSXMLDTD	Files and Data Persistence / XML / Tree-Based Processing / Manipulating Child Nodes	-	objc
 method	shipped	-notationDeclarationForName:	NSXMLDTD	Files and Data Persistence / XML / Tree-Based Processing / Getting DTD Nodes by Name	-	objc
@@ -2994,7 +2994,7 @@ method	shipped	-setChildren:	NSXMLDTD	Files and Data Persistence / XML / Tree-Ba
 property	shipped	publicID	NSXMLDTD	Files and Data Persistence / XML / Tree-Based Processing / Managing DTD Identifiers	-	objc
 property	shipped	systemID	NSXMLDTD	Files and Data Persistence / XML / Tree-Based Processing / Managing DTD Identifiers	-	objc
 method	shipped	-init	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Instance Methods	-	objc
-method	open	-initWithKind:options:	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Instance Methods	-	objc
+method	shipped	-initWithKind:options:	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Instance Methods	-	objc
 method	shipped	-initWithXMLString:	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Initializing an NSXMLDTDNode Object	-	objc
 property	shipped	DTDKind	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Managing the DTD Node Kind	-	swift-page
 property	open	external	NSXMLDTDNode	Files and Data Persistence / XML / Tree-Based Processing / Managing DTD Identifiers	-	objc
@@ -3034,7 +3034,7 @@ method	open	-attributeForLocalName:URI:	NSXMLElement	Files and Data Persistence 
 method	shipped	-attributeForName:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Handling Attributes	-	objc
 method	shipped	-elementsForLocalName:URI:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Obtaining Child Elements	-	objc
 method	shipped	-elementsForName:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Obtaining Child Elements	-	objc
-method	open	-initWithKind:options:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Initializing NSXMLElement Objects	-	objc
+method	shipped	-initWithKind:options:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Initializing NSXMLElement Objects	-	objc
 method	shipped	-initWithName:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Initializing NSXMLElement Objects	-	objc
 method	shipped	-initWithName:URI:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Initializing NSXMLElement Objects	-	objc
 method	shipped	-initWithName:stringValue:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Initializing NSXMLElement Objects	-	objc
@@ -3056,7 +3056,7 @@ property	shipped	attributes	NSXMLElement	Files and Data Persistence / XML / Tree
 property	shipped	namespaces	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Handling Namespaces	-	objc
 method	shipped	+DTDNodeWithXMLString:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
 method	shipped	-XMLStringWithOptions:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Emitting Node Content	-	objc
-method	open	+attributeWithName:URI:stringValue:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
+method	shipped	+attributeWithName:URI:stringValue:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
 method	shipped	+attributeWithName:stringValue:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
 method	open	-canonicalXMLStringPreservingComments:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Emitting Node Content	-	objc
 method	shipped	-childAtIndex:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Navigating the Tree of Nodes	-	objc
@@ -3065,12 +3065,12 @@ method	shipped	-detach	NSXMLNode	Files and Data Persistence / XML / Tree-Based P
 method	shipped	+document	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
 method	shipped	+documentWithRootElement:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
 method	shipped	+elementWithName:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
-method	open	+elementWithName:URI:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
+method	shipped	+elementWithName:URI:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
 method	shipped	+elementWithName:children:attributes:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
 method	shipped	+elementWithName:stringValue:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
 method	shipped	-init	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Instance Methods	-	objc
 method	shipped	-initWithKind:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
-method	open	-initWithKind:options:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
+method	shipped	-initWithKind:options:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
 method	shipped	+localNameForName:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Managing Namespaces	-	objc
 method	shipped	+namespaceWithName:stringValue:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
 method	open	-nodesForXPath:error:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Executing Queries	-	objc
@@ -3079,24 +3079,24 @@ method	open	-objectsForXQuery:error:	NSXMLNode	Files and Data Persistence / XML 
 method	shipped	+predefinedNamespaceForPrefix:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
 method	shipped	+prefixForName:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Managing Namespaces	-	objc
 method	shipped	+processingInstructionWithName:stringValue:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
-method	open	-setStringValue:resolvingEntities:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Managing XML Node Objects	-	objc
+method	shipped	-setStringValue:resolvingEntities:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Managing XML Node Objects	-	objc
 method	shipped	+textWithStringValue:	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Creating and Initializing Node Objects	-	objc
 property	shipped	URI	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Managing XML Node Objects	-	objc
 property	shipped	XMLString	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Emitting Node Content	-	objc
-property	open	XPath	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Executing Queries	-	objc
+property	shipped	XPath	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Executing Queries	-	objc
 property	shipped	childCount	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Navigating the Tree of Nodes	-	objc
 property	shipped	children	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Navigating the Tree of Nodes	-	objc
 property	shipped	description	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Emitting Node Content	-	objc
 property	shipped	index	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Managing XML Node Objects	-	objc
 property	shipped	kind	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Managing XML Node Objects	-	swift-page
 property	shipped	level	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Managing XML Node Objects	-	objc
-property	open	localName	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Managing Namespaces	-	objc
+property	shipped	localName	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Managing Namespaces	-	objc
 property	shipped	name	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Managing XML Node Objects	-	objc
 property	shipped	nextNode	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Navigating the Tree of Nodes	-	objc
 property	shipped	nextSibling	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Navigating the Tree of Nodes	-	objc
 property	shipped	objectValue	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Managing XML Node Objects	-	objc
 property	shipped	parent	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Navigating the Tree of Nodes	-	objc
-property	open	prefix	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Managing Namespaces	-	objc
+property	shipped	prefix	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Managing Namespaces	-	objc
 property	shipped	previousNode	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Navigating the Tree of Nodes	-	objc
 property	shipped	previousSibling	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Navigating the Tree of Nodes	-	objc
 property	shipped	rootDocument	NSXMLNode	Files and Data Persistence / XML / Tree-Based Processing / Navigating the Tree of Nodes	-	objc

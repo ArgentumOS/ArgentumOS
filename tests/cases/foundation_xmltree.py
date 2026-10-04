@@ -49,8 +49,7 @@ CHECKS = ("tree-the-factories-make-the-kinds", "tree-an-element-serializes-with-
           "tree-namespaces-are-children-and-resolve-upward",
           "tree-elements-for-name-and-for-local-name",
           "tree-the-name-helpers-split-and-bind-prefixes",
-          "the-four-edit-doors-ship", "edit-doors-keep-order-and-parentage",
-          )
+          "the-four-edit-doors-ship", "edit-doors-keep-order-and-parentage", "xml-nodes-carry-uri-and-name-parts", "xml-node-options-reach-the-serializer", "xml-string-value-resolves-entities", "xml-node-xpath")
 
 
 class Case(BaseCase):

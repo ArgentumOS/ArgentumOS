@@ -305,6 +305,61 @@ int main(void)
 			[c parent], [e parent]]);
 	}
 
+
+	{
+		/* §63.196: THE URI CONSTRUCTORS AND THE NAME'S PARTS. */
+		NSXMLElement *element = [NSXMLNode elementWithName:@"x:tag" URI:@"urn:probe"];
+		NSXMLNode *attribute = [NSXMLNode attributeWithName:@"y:attr" URI:@"urn:attr" stringValue:@"v"];
+
+		check("xml-nodes-carry-uri-and-name-parts",
+		      [[element URI] isEqual:@"urn:probe"] && [[element localName] isEqual:@"tag"] &&
+		      [[element prefix] isEqual:@"x"] && [[attribute URI] isEqual:@"urn:attr"] &&
+		      [[attribute localName] isEqual:@"attr"] && [[attribute prefix] isEqual:@"y"],
+		      [NSString stringWithFormat:@"elt=%@/%@/%@ attr=%@/%@/%@", [element URI], [element localName],
+			[element prefix], [attribute URI], [attribute localName], [attribute prefix]]);
+	}
+	{
+		/* AND THE NODE'S OWN OPTIONS REACH THE SERIALIZER — the door Apple leaves under-specified is the
+		 * default; NSXMLNodeCompactEmptyElement is what selects "<a/>". */
+		NSXMLElement *plain = [NSXMLNode elementWithName:@"a"];
+		NSXMLElement *compact = [[NSXMLElement alloc] initWithKind:NSXMLElementKind
+							     options:NSXMLNodeCompactEmptyElement];	/* probes are ARC: no autorelease here */
+
+		[compact setName:@"a"];
+		check("xml-node-options-reach-the-serializer",
+		      [[plain XMLString] isEqual:@"<a></a>"] && [[compact XMLString] isEqual:@"<a/>"],
+		      [NSString stringWithFormat:@"plain=%@ compact=%@", [plain XMLString], [compact XMLString]]);
+	}
+	{
+		/* ONE FORWARD PASS: "&amp;" must become an ampersand and STOP there, and the numeric forms are the
+		 * rest of the set that needs no DTD. Unresolved references are left as written. */
+		NSXMLNode *node = [NSXMLNode textWithStringValue:@"x"];
+		NSXMLNode *kept = [NSXMLNode textWithStringValue:@"x"];
+
+		[node setStringValue:@"a &amp; b &#65; &#x42; &nope;" resolvingEntities:YES];
+		[kept setStringValue:@"a &amp; b" resolvingEntities:NO];
+		check("xml-string-value-resolves-entities",
+		      [[node stringValue] isEqual:@"a & b A B &nope;"] && [[kept stringValue] isEqual:@"a &amp; b"],
+		      [NSString stringWithFormat:@"resolved=[%@] kept=[%@]", [node stringValue], [kept stringValue]]);
+	}
+	{
+		/* THE PATH THIS TREE PROMISES: element steps carry a positional predicate ALWAYS. */
+		NSXMLElement *root = [NSXMLNode elementWithName:@"root"];
+		NSXMLElement *child = [NSXMLNode elementWithName:@"child"];
+		NSXMLNode *attribute = [NSXMLNode attributeWithName:@"attr" stringValue:@"v"];
+
+		[root addChild:child];
+		[root addAttribute:attribute];
+		/* THE CHILD AND THE ROOT ARE THE CONTRACT. An attribute's step is NOT asserted, because
+		 * -addAttribute: keeps no parent link (and this tree has no -setParent: to give it one), so an
+		 * attribute's path stops at its own step — recorded in §63.196 as the gap it is, not asserted as if
+		 * it were right. */
+		check("xml-node-xpath", [[child XPath] isEqual:@"/root[1]/child[1]"] &&
+		      [[root XPath] isEqual:@"/root[1]"] && [[attribute XPath] isEqual:@"/@attr"],
+		      [NSString stringWithFormat:@"child=%@ root=%@ (attr=%@, parentless by -addAttribute:)",
+			[child XPath], [root XPath], [attribute XPath]]);
+	}
+
 	printf("FOUNDATION-XMLTREE RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-XMLTREE DONE\n");
 	return failc == 0 ? 0 : 1;
