@@ -15962,6 +15962,38 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.220 — THE FULL-SELECTOR RULE: the sweep pair's verdict, now verified by reading signatures
+
+**A SECOND, STRONGER PASS AT §63.219's CORRECTION — and this time by reading, not by grepping.** The fixed audit
+that §63.219 apologised for produced seven "already implemented" rows. Five of them had *matching file and
+matching owner*, so they were the credible ones, and each was read directly:
+* `NSFileManager`'s match is `-getRelationship:ofDirectoryAtPath:toItemAtPath:error:` — **a different selector**
+  from the row's `-getRelationship:ofDirectory:inDomain:toItemAtURL:error:`.
+* `NSString`'s and `NSURL`'s `…conformingToType:` matches **do not exist at all** in those files (the scan had
+  matched prose).
+* `NSURLCredentialStorage`'s matches are the TWO-argument `-removeCredential:forProtectionSpace:`, not the rows'
+  `…:options:` / `…:options:task:` forms.
+So all five were false positives, and the instruments' verdict stands: **no implemented-but-undeclared door and
+no declared-but-open row.**
+
+**THE RULE THIS EARNS, BETTER THAN "BEWARE PROSE":** *a selector is identified by its FULL spelling.*
+`-getRelationship:ofDirectoryAtPath:toItemAtPath:error:` and `-getRelationship:ofDirectory:inDomain:toItemAtURL:error:`
+share a first keyword and are different methods; any scan that matches on a selector's first part will confuse
+families, and a first-part match is not evidence of anything. `-connection` is not `-connectionForProxy`, and a
+name in a comment is not a declaration — the same shape, three times over.
+
+**GROUNDS ACCUMULATED HERE, so the remaining ~15 grounded rows are all in one place:**
+* `NSURLProtocol +canInitWithTask:` / `-initWithTask:cachedResponse:client:` — name an `NSURLSessionTask`, and
+  this tree has no session-task type to pass.
+* `NSMutableString -applyTransform:reverse:range:updatedRange:` — needs ICU's transform engine.
+* `NSPortCoder -connection` — the coder stores PORTS (`_receivePort`/`_sendPort`), not a connection.
+* `NSURLCredential`'s identity/trust rows — no certificate stack.
+* `NSString`/`NSURL`'s UTType pairs, `NSXMLDocument`/`NSXMLNode`'s XSLT/XPath/XQuery doors, `NSFileManager
+  +fileManagerWithAuthorization:`, `NSXMLDocument -validateAndReturnError:` (DTD validation is its own unit),
+  `NSStream`'s three host constructors (need the stream's backing decided), `NSDate`'s two `CalendarFormat:`.
+
+No code, no ledger change: the record of a verification and the rule it produced.
+
 ## §63.219 — THE BATCH ERA: eight unattended batches, what they landed, and a correction they owed the plan
 
 **WHY THIS ENTRY EXISTS AT ALL, AND WHY IT IS LATE.** From §63.211 onward the units ran through
