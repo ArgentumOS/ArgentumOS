@@ -334,6 +334,22 @@ def is_32bit_only(row):
 #     NSObjCRuntime.h's own note says so, and `NSFrameAddress`/`NSReturnAddress` answer NULL beyond the levels
 #     they can honour rather than reading a frame that may not be there. The door is absent rather than dangerous.
 NEEDS_COREFOUNDATION_RE = re.compile(r"^CFBridging(Retain|Release)$")
+
+# §63.239: AND ONE NAME THE PATTERN ABOVE CANNOT REACH — A SELECTOR. `-getCFRunLoop` answers the CFRunLoopRef
+# behind an NSRunLoop, so it is a CoreFoundation door on exactly the D13 ground ("the CF family"), and NSRunLoop.h
+# records it TWICE: the class's own list of what is NOT here says the two run-loop CF doors have "nothing for them
+# to answer", and the §63.203 block repeats it at the declaration site. THE ANCHORED PATTERN CANNOT MATCH IT — it
+# is `^CFBridging…$`, and this selector begins with `-` — which is the same shape of gap as §63.111's two names and
+# §63.238's ZONE_TAKING_NAMES, and it takes the same remedy: a SET, not a loosened pattern.
+NEEDS_COREFOUNDATION_NAMES = frozenset((
+    "-getCFRunLoop",
+))
+
+
+def is_needs_corefoundation(row):
+    """The CoreFoundation ground (§11.6.1 D13): the pattern's two bridging functions, plus the SELECTOR spelling
+    the anchored pattern cannot reach."""
+    return bool(NEEDS_COREFOUNDATION_RE.match(row["name"])) or row["name"] in NEEDS_COREFOUNDATION_NAMES
 FRAME_WALK_RE = re.compile(r"^NSCountFrames$")
 
 
@@ -419,6 +435,11 @@ OTHER_FRAMEWORK = frozenset((
     "fixFontAttributeInRange:",
     "fixParagraphStyleAttributeInRange:",
     "fontAttributesInRange:",
+    # §63.239: `NSFileWrapper -icon` answers an NSImage, which is AppKit's — the ground NSFileWrapper.h states at
+    # its own "WHAT IS NOT HERE" list ("the same ground §39 used for the other AppKit-shaped rows"), and the same
+    # one §63.177 cited for the two NSSet(NSCollectionViewAdditions) rows. Name-keyed like every other entry here,
+    # and safe: `icon` is the only row of that name in the ledger.
+    "icon",
     "initWithDocFormat:documentAttributes:",
     "initWithFileURL:options:documentAttributes:error:",
     "initWithHTML:baseURL:documentAttributes:",
@@ -692,7 +713,7 @@ def struck_reason(row):
         return "32-bit-only"
     if is_per_release_version_constant(row):
         return "os-version-constant"
-    if NEEDS_COREFOUNDATION_RE.match(row["name"]):
+    if is_needs_corefoundation(row):
         return "needs-corefoundation"
     if FRAME_WALK_RE.match(row["name"]):
         return "frame-walk-unsupported"
@@ -1391,7 +1412,7 @@ def _selector_why(row):
         return "declined"
     if is_32bit_only(row) or is_per_release_version_constant(row):
         return struck_reason(row)
-    if NEEDS_COREFOUNDATION_RE.match(row["name"]) or FRAME_WALK_RE.match(row["name"]):
+    if is_needs_corefoundation(row) or FRAME_WALK_RE.match(row["name"]):
         return struck_reason(row)
     if SWIFT_INTEROP_RE.search(row["name"]):
         return "swift-only"

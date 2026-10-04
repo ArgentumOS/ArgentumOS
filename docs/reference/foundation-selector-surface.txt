@@ -33,8 +33,8 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1759	open	35	struck	420
-# property	shipped	742	open	13	struck	181
+# method	shipped	1759	open	34	struck	421
+# property	shipped	742	open	12	struck	182
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -1140,7 +1140,7 @@ property	shipped	directory	NSFileWrapper	Files and Data Persistence / Managed fi
 property	shipped	fileAttributes	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing Files	-	objc
 property	shipped	fileWrappers	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing File-Wrapper Information	-	objc
 property	shipped	filename	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing Files	-	objc
-property	open	icon	NSFileWrapper	Files and Data Persistence / Managed file access / Working with Icons	-	objc
+property	struck	icon	NSFileWrapper	Files and Data Persistence / Managed file access / Working with Icons	other-framework	objc
 property	shipped	preferredFilename	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing Files	-	objc
 property	shipped	regularFile	NSFileWrapper	Files and Data Persistence / Managed file access / Querying File Wrappers	-	objc
 property	shipped	regularFileContents	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing Files	-	objc
@@ -2006,7 +2006,7 @@ method	shipped	-addTimer:forMode:	NSRunLoop	Low-Level Utilities / Run Loop Sched
 method	shipped	-cancelPerformSelector:target:argument:	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Scheduling and Canceling Tasks	-	objc
 method	shipped	-cancelPerformSelectorsWithTarget:	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Scheduling and Canceling Tasks	-	objc
 method	shipped	-configureAsServer	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Configuring as Server Process	deprecated	objc
-method	open	-getCFRunLoop	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes	-	objc
+method	struck	-getCFRunLoop	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes	needs-corefoundation	objc
 method	shipped	-limitDateForMode:	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes	-	objc
 method	shipped	-performBlock:	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Scheduling and Canceling Tasks	-	objc
 method	shipped	-performInModes:block:	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Scheduling and Canceling Tasks	-	objc

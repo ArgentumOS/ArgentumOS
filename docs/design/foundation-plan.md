@@ -15962,6 +15962,42 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.239 — TWO MORE ROWS THE LEDGER WAS MIS-STATING, EACH WITH ITS GROUND ALREADY IN A HEADER: the CF run-loop door and the AppKit icon
+
+**Two rows closed, NO library code changed, and each ground was ALREADY WRITTEN where a reader meets the door** —
+the standard §63.177 set for this kind of entry ("THE GROUND IS POSITIVE AND CITED, WHICH IS THE ONLY KIND THIS FILE
+ACCEPTS"). Both read `open`, i.e. the ledger was calling them work:
+
+* **`NSRunLoop -getCFRunLoop`** — a CoreFoundation door. `NSRunLoop.h` records it TWICE: the class's own list of what
+  is NOT here says the two run-loop CF doors have "nothing for them to answer … this system has NO CoreFoundation",
+  citing **§11.6.1 D13**; and the §63.203 block repeats it at the declaration site of the three doors that DID land.
+  The row belongs to the `needs-corefoundation` ground, not to the work list.
+* **`NSFileWrapper -icon`** — an `NSImage`. `NSFileWrapper.h`'s own "WHAT IS NOT HERE, EACH WITH ITS GROUND" says it in
+  as many words: "`-icon` — an `NSImage`, which is AppKit's and not Foundation's (the same ground §39 used for the
+  other AppKit-shaped rows)". That is the `other-framework` ground §63.177 cited for the two
+  `NSSet(NSCollectionViewAdditions)` rows.
+
+**AND THE FIRST OF THE TWO IS THE §63.238 GAP AGAIN, IN A SECOND MECHANISM.** `NEEDS_COREFOUNDATION_RE` is
+`^CFBridging(Retain|Release)$` — anchored — and a SELECTOR is spelled with a LEADING `-`, so `-getCFRunLoop` could
+never be reached by it however hard it tried; the row sat `open` for exactly the reason the two zone selectors did.
+The remedy is the same shape: a SET (`NEEDS_COREFOUNDATION_NAMES`) beside the pattern, reached through one
+`is_needs_corefoundation(row)` helper at BOTH call sites. **TWO MECHANISMS, ONE BLIND SPOT: an anchored pattern
+written for SYMBOL spellings cannot see a selector spelling, and the ledger pays for it in rows that read as work.**
+
+**WHAT SHIPPED.** `tools/foundation-sweep.py`: `NEEDS_COREFOUNDATION_NAMES` + `is_needs_corefoundation()`, and `"icon"`
+in `OTHER_FRAMEWORK` with its citation. The ledger: the two rows flipped `open` → `struck` by hand
+(`needs-corefoundation`, `other-framework`) and the counts block recomputed from the file's own rows — **method
+shipped 1759 / open 34 / struck 421; property 742 / 12 / 182**. `--unimplemented` **0 NEW**, `--check` **consistent**.
+
+**AND WHAT WAS CHECKED AND LEFT ALONE, BECAUSE THE RULE CUTS BOTH WAYS.** The rows §63.237 grouped as "grounded by
+the tree's own record" are NOT all the same. `NSUndoManager -groupsByEvent` / `-runLoopModes` STAY OPEN: §63.202 says
+they were left open ON PURPOSE, but §11.6's gate 2 asks whether the difference is NECESSARY, and neither of the
+three grounds applies (this system HAS a run loop, and Apple PUBLISHES the behaviour). **A decision to leave a door
+unwritten is a WORK ITEM, not a tolerated deviation** — striking them would have mis-stated the ledger in the other
+direction, which is the failure §11.6 warns about ("an undocumented or unnecessary difference is STILL a defect").
+Likewise `NSException`/`NSThread -callStackReturnAddresses`/`-callStackSymbols` have NO recorded ground in their
+headers, so they were not touched.
+
 ## §63.238 — THE COPYING MODEL'S TWO SELECTORS WERE THE LEDGER'S, NOT THE LIBRARY'S: a `^NS…` regex cannot see a selector
 
 **Two rows closed, and the finding is about the INSTRUMENT: `NSCopying -copyWithZone:` and `NSMutableCopying
