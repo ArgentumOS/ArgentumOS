@@ -34,6 +34,14 @@ diff and once where a reader of the file will actually be standing.
   the real Objective-C class when `INCLUDE_OBJC` is on.
 * **7** `CFArray.c` — `isKindOfClass:[NSMutableArray class]` becomes `objc_getClass("NSMutableArray")`,
   which removes the package's only symbolic reference to Foundation (the link no longer needs it).
+* **8** `CFRuntime.c` — **THE OWNERSHIP ARM**, and the one modification made for the NEW Foundation rather
+  than for building the old one. CF's type-specific doors already reach this tree's Objective-C objects
+  (`CF_IS_OBJC` is an ISA comparison and our classes pass it). Its type-AGNOSTIC doors cannot: `CFRetain`
+  and `CFRelease` have no type in hand, so they read a CFRuntimeBase header an Objective-C object does not
+  have — measured, not reasoned, because a CFArray built with `kCFTypeArrayCallBacks` was DROPPED an object
+  of Foundation's. The arm makes `CFRetain(obj)` and `[obj retain]` the same operation on the same word,
+  which is the one-lifetime rule the new library is designed around. Upstream names the hole it fills: its
+  own note about "a race between CFRetain / CFRelease (which call CF_IS_OBJC) and _CFRuntimeBridgeClasses".
 
 ## What is ours
 

@@ -779,6 +779,35 @@ CFStringRef CFCopyTypeIDDescription(CFTypeID type) {
 static CFTypeRef _CFRetain(CFTypeRef cf, Boolean tryR);
 
 
+/* FNX LOCAL MODIFICATION 8 (Apache-2.0 §4(b)): THE OWNERSHIP ARM.
+ *
+ * CF's type-SPECIFIC doors already reach an Objective-C object: they ask CF_IS_OBJC, which is an ISA
+ * comparison, and this tree's classes pass it. Its type-AGNOSTIC doors cannot: CFRetain/CFRelease have no
+ * type in hand, so they read a CFRuntimeBase header that an Objective-C object does not have. Measured,
+ * not reasoned: an object of Foundation's placed in a CFArray built with kCFTypeArrayCallBacks was let
+ * die by that array, and a CF container silently losing its contents is not a tolerable way to be
+ * CF-integrated.
+ *
+ * Upstream's OWN NOTE IN THIS TREE NAMES THE HOLE (internalInclude/CFInternal.h): "there is a race here
+ * between CFRetain / CFRelease (which call CF_IS_OBJC) and _CFRuntimeBridgeClasses". In upstream's Swift
+ * deployment mode the missing arm is swift_retain, with the comment "all CFTypeRefs are at least
+ * _NSCFType objects". This tree is not that mode, so the arm is spelled in the Objective-C runtime's
+ * terms, and WITH IT ONE COUNTER SERVES BOTH WORLDS: [obj retain] and CFRetain(obj) are the same word.
+ *
+ * THE TEST COSTS ONE LOAD, and the reason it is sound is this tree's OWN CF_IS_OBJC definition: the class
+ * table is empty, so __CFISAForTypeID() is 0 for every CF-native object and any NON-ZERO first word is an
+ * Objective-C class pointer. A tagged object is excluded before the load, because reading a field out of a
+ * pointer with its low bits set is not a load at all.
+ */
+#if !DEPLOYMENT_RUNTIME_SWIFT
+static CF_INLINE Boolean _fnx_cf_is_object(CFTypeRef cf) {
+    if (FNX_CF_IS_SMALL_OBJECT(cf)) {
+        return false;
+    }
+    return ((CFRuntimeBase *)cf)->_cfisa != 0;
+}
+#endif
+
 CFTypeRef _CFNonObjCRetain(CFTypeRef cf) {
     __CFGenericAssertIsCF(cf);
     return _CFRetain(cf, false);
@@ -786,6 +815,12 @@ CFTypeRef _CFNonObjCRetain(CFTypeRef cf) {
 
 CFTypeRef CFRetain(CFTypeRef cf) {
     if (NULL == cf) { CRSetCrashLogMessage("*** CFRetain() called with NULL ***"); HALT; }
+#if !DEPLOYMENT_RUNTIME_SWIFT
+    /* THE ARM, and it answers BEFORE the assert: __CFGenericAssertIsCF asks a bridged object for a CF
+     * header it does not have, so the half that bridges has to speak first. */
+    if (FNX_CF_IS_SMALL_OBJECT(cf)) { return cf; }
+    if (_fnx_cf_is_object(cf)) { objc_retain((id)cf); return cf; }
+#endif
     __CFGenericAssertIsCF(cf);
     return _CFRetain(cf, false);
 }
@@ -803,6 +838,10 @@ void _CFNonObjCRelease(CFTypeRef cf) {
 }
 
 void CFRelease(CFTypeRef cf) {
+#if !DEPLOYMENT_RUNTIME_SWIFT
+    if (FNX_CF_IS_SMALL_OBJECT(cf)) { return; }
+    if (cf != NULL && _fnx_cf_is_object(cf)) { objc_release((id)cf); return; }
+#endif
     if (NULL == cf) { CRSetCrashLogMessage("*** CFRelease() called with NULL ***"); HALT; }
     __CFGenericAssertIsCF(cf);
     _CFRelease(cf);

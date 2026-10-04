@@ -35,7 +35,8 @@
 /* Its own two includes: this file is force-included, so nothing else has run yet. */
 #include <CoreFoundation/CFBase.h>   /* CFRange and CFIndex live here, not in a CFRange.h */
 #include <CoreFoundation/CFStream.h>  /* CFStreamError, named by the two _cfStreamError declarations */
-#include <objc/runtime.h>             /* objc_getClass, for modification 7 in CFArray.c */
+#include <objc/runtime.h>
+#include <objc/objc-arc.h>	/* objc_retain/objc_release: the ownership arm (modification 8) */             /* objc_getClass, for modification 7 in CFArray.c */
 
 /* The classes CF's dispatch sites cast to, as measured by scanning every cast in the subtree:
  *   grep -rhoE '\((NS|CF)[A-Za-z]+ ?\*\)' Sources/CoreFoundation/*.c

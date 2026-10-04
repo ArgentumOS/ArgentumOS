@@ -1,0 +1,103 @@
+/*
+ * NSObject.h — the base object of Foundation, designed into CoreFoundation from its first line.
+ *
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ *
+ * THE CONTRACT, IN ONE PARAGRAPH, AND WHY IT IS THIS AND NOT SOMETHING ELSE.
+ *
+ * A Foundation object here is an OBJECTIVE-C OBJECT that CoreFoundation accepts as one of its own. Both
+ * halves of that are load-bearing, and this session measured why:
+ *
+ *   * CF's TYPE-SPECIFIC doors (CFStringGetLength, CFArrayGetCount, CFStringGetCString, CFEqual…) decide
+ *     whether to use their C implementation or to send a message by asking CF_IS_OBJC — an ISA COMPARISON
+ *     against the class CF has registered for the type. For an object of this library that comparison is
+ *     TRUE, so CF runs THIS LIBRARY'S code rather than its own C code on our storage. That is the bridge,
+ *     and it works in the old tree from the moment the classes exist.
+ *
+ *   * CF's TYPE-AGNOSTIC doors (CFRetain, CFRelease) have no type in hand — they read a CF header
+ *     (CFRuntimeBase) that an Objective-C object does not have. So by default they do NOT reach us: an
+ *     object of ours placed in a CFArray built with kCFTypeArrayCallBacks was DROPPED (measured, not
+ *     reasoned — the CFArray let it die). A CF container silently losing its contents is not a tolerable
+ *     way to be "CF-integrated", so the ownership half has to be solved rather than documented.
+ *
+ * AND THE SOLUTION IS THE ONE UPSTREAM'S OWN COMMENT DESCRIBES: CFRetain/CFRelease are MEANT to ask
+ * CF_IS_OBJC first (see internalInclude/CFInternal.h's note about "a race between CFRetain / CFRelease
+ * (which call CF_IS_OBJC) and _CFRuntimeBridgeClasses"). In upstream's Swift deployment mode that arm is
+ * spelled swift_retain; on this tree it is spelled objc_retain/objc_release and lives in the CF package
+ * we own. WITH THAT ARM, ONE COUNTER SERVES BOTH WORLDS, and this class's -retain/-release are the same
+ * operation as CFRetain/CFRelease.
+ *
+ * SO THE DESIGN RULE FOR EVERY CLASS IN THIS LIBRARY IS:
+ *
+ *   1. The object's LIFETIME is the Objective-C runtime's. -retain and -release call objc_retain and
+ *      objc_release, and so does CF's arm — there is exactly one retain count, so an object cannot be
+ *      alive in one world and dead in the other. That failure mode is why this file exists at all.
+ *   2. The object's IDENTITY is its Objective-C class, which is what makes CF_IS_OBJC true and sends CF's
+ *      type-specific doors into this library's methods.
+ *   3. Whatever the object's BEHAVIOUR looks like from the C side, CF's own type for it must be the type
+ *      whose doors it will be handed to. CFStringGetLength on a CFArray is a programmer error in CF; the
+ *      same is true here, and the classes say which CF type they stand in for.
+ *
+ * WHAT IS DELIBERATELY ABSENT: no -retainCount, no zones, no -copyWithZone:, no autorelease pools yet.
+ * The first two are Apple-deprecated or removed by recorded decision (the old tree struck the zone API,
+ * and a class made to answer it again would be re-adding what was removed); autorelease is deferred until
+ * there is a pool to belong to. Absent-and-stated is the rule here, not absent-by-accident.
+ */
+
+#ifndef FNX_FOUNDATION_NSOBJECT_H
+#define FNX_FOUNDATION_NSOBJECT_H
+
+#include <objc/runtime.h>
+#include <objc/objc-arc.h>
+#include <CoreFoundation/CFBase.h>
+#include <CoreFoundation/CFString.h>
+#include <stddef.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* THE TWO NAMES THIS HEADER CANNOT AVOID, and both are forward rather than owned: NSUInteger is the
+ * library's own integer spelling (it moves to its own header the moment a second class needs it, and only
+ * then), and NSString is named because -description returns one — here that is CoreFoundation's string
+ * seen through the bridge, which is what makes the two description doors the same door. */
+typedef unsigned long NSUInteger;
+@class NSString;
+
+/* THE ROOT CLASS, and it is a ROOT: it inherits from nothing, which is why libobjc2 needs to be told so
+ * (objc_root_class) rather than being handed a superclass that does not exist in this library. */
+__attribute__((objc_root_class))
+@interface NSObject
+{
+	Class isa;			/* THE FIRST WORD, as CF_IS_OBJC requires: CF compares it against its own table */
+}
+
+/* LIFETIME — the runtime's counter, shared with CF (see the contract above). */
++ (id)alloc;
+- (id)init;
+- (id)retain;
+- (void)release;
+- (void)dealloc;
+
+/* IDENTITY AND EQUALITY — and -hash must agree with CFHash's expectations, because a CF container will
+ * call whichever one it is holding: an object whose -hash disagreed with CFHash would be findable by one
+ * world and not the other. */
+- (Class)class;
++ (Class)class;
+- (BOOL)isKindOfClass:(Class)cls;
+- (BOOL)isEqual:(id)other;
+- (NSUInteger)hash;
+
+/* DESCRIPTION — CF's CFCopyDescription and -description must not disagree either, for the same reason. */
+- (NSString *)description;
++ (NSString *)description;
+- (CFStringRef)copyDescription;		/* CF's spelling of the same door, for CFCopyDescription's benefit */
+
+@end
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* FNX_FOUNDATION_NSOBJECT_H */
