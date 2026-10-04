@@ -100,6 +100,37 @@ int main(void) {
 	      [mutable isEqual:@"BRIDGE"],
 	      "CFStringUppercase left the object unchanged through the bridge");
 
+	/* THE FOUR OTHER IN-PLACE DOORS, EACH ASSERTING ITS OWN PROPERTY rather than merely that something
+	 * changed - these were compiled and unrun until now, so their contracts rested on being read right. */
+	NSMutableString *lower = [@"BRIDGE" mutableCopy];
+	CFStringLowercase((CFMutableStringRef)lower, NULL);
+	check("a-cf-lowercase-crosses-the-bridge", [lower isEqual:@"bridge"],
+	      "CFStringLowercase did not lowercase through the bridge");
+
+	/* CAPITALIZE ASSERTS A PROPERTY, NOT A SPELLING: what CF guarantees here is the first character of the
+	 * string uppercased, and this library's word-boundary handling is its own, so asserting "Bridge Over"
+	 * exactly would be asserting a coincidence. The length check is what stops "changed" from passing. */
+	NSMutableString *capital =
+		[@"bridge over" mutableCopy];
+	NSUInteger capitalLengthBefore = [capital length];
+	CFStringCapitalize((CFMutableStringRef)capital, NULL);
+	check("a-cf-capitalize-crosses-the-bridge",
+	      [capital length] == capitalLengthBefore && [[capital substringToIndex:1] isEqual:@"B"],
+	      "CFStringCapitalize did not capitalise the first character in place");
+
+	NSMutableString *ws = [@"  padded  " mutableCopy];
+	CFStringTrimWhitespace((CFMutableStringRef)ws);
+	check("a-cf-trim-whitespace-crosses-the-bridge", [ws isEqual:@"padded"],
+	      "CFStringTrimWhitespace did not trim through the bridge");
+
+	/* AND THE ONE THAT READS ITS ARGUMENT THROUGH CF: the trim string is a BRIDGED NSString, so this check
+	 * exercises _cfTrim:'s own use of CFStringGetLength/CFStringGetCharacterAtIndex on a bridged string -
+	 * the chain that a Foundation-side NSString message would have got wrong. */
+	NSMutableString *trimmed = [@"xxbridgeyy" mutableCopy];
+	CFStringTrim((CFMutableStringRef)trimmed, (CFStringRef)@"xy");
+	check("a-cf-trim-characters-crosses-the-bridge", [trimmed isEqual:@"bridge"],
+	      "CFStringTrim did not trim the given characters through the bridge");
+
 	CFStringRef native = CFStringCreateWithCString(kCFAllocatorDefault, "Bridge", kCFStringEncodingUTF8);
 	check("a-cf-native-string-still-takes-cfs-own-path",
 	      native != NULL && CFStringGetLength(native) == 6,

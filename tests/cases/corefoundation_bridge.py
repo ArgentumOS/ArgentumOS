@@ -41,6 +41,10 @@ CHECKS = (
     "an-nsarray-dispatches-to-its-class",
     "a-cf-door-needing-private-foundation-crosses-the-bridge",
     "a-cf-in-place-mutation-crosses-the-bridge",
+    "a-cf-lowercase-crosses-the-bridge",
+    "a-cf-capitalize-crosses-the-bridge",
+    "a-cf-trim-whitespace-crosses-the-bridge",
+    "a-cf-trim-characters-crosses-the-bridge",
     "a-cf-native-string-still-takes-cfs-own-path",
 )
 
