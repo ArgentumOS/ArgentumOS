@@ -15962,49 +15962,35 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
-## §63.236 — THE THREE ROWS §63.237 PARKED: the strings-file form, the width-variant door, and the primary presenter URL
+## §63.238 — THE COPYING MODEL'S TWO SELECTORS WERE THE LEDGER'S, NOT THE LIBRARY'S: a `^NS…` regex cannot see a selector
 
-**The unit §63.237 named as its first move, landed.** Three rows — and the finding that had blocked it was in
-the PROBE rather than the library: `foundation_collection` had failed `dict-api-complete` (`RESULT ok=70 fail=1`)
-because the probe's own `excluded[]` list still asserted `descriptionInStringsFileFormat` was ABSENT while the row
-that implements it had just been built. The probe PRINTS `present but EXCLUDED: <name>` for exactly that, and
-that line is the whole diagnosis — nothing was wrong with the three rows.
+**Two rows closed, and the finding is about the INSTRUMENT: `NSCopying -copyWithZone:` and `NSMutableCopying
+-mutableCopyWithZone:` read `open` in the selector ledger while §11.6.1 **D1** — the register's MODEL CASE — had
+TOLERATED their removal since 2026-09-18.** An `open` row means "declared nowhere, work owed", so the ledger was
+charging this tree for work its own registered deviation says cannot be done: the members TAKE an `NSZone`, §11.5
+removed the zone API, and `NSObjCRuntime.h` records the end of that sequence — "NO ZONES AT ALL … with nothing left
+able to name it the TYPE went too". **A ROW THAT CONTRADICTS A TOLERATED DEVIATION IS NOT WORK; IT IS A MIS-STATUS**,
+the same failure the sweep's own comment names for a reason that does not strike: *"a row that lies about where it
+stands"*.
 
-* **`NSDictionary -descriptionInStringsFileFormat`** — the dictionary AS A STRINGS FILE, a different grammar from
-  the property-list description beside it (which is why the inventory had kept the name on the ABSENT list: "it
-  needs its own writer"). Apple's contract is one sentence and fixes no ORDER, so this implementation makes one —
-  the keys sorted by `-compare:` — because a rendering whose order moved between runs could not be asserted at
-  all. Each entry is `"key" = "value";` on its own line with the BACKSLASH and the DOUBLE QUOTE escaped in both
-  halves (the two characters the strings grammar reads specially; everything else, including a newline, is
-  literal inside a quoted value). `foundation_collection` DEMANDS the door now, and its
-  `dict-strings-file-format` check asserts TWO entries (so the SORTED order is observable) with a value holding
-  a quote AND a backslash (so the escaping is asserted rather than assumed).
-* **`NSString -variantFittingPresentationWidth:`** — Apple's contract is one sentence ("Returns a string that fits
-  the specified width") and it is meaningful only for a string that CARRIES variant spellings, which come from a
-  bundle's localisation table. THIS LIBRARY ATTACHES NO VARIANT DATA TO ANY STRING IT BUILDS, so the only spelling
-  that fits is the receiver (`return self`) — which is the answer Apple's own contract gives for the no-variant
-  case rather than a boundary invented here, because there is no input for which a different answer is specified.
-  `foundation_string` DEMANDS the selector and `string-variant-fitting-presentation-width` asserts the receiver
-  comes back IDENTICALLY.
-* **`NSFilePresenter -primaryPresentedItemURL`** — a PROTOCOL property, so its DECLARATION is the door (§63.235's
-  rule); it is `@optional` on Apple's protocol and sits in the optional half. `foundation_filepresenter`'s
-  `TestPresenter` answers it, and `presenter-primary-presented-item-url-is-declared` pins that the protocol
-  declares it and that a presenter's answer is reachable.
+**WHY THE MECHANISM HAD NOT ALREADY CAUGHT IT — THE §63.111 GAP AGAIN, ONE SIZE UP.** `is_32bit_only()` already
+carries the D1 ground for zones, and `_selector_why()` consults it as well as the symbol side does. But `ZONE_API_RE`
+is anchored `^NS…`, and a SELECTOR is spelled with a LEADING `-` and a TRAILING `:`, so the pattern could never match
+`-copyWithZone:` however hard it tried. `ZONE_TAKING_NAMES` exists for exactly this shape of gap — its own comment
+records the two names the regex was written for and still missed, with *"AN INSTRUMENT'S INTENTION IS NOT ITS
+OUTPUT"* — so the fix is **the same SET rather than a loosened pattern**: the two selectors join `objectZone` and
+`setObjectZone:`, and `is_32bit_only()` strikes them as `32-bit-only`, which is D1's ground spelled the way the ledger
+already spells it for those two.
 
-**Ledger:** the three rows flipped `open` → `shipped` by hand, and the counts block recomputed from the file's own
-rows: `method shipped 1759 / open 37 / struck 418`, `property shipped 742 / open 13 / struck 181`.
+**WHAT SHIPPED.** `tools/foundation-sweep.py`: the two names in `ZONE_TAKING_NAMES`, with the citation. The ledger:
+the two rows flipped `open` → `struck` by hand with the `32-bit-only` reason, and the counts block recomputed from the
+file's own rows — **method shipped 1759 / open 35 / struck 420**, property 742 / 13 / 181. **No library code changed**,
+so the gate is the sweep pair itself: `--unimplemented` **0 NEW**, `--check` **consistent**.
 
-**AND A PRE-EXISTING RED THIS UNIT HAD TO CLEAR TO REACH ITS GATE — §63.235's STALE LOCALE INVENTORY.** `foundation_string`
-was already failing `locale-api-complete` BEFORE any of the three rows above, and the probe said exactly which name:
-`present but EXCLUDED (locale class): preferredLanguages`. **§63.235 IMPLEMENTED `+[NSLocale preferredLanguages]`
-(NSLocale.h:240, NSLocale.m:946) AND LEFT IT ON THE LOCALE PROBE'S `classExcluded[]` LIST** — the list that asserts a
-name is ABSENT — and its own acceptance never ran `foundation_string`, so nothing caught it. §63.235's reading of the
-door stands (the list answers the ONE locale this system RESOLVES rather than an ordering invented here); what was
-stale was the probe's exclusion and the header's "TWO rows stay open". The row moved into the required list, the
-exclusion list is EMPTY, and NSLocale.h now says ONE row stays open (`-localizedStringForVariantCode:`). **THE LESSON
-IS THE ONE THE INVENTORY RULE ALREADY STATES, SEEN FROM THE UNIT'S SIDE: a row's probe list is part of the row, and a
-unit whose acceptance does not run the probe that guards it can ship the door and leave the guard asserting the
-opposite — which is exactly the half-applied state the sweep pair exists to catch, one level down.**
+**AND A NOTE ON WHAT THIS IS NOT.** Striking is not free: §11.6 warns that "an undocumented or unnecessary difference
+is STILL A DEFECT with a work item". These two are struck because D1 IS documented (in `NSObject.h` at the protocols
+and in §11.6.1) and IS necessary (ground (i): Apple's own sentence that zones are ignored on the 64-bit runtime, and
+§11.5 excludes 32-bit-only API). Had either held less, the row would have stayed open.
 
 ## §63.237 — RESUME POINT (end of session, 2026-10-04): what is landed, what is blocked, and the first move
 
@@ -16064,6 +16050,50 @@ grounded by the tree's own record (`-getCFRunLoop`, `+fileManagerWithAuthorizati
 
 **AND THE STANDING CONSTRAINTS:** CF stays parked at M1–M6 (`ba66bd01`); `reasonix.toml` must stay untracked; other
 agents share this repo, so HEAD can move underneath a session — read the state before trusting a stale fact.
+
+## §63.236 — THE THREE ROWS §63.237 PARKED: the strings-file form, the width-variant door, and the primary presenter URL
+
+**The unit §63.237 named as its first move, landed.** Three rows — and the finding that had blocked it was in
+the PROBE rather than the library: `foundation_collection` had failed `dict-api-complete` (`RESULT ok=70 fail=1`)
+because the probe's own `excluded[]` list still asserted `descriptionInStringsFileFormat` was ABSENT while the row
+that implements it had just been built. The probe PRINTS `present but EXCLUDED: <name>` for exactly that, and
+that line is the whole diagnosis — nothing was wrong with the three rows.
+
+* **`NSDictionary -descriptionInStringsFileFormat`** — the dictionary AS A STRINGS FILE, a different grammar from
+  the property-list description beside it (which is why the inventory had kept the name on the ABSENT list: "it
+  needs its own writer"). Apple's contract is one sentence and fixes no ORDER, so this implementation makes one —
+  the keys sorted by `-compare:` — because a rendering whose order moved between runs could not be asserted at
+  all. Each entry is `"key" = "value";` on its own line with the BACKSLASH and the DOUBLE QUOTE escaped in both
+  halves (the two characters the strings grammar reads specially; everything else, including a newline, is
+  literal inside a quoted value). `foundation_collection` DEMANDS the door now, and its
+  `dict-strings-file-format` check asserts TWO entries (so the SORTED order is observable) with a value holding
+  a quote AND a backslash (so the escaping is asserted rather than assumed).
+* **`NSString -variantFittingPresentationWidth:`** — Apple's contract is one sentence ("Returns a string that fits
+  the specified width") and it is meaningful only for a string that CARRIES variant spellings, which come from a
+  bundle's localisation table. THIS LIBRARY ATTACHES NO VARIANT DATA TO ANY STRING IT BUILDS, so the only spelling
+  that fits is the receiver (`return self`) — which is the answer Apple's own contract gives for the no-variant
+  case rather than a boundary invented here, because there is no input for which a different answer is specified.
+  `foundation_string` DEMANDS the selector and `string-variant-fitting-presentation-width` asserts the receiver
+  comes back IDENTICALLY.
+* **`NSFilePresenter -primaryPresentedItemURL`** — a PROTOCOL property, so its DECLARATION is the door (§63.235's
+  rule); it is `@optional` on Apple's protocol and sits in the optional half. `foundation_filepresenter`'s
+  `TestPresenter` answers it, and `presenter-primary-presented-item-url-is-declared` pins that the protocol
+  declares it and that a presenter's answer is reachable.
+
+**Ledger:** the three rows flipped `open` → `shipped` by hand, and the counts block recomputed from the file's own
+rows: `method shipped 1759 / open 37 / struck 418`, `property shipped 742 / open 13 / struck 181`.
+
+**AND A PRE-EXISTING RED THIS UNIT HAD TO CLEAR TO REACH ITS GATE — §63.235's STALE LOCALE INVENTORY.** `foundation_string`
+was already failing `locale-api-complete` BEFORE any of the three rows above, and the probe said exactly which name:
+`present but EXCLUDED (locale class): preferredLanguages`. **§63.235 IMPLEMENTED `+[NSLocale preferredLanguages]`
+(NSLocale.h:240, NSLocale.m:946) AND LEFT IT ON THE LOCALE PROBE'S `classExcluded[]` LIST** — the list that asserts a
+name is ABSENT — and its own acceptance never ran `foundation_string`, so nothing caught it. §63.235's reading of the
+door stands (the list answers the ONE locale this system RESOLVES rather than an ordering invented here); what was
+stale was the probe's exclusion and the header's "TWO rows stay open". The row moved into the required list, the
+exclusion list is EMPTY, and NSLocale.h now says ONE row stays open (`-localizedStringForVariantCode:`). **THE LESSON
+IS THE ONE THE INVENTORY RULE ALREADY STATES, SEEN FROM THE UNIT'S SIDE: a row's probe list is part of the row, and a
+unit whose acceptance does not run the probe that guards it can ship the door and leave the guard asserting the
+opposite — which is exactly the half-applied state the sweep pair exists to catch, one level down.**
 
 ## §63.234 — NSInvocation's IMP door, as a surgical refactor of the walk it already had
 

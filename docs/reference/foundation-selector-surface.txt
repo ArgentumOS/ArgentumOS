@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1759	open	37	struck	418
+# method	shipped	1759	open	35	struck	420
 # property	shipped	742	open	13	struck	181
 
 
@@ -626,7 +626,7 @@ method	shipped	-connection:handleRequest:	NSConnectionDelegate	Low-Level Utiliti
 method	shipped	-connection:shouldMakeNewConnection:	NSConnectionDelegate	Low-Level Utilities / Legacy / Legacy / Responding to a Connection	deprecated	objc
 method	shipped	-createConversationForConnection:	NSConnectionDelegate	Low-Level Utilities / Legacy / Legacy / Responding to a Connection	deprecated	objc
 method	open	-makeNewConnection:sender:	NSConnectionDelegate	Low-Level Utilities / Legacy / Legacy / Responding to a Connection	deprecated	objc
-method	open	-copyWithZone:	NSCopying	Low-Level Utilities / Copying / Copying	-	objc
+method	struck	-copyWithZone:	NSCopying	Low-Level Utilities / Copying / Copying	32-bit-only	objc
 method	shipped	-addObject:	NSCountedSet	Fundamentals / Specialized Sets / Adding and Removing Entries	-	objc
 method	shipped	-countForObject:	NSCountedSet	Fundamentals / Specialized Sets / Examining a Counted Set	-	objc
 method	shipped	-initWithArray:	NSCountedSet	Fundamentals / Specialized Sets / Initializing a Counted Set	-	objc
@@ -1563,7 +1563,7 @@ method	shipped	+symbolCharacterSet	NSMutableCharacterSet	Fundamentals / Characte
 method	shipped	+uppercaseLetterCharacterSet	NSMutableCharacterSet	Fundamentals / Characters / Getting Standard Character Sets	-	objc
 method	shipped	+whitespaceAndNewlineCharacterSet	NSMutableCharacterSet	Fundamentals / Characters / Getting Standard Character Sets	-	objc
 method	shipped	+whitespaceCharacterSet	NSMutableCharacterSet	Fundamentals / Characters / Getting Standard Character Sets	-	objc
-method	open	-mutableCopyWithZone:	NSMutableCopying	Low-Level Utilities / Copying / Copying	-	objc
+method	struck	-mutableCopyWithZone:	NSMutableCopying	Low-Level Utilities / Copying / Copying	32-bit-only	objc
 method	shipped	-appendBytes:length:	NSMutableData	Fundamentals / Binary Data / Adding Bytes	-	objc
 method	shipped	-appendData:	NSMutableData	Fundamentals / Binary Data / Adding Bytes	-	objc
 method	shipped	-compressUsingAlgorithm:error:	NSMutableData	Fundamentals / Binary Data / Compressing and Decompressing Data	-	objc

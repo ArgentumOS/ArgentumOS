@@ -308,6 +308,15 @@ ZONE_API_RE = re.compile(
 ZONE_TAKING_NAMES = frozenset((
     "objectZone",
     "setObjectZone:",
+    # §63.238: AND THE TWO THE COPYING MODEL'S DEVIATION NEEDS (§11.6.1 D1 — THE REGISTER'S MODEL CASE). The
+    # protocol members `-copyWithZone:` / `-mutableCopyWithZone:` TAKE an NSZone, and §11.5 removed the zone API,
+    # so the type is gone and neither member can be declared (NSObjCRuntime.h: "NO ZONES AT ALL"). THE REGEX
+    # ABOVE CANNOT REACH THEM: it is anchored `^NS…`, and a SELECTOR carries a leading `-` and a trailing `:` —
+    # the same shape of gap as the two names above, so the same SET rather than a loosened pattern. Measured
+    # before this entry: both rows read `open` in the selector ledger, i.e. the ledger was calling work OWED a
+    # deviation D1 has TOLERATED since 2026-09-18.
+    "-copyWithZone:",
+    "-mutableCopyWithZone:",
 ))
 
 
