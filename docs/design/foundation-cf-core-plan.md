@@ -1035,3 +1035,24 @@ THE LAST STEP IS ONE LINKER FLAG, where the linker can see both symbols at once:
 
 applied at THIS LIBRARY's link, where the class's own symbol is defined. `--defsym` is the linker's alias and
 it lands for the same reason .set did not: the linker does not need anyone to have referenced it first.
+
+
+**BOTH ALIAS MECHANISMS ATTEMPTED AND MEASURED; NEITHER PRODUCED A DYNAMIC DEFINITION — AND THE ONE THAT DID
+WORK DIFFERS IN EXACTLY ONE WAY.** After `--defsym` at this library's link:
+
+    libfoundation:  U __CFConstantStringClassReferencePtr      and NOTHING else
+    the CFSTR's isa 0x4000002bb3a0                             unchanged
+
+So no exported definition appeared, and the probe still binds to CoreFoundation's weak array. The .set attempt
+before it produced nothing either. YET THE SAME .set TECHNIQUE, FOR _CF_CONSTANT_STRING_SWIFT_CLASS, WAS
+MEASURED TO PRODUCE A DYNAMIC SYMBOL AT THE CLASS'S ADDRESS. The two cases differ in one respect:
+
+    _CF_CONSTANT_STRING_SWIFT_CLASS      had NO prior definition anywhere -> the alias CREATED the symbol
+    __CFConstantStringClassReference     IS defined by CoreFoundation, weakly -> the alias never materialised
+
+So the obstacle is not the technique but the pre-existing definition, weak or not, and the next experiment
+follows from that alone: REMOVE COREFOUNDATION'S DEFINITION and let this library's alias be the only one. CF's
+own uses of it are address-only (the comparison at CFRuntime.c:1956 and the macro's isa at CFInternal.h:546),
+but they are *references* at CF's own link time, so removing the definition means those references must be
+resolved from somewhere -- which is precisely the arrangement to test next, with both halves named and neither
+guessed.

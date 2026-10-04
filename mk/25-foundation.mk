@@ -30,7 +30,15 @@ FOUNDATION_LIB     = $(FNXLIB)/libfoundation.so
 FOUNDATION_CFLAGS  = -DDEPLOYMENT_RUNTIME_SWIFT=0 -fPIC -fblocks -fconstant-cfstrings -Iuserland -I.build/cf-shim \
                      -I$(COREFOUNDATION_SRC)/include -I$(LIBDISPATCH_PREFIX)/include
 
-FOUNDATION_CF_LIBS = -L$(COREFOUNDATION_PREFIX)/lib -lcorefoundation \
+# THE LINKER'S ALIAS, AND IT LANDS WHERE .set DID NOT. Every constant-string struct clang emits carries
+# &__CFConstantStringClassReference as its isa, and a message send reads that FIELD as a Class -- so the
+# symbol's ADDRESS must BE the class. CoreFoundation defines it (now WEAK, so a strong definition wins), and
+# Foundation cannot alias it from C because .set only emits a symbol the translation unit references.
+# --defsym is the linker's own alias and needs nobody to reference it first. Measured before: the same trick
+# for _CF_CONSTANT_STRING_SWIFT_CLASS produced a DYNAMIC symbol at the class's address.
+FOUNDATION_DEFSYM = -Wl,--defsym,__CFConstantStringClassReference=._OBJC_CLASS_NSConstantString
+
+FOUNDATION_CF_LIBS = $(FOUNDATION_DEFSYM) -L$(COREFOUNDATION_PREFIX)/lib -lcorefoundation \
                      -L$(LIBDISPATCH_PREFIX)/lib -ldispatch -lBlocksRuntime \
                      -L$(OBJC_PREFIX)/lib -lobjc \
                      -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib \
