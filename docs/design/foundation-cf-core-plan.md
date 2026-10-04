@@ -285,8 +285,20 @@ ON M3, not on the stretch already landed.
   reading foreign words. So the change is ONE edit over all ~30 sites, gated by `foundation_string`, and the
   map above is what makes it mechanical rather than exploratory - the same reason this work uses one.
 
-**AND THE STORAGE SWAP MEETS ONE APPLE CONTRACT THAT REFINES THE PRINCIPLE (found by reading the class
-before writing the change, which is the only reason it is not a silent behaviour change).** `NSOwnedString`
+**AND THE NoCopy CONTRACT, WHICH THE STORAGE SWAP FIRST LOOKED LIKE IT WOULD BREAK — MEASURED, AND IT DOES
+NOT.** Reading the class before writing the change turned this up: `-initWithCharactersNoCopy:length:
+freeWhenDone:` is "APPLE'S OWNERSHIP CONTRACT" — the receiver never writes and never frees a borrowed
+buffer, and frees it in `-dealloc` only when `freeWhenDone` is YES — while a naive storage swap onto a
+CFString would copy, adding an allocation that was promised not to happen. **THE MEASUREMENT SETTLED IT
+THE OTHER WAY: `CFStringCreateWithCharactersNoCopy` ADOPTS the caller's buffer.** Probe: construct one over
+a buffer, write to that buffer afterwards, and ask the CFString what it now holds — it answered `Z`, the
+character written AFTER construction, so the buffer was adopted and not copied (`nocopy-verdict=ADOPTED`).
+**AND BOTH OWNERSHIP REGIMES BECOME ONE ARGUMENT**: the constructor's `contentsDeallocator` IS the contract —
+`kCFAllocatorNull` for `freeWhenDone:NO` (CF never frees it) and `kCFAllocatorDefault` for `freeWhenDone:
+YES` (CF frees it when the string goes). So the exception this plan recorded a revision earlier is NOT
+NEEDED: the storage can be a CFString for EVERY door, with the regime carried by the deallocator. (The
+second half — that `kCFAllocatorDefault` there frees with the same allocator the caller used — is CF's
+DOCUMENTED semantics rather than a measurement, and is recorded as such.) `NSOwnedString`
 implements `-initWithCharactersNoCopy:length:freeWhenDone:`, and its own note calls it "APPLE'S OWNERSHIP
 CONTRACT": the receiver NEVER writes and NEVER frees a borrowed buffer, and frees it in `-dealloc` only when
 `freeWhenDone` is YES. **A CFString COPIES.** So a straight storage swap would change that contract two
