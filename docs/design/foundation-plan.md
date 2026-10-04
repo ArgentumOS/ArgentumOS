@@ -15962,6 +15962,39 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.195 — NSThread: a block body, `-main` as the overridable hook, `+exit`, and the values a thread carries
+
+Ten rows: seven methods (`+detachNewThreadWithBlock:`, `-initWithBlock:`, `-main`, `+exit`,
+`+isMultiThreaded`, `+setThreadPriority:`, `+threadPriority`) and three properties (`qualityOfService`,
+`stackSize`, `threadPriority`). Ledger after: `method 1679 shipped / 136 open / 399 struck`,
+`property 722 / 42 / 172` (commit `aff45a7a`).
+
+**`-main` IS THE BODY, AND THE FIRST PASS GOT THAT HALF RIGHT — the check said so.** The pthread entry
+called `-fnRun`, which invoked the target/selector inline, so a subclass overriding `-main` (Apple's
+contract, and the reason the method is public) would have been ignored. `-fnRun` now calls `[self main]`,
+and `-main` runs the block if the thread was born with one, else the target/selector pair. But I also moved
+`-start`'s guard to admit a BLOCK and left it refusing a thread with neither target nor selector — exactly
+the `-main`-only subclass the new check builds. It failed (`main-ran=0 … spins=200`); the fix was to refuse
+only a thread already executing or finished. **The guard was asking a question `-main` makes meaningless.**
+
+**THE FOUR VALUES, WITH THE PLATFORM'S READING STATED.** `threadPriority` is 0.0-1.0 — Apple's scale, which
+names a scheduling class this kernel has no equivalent of — MAPPED onto nice -20..19, clamped; the value is
+always recorded and the syscall is best effort, and a thread does not re-nice its own process here.
+`qualityOfService` is recorded and used as the same hint. `stackSize` is APPLIED through a pthread attribute
+for the threads this class creates, not merely stored. The probe asserts round trips, which is what this tree
+can promise, and the mapping is written where it is implemented.
+
+**TWO LEDGER LESSONS THE BUILD PAID FOR.** `+exit` is a CLASS method and my flip list said `-exit`, so nine
+rows flipped and the tenth was refused with `PRESENT BUT LISTED OPEN method NSThread +exit` — the sweep
+naming the sign I had got wrong. And `-fnSetPriority:` needed a private declaration in the file's own
+category: clang does not look ahead within one `@implementation`.
+
+Left open, with the measurement: `callStackReturnAddresses` and `callStackSymbols` — this libc ships no
+`execinfo.h`, so there is no `backtrace()` to stand on, and a manual stack walk is its own unit.
+
+Acceptance: `make testimg` green (status-checked); `make test TESTS=foundation_thread` → `TESTS-OK 1/1 case(s),
+6/6 check(s)` with the three new checks ok; `tools/foundation-sweep.py --check` consistent.
+
 ## §63.193 — NSFileManager: the four legacy handler doors, and the one place the veto is stronger than Apple's
 
 Four rows: `method shipped 1668 → 1672, open 147 → 143` — `-copyPath:toPath:handler:`,
