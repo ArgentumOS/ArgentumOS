@@ -44,8 +44,7 @@ CHECKS = (
           # the array-wide KVO trio and the error-carrying file doors.
           "array-enumerate-with-options", "array-indexes-options-forms", "array-description-with-locale",
           "array-paths-matching-extensions", "array-shuffled-is-a-permutation", "array-sorted-hint",
-          "array-kvo-registration-doors", "array-file-doors-with-error",
-          )
+          "array-kvo-registration-doors", "array-file-doors-with-error", "collection-remove-objects-in-array", "collection-remove-objects-from-indices", "dictionary-description-with-locale")
 
 
 class Case(BaseCase):

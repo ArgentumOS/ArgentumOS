@@ -1687,6 +1687,49 @@ static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator compa
 	[self setArray:[sorted sortedArrayUsingSelector:comparator]];
 }
 
+
+- (void)removeObjectsInArray:(NSArray *)otherArray
+{
+	/* ONE PASS OVER THE RECEIVER against the other array's membership. -containsObject: is used rather than a
+	 * set, so nothing is assumed about hashability. */
+	NSUInteger i = 0;
+
+	if (otherArray == nil || [otherArray count] == 0) {
+		return;
+	}
+	while (i < [self count]) {
+		if ([otherArray containsObject:[self objectAtIndex:i]]) {
+			[self removeObjectAtIndex:i];
+		} else {
+			i++;
+		}
+	}
+}
+
+- (void)removeObjectsFromIndices:(NSUInteger *)indices numIndices:(NSUInteger)count
+{
+	/* THE INDICES ARE SORTED DESCENDING FIRST, so every removal leaves the ones still to come valid — the
+	 * whole hazard of this door, and the reason it is worth writing rather than delegating. Duplicates are
+	 * harmless for the same reason. */
+	NSUInteger i, j;
+
+	if (indices == NULL || count == 0) {
+		return;
+	}
+	for (i = 1; i < count; i++) {
+		NSUInteger key = indices[i];
+
+		for (j = i; j > 0 && indices[j - 1] < key; j--) {
+			indices[j] = indices[j - 1];
+		}
+		indices[j] = key;
+	}
+	for (i = 0; i < count; i++) {
+		if (indices[i] < [self count]) {
+			[self removeObjectAtIndex:indices[i]];
+		}
+	}
+}
 @end
 
 

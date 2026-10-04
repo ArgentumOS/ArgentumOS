@@ -164,6 +164,12 @@ struct FNDictEntry;			/* opaque; defined in NSDictionary.m */
 
 - (BOOL)isEqualToDictionary:(NSDictionary<KeyType, ObjectType> *)other;
 
+
+/* §63.209: THE LOCALE DOORS. The reading is stated once: this tree renders property lists in one canonical
+ * way, so the locale is ACCEPTED and does not alter the rendering — which is what Apple's own formatter does
+ * for a POSIX locale — and the indent form is the one place indentation is expressed. */
+- (NSString *)descriptionWithLocale:(nullable id)locale;
+- (NSString *)descriptionWithLocale:(nullable id)locale indent:(NSUInteger)level;
 @end
 
 @interface NSMutableDictionary<KeyType, ObjectType> : NSDictionary<KeyType, ObjectType> <NSMutableCopying>

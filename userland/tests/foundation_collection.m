@@ -2291,6 +2291,42 @@ NULL
 		      "the collected sets, the stop, and the array family's multi-line locale shape");
 	}
 
+	{
+		/* §63.209: THE TWO REMOVAL DOORS. The indices form is the one with a hazard, so it is given an
+		 * UNSORTED, DUPLICATED list: the door sorts descending first, which is what keeps the later indices
+		 * valid as earlier removals shift the array. */
+		NSMutableArray *m = [NSMutableArray arrayWithObjects:@"a", @"b", @"c", @"d", @"e", nil];
+		NSMutableArray *gone = [NSMutableArray arrayWithObjects:@"b", @"d", nil];
+		NSUInteger indices[4] = { 3, 0, 3, 4 };
+		NSMutableArray *byIndex = [NSMutableArray arrayWithObjects:@"a", @"b", @"c", @"d", @"e", nil];
+
+		[m removeObjectsInArray:gone];
+		[byIndex removeObjectsFromIndices:indices numIndices:4];
+
+		check("collection-remove-objects-in-array",
+		      [m count] == 3 && [[m objectAtIndex:0] isEqual:@"a"] && [[m objectAtIndex:1] isEqual:@"c"] &&
+		      [[m objectAtIndex:2] isEqual:@"e"],
+		      [[NSString stringWithFormat:@"count=%lu first=%@", (unsigned long)[m count],
+			[m count] > 0 ? [m objectAtIndex:0] : @"(empty)"] UTF8String]);
+		check("collection-remove-objects-from-indices",
+		      [byIndex count] == 2 && [[byIndex objectAtIndex:0] isEqual:@"b"] &&
+		      [[byIndex objectAtIndex:1] isEqual:@"c"],
+		      [[NSString stringWithFormat:@"left=%@", byIndex] UTF8String]);
+	}
+	{
+		/* AND THE LOCALE DOORS RENDER {@key = value; …}, the indent form nesting. */
+		NSDictionary *inner = [NSDictionary dictionaryWithObjectsAndKeys:@"v", @"k", nil];
+		NSDictionary *outer = [NSDictionary dictionaryWithObjectsAndKeys:inner, @"in", nil];
+		NSString *flat = [outer descriptionWithLocale:nil];
+		NSString *indented = [outer descriptionWithLocale:nil indent:0];
+
+		check("dictionary-description-with-locale",
+		      flat != nil && [flat rangeOfString:@"in = {"] .location != NSNotFound &&
+		      [flat rangeOfString:@"k = v;"] .location != NSNotFound && [indented isEqual:flat],
+		      [[NSString stringWithFormat:@"flat=%@", flat] UTF8String]);
+	}
+
+
 	printf("FOUNDATION-COLLECTION RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

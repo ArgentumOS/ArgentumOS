@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1712	open	86	struck	416
+# method	shipped	1716	open	81	struck	417
 # property	shipped	729	open	28	struck	179
 
 
@@ -824,8 +824,8 @@ method	struck	-setReceiversSpecifier:	NSDeleteCommand	App Support / Script Comma
 property	struck	keySpecifier	NSDeleteCommand	App Support / Script Commands / Working with specifiers	declined	objc
 method	shipped	-allKeysForObject:	NSDictionary	Fundamentals / Basic Collections / Accessing Keys and Values	-	objc
 method	shipped	-countByEnumeratingWithState:objects:count:	NSDictionary	Fundamentals / Basic Collections / Enumerating Dictionaries	-	objc
-method	open	-descriptionWithLocale:	NSDictionary	Fundamentals / Basic Collections / Describing a Dictionary	-	objc
-method	open	-descriptionWithLocale:indent:	NSDictionary	Fundamentals / Basic Collections / Describing a Dictionary	-	objc
+method	shipped	-descriptionWithLocale:	NSDictionary	Fundamentals / Basic Collections / Describing a Dictionary	-	objc
+method	shipped	-descriptionWithLocale:indent:	NSDictionary	Fundamentals / Basic Collections / Describing a Dictionary	-	objc
 method	shipped	+dictionary	NSDictionary	Fundamentals / Basic Collections / Creating an Empty Dictionary	-	objc
 method	shipped	+dictionaryWithContentsOfFile:	NSDictionary	Fundamentals / Basic Collections / Creating a Dictionary from an External Source	deprecated	objc
 method	shipped	+dictionaryWithContentsOfURL:	NSDictionary	Fundamentals / Basic Collections / Type Methods	deprecated	objc
@@ -1474,7 +1474,7 @@ method	struck	-setReceiversSpecifier:	NSMoveCommand	App Support / Script Command
 property	struck	keySpecifier	NSMoveCommand	App Support / Script Commands / Working with specifiers	declined	objc
 method	shipped	-addObject:	NSMutableArray	Fundamentals / Basic Collections / Adding Objects	-	objc
 method	shipped	-addObjectsFromArray:	NSMutableArray	Fundamentals / Basic Collections / Adding Objects	-	objc
-method	open	-applyDifference:	NSMutableArray	Fundamentals / Basic Collections / Instance Methods	-	objc
+method	struck	-applyDifference:	NSMutableArray	Fundamentals / Basic Collections / Instance Methods	declined	objc
 method	shipped	+arrayWithCapacity:	NSMutableArray	Fundamentals / Basic Collections / Creating and Initializing a Mutable Array	-	objc
 method	shipped	+arrayWithContentsOfFile:	NSMutableArray	Fundamentals / Basic Collections / Creating and Initializing a Mutable Array	-	objc
 method	shipped	+arrayWithContentsOfURL:	NSMutableArray	Fundamentals / Basic Collections / Type Methods	-	objc
@@ -1494,8 +1494,8 @@ method	shipped	-removeObjectAtIndex:	NSMutableArray	Fundamentals / Basic Collect
 method	shipped	-removeObjectIdenticalTo:	NSMutableArray	Fundamentals / Basic Collections / Removing Objects	-	objc
 method	shipped	-removeObjectIdenticalTo:inRange:	NSMutableArray	Fundamentals / Basic Collections / Removing Objects	-	objc
 method	shipped	-removeObjectsAtIndexes:	NSMutableArray	Fundamentals / Basic Collections / Removing Objects	-	objc
-method	open	-removeObjectsFromIndices:numIndices:	NSMutableArray	Fundamentals / Basic Collections / Removing Objects	deprecated	objc
-method	open	-removeObjectsInArray:	NSMutableArray	Fundamentals / Basic Collections / Removing Objects	-	objc
+method	shipped	-removeObjectsFromIndices:numIndices:	NSMutableArray	Fundamentals / Basic Collections / Removing Objects	deprecated	objc
+method	shipped	-removeObjectsInArray:	NSMutableArray	Fundamentals / Basic Collections / Removing Objects	-	objc
 method	shipped	-removeObjectsInRange:	NSMutableArray	Fundamentals / Basic Collections / Removing Objects	-	objc
 method	shipped	-replaceObjectAtIndex:withObject:	NSMutableArray	Fundamentals / Basic Collections / Replacing Objects	-	objc
 method	shipped	-replaceObjectsAtIndexes:withObjects:	NSMutableArray	Fundamentals / Basic Collections / Replacing Objects	-	objc

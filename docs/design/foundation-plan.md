@@ -15962,6 +15962,38 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.209 — a LIBRARY bite: the collection removal and locale doors, and the measured shape of "bigger bites"
+
+Four rows shipped (`NSMutableArray -removeObjectsInArray:`, `NSMutableArray
+-removeObjectsFromIndices:numIndices:`, `NSDictionary -descriptionWithLocale:`,
+`-descriptionWithLocale:indent:`) and one declined (`NSMutableArray -applyDifference:`, whose argument type
+`NSOrderedCollectionDifference` is a class this tree CUT — its own header saying so). Ledger after:
+**method 1716 shipped / 81 open / 417 struck; property 729 / 28 / 179**.
+
+**THE TWO DOORS THAT NEEDED THOUGHT.** `-removeObjectsInArray:` asks `-containsObject:` per object rather than
+building a set, so nothing is assumed about hashability. `-removeObjectsFromIndices:numIndices:` is the
+deprecated one (owed, per `dec-1a00739ebd0bdc05`) and its whole hazard is ORDER: it sorts the indices
+DESCENDING first, so every removal leaves the ones still to come valid — the probe hands it an unsorted list
+WITH a duplicate to prove exactly that. The two locale doors render `{key = value; …}` with nested containers
+recursing, and the reading is stated once in the header: the locale is ACCEPTED and does not change the
+rendering, as Apple's own formatter does for a POSIX locale.
+
+**AND THE MEASURED ANSWER TO "can we take bigger bites?": THE TWO KINDS OF BITE SCALE DIFFERENTLY.** §63.208
+moved **24 rows in three rounds** — a decision/ledger bite, where each row costs only the care taken to justify
+it. This unit moved **4 rows in three rounds** — a library bite, where each door costs reading its anchor, its
+neighbours and its hazard, and where the round lost here was a real one: the declarations landed outside the
+file's `NS_ASSUME_NONNULL` region. The fix is worth keeping: **annotate explicitly** (`NSUInteger * _Nonnull`),
+which is correct inside a region and REQUIRED outside it, so the trap cannot recur wherever the declaration
+lands.
+
+So the honest guidance for the next bites: batch decisions widely, and batch library doors by FAMILY (one
+mechanism, many doors — as §63.207 did with NSCalendar's four), not by count.
+
+Acceptance: `make testimg` green (status-checked); `make test TESTS=foundation_collection` → `TESTS-OK 1/1
+case(s), 6/6 check(s)` with `collection-remove-objects-in-array`,
+`collection-remove-objects-from-indices` and `dictionary-description-with-locale` all ok;
+`tools/foundation-sweep.py --check` and `--unimplemented` both clean.
+
 ## §63.208 — A LEDGER REPAIR AND A DECISION SWEEP: 24 rows in one bite
 
 No library code. Fifteen rows' CATEGORY fields were restored and ten rows were struck `declined` with their

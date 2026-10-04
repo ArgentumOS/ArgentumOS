@@ -1049,6 +1049,54 @@ static void dict_entries_free(struct FNDictEntry **buckets, unsigned long count)
 	return [data writeToURL:url options:NSDataWritingAtomic error:error];
 }
 
+
+/* §63.209: THE LOCALE DOORS' RENDERER. A dictionary renders as {@key = value; …} — Apple's own spelling — with
+ * nested containers recursing so they indent. The locale is ACCEPTED and does not change the rendering; that
+ * reading is recorded in the header. */
+static void fn_append_indent(NSMutableString *out, NSUInteger level)
+{
+	NSUInteger i;
+
+	for (i = 0; i < level; i++) {
+		[out appendString:@"\t"];
+	}
+}
+
+- (NSString *)descriptionWithLocale:(id)locale
+{
+	return [self descriptionWithLocale:locale indent:0];
+}
+
+- (NSString *)descriptionWithLocale:(id)locale indent:(NSUInteger)level
+{
+	NSMutableString *answer = [NSMutableString string];
+	NSArray *keys = [self allKeys];
+	NSUInteger i;
+
+	(void)locale;
+	[answer appendString:@"{"];
+	if ([keys count] > 0) {
+		[answer appendString:@"\n"];
+	}
+	for (i = 0; i < [keys count]; i++) {
+		id key = [keys objectAtIndex:i];
+		id value = [self objectForKey:key];
+
+		fn_append_indent(answer, level + 1);
+		[answer appendFormat:@"%@ = ", key];
+		if ([value isKindOfClass:[NSDictionary class]]) {
+			[answer appendString:[(NSDictionary *)value descriptionWithLocale:locale indent:level + 1]];
+		} else {
+			[answer appendFormat:@"%@", value];
+		}
+		[answer appendString:@";\n"];
+	}
+	if ([keys count] > 0) {
+		fn_append_indent(answer, level);
+	}
+	[answer appendString:@"}"];
+	return answer;
+}
 @end
 
 @implementation NSMutableDictionary

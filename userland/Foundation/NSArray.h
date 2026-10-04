@@ -291,6 +291,12 @@ NS_ASSUME_NONNULL_END
 
 
 
+
+/* §63.209: THE THREE REMOVAL DOORS. `-removeObjectsInArray:` asks -containsObject: per object, so nothing is
+ * assumed about hashability. `-removeObjectsFromIndices:numIndices:` is the deprecated one (OWED, per
+ * dec-1a00739ebd0bdc05) and it SORTS THE INDICES DESCENDING FIRST, which is the whole hazard of that door. */
+- (void)removeObjectsInArray:(NSArray<ObjectType> * _Nonnull)otherArray;
+- (void)removeObjectsFromIndices:(NSUInteger * _Nonnull)indices numIndices:(NSUInteger)count;
 @end
 
 #endif /* FOUNDATION_NSARRAY_H */
