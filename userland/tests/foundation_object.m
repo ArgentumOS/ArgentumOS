@@ -36,6 +36,13 @@
 static int ok_count = 0;
 static int fail_count = 0;
 
+/* A NOTE IS NOT A CHECK: it prints a NAME and a VALUE so a failure can be read rather than guessed at,
+ * which is the only way the two-question check above could be told apart. */
+static void note_value(const char *what, unsigned long value) {
+	printf("FOUNDATION-OBJECT note %s = 0x%lx\n", what, value);
+	fflush(stdout);
+}
+
 static void check(const char *name, int ok, const char *detail) {
 	if (ok) {
 		ok_count++;
@@ -131,6 +138,25 @@ int main(void) {
 	{
 		CFStringRef native = CFStringCreateWithCString(kCFAllocatorDefault, "native", kCFStringEncodingUTF8);
 		Class registered = objc_getClass("NSString");	/* the class the CF package declares */
+
+		/* THE EVIDENCE, PRINTED RATHER THAN COMPARED. The previous version of this check asked two
+		 * questions as one — "is the isa NSString" AND "does the class even exist" — so a missing class
+		 * and a wrong isa produced the same message, and one of them is a bug in the probe rather than in
+		 * the library. These notes separate them, and they also settle whether the registration is what
+		 * fails: the door is called HERE, after the first string, and a second string is then made. If the
+		 * two isas differ, the door works and the load-time registration did not run. */
+		{
+			extern void CFNXBridgeClassToType(Class cls, CFTypeID typeID);
+			CFStringRef after = CFStringCreateWithCString(kCFAllocatorDefault, "native2", kCFStringEncodingUTF8);
+
+			note_value("the class the probe looks for", (unsigned long)registered);
+			note_value("the first string's first word", native ? *(unsigned long *)native : 0);
+			CFNXBridgeClassToType(registered, CFStringGetTypeID());
+			note_value("and after calling the door, a new string's", after ? *(unsigned long *)after : 0);
+			if (after) {
+				CFRelease(after);
+			}
+		}
 
 		int hasClass = (native != NULL && registered != NULL &&
 		                *(unsigned long *)native == (unsigned long)registered);
