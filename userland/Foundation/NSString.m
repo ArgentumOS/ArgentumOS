@@ -48,10 +48,20 @@ __attribute__((objc_root_class))
 
 @implementation NSString
 
-/* +load SO THE REGISTRATION PRECEDES ANY STRING. It must happen before the first CF string is created,
- * because it is what such an object's isa is set FROM — a registration after the fact would leave the
- * strings made before it unmessageable. */
-+ (void)load
+/* A LIBRARY CONSTRUCTOR, AND NOT +load -- WHICH WAS MEASURED NOT TO RUN. The registration must precede the
+ * FIRST CF string this process creates, because it is what such an object's isa is set FROM; anything made
+ * before it is unmessageable forever. +load looked like the right door and is not: with it, the first string
+ * a program created came out with a zero isa while every later one had the class, which is exactly the
+ * signature of a registration that happens LATE — and a probe that called CFNXBridgeClassToType by hand
+ * mid-run made the class appear, proving the door worked and the load-time call never happened.
+ *
+ * A constructor runs during library initialisation, before any code of the program that links it, which is
+ * the guarantee this needs. THE TRAP IT LEAVES BEHIND, worth writing down because it cost this project
+ * several rounds: with +load never running, the ONLY registered class was the one a probe happened to
+ * register, so the difference between a working string and a broken one tracked WHEN each was created —
+ * and looked exactly like a difference between two creation PATHS. It was not. It was ordering. */
+__attribute__((constructor))
+static void fnx_register_nsstring_as_cfstring(void)
 {
 	CFNXBridgeClassToType([NSString class], CFStringGetTypeID());
 }

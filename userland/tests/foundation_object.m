@@ -151,6 +151,7 @@ int main(void) {
 
 			note_value("the class the probe looks for", (unsigned long)registered);
 			note_value("the first string's first word", native ? *(unsigned long *)native : 0);
+			note_value("and the address the probe holds", (unsigned long)native);
 			CFNXBridgeClassToType(registered, CFStringGetTypeID());
 			note_value("and what the door read back", (unsigned long)CFNXBridgeClassToType(registered, CFStringGetTypeID()));
 			note_value("and after calling the door, a new string's", after ? *(unsigned long *)after : 0);
