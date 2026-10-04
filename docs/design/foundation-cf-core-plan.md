@@ -280,6 +280,24 @@ and in swift-corelibs-foundation that class is Swift's - the link asked for
 so either they gain it or the re-base builds its descriptions without CFSTR. (CF's own sources are built
 with it, which is why this only appears outside them.)
 
+
+**M4'S ONE QUESTION WAS ALREADY ANSWERED BY A CHECK THAT PASSES — measured before this unit started.** M4 says
+the retain ownership must be settled BY MEASURING rather than assumed; the probe that closes the string slice
+had already written that experiment, and its own header names both halves:
+
+    a-cf-array-holds-an-object-of-this-library       a CF container built with CF's OWN callbacks retains
+                                                     what it is given, and hands the same object back
+    a-cf-array-releases-it-when-the-array-goes       and the container is what ends it
+
+BOTH ARE GREEN (part of the probe's 18/18). So the datum is in: kCFTypeArrayCallBacks OWNS the items, CF's
+retain and release reach a Foundation-built object, and the re-base therefore uses CF's OWN callbacks. The
+hand-retaining `_items` array is the half that must NOT be carried over -- which is the favourable side of the
+one thing M4 warned about.
+
+AND THE METHOD NOTE IS WORTH AS MUCH AS THE DATUM: I designed a fresh experiment for a question this tree had
+already answered, and found out with one grep of a probe that was already in the repository. Read the probe
+you already own before designing another.
+
 ### M4 — THE COLLECTIONS, RECONNOITRED BEFORE THE EDIT (and why NSArray goes first)
 
 **THE FAMILY'S SHAPE, TAKEN FROM THE TREE:** `NSArray` owns `_items`/`_capacity`/`_count`;
