@@ -10,8 +10,12 @@
  *   XPATH (NSXMLNode's `-nodesForXPath:error:`, `-objectsForXQuery:...` and the query family) needs an XPath
  *   engine; XSLT (`NSXMLDocument`'s `-objectByApplyingXSLT...`) needs an XSLT processor; `-validate` needs
  *   DTD validation, which XML-a already recorded as absent; the `NSXMLDocumentTidy*` options need libxml2's
- *   HTML parser; and `-canonicalXMLStringPreservingComments:` is C14N, a specification of its own. Each is a
- *   boundary with a ground, not a half-built door.
+ *   HTML parser. Each is a boundary with a ground, not a half-built door.
+ *
+ * ⚠ AND §63.243 REMOVED ONE NAME FROM THAT LIST: `-canonicalXMLStringPreservingComments:` **SHIPS** (§63.233) —
+ * this note kept calling it a C14N boundary long after the slice that built it, which is the same stale-note
+ * class §63.236 caught in NSLocale.h and §63.237 in a row's blocker. The door's OWN note below states the
+ * reading it implements; what stays unbuilt is namespace-DECLARATION synthesis.
  *
  * AND NSXMLDocument ITSELF IS SLICE XML-c: it is the class that PARSES into this tree (a delegate over
  * XML-a's parser), and it is worth its own slice rather than being smuggled in here. What this slice proves
@@ -171,8 +175,11 @@ typedef enum {
 /* §63.233: CANONICAL XML, AS A STATED READING. Canonical XML is a specification with its own rules, and the ones
  * this door implements are written here because the others are visible in its output: UTF-8 with no XML
  * declaration, attributes ordered by (URI, local name), empty elements EXPANDED (never `<a/>`), the minimal
- * escapes (`&`, `<`, `>` in text; `&`, `<`, `"`, TAB/LF/CR in attribute values), and comments PRESERVED — which
- * is what the door's name says and what distinguishes it from the sibling that drops them.
+ * escapes (`&`, `<`, `>` in text; `&`, `<`, `"`, TAB/LF/CR in attribute values), and comments CONTROLLED BY
+ * THE FLAG — `comments:YES` preserves them, `NO` drops them, and THAT IS THE ONLY DIFFERENCE BETWEEN THE TWO
+ * ANSWERS (§63.243 measured it, and the check builds the same tree twice to say so). An earlier version of
+ * this note justified preserving them ALWAYS by "the sibling that drops them" — a sibling this tree does not
+ * have and does not need, because the parameter already carries the distinction.
  * THE ONE RULE IT DOES NOT IMPLEMENT: namespace DECLARATIONS are not synthesised; a namespace must already be
  * written as an ordinary attribute, so a caller relying on inherited prefix resolution gets the attributes as
  * they stand rather than a rewritten set. */

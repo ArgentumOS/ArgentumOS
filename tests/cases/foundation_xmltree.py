@@ -7,9 +7,11 @@ document", NSXMLElement is "the element nodes in an XML tree structure". Between
 about seventy members; this slice ships the part a caller can BUILD AND READ — the kinds and their factories,
 the accessors, the tree navigation, the children and attributes, the namespace helpers and the serialization
 — and registers the part that needs an engine this system does not have: XPATH (an XPath engine), XSLT (an
-XSLT processor), `-validate` (DTD validation, which XML-a already recorded as absent), the
-`NSXMLDocumentTidy*` options (libxml2's HTML parser) and `-canonicalXMLStringPreservingComments:` (C14N, a
-specification of its own). NSXMLDocument itself is slice XML-c: it is the class that PARSES into this tree.
+XSLT processor), `-validate` (DTD validation, which XML-a already recorded as absent) and the
+`NSXMLDocumentTidy*` options (libxml2's HTML parser). **AND `-canonicalXMLStringPreservingComments:` IS NOT
+ON THAT LIST ANY MORE (§63.243): it SHIPS (§63.233) and this docstring kept calling it a C14N boundary long
+after the slice that built it** — the same stale-note class §63.236 caught in NSLocale.h. NSXMLDocument itself
+is slice XML-c: it is the class that PARSES into this tree.
 
 TWO STORAGE READINGS ARE OURS AND ARE ASSERTED: ATTRIBUTES LIVE IN THE ELEMENT'S OWN STORE (so `-children`
 is the content, and `-attributes` is in insertion order), and A NAMESPACE IS A CHILD of the element that
@@ -43,6 +45,7 @@ PROBE = "/System/Shared/tests/foundation_xmltree"
 CHECKS = ("tree-the-factories-make-the-kinds", "tree-an-element-serializes-with-its-attributes",
           "tree-an-empty-element-follows-the-option",
           "tree-the-quote-option-decides-the-attribute-quotes",
+          "tree-canonical-form-and-its-comment-flag",
           "tree-pretty-print-indents-element-children",
           "tree-the-children-are-the-tree-and-a-node-has-one-parent",
           "tree-navigation-is-document-order", "tree-attributes-live-in-the-elements-own-store",

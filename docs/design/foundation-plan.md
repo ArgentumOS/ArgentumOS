@@ -15962,6 +15962,42 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.243 — THE CANONICAL FORM'S FLAG: a door §63.233 shipped with NO CHECK AT ALL, and the "sibling" its note leaned on does not exist
+
+**Three findings in one door, and the first is that the door had no check.** `foundation_xmltree` carries SEVENTEEN
+checks, and `grep canonical userland/tests/foundation_xmltree.m` answers NOTHING: §63.233 built
+`-canonicalXMLStringPreservingComments:` and left it UNASSERTED, which is the one thing this tree's own rule does not
+allow. The case docstring named the door too — and named it as NOT BUILT.
+
+**SECOND: the flag was ignored.** `canonicalXMLStringPreservingComments:NO` answered exactly what `:YES` answered.
+The note that justified it — comments "PRESERVED — which is what the door's name says and what distinguishes it from
+THE SIBLING THAT DROPS THEM" (in the header, and again in the implementation's comment) — names **a sibling this tree
+does not have**: grep finds ONE canonical door in `NSXMLNode.h`, and Apple's `NSXMLNode` declares one as well. **So
+the sentence that licensed ignoring the parameter was describing a distinction that exists NOWHERE** — the FLAG is
+what carries it, which is what the parameter is for. It is now threaded through the walk (the private
+`fnCanonicalStringDepth:` gained a `preservingComments:` argument at all four sites), and a dropped comment
+contributes nothing — not even whitespace.
+
+**THIRD, and the reason the other two survived: TWO STALE NOTES.** `NSXMLNode.h`'s class-level list still registered
+the door among "the part that NEEDS AN ENGINE THIS SYSTEM DOES NOT HAVE … a boundary with a ground", and the case
+docstring said the same. §63.233 built the door and did not go back to the list it had just invalidated — **the same
+stale-note class §63.236 caught in NSLocale.h and §63.237 in a row's stated blocker.** Both are corrected, and the
+header now states what is actually unbuilt in this neighbourhood: namespace-DECLARATION synthesis.
+
+**AND §63.242's DISCIPLINE IS WHAT MADE THIS DECISIVE.** Before calling an ignored parameter a bug I had to read the
+note that justified it — and this note is NOT an "accepted and IGNORED, as `-initWithFormat:…locale:`" reading; it is
+a claim about a SIBLING DOOR, which is a fact that can be CHECKED. It checked out FALSE. (Last unit's two stated
+readings — `NSArray -sortWithOptions:`'s option and `NSString`'s locale — remain correct and untouched.)
+
+**WHAT SHIPPED.** `NSXMLNode.m` (the flag, through all four recursive sites) and `NSXMLNode.h` (the door's note and
+the class-level list); `foundation_xmltree` gains its EIGHTEENTH check,
+`tree-canonical-form-and-its-comment-flag`: the same tree built twice with attributes ADDED OUT OF ORDER, asserting
+the flag's effect AND that removing the comment from one answer yields the other EXACTLY (so nothing else may differ
+between them), plus the shape the header states — no XML declaration, `<x/>` expanded to `<x></x>`, the `<r ` prefix,
+a before b — and that asking twice gives the same answer. **NO LEDGER CHANGE** — the row was already `shipped`, and
+that is the third unit in a row where a shipped row's BODY was where the defect lived. Counts stand at **method
+1760 / 33 / 421; property 742 / 12 / 182**.
+
 ## §63.242 — THE AUDIT THAT FOLLOWED THE AUDIT: a parameter-scanner over all of Foundation, and the MUTABLE twin of §63.241's bug
 
 **§63.241 found the SHAPE — a shipped, declared, gate-green door that never reads one of its parameters — and this

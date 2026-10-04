@@ -71,7 +71,7 @@ static NSString *fn_xml_escape_attribute(NSString *text, BOOL singleQuoted)
 }
 
 @interface NSXMLNode (FNCanonical)
-- (NSString *)fnCanonicalStringDepth:(NSUInteger)depth;
+- (NSString *)fnCanonicalStringDepth:(NSUInteger)depth preservingComments:(BOOL)preserve;
 @end
 
 @implementation NSXMLNode
@@ -771,10 +771,14 @@ static NSString *fn_canonical_escape_attribute(NSString *text)
 
 - (NSString *)canonicalXMLStringPreservingComments:(BOOL)comments
 {
-	return [self fnCanonicalStringDepth:0];
+	/* §63.243: THE FLAG DECIDES. This door used to ignore `comments` and answer the same string for both
+	 * values, justified by a note that said preservation "distinguishes it from the sibling that drops them"
+	 * — A SIBLING THIS TREE DOES NOT HAVE (Apple declares ONE canonical door on NSXMLNode, and so does this
+	 * header). The distinction therefore has to be carried BY THE FLAG, which is what the parameter is for. */
+	return [self fnCanonicalStringDepth:0 preservingComments:comments];
 }
 
-- (NSString *)fnCanonicalStringDepth:(NSUInteger)depth
+- (NSString *)fnCanonicalStringDepth:(NSUInteger)depth preservingComments:(BOOL)preserve
 {
 	NSXMLNodeKind kind = [self kind];
 
@@ -786,12 +790,17 @@ static NSString *fn_canonical_escape_attribute(NSString *text)
 		NSUInteger i;
 
 		for (i = 0; i < [kids count]; i++) {
-			[out appendString:[[kids objectAtIndex:i] fnCanonicalStringDepth:0]];
+			[out appendString:[[kids objectAtIndex:i] fnCanonicalStringDepth:0 preservingComments:preserve]];
 		}
 		return out;
 	}
 	if (kind == NSXMLCommentKind) {
-		/* PRESERVED: this door's whole distinction from its sibling. */
+		/* §63.243: THE FLAG, AND IT IS THE ONLY THING THAT CAN CARRY THIS DISTINCTION — there is no
+		 * sibling door that drops comments (see the door's note in the header). A dropped comment contributes
+		 * NOTHING to the output, not even whitespace. */
+		if (!preserve) {
+			return @"";
+		}
 		return [NSString stringWithFormat:@"<!--%@-->", _stringValue != nil ? _stringValue : @""];
 	}
 	if (kind == NSXMLTextKind) {
@@ -835,12 +844,12 @@ static NSString *fn_canonical_escape_attribute(NSString *text)
 				[ordered replaceObjectAtIndex:j withObject:key];
 			}
 			for (i = 0; i < [ordered count]; i++) {
-				[out appendString:[[ordered objectAtIndex:i] fnCanonicalStringDepth:0]];
+				[out appendString:[[ordered objectAtIndex:i] fnCanonicalStringDepth:0 preservingComments:preserve]];
 			}
 		}
 		[out appendString:@">"];
 		for (i = 0; kids != nil && i < [kids count]; i++) {
-			[out appendString:[[kids objectAtIndex:i] fnCanonicalStringDepth:0]];
+			[out appendString:[[kids objectAtIndex:i] fnCanonicalStringDepth:0 preservingComments:preserve]];
 		}
 		[out appendFormat:@"</%@>", _name != nil ? _name : @""];
 		return out;

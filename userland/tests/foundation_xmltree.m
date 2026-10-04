@@ -128,6 +128,50 @@ int main(void)
 	}
 
 	{
+		/* §63.243: THE CANONICAL FORM AND ITS ONE FLAG — the check §63.233 shipped WITHOUT, and the flag the
+		 * door ignored. Canonical XML here has no XML declaration, EXPANDS empty elements and orders attributes
+		 * by (URI, local name); the FLAG decides whether comments survive. There is no sibling door that drops
+		 * them (Apple declares ONE canonical door on NSXMLNode, and so does this header), so the parameter is
+		 * the only thing that can carry the distinction — which the door now does. */
+		NSXMLElement *root = [NSXMLNode elementWithName:@"r"];
+		NSXMLElement *empty = [NSXMLNode elementWithName:@"x"];
+		NSXMLNode *comment = [NSXMLNode commentWithStringValue:@"note"];
+		NSString *kept;
+		NSString *dropped;
+		NSUInteger aAt, bAt;
+
+		/* ADDED OUT OF ORDER, so the ordering rule asserted below is the DOOR's and not insertion order. */
+		[root addAttribute:[NSXMLNode attributeWithName:@"b" stringValue:@"2"]];
+		[root addAttribute:[NSXMLNode attributeWithName:@"a" stringValue:@"1"]];
+		[root addChild:empty];
+		[root addChild:comment];
+		[root addChild:[NSXMLNode elementWithName:@"x"]];
+
+		kept = [root canonicalXMLStringPreservingComments:YES];
+		dropped = [root canonicalXMLStringPreservingComments:NO];
+		aAt = [kept rangeOfString:@"a="].location;
+		bAt = [kept rangeOfString:@"b="].location;
+
+		check("tree-canonical-form-and-its-comment-flag",
+		      kept != nil && dropped != nil &&
+		      /* THE FLAG, AND THAT IT CHANGES NOTHING ELSE: removing the comment from one answer and
+		       * comparing proves the two differ by exactly that. */
+		      [kept rangeOfString:@"<!--note-->"].location != NSNotFound &&
+		      [dropped rangeOfString:@"<!--note-->"].location == NSNotFound &&
+		      [[kept stringByReplacingOccurrencesOfString:@"<!--note-->" withString:@""]
+			  isEqualToString:dropped] &&
+		      /* AND THE SHAPE THE HEADER STATES. */
+		      [kept rangeOfString:@"<?xml"].location == NSNotFound &&
+		      [kept rangeOfString:@"<x/>"].location == NSNotFound &&
+		      [kept rangeOfString:@"<x></x>"].location != NSNotFound &&
+		      [kept hasPrefix:@"<r "] && [kept hasSuffix:@"</r>"] &&
+		      aAt != NSNotFound && bAt != NSNotFound && aAt < bAt &&
+		      /* AND THE ANSWER IS STABLE: asking twice gives the same string. */
+		      [[root canonicalXMLStringPreservingComments:YES] isEqualToString:kept],
+		      [NSString stringWithFormat:@"kept=%@ dropped=%@", kept, dropped]);
+	}
+
+	{
 		NSXMLElement *root = [NSXMLNode elementWithName:@"r"];
 		NSXMLElement *child = [NSXMLNode elementWithName:@"c"];
 		NSXMLElement *grandchild = [NSXMLNode elementWithName:@"g"];
