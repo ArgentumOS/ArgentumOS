@@ -882,3 +882,32 @@ longer takes) -- it is a real variable, and the isa points at it.
 The intermediate name is also worth keeping: clang emits a WEAK `.objc_null_constant_string` for a constant
 string whose class is unresolved, which is what let the fault be read as "the isa is not a class" rather than
 as a crash in the message send.
+
+
+**THE CONSTANT STRING'S ISA IS SET BY THE RUNTIME, TOO EARLY — AND THE FIX BELONGS IN libobjc2.** Two theories
+of mine died to one measurement. The alias to _CF_CONSTANT_STRING_SWIFT_CLASS WORKS (verified: that symbol and
+._OBJC_CLASS_NSConstantString are at the SAME ADDRESS, 0x61c8, both dynamic) -- and it is IRRELEVANT, because
+the probe's object has no such reference at all:
+
+    the probe's own symbols:
+    0x4043e8 V .objc_null_constant_string
+    0x4043e8 D __start___objc_constant_string
+    0x404408 D __stop___objc_constant_string
+
+WHAT ACTUALLY HAPPENS. CFSTR lands in __objc_constant_string, a section the OBJC RUNTIME processes, and the
+isa the probe printed (0x4000002bb3a0) is a LIBRARY address -- so the runtime set it, to a constant-string
+class that is not ours. It did so BEFORE libfoundation was loaded, when NSConstantString did not exist. That
+is the same "too early" story as +load, one layer down, and it is why writing the class changed nothing.
+
+AND FOUNDATION CANNOT FIX IT ALONE: the __start_/__stop_ markers are PER-IMAGE, so the probe's constant strings
+live in the probe's section, which this library cannot walk.
+
+THE FIX IS A RUNTIME MODIFICATION, WHICH THE USER HAS ALREADY PERMITTED: libobjc2 must install OUR
+constant-string class for the section it processes -- or re-walk it once the class exists. The name it looks
+for is already right: tools/musl-clang-objc64.sh passes -fconstant-string-class=NSConstantString and that class
+now exists in this library.
+
+Both dead theories are worth naming, because both were plausible and both were killed by one measurement:
+that the isa came from a variable in CoreFoundation's BSS (it is a library address, but nothing in the probe
+references that symbol), and that the class merely needed to exist under the right name (it does, and it
+changed nothing, because the lookup happened before it did).

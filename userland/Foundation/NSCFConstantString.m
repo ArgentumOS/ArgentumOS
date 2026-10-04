@@ -84,3 +84,23 @@
 
 @implementation _NSCFConstantString
 @end
+
+/*
+ * THE ALIAS THAT MAKES A COMPILE-TIME STRING FIND ITS CLASS — the last piece of the CFSTR debt.
+ *
+ * MEASURED, not guessed twice over. The struct clang emits carries &_CF_CONSTANT_STRING_SWIFT_CLASS as its
+ * isa, and that symbol lives in CoreFoundation's BSS with nothing pointing it at a class — so the "object" is
+ * the ADDRESS OF A VARIABLE and messaging it faults. In upstream's Swift deployment that symbol IS the class;
+ * here it was an unset variable.
+ *
+ * The fix CANNOT be a value stored in the variable, because the isa is the ADDRESS. It has to be an alias, so
+ * that the symbol's address IS the class object — which is what the assembler directive below does, at the
+ * symbol level, which is where the reference is actually resolved. THE CLASS'S OWN SPELLING IS READ FROM THE
+ * BINARY by the script that writes this line: ._OBJC_CLASS_NSConstantString, with ONE underscore after
+ * CLASS_, and hand-typing it would have been wrong — this file's history already contains three guesses of
+ * exactly that kind, including one made ten minutes ago.
+ */
+__asm__(
+    ".globl _CF_CONSTANT_STRING_SWIFT_CLASS\n"
+    ".set   _CF_CONSTANT_STRING_SWIFT_CLASS, ._OBJC_CLASS_NSConstantString\n"
+);
