@@ -1,0 +1,64 @@
+diff --git a/Sources/CoreFoundation/CFRuntime.c b/Sources/CoreFoundation/CFRuntime.c
+index 5a5ee09..b73e243 100644
+--- a/Sources/CoreFoundation/CFRuntime.c
++++ b/Sources/CoreFoundation/CFRuntime.c
+@@ -1716,7 +1716,14 @@ static void _CFRelease(CFTypeRef CF_RELEASES_ARGUMENT cf) {
+             allocator = CFGetAllocator(cf);
+             usesSystemDefaultAllocator = _CFAllocatorIsSystemDefault(allocator);
+ 
+-            if (__kCFAllocatorTypeID_CONST != __CFGenericTypeID_inline(cf)) {
++            /* FNX LOCAL MODIFICATION 4 (Apache-2.0 §4(b)): __kCFAllocatorTypeID_CONST is referenced here and
++             * is DEFINED NOWHERE in the whole upstream commit - measured with `git grep` over the entire tree,
++             * the Swift half included, which finds this one USE and no declaration or definition. CFAllocatorGetTypeID()
++             * is the C API for the same value (CFBase.c:463) and is the idiom this very tree already uses for
++             * exactly this comparison (__CFGenericValidateType(allocator, CFAllocatorGetTypeID()) appears in
++             * CFCalendar.c, CFDateFormatter.c, CFLocale.c and others), so this is a substitution between
++             * spellings of one value and not a behaviour change. */
++            if (CFAllocatorGetTypeID() != __CFGenericTypeID_inline(cf)) {
+                 allocatorToRelease = (CFAllocatorRef _Nonnull)__CFGetAllocator(cf);
+             }
+ 	}
+diff --git a/Sources/CoreFoundation/include/ForSwiftFoundationOnly.h b/Sources/CoreFoundation/include/ForSwiftFoundationOnly.h
+index e2f4ab0..143be7c 100644
+--- a/Sources/CoreFoundation/include/ForSwiftFoundationOnly.h
++++ b/Sources/CoreFoundation/include/ForSwiftFoundationOnly.h
+@@ -38,8 +38,15 @@
+ #define _CRT_NONSTDC_NO_DEPRECATE
+ #include <Windows.h>
+ #else
++/* FNX LOCAL MODIFICATION 1 (Apache-2.0 §4(b)): <fts.h> is a BSD/Darwin header that musl does not
++ * carry, and NO CF SOURCE CALLS ANY fts FUNCTION - measured across Sources/CoreFoundation,
++ * fts_open/fts_read/fts_close/fts_children/fts_set/FTSENT/FTS( are all ZERO hits - so this include is
++ * vestigial for this build. GUARDED rather than stubbed: a stub named fts.h would silently shadow a
++ * real one the moment one appears. */
++#if __has_include(<fts.h>)
+ #include <fts.h>
+ #endif
++#endif
+ #if __has_include(<unistd.h>)
+ #include <unistd.h>
+ #endif
+diff --git a/Sources/CoreFoundation/internalInclude/CFInternal.h b/Sources/CoreFoundation/internalInclude/CFInternal.h
+index 488fb1d..87f81cd 100644
+--- a/Sources/CoreFoundation/internalInclude/CFInternal.h
++++ b/Sources/CoreFoundation/internalInclude/CFInternal.h
+@@ -164,9 +164,18 @@ typedef struct os_log_s *os_log_t;
+ 
+ #include "ForFoundationOnly.h"
+ #if DEPLOYMENT_RUNTIME_SWIFT
+-#include "ForSwiftFoundationOnly.h"
+ #include "CFString.h"
+ #endif
++/* FNX LOCAL MODIFICATION 3 (Apache-2.0 §4(b)): the Swift-deployment guard above also guards the ONLY
++ * declaration site of the portable threading API (_CFThreadRef, _CFThreadAttributes, _CFThreadSpecificKey,
++ * _CFIsMainThread, _CFThreadSetName, _CFThreadCreate, _CFThreadSpecificGet/Set, _CFMainPThread, _CFEnviron,
++ * __CFHashDouble, CFSortIndexes) - yet CFPlatform.c, CFRunLoop.c, CFSocket.c, CFStream.c and CFRuntime.c
++ * USE those names under no guard at all. So with the Swift deployment off, the upstream C-only
++ * configuration does not compile: measured, 5 of 86 files failing on unknown type name _CFThreadRef.
++ * Including the header unconditionally is the MINIMAL deviation - declarations are harmless without a Swift
++ * runtime, and only USES create undefined references - and it duplicates no declaration, which a
++ * hand-written block here would have to do and could then let drift. */
++#include "ForSwiftFoundationOnly.h"
+ 
+ CF_EXPORT const char *_CFProcessName(void);
+ CF_PRIVATE CFStringRef _CFProcessNameString(void);

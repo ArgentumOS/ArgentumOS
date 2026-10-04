@@ -62,3 +62,9 @@
 [submodule "third_party/libtiff"]
 	path = third_party/libtiff
 	url = https://gitlab.com/libtiff/libtiff.git
+[submodule "third_party/swift-corelibs-foundation"]
+	path = third_party/swift-corelibs-foundation
+	url = https://github.com/swiftlang/swift-corelibs-foundation
+[submodule "third_party/swift-corelibs-libdispatch"]
+	path = third_party/swift-corelibs-libdispatch
+	url = https://github.com/swiftlang/swift-corelibs-libdispatch

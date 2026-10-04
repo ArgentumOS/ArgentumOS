@@ -2036,3 +2036,68 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 # boot root via the kernel cmdline 'root=/dev/hdb rootfstype=ext2'.
 
 
+	# --- CoreFoundation (docs/design/foundation-cf-core-plan.md, M1; pin 44cd6163 of
+	# third_party/swift-corelibs-foundation, Apache-2.0 with the Runtime Library Exception): the C core
+	# under this tree's Objective-C Foundation, built as its OWN shared library by decision D2, so that
+	# "the CF APIs are exposed" is a linkable tier rather than a claim.
+	#
+	# THREE LIBRARIES, AND THE OTHER TWO ARE NOT OPTIONAL THE WAY AN UNUSED LIBRARY WOULD BE: MEASURED,
+	# libcorefoundation.so.1 lists libdispatch.so and libBlocksRuntime.so among its NEEDED entries, so
+	# without their bytes every guest program that links CF fails AT LOAD, before its first instruction -
+	# the same rule the libjpeg block above states for libcoregraphics.
+	#
+	# AND THESE TWO DELIBERATELY BREAK THE "skip the bare dev link" RULE EVERY BLOCK ABOVE FOLLOWS:
+	# upstream gives libdispatch and libBlocksRuntime no SOVERSION, so `libdispatch.so` IS the real file
+	# AND its own SONAME, not a link-time symlink to a versioned one. The `libfoo.so.*` glob the other
+	# blocks use would copy NOTHING here, which is why these are named outright.
+	@if [ ! -d "$(COREFOUNDATION_PREFIX)/lib" ]; then \
+		echo "CoreFoundation prefix missing - run tools/corefoundation-build.sh first"; \
+		exit 1; \
+	fi
+	@if [ ! -d "$(LIBDISPATCH_PREFIX)/lib" ]; then \
+		echo "libdispatch prefix missing - run tools/libdispatch-build.sh first"; \
+		exit 1; \
+	fi
+	@cp -a $(COREFOUNDATION_PREFIX)/lib/libcorefoundation.so.* "$(ROOTFS64)/System/Libraries/"
+	@cp -a $(LIBDISPATCH_PREFIX)/lib/libdispatch.so $(LIBDISPATCH_PREFIX)/lib/libBlocksRuntime.so \
+		"$(ROOTFS64)/System/Libraries/"
+	# ITS HEADERS, for the reason the other blocks stage theirs (plan D7): an on-guest rebuild of
+	# anything that includes <CoreFoundation/CFBase.h> has to find it. The source keeps them FLAT, so the
+	# directory is what turns the name into <CoreFoundation/...>.
+	@mkdir -p "$(ROOTFS64)/System/Shared/Headers/CoreFoundation"
+	@cp $(COREFOUNDATION_SRC)/include/*.h "$(ROOTFS64)/System/Shared/Headers/CoreFoundation/"
+	# AND LIBDISPATCH'S HEADERS WITH THEM, because CF's public headers NAME dispatch types in their own
+	# signatures: staging CF's alone would leave anything including <CoreFoundation/CFRunLoop.h> unable to
+	# compile. libdispatch's install puts them under include/, with os/ and Block.h beside dispatch/.
+	@cp -a $(LIBDISPATCH_PREFIX)/include/dispatch $(LIBDISPATCH_PREFIX)/include/os \
+		$(LIBDISPATCH_PREFIX)/include/Block.h "$(ROOTFS64)/System/Shared/Headers/"
+	# corefoundation_smoke: M1's acceptance (docs/design/foundation-cf-core-plan.md /§7).
+	#
+	# IT IS COMPILED AS C, NOT AS OBJECTIVE-C, AND THAT IS THE WHOLE POINT OF THE PROBE. The plan's
+	# toll-free bridge (D3/D8) will eventually make a CFTypeRef and an id the same memory; this probe must
+	# be able to PASS while that does not exist yet, so that a failure here can only mean the C core is
+	# broken and never that the bridge is. M2's acceptance is the existing Foundation probes instead.
+	#
+	# AND THE GATE IS THE STAGING BLOCKS' GATE, because the same thing would otherwise happen: a probe
+	# linked against a prefix that is not there fails in the LINKER with a missing -lcorefoundation, which
+	# names the symptom rather than the fix.
+	@if [ ! -d "$(COREFOUNDATION_PREFIX)/lib" ]; then \
+		echo "CoreFoundation prefix missing - run tools/corefoundation-build.sh first"; \
+		exit 1; \
+	fi
+	# ICU IS NOT NAMED ON THE LINK LINE, AND THAT IS MEASURED RATHER THAN TIDY: naming it made the
+	# linker validate the ICU libraries' OWN undefined symbols, and ICU is built with libc++ - so the
+	# probe died on __cxxabiv1::__class_type_info and std::__1::... from INSIDE libicui18n, which names
+	# neither CF nor this file. CF already lists ICU among its NEEDED entries and the loader resolves
+	# those; the Foundation probes link the same way for the same reason.
+	# -fblocks IS REQUIRED BY CF'S PUBLIC HEADERS THEMSELVES, not by this probe's taste: they declare
+	# block parameters in their signatures (CFCalendarPriv.h's _CFCalendarEnumerateDates,
+	# ForSwiftFoundationOnly.h's enumerateKeysAndObjectsWithOptions), so every consumer of CF needs the
+	# flag - which is why upstream's own flag list carries it.
+	$(MUSL64_CC) userland/tests/corefoundation_smoke.c \
+		-I.build/cf-shim -I$(COREFOUNDATION_SRC)/include -I$(LIBDISPATCH_PREFIX)/include \
+	-fblocks \
+		-L$(COREFOUNDATION_PREFIX)/lib -lcorefoundation \
+		-L$(LIBDISPATCH_PREFIX)/lib -ldispatch -lBlocksRuntime \
+		-Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/corefoundation_smoke"

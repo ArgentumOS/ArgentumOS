@@ -202,6 +202,56 @@ covering `CFStringCreateWithCString`, a CF-backed `-length` and `-UTF8String` re
 `objc_msgSend`, and one `@"literal"` answering CF. **Deliverable: a line count and a list of what
 had to be re-plumbed.** This is the go/no-go gate; everything below is written as if it passes.
 
+### M1 — RESULT (landed 2026-10, `dec-2f9ddf1c81051735`)
+
+**Landed: the subtree, the pin, the library, and a guest smoke test.** `third_party/swift-corelibs-foundation`
+at **44cd6163** (sparse to `Sources/CoreFoundation` + `LICENSE`) and
+`third_party/swift-corelibs-libdispatch` at **024805a** (`swift-6.4.0-RELEASE`); two non-`shallow`
+submodules, so a fresh `git submodule update --init` reaches both pins. `libcorefoundation.so.1` builds
+with **1302 exported symbols** and NEEDED `libicui18n/uc/data.so.76`, `libdispatch.so`,
+`libBlocksRuntime.so`, `libc.so`, and `tests/cases/corefoundation_smoke.py` passes **6/6** on the guest —
+a CFString and a CFArray created, read back and released. The manifest carries the licence, the pin and
+the §4(b) modified-file list (docs/design/self-hosting-packages.md §2B).
+
+**TWO DECISIONS SETTLED HERE (§10 below): Q3 — CF ships as its OWN shared library (D2), and Q4 —
+libdispatch is VENDORED rather than compiled out.**
+
+**AND THE ANSWER TO Q4 WAS FORCED BY MEASUREMENT, NOT CHOSEN:** the first fatal error of the very first
+translation unit was `CFStream.h:22: 'dispatch/dispatch.h' file not found`. Upstream links `dispatch`
+unconditionally (`Sources/CoreFoundation/CMakeLists.txt:121`), seven CF sources include it, and the link
+resolved 21 dispatch symbols plus the BlocksRuntime family. libdispatch is not a companion this plan chose
+to bring along; it is a dependency CF declares.
+
+**THE BUILD, AND THE ONE LESSON THAT COST THE MOST.** 86 of 86 translation units compile and link, but
+only after reading UPSTREAM'S OWN FLAG LIST (top-level `CMakeLists.txt` §174-204) — a stretch of this
+milestone was spent deriving a flag set empirically instead, and the cost is instructive rather than
+merely annoying: upstream's `-Wno-int-conversion` makes a glibc-shaped `strerror_r` guard merely WARN on
+musl, so a local modification written against that error was **unnecessary**, and 160 warnings came from
+passing `__LITTLE_ENDIAN__`/`__BIG_ENDIAN__` that CFInternal.h already derives. The flags this tree
+actually needs are listed in tools/corefoundation-build.sh with the measurement behind each.
+
+**THE C-ONLY PATH IS NOT UPSTREAM'S CONFIGURATION, AND THAT IS THE MILESTONE'S REAL COST.**
+`DEPLOYMENT_RUNTIME_SWIFT` defaults to 1 in the very header the build force-includes
+(`CoreFoundation_Prefix.h:11`), because upstream's deployment IS Swift. Turning it off — the user's
+decision, and the reason this plan's §1 said the Swift half is not wanted — exposed three genuine gaps in
+upstream's C-only path, each measured and each fixed by a listed modification: a vestigial `<fts.h>`
+include, a threading API whose only declaration site sat inside the Swift guard while five files use it
+unguarded, and `__kCFAllocatorTypeID_CONST`, referenced once and **defined nowhere in the entire commit**.
+
+**AND TWO SYMBOLS ARE SIMPLY ELSEWHERE, WHICH IS WHY THE SEAM IS A FILE OF OURS.**
+`_CFGetCurrentDirectory` is implemented IN SWIFT upstream (`Sources/Foundation/FileManager.swift`,
+`@_cdecl`), and `_CFThreadSetName`, though defined at `CFPlatform.c:1791`, is **absent from the compiled
+object** (`nm` is empty while `CFStream.c:1704` calls it). Rather than a third and fourth patch to
+somebody else's source, both live in `third_party/swift-corelibs-foundation-fnx-seam.c`, with
+`_CFThreadSetName` written for **musl's two-argument** `pthread_setname_np` rather than copied from
+Darwin's one-argument branch. It fails loudly in both directions: a duplicate symbol if upstream ever
+gains these, an undefined reference if it loses one.
+
+**WHAT M1 DOES NOT CLAIM.** No toll-free bridging (that is M2, and the smoke probe is deliberately C so
+its result can never be read as a bridge result); no change to the ledger's Objective-C surface, and **no
+work-list row closed** (§11); and no licence-statement change yet, because nothing of Foundation derives
+from CF at M1 — the ~29% re-base is M3-M5, and the record says so rather than absorbing it (§9, §10).
+
 **M1 — Vendor and build CF for FNX.** The subtree, the pin, the notices, `libcorefoundation.so.1`
 in the image, and a guest smoke test that creates/destroys a CFString and a CFArray. **Answers the
 libdispatch question with a build**, not a guess: either dispatch is vendored, or the CF paths that
@@ -249,9 +299,10 @@ either fix ours or **record a measured deviation** in the standing-policy style.
 - **Q1 — ANSWERED (2026-10-03, `dec-d359e3f82bf8b95e`): the retraction is SUPERSEDED.** This plan
   governs; M0 started.
 - **Q2 — ANSWERED: APSL is NOT read, not even as a reference.** The bridge is clean-room (D8).
-- **Q3 — CF as a shared library (D2) or folded into `libfoundation`?** D2 is recommended because
-  "expose the APIs" implies linkability.
-- **Q4 — libdispatch: vendor it, or compile the CF paths that need it out and record the gap?**
+- **Q3 — ANSWERED (user, `dec-2f9ddf1c81051735`): CF ships as its OWN shared library**, D2 as
+  recommended. `libcorefoundation.so.1` is staged beside libfoundation/libconfig/libobjc.
+- **Q4 — ANSWERED (user, `dec-2f9ddf1c81051735`): libdispatch is VENDORED.** M1's build resolved the
+  question with a build, as its own text prescribed: 21 dispatch symbols were undefined at link.
 - **Q6 — What does CF's build stop on after the two platform defines?** The first failure past
   `CFTargetConditionals.h` (log: the M0 spike's `cfbuild3`), which M1 answers.
 - **Q5 — Does CoreGraphics ever follow (D4)?** Explicitly out of scope here; asked so it is not

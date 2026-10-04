@@ -217,6 +217,107 @@ the plan's G3 gate and SH-0..SH-5.
   job (docs/design/libressl-plan.md) and curl binds it when that lands, so **no second TLS
   library enters the tree**. **No new build-time requirement**: CMake is already §C's.
 
+- **swift-corelibs-foundation** (submodule `third_party/swift-corelibs-foundation`,
+  pinned **44cd6163**, sparse to `Sources/CoreFoundation` + `LICENSE` — the Swift
+  half of the repository is deliberately NOT checked out, plan D1) — **Apache
+  License 2.0 WITH THE RUNTIME LIBRARY EXCEPTION**, read from the vendored
+  per-file header ("Copyright (c) 1998-2019, Apple Inc. and the Swift project
+  authors … Licensed under Apache License v2.0 with Runtime Library Exception").
+  Apache-2.0 is MIT-compatible; the obligations are the notices, a NOTICE-style
+  attribution, and **stating modified files (Apache §4(b))** — the same shape
+  docs/design/driver-provenance-policy.md already imposes on this tree, and the
+  reason the local changes below are listed rather than summarised.
+  **THE MODIFIED FILES (§4(b)), CARRIED AS A PATCH RATHER THAN AS EDITS IN THE
+  SUBMODULE** — `third_party/swift-corelibs-foundation-fnx.patch`, applied
+  idempotently by tools/corefoundation-build.sh on the pattern mk/10-toolchain.mk
+  already uses for libobjc2. This matters beyond tidiness: a change made inside a
+  submodule is NOT recorded by this repository, so a fresh `git submodule update
+  --init` would silently discard it. Three files: `include/ForSwiftFoundationOnly.h`
+  (a `<fts.h>` include guarded by `__has_include`, because musl carries no fts
+  header and **no CF source calls a single fts function** — measured, zero call
+  sites in the subtree); `internalInclude/CFInternal.h` (the portable threading
+  API's only declaration site was inside the `DEPLOYMENT_RUNTIME_SWIFT` guard
+  while five files use it unguarded, so it is included unconditionally); and
+  `CFRuntime.c` (a reference to `__kCFAllocatorTypeID_CONST`, which **`git grep`
+  over the entire commit — Swift half included — finds exactly once, at its own
+  use**, replaced by `CFAllocatorGetTypeID()`, the C API for the same value and
+  the idiom this tree already uses for that comparison).
+  **BUILT BY tools/corefoundation-build.sh**, producing
+  `libcorefoundation.so.1` (SONAME `libcorefoundation.so.1`, 1302 exported
+  symbols) with NEEDED `libicui18n/uc/data.so.76`, `libdispatch.so`,
+  `libBlocksRuntime.so`, `libc.so`. **THERE IS NO CMAKE HERE ON PURPOSE**: the
+  subtree is 86 translation units with no generated sources or configure step, so
+  a third build system would be cost for nothing; the three things upstream's
+  CMake contributes are reproduced by hand and each is named in the script.
+  **THE FLAG LIST IS FOUNDED ON UPSTREAM'S OWN** (top-level `CMakeLists.txt`
+  §174-204) rather than derived by fixing errors one at a time — a lesson that
+  cost a stretch of this work, and that retired one of our own patches:
+  `-Wno-int-conversion`, which upstream passes, makes a glibc-shaped `strerror_r`
+  guard merely warn on musl, so a local modification we had written was
+  unnecessary. Deliberate deviations from that list: `-DDEPLOYMENT_RUNTIME_SWIFT=0`
+  (upstream always builds the Swift deployment; this tree's runtime is libobjc2
+  and its own Foundation, and the C-only path needed the three fixes above),
+  `-D__musl__` (**upstream's own convention** — CFPlatform.c branches on it and
+  musl defines no such macro, so upstream's musl branch never fired),
+  `-DHAVE_ISSETUGID=1`, `_GNU_SOURCE` + `_POSIX_C_SOURCE=200809L` together (musl
+  defines `_POSIX_THREADS` as `_POSIX_VERSION`, which musl leaves undefined unless
+  a POSIX feature macro is asked for — and `-D_POSIX_C_SOURCE` ALONE is the
+  trap that looks stricter and compiles 6 of 86), and `-fexceptions` dropped
+  because it pulled a libunwind family CoreFoundation has no use for.
+  **THE GUEST SMOKE TEST IS tests/cases/corefoundation_smoke.py** (probe
+  `userland/tests/corefoundation_smoke.c`, C and not Objective-C so that a
+  failure here can never be a failure of the plan's toll-free bridge): 6/6 checks,
+  a CFString and a CFArray created, read back and released.
+  **PROVENANCE DEBT, STATED RATHER THAN ABSORBED (plan D1/D8)**: the plan
+  re-bases roughly 29% of the Objective-C Foundation's behaviour onto this
+  library, which STOPS THAT PORTION BEING ORIGINAL MIT WORK. **That re-base is
+  M3-M5 and has not happened** — at M1 nothing of Foundation derives from CF
+  yet, so this entry records the licence and the §4(b) obligation now and the
+  in-tree licence statement must be updated WHEN THE RE-BASE LANDS, not claimed
+  here as already done.
+  **AND THE SELF-HOSTING REQUIREMENT (§6 of this manifest)**: the subtree is C
+  built by clang with an explicit flag list, no Swift and no code generation, so
+  nothing new is needed to rebuild it on the guest beyond a C compiler — which is
+  why §2A's toolchain row is untouched by this admission.
+- **swift-corelibs-libdispatch** (submodule `third_party/swift-corelibs-libdispatch`,
+  pinned **024805a** = tag `swift-6.4.0-RELEASE**, sparse to root files +
+  `dispatch/ src/ os/ private/ cmake/ man/`) — **Apache License 2.0 with the
+  Runtime Library Exception**, the same family and the same §4(b) obligation as
+  the CoreFoundation entry above. **IT IS HERE BECAUSE CF DECLARES IT**: upstream
+  `Sources/CoreFoundation/CMakeLists.txt:121` links `dispatch` unconditionally,
+  and the link resolved 21 dispatch symbols plus the BlocksRuntime family.
+  PROVIDES TWO LIBRARIES, BOTH UNVERSIONED — `libdispatch.so` and
+  `libBlocksRuntime.so` — which is a departure worth knowing when staging them:
+  upstream gives neither a SOVERSION, so `libdispatch.so` IS the real file and
+  its own SONAME, not a link-time symlink, and the `libfoo.so.*` glob every other
+  staging block uses would copy NOTHING for them.
+  **BUILT BY tools/libdispatch-build.sh** (CMake, out-of-source, on libwebp's
+  reasoning). `-DCMAKE_DISABLE_FIND_PACKAGE_LibRT=ON` is not a preference: that
+  search resolves `LibRT_INCLUDE_DIR` to the HOST's `/usr/include`, which puts
+  glibc's `sys/cdefs.h` ahead of musl's and fails the build on
+  `__GNUC_PREREQ` — **the libwebp lesson recurring, and the diagnosis is a grep
+  of CMakeCache.txt**. `-D_GNU_SOURCE` is in `CMAKE_C_FLAGS` because CMake probes
+  features with those flags and musl declares `program_invocation_short_name`
+  only under `_GNU_SOURCE`: **a probe must be compiled under the same feature
+  macros as the real build**, which is also why CMake reported
+  `pthread_setname_np` as missing on a musl that has it. Its own warning module
+  is patched to stop feeding C-only flags to the C++ compiler and to drop
+  `-Werror` (Apple-clang strictness, where a musl portability warning would
+  otherwise be a build failure).
+  **TWO PLATFORM FACTS, BOTH MEASURED, ONE OF THEM A REAL LIMIT.**
+  `ENABLE_INTERNAL_PTHREAD_WORKQUEUES=ON` because musl ships no
+  `pthread_workqueue.h` and no libpwq, so libdispatch uses its own complete
+  workqueue implementation. And `HAVE_FUTEX` **must** stay at its Linux default:
+  setting it to 0 was tried, on the reasoning that FNX has no futex syscall, and
+  libdispatch answered with its own `#error` ("`_dispatch_wait_on_address`
+  unimplemented for this platform") because **there is no futex-less Linux path
+  in it**. So the futex constants had to be added to
+  `tools/kernel-headers/linux/futex.h`, and the honest statement of the limit is
+  this: with no futex syscall, CONTENDED locks can only spin or fail with ENOSYS.
+  M1's smoke test is single-threaded and never leaves the compare-and-swap fast
+  path, so it does not exercise this — **it is a limit of the platform, recorded
+  rather than worked around.**
+
 ### C. Build drivers
 
 | Driver | License | Role |
