@@ -342,6 +342,16 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite;
 @property (nullable, readonly, copy) NSURLRequest *originalRequest;
 @property (nullable, readonly, copy) NSURLRequest *currentRequest;
 
+
+/* §63.228: THE COMPLETION-HANDLER FORM. It is the SAME transport as the synchronous door — a connection with a
+ * private delegate, which is how this class already drives one — with the answer handed to a block on the
+ * caller's NSOperationQueue instead of to a caller on a condition variable. The handler runs on that queue and
+ * is called EXACTLY ONCE: a failure and a completion cannot both reach it. */
++ (void)sendAsynchronousRequest:(NSURLRequest *)request
+			  queue:(NSOperationQueue *)queue
+	      completionHandler:(void (^)(NSURLResponse * _Nullable,
+					  NSData * _Nullable,
+					  NSError * _Nullable))handler;
 @end
 
 NS_ASSUME_NONNULL_END

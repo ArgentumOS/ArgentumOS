@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1747	open	49	struck	418
+# method	shipped	1748	open	48	struck	418
 # property	shipped	734	open	21	struck	181
 
 
@@ -2650,7 +2650,7 @@ method	shipped	+connectionWithRequest:delegate:	NSURLConnection	Networking / Leg
 method	shipped	-initWithRequest:delegate:	NSURLConnection	Networking / Legacy / URL Connection / Loading Data Asynchronously	deprecated	objc
 method	shipped	-initWithRequest:delegate:startImmediately:	NSURLConnection	Networking / Legacy / URL Connection / Loading Data Asynchronously	deprecated	objc
 method	struck	-scheduleInRunLoop:forMode:	NSURLConnection	Networking / Legacy / URL Connection / Scheduling Delegate Method Calls	refused	objc
-method	open	+sendAsynchronousRequest:queue:completionHandler:	NSURLConnection	Networking / Legacy / URL Connection / Loading Data Asynchronously	deprecated	objc
+method	shipped	+sendAsynchronousRequest:queue:completionHandler:	NSURLConnection	Networking / Legacy / URL Connection / Loading Data Asynchronously	deprecated	objc
 method	shipped	+sendSynchronousRequest:returningResponse:error:	NSURLConnection	Networking / Legacy / URL Connection / Loading Data Synchronously	deprecated	objc
 method	shipped	-setDelegateQueue:	NSURLConnection	Networking / Legacy / URL Connection / Scheduling Delegate Method Calls	deprecated	objc
 method	shipped	-start	NSURLConnection	Networking / Legacy / URL Connection / Loading Data Asynchronously	deprecated	objc

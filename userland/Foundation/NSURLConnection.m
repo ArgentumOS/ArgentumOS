@@ -33,6 +33,8 @@
  * of this is never blocked on.
  */
 #import <Foundation/NSURLConnection.h>
+#include <Block.h>	/* §63.228: Block_copy/Block_release — a block is not owned with a message send */
+#import <Foundation/NSBlockOperation.h>	/* §63.228: the queue dispatch is a block operation */
 #import <Foundation/NSURLProtocol.h>
 #import <Foundation/NSURLRequest.h>
 #import <Foundation/NSURLResponse.h>
@@ -87,6 +89,88 @@ static unsigned long fn_download_serial = 0;
 - (NSString *)fnMakeDownloadPath;
 - (void)fnReportDownloadProgressForChunk:(NSUInteger)chunk;
 - (NSError *)fnUnsupportedURLError;
+@end
+
+
+/* §63.228: THE CATCHER. A private delegate that accumulates the transfer and calls the handler ONCE, on the
+ * caller's queue — the async door's counterpart to the synchronous door's stack state. It RETAINS ITSELF until
+ * it fires (the same self-retain the thread entry uses), because the connection keeps no strong reference to a
+ * delegate and nothing else holds this object either. */
+@interface FnAsyncCompletion : NSObject
+{
+	NSMutableData *_data;
+	NSURLResponse *_response;
+	NSError *_error;
+	void (^_handler)(NSURLResponse *, NSData *, NSError *);
+	NSOperationQueue *_queue;
+	BOOL _fired;
+}
+- (instancetype)initWithQueue:(NSOperationQueue *)queue
+		      handler:(void (^)(NSURLResponse *, NSData *, NSError *))handler;
+@end
+
+@implementation FnAsyncCompletion
+- (instancetype)initWithQueue:(NSOperationQueue *)queue
+		      handler:(void (^)(NSURLResponse *, NSData *, NSError *))handler
+{
+	self = [super init];
+	if (self != nil) {
+		_data = [[NSMutableData alloc] init];
+		_queue = [queue retain];
+		_handler = Block_copy(handler);	/* the runtime's own entry points, per the house rule */
+	}
+	return self;
+}
+
+- (void)dealloc
+{
+	[_data release];
+	[_response release];
+	[_error release];
+	[_queue release];
+	Block_release(_handler);
+	[super dealloc];
+}
+
+- (void)fnDeliver
+{
+	/* ONCE, AND ON THE CALLER'S QUEUE: the block carries the answer, and the catcher lets itself go after. */
+	if (_fired) {
+		return;
+	}
+	_fired = YES;
+	{
+		NSBlockOperation *op = [NSBlockOperation blockOperationWithBlock:^{
+			_handler(_response, _data, _error);
+		}];
+
+		[_queue addOperation:op];
+	}
+	[self release];
+}
+
+- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response
+{
+	[_response release];
+	_response = [response retain];
+}
+
+- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data
+{
+	[_data appendData:data];
+}
+
+- (void)connectionDidFinishLoading:(NSURLConnection *)connection
+{
+	[self fnDeliver];
+}
+
+- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error
+{
+	[_error release];
+	_error = [error retain];
+	[self fnDeliver];
+}
 @end
 
 @implementation NSURLConnection
@@ -719,4 +803,24 @@ totalBytesExpectedToSend:(int64_t)totalBytesExpectedToSend
 					@"no registered protocol claims this request's URL"}];
 }
 
+
++ (void)sendAsynchronousRequest:(NSURLRequest *)request
+			  queue:(NSOperationQueue *)queue
+	      completionHandler:(void (^)(NSURLResponse *, NSData *, NSError *))handler
+{
+	FnAsyncCompletion *catcher = [[FnAsyncCompletion alloc] initWithQueue:queue handler:handler];
+	NSURLConnection *connection;
+
+	[catcher retain];	/* it fires later; see the catcher's own note */
+	connection = [[NSURLConnection alloc] initWithRequest:request
+						     delegate:catcher
+					     startImmediately:YES];
+	if (connection == nil) {
+		NSError *error = [self fnUnsupportedURLErrorForRequest:request];
+
+		[catcher connection:nil didFailWithError:error];
+	}
+	[connection release];
+	[catcher release];
+}
 @end
