@@ -15962,6 +15962,31 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.222 — THE SWEEP'S `--check` USES ITS OWN WEAK PARSER, AND THAT IS WHAT BLOCKS TWO ROWS
+
+**No code landed; a tool finding, with its acceptance criterion.** The `-replaceItemAtURL:…` unit was written,
+built and gated green — and then `--check` refused it with `STALE SHIPPED CLAIM … the owner's block declares it
+and it does not`, even though the header declares it. The same thing blocked
+`NSConnectionDelegate -makeNewConnection:sender:` in §63.211. Two rows, one cause.
+
+**THE CAUSE, READ OUT OF `tools/foundation-sweep.py`:** `check()` builds its set with
+`declared_names(text)` (line 2118), the parser §63.182 documented as returning **only the last parameter name**
+for some multi-keyword declarations — so a six-keyword selector like
+`-replaceItemAtURL:withItemAtURL:backupItemName:options:resultingItemURL:error:` is invisible to it. The tool
+ALREADY HAS the right one: `_declared_types()` (line 1330), which is **owner-keyed** (`{type: {signed
+selectors}}`) and **sign-aware**, and is what the other paths (1403, 1821) use. `check()` is the odd one out.
+
+**THE FIX, SCOPED, AND ITS ACCEPTANCE:** make `check()` compare a row against
+`_declared_types()[owner]` (matching the ledger's signed method names, and handling property rows' unsigned
+spelling) instead of the global `declared_names()` set. Acceptance: **both blocked rows flip to `shipped` and
+`--check` stays green for the other 3,150 rows** — which is exactly the test that must be run, because a
+loosened `--check` would let genuinely-missing declarations through, and that is worse than two stuck rows.
+
+**WHY IT WAS NOT DONE HERE:** the sweep is load-bearing (it gates every commit, and the plan records that
+`--refresh` must never be used because it regenerates from the unfiltered corpus). A parser swap at the end of a
+long turn is the wrong place to be clever; the finding is cheap to hand over and the acceptance criterion is
+sharp.
+
 ## §63.221 — NSFileManager's domain relationship door, and the one door next to it that deserves its own unit
 
 One row shipped: `-getRelationship:ofDirectory:inDomain:toItemAtURL:error:`. Ledger after:
