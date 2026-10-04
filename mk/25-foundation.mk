@@ -21,7 +21,13 @@ FOUNDATION_LIB     = $(FNXLIB)/libfoundation.so
 
 # -Iuserland so that `#import <Foundation/...>` resolves, which is the spelling every consumer will use.
 # -I.build/cf-shim and $(COREFOUNDATION_SRC)/include for CF's headers, as the CF probes already do.
-FOUNDATION_CFLAGS  = -fPIC -fblocks -fconstant-cfstrings -Iuserland -I.build/cf-shim \
+# -DDEPLOYMENT_RUNTIME_SWIFT=0 IS NOT OPTIONAL AND WAS THE WHOLE CFSTR SAGA. CoreFoundation's headers read
+# that macro to choose between their Objective-C and their Swift forms -- the Swift arm's CFSTR names a
+# Swift class and emits a five-word struct, the other uses clang's built-in and emits Apple's four-word
+# __CFConstantString. The CF package passes it IN ITS OWN BUILD SCRIPT; this build never did, so every file
+# here was compiled against Swift-mode headers, and every CFSTR asked the linker for
+# $s10Foundation19_NSCFConstantStringCN. One flag, one flag list, one very long search.
+FOUNDATION_CFLAGS  = -DDEPLOYMENT_RUNTIME_SWIFT=0 -fPIC -fblocks -fconstant-cfstrings -Iuserland -I.build/cf-shim \
                      -I$(COREFOUNDATION_SRC)/include -I$(LIBDISPATCH_PREFIX)/include
 
 FOUNDATION_CF_LIBS = -L$(COREFOUNDATION_PREFIX)/lib -lcorefoundation \

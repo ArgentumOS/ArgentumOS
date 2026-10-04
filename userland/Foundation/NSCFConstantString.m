@@ -35,15 +35,14 @@
 
 @interface _NSCFConstantString : NSString
 {
-	/* THE OFFSETS COME FROM CFString.h's OWN CFSTR MACRO, not from Apple's documentation and not from
-	 * memory — which is where the first version of this class got them wrong, with _flags reading the
-	 * retain count. The macro builds:
-	 *     struct __CFConstStr str = {{ (isa), (rc), 0x07C8 }, bytes, sizeof(cStr) - 1 };
-	 * so after the isa the superclass contributes there are exactly four fields, in this order. */
-	unsigned long _rc;		/* offset 8  */
-	unsigned long _flags;		/* offset 16 — 0x07C8, and the 0x08 bit means UTF-16 */
-	const unsigned char *_bytes;	/* offset 24 */
-	unsigned long _count;		/* offset 32 */
+	/* FOUR FIELDS, WHICH IS APPLE'S __CFConstantString AND WHAT CLANG'S BUILT-IN EMITS: isa, flags, ptr,
+	 * length. An earlier version of this class declared the FIVE-word layout, which belongs to CFString.h's
+	 * SWIFT arm -- a branch this library was taking only because its build never defined
+	 * DEPLOYMENT_RUNTIME_SWIFT=0, so it was matching a struct it should never have been emitting. The width of
+	 * this class is a consequence of that flag, and the flag is now set. */
+	unsigned long _flags;		/* offset 8  — 0x07C8, whose 0x08 bit means UTF-16 */
+	const unsigned char *_bytes;	/* offset 16 */
+	unsigned long _count;		/* offset 24 */
 }
 - (unsigned long)length;
 - (unsigned short)characterAtIndex:(unsigned long)index;

@@ -45,6 +45,9 @@ CHECKS = (
     "a-cf-native-string-has-a-class",
     "and-is-messageable-as-an-ns-string",
     "and-casts-back-to-cf",
+    "a-cfstr-literal-is-an-object",
+    "and-is-messageable",
+    "and-casts-to-cfstringref",
 )
 
 

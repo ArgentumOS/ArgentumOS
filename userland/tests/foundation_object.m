@@ -184,6 +184,23 @@ int main(void) {
 				if (unicode != NULL) {
 					CFRelease(unicode);
 				}
+	/* AND NOW THE DEBT ITSELF, WHICH CAN BE TESTED BECAUSE CFSTR CAN BE COMPILED AT LAST. A CFSTR is not a
+	 * call: clang emits a struct whose isa is the constant class, and that class is deliberately NOT
+	 * registered with CF -- so CF reaches its doors by DISPATCH, and one pointer works from both sides. */
+	{
+		CFStringRef constant = CFSTR("constant");
+
+		check("a-cfstr-literal-is-an-object", constant != NULL && *(unsigned long *)constant != 0,
+		      "a CFSTR's first word is zero - the constant class is not behind it");
+		check("and-is-messageable", constant != NULL && [(id)constant length] == 8,
+		      "[(id)CFSTR(...) length] did not answer 8");
+		check("and-casts-to-cfstringref", constant != NULL && CFStringGetLength(constant) == 8,
+		      "CFStringGetLength on a CFSTR did not answer 8 - CF did not dispatch to the constant class");
+		if (constant != NULL) {
+			note_value("a CFSTR's first word (its class)", *(unsigned long *)constant);
+			note_value("its flags field", ((unsigned long *)constant)[1]);
+		}
+	}
 			}
 			if (after) {
 				CFRelease(after);
