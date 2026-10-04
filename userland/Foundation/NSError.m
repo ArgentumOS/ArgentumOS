@@ -30,6 +30,13 @@ NSString *const NSUnderlyingErrorKey = @"NSUnderlyingError";
 static NSMutableDictionary *fn_user_info_value_providers = nil;
 static NSErrorUserInfoValueProvider fn_wildcard_provider = nil;
 
+
+/* §63.214: the FileProvider domain and its three codes — the values are OURS (D2), the spelling is Apple's. */
+NSErrorDomain const NSFileProviderErrorDomain = @"NSFileProviderErrorDomain";
+NSInteger const NSFileProviderErrorNoSuchItem = 1;
+NSInteger const NSFileProviderErrorCollision = 2;
+NSInteger const NSFileProviderErrorRejectedDeletion = 3;
+
 @implementation NSError
 
 /* ---- THE ERROR DOMAINS, USER-INFO KEYS AND CODES (the coverage slice) ------------------------------
@@ -326,4 +333,32 @@ NSInteger const NSValidationErrorMinimum = 10064;
 }
 
 
+
++ (instancetype)fileProviderErrorForCollisionWithItem:(id)existingItem
+{
+	return [self errorWithDomain:NSFileProviderErrorDomain
+				code:NSFileProviderErrorCollision
+			    userInfo:[NSDictionary dictionaryWithObject:
+					[NSString stringWithFormat:@"an item of the same name already exists: %@",
+						existingItem]
+								     forKey:@"NSLocalizedDescriptionKey"]];
+}
+
++ (instancetype)fileProviderErrorForNonExistentItemWithIdentifier:(NSString *)identifier
+{
+	return [self errorWithDomain:NSFileProviderErrorDomain
+				code:NSFileProviderErrorNoSuchItem
+			    userInfo:[NSDictionary dictionaryWithObject:
+					[NSString stringWithFormat:@"no item has the identifier %@", identifier]
+								     forKey:@"NSLocalizedDescriptionKey"]];
+}
+
++ (instancetype)fileProviderErrorForRejectedDeletionOfItem:(id)updatedItem
+{
+	return [self errorWithDomain:NSFileProviderErrorDomain
+				code:NSFileProviderErrorRejectedDeletion
+			    userInfo:[NSDictionary dictionaryWithObject:
+					[NSString stringWithFormat:@"the deletion was rejected for: %@", updatedItem]
+								     forKey:@"NSLocalizedDescriptionKey"]];
+}
 @end

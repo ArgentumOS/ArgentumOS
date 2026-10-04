@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1732	open	65	struck	417
+# method	shipped	1737	open	59	struck	418
 # property	shipped	731	open	26	struck	179
 
 
@@ -926,9 +926,9 @@ property	open	suspended	NSDistributedNotificationCenter	App Support / Cross-Proc
 method	shipped	-nextObject	NSEnumerator	Fundamentals / Iteration / Getting the Enumerated Objects	-	objc
 property	shipped	allObjects	NSEnumerator	Fundamentals / Iteration / Getting the Enumerated Objects	-	objc
 method	shipped	+errorWithDomain:code:userInfo:	NSError	App Support / User-Relevant Errors / Creating Error Objects	-	objc
-method	open	+fileProviderErrorForCollisionWithItem:	NSError	App Support / User-Relevant Errors / Type Methods	-	objc
-method	open	+fileProviderErrorForNonExistentItemWithIdentifier:	NSError	App Support / User-Relevant Errors / Type Methods	-	objc
-method	open	+fileProviderErrorForRejectedDeletionOfItem:	NSError	App Support / User-Relevant Errors / Type Methods	-	objc
+method	shipped	+fileProviderErrorForCollisionWithItem:	NSError	App Support / User-Relevant Errors / Type Methods	-	objc
+method	shipped	+fileProviderErrorForNonExistentItemWithIdentifier:	NSError	App Support / User-Relevant Errors / Type Methods	-	objc
+method	shipped	+fileProviderErrorForRejectedDeletionOfItem:	NSError	App Support / User-Relevant Errors / Type Methods	-	objc
 method	shipped	-init	NSError	App Support / User-Relevant Errors / Instance Methods	deprecated	objc
 method	shipped	-initWithDomain:code:userInfo:	NSError	App Support / User-Relevant Errors / Creating Error Objects	-	objc
 method	shipped	+new	NSError	App Support / User-Relevant Errors / Type Methods	deprecated	objc
@@ -1127,14 +1127,14 @@ method	shipped	-initWithCoder:	NSFileWrapper	Files and Data Persistence / Manage
 method	shipped	-initWithPath:	NSFileWrapper	Files and Data Persistence / Managed file access / Creating File Wrappers	deprecated	objc
 method	shipped	-initWithSerializedRepresentation:	NSFileWrapper	Files and Data Persistence / Managed file access / Creating File Wrappers	-	objc
 method	shipped	-initWithURL:options:error:	NSFileWrapper	Files and Data Persistence / Managed file access / Creating File Wrappers	-	objc
-method	open	-keyForFileWrapper:	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing File-Wrapper Information	-	objc
+method	shipped	-keyForFileWrapper:	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing File-Wrapper Information	-	objc
 method	shipped	-matchesContentsOfURL:	NSFileWrapper	Files and Data Persistence / Managed file access / Updating File Wrappers	-	objc
 method	shipped	-needsToBeUpdatedFromPath:	NSFileWrapper	Files and Data Persistence / Managed file access / Updating File Wrappers	deprecated	objc
 method	shipped	-readFromURL:options:error:	NSFileWrapper	Files and Data Persistence / Managed file access / Updating File Wrappers	-	objc
 method	shipped	-removeFileWrapper:	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing File-Wrapper Information	-	objc
 method	shipped	-symbolicLinkDestination	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing File-Wrapper Information	deprecated	objc
 method	shipped	-updateFromPath:	NSFileWrapper	Files and Data Persistence / Managed file access / Updating File Wrappers	deprecated	objc
-method	open	-writeToFile:atomically:updateFilenames:	NSFileWrapper	Files and Data Persistence / Managed file access / Writing Files	deprecated	objc
+method	shipped	-writeToFile:atomically:updateFilenames:	NSFileWrapper	Files and Data Persistence / Managed file access / Writing Files	deprecated	objc
 method	shipped	-writeToURL:options:originalContentsURL:error:	NSFileWrapper	Files and Data Persistence / Managed file access / Writing Files	-	objc
 property	shipped	directory	NSFileWrapper	Files and Data Persistence / Managed file access / Querying File Wrappers	-	objc
 property	shipped	fileAttributes	NSFileWrapper	Files and Data Persistence / Managed file access / Accessing Files	-	objc
@@ -2342,7 +2342,7 @@ method	shipped	-maximumLengthOfBytesUsingEncoding:	NSString	Fundamentals / Strin
 method	shipped	-paragraphRangeForRange:	NSString	Fundamentals / Strings / Determining Line and Paragraph Ranges	-	objc
 method	shipped	+pathWithComponents:	NSString	Fundamentals / Strings / Working with Paths	-	objc
 method	shipped	-propertyList	NSString	Fundamentals / Strings / Converting String Contents Into a Property List	-	objc
-method	open	-propertyListFromStringsFileFormat	NSString	Fundamentals / Strings / Converting String Contents Into a Property List	-	objc
+method	struck	-propertyListFromStringsFileFormat	NSString	Fundamentals / Strings / Converting String Contents Into a Property List	declined	objc
 method	shipped	-rangeOfCharacterFromSet:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	shipped	-rangeOfCharacterFromSet:options:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc
 method	shipped	-rangeOfCharacterFromSet:options:range:	NSString	Fundamentals / Strings / Finding Characters and Substrings	-	objc

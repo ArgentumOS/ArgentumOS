@@ -1031,4 +1031,39 @@ static NSString *const FNWrapperTypeSymbolicLink = @"SymbolicLink";
 	return self;
 }
 
+
+- (NSString *)keyForFileWrapper:(NSFileWrapper *)child
+{
+	/* BY IDENTITY, not by name: a parent keys its children by UNIQUE filename, and the caller asking this
+	 * question holds the child, not its key. */
+	NSEnumerator *keys = [_fileWrappers keyEnumerator];
+	id key;
+
+	while ((key = [keys nextObject]) != nil) {
+		if ([_fileWrappers objectForKey:key] == child) {
+			return (NSString *)key;
+		}
+	}
+	return nil;
+}
+
+- (BOOL)writeToFile:(NSString *)path
+	 atomically:(BOOL)useAuxiliaryFile
+    updateFilenames:(BOOL)updateFilenamesFlag
+{
+	/* THE PRE-10.6 SPELLING DELEGATES TO THE MODERN WRITER: a path becomes a file URL and the three arguments
+	 * become the options that mean the same thing, so there is one writer, not two. */
+	NSUInteger options = 0;
+
+	if (useAuxiliaryFile) {
+		options |= NSFileWrapperWritingAtomic;
+	}
+	if (updateFilenamesFlag) {
+		options |= NSFileWrapperWritingWithNameUpdating;
+	}
+	return [self writeToURL:(NSURL *)[NSURL fileURLWithPath:path]
+			options:(NSFileWrapperWritingOptions)options
+	    originalContentsURL:nil
+			  error:NULL];
+}
 @end

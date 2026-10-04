@@ -65,6 +65,13 @@ extern NSString *const NSUnderlyingErrorKey;
  * framework rather than in the error object. */
 typedef id _Nullable (^NSErrorUserInfoValueProvider)(NSError *error, NSErrorUserInfoKey key);
 
+/* §63.214: THE FILE-PROVIDER CONSTRUCTORS' DOMAIN AND CODES. Apple publishes the CASE NAMES and no values,
+ * so the numbers are OURS (D2, the standing rule for enum values); the domain string is Apple's spelling. */
+extern NSErrorDomain const NSFileProviderErrorDomain;
+extern NSInteger const NSFileProviderErrorNoSuchItem;
+extern NSInteger const NSFileProviderErrorCollision;
+extern NSInteger const NSFileProviderErrorDeletionRejected;
+
 @interface NSError : NSObject <NSCopying>
 {
 	NSString *_domain;
@@ -204,6 +211,12 @@ extern NSInteger const NSValidationErrorMinimum;
 
 NS_ASSUME_NONNULL_END
 
+
+/* §63.214: the three constructors. Each answers an NSError in the FileProvider domain, and the IDENTIFIER or
+ * ITEM it names is carried in the localized description rather than under a userInfo key of an invented name. */
++ (instancetype _Nonnull)fileProviderErrorForCollisionWithItem:(id _Nonnull)existingItem;
++ (instancetype _Nonnull)fileProviderErrorForNonExistentItemWithIdentifier:(NSString * _Nonnull)identifier;
++ (instancetype _Nonnull)fileProviderErrorForRejectedDeletionOfItem:(id _Nonnull)updatedItem;
 @end
 
 #endif /* FOUNDATION_NSERROR_H */

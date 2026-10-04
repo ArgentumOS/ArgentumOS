@@ -199,6 +199,14 @@ originalContentsURL:(nullable NSURL *)originalContentsURL
 - (nullable NSData *)serializedRepresentation;
 - (nullable instancetype)initWithSerializedRepresentation:(NSData *)data;
 
+
+/* §63.214: the REVERSE lookup — the key a child is stored under, by IDENTITY, which is what this class keys children by anyway. */
+- (nullable NSString *)keyForFileWrapper:(NSFileWrapper *)child;
+
+/* §63.214: the pre-10.6 write door, which delegates to the modern writer rather than growing a second one. */
+- (BOOL)writeToFile:(NSString *)path
+	 atomically:(BOOL)useAuxiliaryFile
+    updateFilenames:(BOOL)updateFilenamesFlag;
 @end
 
 NS_ASSUME_NONNULL_END
