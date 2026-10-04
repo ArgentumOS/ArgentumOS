@@ -33,8 +33,8 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1694	open	121	struck	399
-# property	shipped	727	open	37	struck	172
+# method	shipped	1694	open	119	struck	401
+# property	shipped	727	open	34	struck	175
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -1214,16 +1214,16 @@ method	shipped	-getIndexes:range:	NSIndexPath	Fundamentals / Indexes / Working w
 method	shipped	-indexAtPosition:	NSIndexPath	Fundamentals / Indexes / Working with Indexes	-	objc
 method	shipped	-indexPathByAddingIndex:	NSIndexPath	Fundamentals / Indexes / Adding and Removing Nodes	-	objc
 method	shipped	-indexPathByRemovingLastIndex	NSIndexPath	Fundamentals / Indexes / Adding and Removing Nodes	-	objc
-method	open	+indexPathForItem:inSection:	NSIndexPath	Fundamentals / Indexes / Using Special Node Names	-	objc
-method	open	+indexPathForRow:inSection:	NSIndexPath	Fundamentals / Indexes / Using Special Node Names	-	objc
+method	struck	+indexPathForItem:inSection:	NSIndexPath	declined: UIKit-side addition, not Foundation (the audit's exclusion, §63.199)	-	objc
+method	struck	+indexPathForRow:inSection:	NSIndexPath	declined: UIKit-side addition, not Foundation (the audit's exclusion, §63.199)	-	objc
 method	shipped	+indexPathWithIndex:	NSIndexPath	Fundamentals / Indexes / Creating and Initializing Index Paths	-	objc
 method	shipped	+indexPathWithIndexes:length:	NSIndexPath	Fundamentals / Indexes / Creating and Initializing Index Paths	-	objc
 method	shipped	-initWithIndex:	NSIndexPath	Fundamentals / Indexes / Creating and Initializing Index Paths	-	objc
 method	shipped	-initWithIndexes:length:	NSIndexPath	Fundamentals / Indexes / Creating and Initializing Index Paths	-	objc
-property	open	item	NSIndexPath	Fundamentals / Indexes / Using Special Node Names	-	objc
+property	struck	item	NSIndexPath	declined: UIKit-side addition, not Foundation (the audit's exclusion, §63.199)	-	objc
 property	shipped	length	NSIndexPath	Fundamentals / Indexes / Counting Nodes	-	objc
-property	open	row	NSIndexPath	Fundamentals / Indexes / Using Special Node Names	-	objc
-property	open	section	NSIndexPath	Fundamentals / Indexes / Using Special Node Names	-	objc
+property	struck	row	NSIndexPath	declined: UIKit-side addition, not Foundation (the audit's exclusion, §63.199)	-	objc
+property	struck	section	NSIndexPath	declined: UIKit-side addition, not Foundation (the audit's exclusion, §63.199)	-	objc
 method	shipped	-containsIndex:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
 method	shipped	-containsIndexes:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
 method	shipped	-containsIndexesInRange:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc

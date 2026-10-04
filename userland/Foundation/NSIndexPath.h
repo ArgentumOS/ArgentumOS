@@ -68,7 +68,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (NSComparisonResult)compare:(NSIndexPath *)otherObject;	/* nil: NSInvalidArgumentException */
 
+
 NS_ASSUME_NONNULL_END
+
 
 @end
 

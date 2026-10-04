@@ -15962,6 +15962,37 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.199 — NSIndexPath's two-element spellings are DECLINED, and §63.198's inventory debt is paid
+
+No code. Five rows leave the work list as **declined**, and one probe's inventory caught a real miss from
+§63.198. Ledger after: **method 1694 shipped / 119 open / 401 struck; property 727 / 34 / 175**.
+
+**THE AUDIT REFUSED MY IMPLEMENTATION, AND IT WAS RIGHT.** I implemented `+indexPathForRow:inSection:`,
+`+indexPathForItem:inSection:`, `section`, `row` and `item` on NSIndexPath — and `foundation_collection`'s
+inventory check failed with `present but EXCLUDED`, because the tree had already recorded the opposite
+decision, in the probe's own words: *"The exclusions are the toolkit's additions (row/section/item are a
+UIKit-side category here, not Foundation)."* The rows come from Apple's documentation index, which files
+UIKit's `NSIndexPath+UIKitAdditions` under NSIndexPath; the decision to keep them out of Foundation was
+deliberate and stands. The five are now `struck` with reason **declined** and that ground, which is the honest
+shape for a row that will never ship here rather than an open row that reads like work.
+
+**AND THE SAME RUN FOUND A REAL MISS OF MINE, FROM THE PREVIOUS UNIT.** `foundation_collection` also holds an
+inventory for `NSPropertyListSerialization`, whose `excluded[]` list still named the doors §63.198 had just
+shipped — so §63.198 landed green while another probe's check was stale. "Verify sparingly" is about not
+running gates a change cannot affect: **a new door CAN affect any probe that audits its class**, so an
+inventory-bearing probe is always in scope. The four names moved from `excluded[]` to the demanded list (the
+pattern this file already documents for exactly this case) and the check passes.
+
+**AND THE STALE GROUND IT EXPOSED:** the exclusion's own comment said the stream doors were excluded because
+of *"NSStream forms (a dependency this library does not have)"*. That dependency has existed for a long time —
+§63.198 implemented `+propertyListWithStream:…` and `+writePropertyList:toStream:…` as wrappers over it, and
+this inventory now DESERVES them. A stated exclusion reason is a claim about the tree, and this one had gone
+false without anything failing.
+
+Acceptance: `make testimg` green (status-checked); `make test TESTS=foundation_collection` → `TESTS-OK 1/1
+case(s), 6/6 check(s)` with `indexpath-api-complete` and `plist-serialization` both ok;
+`tools/foundation-sweep.py --check` consistent.
+
 ## §63.198 — NSPropertyListSerialization: the four legacy doors, and two traps about WHERE code goes
 
 Four rows: `+propertyListFromData:mutabilityOption:format:errorDescription:`,

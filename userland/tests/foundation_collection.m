@@ -581,6 +581,10 @@ int main(void)
 		 * fail rather than be skipped, because libconfig reads these files through
 		 * the same C core. */
 		static const char *classSelectors[] = {
+			"dataFromPropertyList:format:errorDescription:",
+			"propertyListFromData:mutabilityOption:format:errorDescription:",
+			"propertyListWithStream:options:format:error:",
+			"writePropertyList:toStream:format:options:error:",
 			"propertyListWithData:options:format:error:",
 			"dataWithPropertyList:format:options:error:",
 			"propertyList:isValidForFormat:", NULL
@@ -589,9 +593,6 @@ int main(void)
 			/* NSStream forms (a dependency this library does not have), and the deprecation-era entry
 			 * points - which §62.24 (2026-09-26) turned from policy exclusions into OWED rows: every
 			 * entry below is unimplemented work, and this array is that distance to zero. */
-			"propertyListWithStream:options:format:error:",
-			"writePropertyList:toStream:format:options:error:",
-			"propertyListFromData:mutabilityOption:format:errorDescription:",
 			NULL
 		};
 		static const char document[] =
