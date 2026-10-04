@@ -33,7 +33,15 @@
  * an expectation and the print is a measurement. */
 #define FNX_CF_CONSTANT_IS_UTF16 0x08
 
-@interface _NSCFConstantString : NSString
+/* TWO NAMES FOR ONE JOB, AND THE MEASUREMENT SAYS WHICH IS WHICH. A compile-time string reaches its class by
+ * the OBJC RUNTIME, not by the linker: the literal lands in __objc_constant_string and the runtime sets its
+ * isa to the class named by -fconstant-string-class -- which this tree's wrapper sets to NSConstantString, and
+ * which did not exist until now. (_NSCFConstantString is the name upstream's SWIFT arm bakes into its own
+ * struct; keeping it costs one empty subclass and saves the next reader the same search.)
+ *
+ * AND NEITHER IS REGISTERED WITH CF, for the reason the file's header gives: a constant string is not a CF
+ * object, and its usefulness depends on CF_IS_OBJC being TRUE for it. */
+@interface NSConstantString : NSString
 {
 	/* FOUR FIELDS, WHICH IS APPLE'S __CFConstantString AND WHAT CLANG'S BUILT-IN EMITS: isa, flags, ptr,
 	 * length. An earlier version of this class declared the FIVE-word layout, which belongs to CFString.h's
@@ -48,7 +56,11 @@
 - (unsigned short)characterAtIndex:(unsigned long)index;
 @end
 
-@implementation _NSCFConstantString
+/* The other name, empty: it inherits every field and every door, so neither can drift from the other. */
+@interface _NSCFConstantString : NSConstantString
+@end
+
+@implementation NSConstantString
 
 - (unsigned long)length
 {
@@ -68,4 +80,7 @@
 	return (unsigned short)_bytes[index];
 }
 
+@end
+
+@implementation _NSCFConstantString
 @end
