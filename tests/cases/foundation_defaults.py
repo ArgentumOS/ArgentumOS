@@ -73,8 +73,7 @@ CHECKS = (
     "defaults-size-limit",
     "defaults-store-location", "defaults-store-location-cleanup",
     "the-legacy-localization-keys-are-pinned",
-    "the-ubiquity-notifications-are-named-and-never-posted",
-)
+    "the-ubiquity-notifications-are-named-and-never-posted", "defaults-deprecated-doors")
 
 
 class Case(BaseCase):

@@ -734,6 +734,31 @@ int main(void)
 		}
 	}
 
+	{
+		/* §63.200: THE FOUR DEPRECATED DOORS, and the promise each keeps. -synchronize WRITES and CONFIRMS
+		 * the user file; -persistentDomainNames lists what exists; -initWithUser: scopes the USER directory
+		 * to that user; +resetStandardUserDefaults drops the cached instance so the next call re-reads. */
+		NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:@"fn_probe_deprecated"];
+		NSUserDefaults *forUser = [[NSUserDefaults alloc] initWithUser:@"probeuser"];
+		NSArray *names;
+		BOOL written;
+
+		[defaults setObject:@"v" forKey:@"k"];
+		written = [defaults synchronize];
+		names = [defaults persistentDomainNames];
+
+		/* AND THE PER-USER SCOPE IS OBSERVABLE: initWithUser: writes under that user's Configuration/. */
+		[forUser setObject:@"elsewhere" forKey:@"k"];
+		(void)[forUser synchronize];
+		[NSUserDefaults resetStandardUserDefaults];
+		check("defaults-deprecated-doors",
+		      written && names != nil && [names containsObject:@"fn_probe_deprecated"] &&
+		      [NSUserDefaults standardUserDefaults] != nil,
+		      [NSString stringWithFormat:@"sync=%d names=%lu standard=%@", written,
+			(unsigned long)[names count], [NSUserDefaults standardUserDefaults]]);
+	}
+
+
 	printf("FOUNDATION-DEFAULTS RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output: after a probe the console can stop serving input for a
 	 * while, so an `echo $?` the harness types may never run. This is the same value: failc ? 1 : 0 is the

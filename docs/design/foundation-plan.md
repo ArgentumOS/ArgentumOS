@@ -15962,6 +15962,45 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.200 — NSUserDefaults: the four deprecated doors SHIP, and a policy question the header was answering by itself
+
+Four rows: `-synchronize`, `-persistentDomainNames`, `-initWithUser:`, `+resetStandardUserDefaults`. Ledger
+after: **method 1698 shipped / 115 open / 401 struck; property 727 / 34 / 175**. User decision **`dec-1a00739ebd0bdc05`**: a deprecated API is OWED work, not a strike, so
+§11.5's no-deprecated rule governs the CG/AppKit duplication only.
+
+**THE HEADER WAS DECIDING POLICY ON ITS OWN, AND THAT IS WHAT THIS UNIT SETTLED.** `NSUserDefaults.h` stated
+that all four were "absent for the same §11.5 reason" — deprecation — which contradicted the standing rule
+that a deprecated door is owed. The rows sat `open` while the header said *never*, so the ledger and the
+documentation disagreed and nothing failed. The conflict is now resolved toward the policy, the note is
+rewritten, and the four are implemented.
+
+**EACH KEEPS THE PROMISE ITS OWN DOCUMENTATION MAKES**, which is the reason these could have been stubs and
+are not:
+* `-synchronize` WRITES the user files this instance holds and then CONFIRMS each path exists — Apple's door
+  waits for a periodic background flush that does not exist here, and its documentation says a caller who
+  wants the write already has it. Returning YES unconditionally would have been the lie the old note
+  predicted; writing and checking is the same promise, kept.
+* `-persistentDomainNames` lists the `.plist` domains that exist across the three scopes in the order the
+  reads use (user, shared, system), deduped.
+* `-initWithUser:` scopes this instance's USER directory to that user's `Configuration/` (the shared and
+  system scopes are not per-user), which meant the user-scope path had to become per-instance — four call
+  sites now go through `-fnUserDomainPath:`/`-fnUserScopeDirectory`.
+* `+resetStandardUserDefaults` drops the cached instance so the next `+standardUserDefaults` re-reads from
+  disk; that needed `pthread_once` to become a LOCK plus a nil check, since a one-shot cannot be re-run.
+
+**TWO MECHANICAL TRAPS, BOTH MINE, BOTH WORTH THE LINE:**
+* I guarded the header edit with `if "persistentDomainNames" not in s` — **and the header's own prose already
+  spelled that name**, so nothing was declared while the edit that rewrote the prose was never written
+  either. This is the standing lesson ("test the exact text the patch adds, not a bare identifier") landing
+  again, this time in a guard rather than an assert.
+* A textual call-site rewrite produced `[self fnUserDomainPath:domain)` — the original call's own closing
+  parenthesis survived the substitution. A `.m` with three "expected ']'" errors is that mistake.
+
+Acceptance: `make testimg` green (status-checked); `make test TESTS=foundation_defaults` → `TESTS-OK 1/1
+case(s), 6/6 check(s)` with the new `defaults-deprecated-doors` check ok (which writes, synchronizes, lists
+the domain, builds a per-user instance and resets the standard one in one pass);
+`tools/foundation-sweep.py --check` consistent.
+
 ## §63.199 — NSIndexPath's two-element spellings are DECLINED, and §63.198's inventory debt is paid
 
 No code. Five rows leave the work list as **declined**, and one probe's inventory caught a real miss from

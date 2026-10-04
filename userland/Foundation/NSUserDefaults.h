@@ -156,6 +156,7 @@ extern NSString *const NSUbiquitousUserDefaultsNoCloudAccountNotification;
 
 @interface NSUserDefaults : NSObject
 {
+	NSString *_userName;			/* §63.200: set by -initWithUser:, else the current user */
 	NSString *_appDomain;			/* the persistent domain writes go to, NSGlobalDomain by default */
 	NSMutableDictionary *_persistent;	/* domain name -> the MERGED view (system>user>shared) */
 	NSMutableDictionary *_userFiles;	/* domain name -> the USER file's own contents: the write target */
@@ -250,6 +251,14 @@ extern NSString *const NSUbiquitousUserDefaultsNoCloudAccountNotification;
 - (BOOL)objectIsForcedForKey:(NSString *)key;
 - (BOOL)objectIsForcedForKey:(NSString *)key inDomain:(NSString *)domain;
 
+
+/* §63.200: the four deprecated doors. `-initWithUser:` scopes this instance's USER directory to the named
+ * user's Configuration/ (the shared and system scopes are not per-user); `-persistentDomainNames` lists the
+ * .plist domains that exist across the three scopes. */
+- (instancetype)initWithUser:(NSString *)userName;
+- (nullable NSArray *)persistentDomainNames;
+- (BOOL)synchronize;
++ (void)resetStandardUserDefaults;
 @end
 
 NS_ASSUME_NONNULL_END

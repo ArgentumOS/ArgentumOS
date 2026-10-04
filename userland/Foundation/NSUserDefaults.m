@@ -268,16 +268,37 @@ static void fn_parse_arguments(NSMutableDictionary *into)
 
 static NSUserDefaults *fn_standard_defaults = nil;
 static pthread_once_t fn_standard_once = PTHREAD_ONCE_INIT;
+static pthread_mutex_t fn_standard_lock;
 
-static void fn_make_standard_defaults(void)
+static void fn_make_standard_lock(void)
 {
-	fn_standard_defaults = [[NSUserDefaults alloc] init];
+	pthread_mutex_init(&fn_standard_lock, NULL);
 }
 
 + (NSUserDefaults *)standardUserDefaults
 {
-	pthread_once(&fn_standard_once, fn_make_standard_defaults);
-	return fn_standard_defaults;
+	/* §63.200: A LOCK RATHER THAN A ONE-SHOT, because +resetStandardUserDefaults has to be able to drop the
+	 * cached instance and let the next caller build a fresh one that re-reads from disk. */
+	pthread_once(&fn_standard_once, fn_make_standard_lock);
+	pthread_mutex_lock(&fn_standard_lock);
+	if (fn_standard_defaults == nil) {
+		fn_standard_defaults = [[NSUserDefaults alloc] init];
+	}
+	{
+		NSUserDefaults *answer = [[fn_standard_defaults retain] autorelease];
+
+		pthread_mutex_unlock(&fn_standard_lock);
+		return answer;
+	}
+}
+
++ (void)resetStandardUserDefaults
+{
+	pthread_once(&fn_standard_once, fn_make_standard_lock);
+	pthread_mutex_lock(&fn_standard_lock);
+	[fn_standard_defaults release];
+	fn_standard_defaults = nil;
+	pthread_mutex_unlock(&fn_standard_lock);
 }
 
 - (instancetype)init
@@ -407,7 +428,7 @@ static void fn_make_standard_defaults(void)
 	}
 	file = [NSMutableDictionary dictionary];
 	{
-		NSDictionary *onDisk = fn_load_plist(fn_domain_path(FN_SCOPE_USER, domain));
+		NSDictionary *onDisk = fn_load_plist([self fnUserDomainPath:domain]);
 
 		if (onDisk != nil) {
 			[file addEntriesFromDictionary:onDisk];
@@ -420,8 +441,8 @@ static void fn_make_standard_defaults(void)
 - (void)fn_writeUserFile:(NSDictionary *)contents forDomain:(NSString *)domain
 {
 	NSFileManager *fm = [NSFileManager defaultManager];
-	NSString *directory = fn_scope_directory(FN_SCOPE_USER);
-	NSString *path = fn_domain_path(FN_SCOPE_USER, domain);
+	NSString *directory = [self fnUserScopeDirectory];
+	NSString *path = [self fnUserDomainPath:domain];
 	NSData *data;
 	NSError *error = nil;
 
@@ -800,7 +821,7 @@ static void fn_make_standard_defaults(void)
 - (void)removePersistentDomainForName:(NSString *)domainName
 {
 	NSFileManager *fm = [NSFileManager defaultManager];
-	NSString *path = fn_domain_path(FN_SCOPE_USER, domainName);
+	NSString *path = [self fnUserDomainPath:domainName];
 	NSError *error = nil;
 
 	fn_validate_domain(domainName);
@@ -913,6 +934,88 @@ static void fn_make_standard_defaults(void)
 	[_suites release];
 	[_lock release];
 	[super dealloc];
+}
+
+
+- (instancetype)initWithUser:(NSString *)userName
+{
+	self = [self initWithSuiteName:nil];
+	if (self != nil) {
+		_userName = [userName copy];
+	}
+	return self;
+}
+
+- (NSString *)fnUserScopeDirectory
+{
+	if (_userName != nil && [_userName length] > 0) {
+		return [NSString stringWithFormat:@"%@/Users/%@/Configuration", fn_config_root(), _userName];
+	}
+	return fn_scope_directory(FN_SCOPE_USER);
+}
+
+- (NSString *)fnUserDomainPath:(NSString *)domain
+{
+	return [NSString stringWithFormat:@"%@/%@.plist", [self fnUserScopeDirectory], domain];
+}
+
+- (NSArray *)persistentDomainNames
+{
+	/* THE DOMAINS THAT EXIST ON DISK, in the scope order the reads use (user, shared, system), deduped. */
+	NSMutableArray *names = [NSMutableArray array];
+	NSFileManager *manager = [NSFileManager defaultManager];
+	int scopes[3] = { FN_SCOPE_USER, FN_SCOPE_SHARED, FN_SCOPE_SYSTEM };
+	int i;
+
+	for (i = 0; i < 3; i++) {
+		NSString *directory = (scopes[i] == FN_SCOPE_USER) ? [self fnUserScopeDirectory]
+								   : fn_scope_directory(scopes[i]);
+		NSArray *entries = [manager contentsOfDirectoryAtPath:directory error:NULL];
+		NSUInteger j;
+
+		for (j = 0; entries != nil && j < [entries count]; j++) {
+			NSString *entry = [entries objectAtIndex:j];
+
+			if ([entry hasSuffix:@".plist"]) {
+				NSString *domain = [entry substringToIndex:[entry length] - 6];
+
+				if (![names containsObject:domain]) {
+					[names addObject:domain];
+				}
+			}
+		}
+	}
+	return names;
+}
+
+- (BOOL)synchronize
+{
+	/* EVERY WRITE ALREADY REACHED THE DISK BEFORE IT RETURNED, so this door WRITES the user files this
+	 * instance holds and then CONFIRMS each one is there — which is the promise, and it is checkable rather
+	 * than a wait for a background flush this tree does not have. */
+	NSArray *domains;
+	BOOL ok = YES;
+	NSUInteger i;
+
+	[_lock lock];
+	domains = [[_userFiles allKeys] retain];
+	[_lock unlock];
+	for (i = 0; i < [domains count]; i++) {
+		NSString *domain = [domains objectAtIndex:i];
+		NSDictionary *contents;
+
+		[_lock lock];
+		contents = [[[_userFiles objectForKey:domain] retain] autorelease];
+		[_lock unlock];
+		if (contents != nil) {
+			[self fn_writeUserFile:contents forDomain:domain];
+			if (![[NSFileManager defaultManager] fileExistsAtPath:[self fnUserDomainPath:domain]]) {
+				ok = NO;
+			}
+		}
+	}
+	[domains release];
+	return ok;
 }
 
 @end

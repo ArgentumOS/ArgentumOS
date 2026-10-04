@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1694	open	119	struck	401
+# method	shipped	1698	open	115	struck	401
 # property	shipped	727	open	34	struck	175
 
 
@@ -2879,19 +2879,19 @@ method	shipped	-doubleForKey:	NSUserDefaults	Files and Data Persistence / App-sp
 method	shipped	-floatForKey:	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the value of a key	-	objc
 method	shipped	-init	NSUserDefaults	Files and Data Persistence / App-specific settings / Creating a user defaults object	-	objc
 method	shipped	-initWithSuiteName:	NSUserDefaults	Files and Data Persistence / App-specific settings / Creating a user defaults object	-	objc
-method	open	-initWithUser:	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
+method	shipped	-initWithUser:	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
 method	shipped	-integerForKey:	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the value of a key	-	objc
 method	shipped	-objectForKey:	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the value of a key	-	objc
 method	shipped	-objectIsForcedForKey:	NSUserDefaults	Files and Data Persistence / App-specific settings / Checking for managed keys	-	objc
 method	shipped	-objectIsForcedForKey:inDomain:	NSUserDefaults	Files and Data Persistence / App-specific settings / Checking for managed keys	-	objc
 method	shipped	-persistentDomainForName:	NSUserDefaults	Files and Data Persistence / App-specific settings / Managing domain-specific values	-	objc
-method	open	-persistentDomainNames	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
+method	shipped	-persistentDomainNames	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
 method	shipped	-registerDefaults:	NSUserDefaults	Files and Data Persistence / App-specific settings / Registering default settings	-	objc
 method	shipped	-removeObjectForKey:	NSUserDefaults	Files and Data Persistence / App-specific settings / Removing settings values	-	objc
 method	shipped	-removePersistentDomainForName:	NSUserDefaults	Files and Data Persistence / App-specific settings / Managing domain-specific values	-	objc
 method	shipped	-removeSuiteNamed:	NSUserDefaults	Files and Data Persistence / App-specific settings / Adding and removing search domains	-	objc
 method	shipped	-removeVolatileDomainForName:	NSUserDefaults	Files and Data Persistence / App-specific settings / Managing domain-specific values	-	objc
-method	open	+resetStandardUserDefaults	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
+method	shipped	+resetStandardUserDefaults	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
 method	shipped	-setBool:forKey:	NSUserDefaults	Files and Data Persistence / App-specific settings / Setting the value for a key	-	objc
 method	shipped	-setDouble:forKey:	NSUserDefaults	Files and Data Persistence / App-specific settings / Setting the value for a key	-	objc
 method	shipped	-setFloat:forKey:	NSUserDefaults	Files and Data Persistence / App-specific settings / Setting the value for a key	-	objc
@@ -2902,7 +2902,7 @@ method	shipped	-setURL:forKey:	NSUserDefaults	Files and Data Persistence / App-s
 method	shipped	-setVolatileDomain:forName:	NSUserDefaults	Files and Data Persistence / App-specific settings / Managing domain-specific values	-	objc
 method	shipped	-stringArrayForKey:	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the value of a key	-	objc
 method	shipped	-stringForKey:	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the value of a key	-	objc
-method	open	-synchronize	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
+method	shipped	-synchronize	NSUserDefaults	Files and Data Persistence / App-specific settings / Deprecated	deprecated	objc
 method	shipped	-volatileDomainForName:	NSUserDefaults	Files and Data Persistence / App-specific settings / Managing domain-specific values	-	objc
 property	shipped	standardUserDefaults	NSUserDefaults	Files and Data Persistence / App-specific settings / Creating a user defaults object	-	objc
 property	shipped	volatileDomainNames	NSUserDefaults	Files and Data Persistence / App-specific settings / Getting the domain names	-	objc
