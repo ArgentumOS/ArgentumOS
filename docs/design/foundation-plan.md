@@ -15962,6 +15962,40 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.245 — THE LOOSE END: a "the ledger understates progress" claim that MEASUREMENT DISPROVED, and the two rows it mis-filed
+
+**§63.237 carried a bullet claiming two rows were "implemented, declared and gate-green" while the ledger listed them
+`open`, and blamed the instrument.** §63.244 repeated it in its closing paragraph, and I repeated it in two reports.
+**It is false for both, and this entry is the measurement that says so** — made because §63.243 had already caught
+§63.237's groupings being wrong, and because a claim repeated twice WITHOUT MEASUREMENT is exactly the kind of record
+this campaign exists to correct.
+
+**THE MEASUREMENT, TWO GREPS.** `grep -rn "makeNewConnection" userland/Foundation/` → **ONE hit, and it is PROSE**
+(`NSConnection.h:71`, a comment). `grep -rn "replaceItemAtURL" userland/Foundation/` → **TWO hits, both PROSE**
+(`NSFileManager.h:750`'s typedef note and `NSFileVersion.h:20`'s absent-list). **Neither selector is declared by any
+header and neither is implemented by any translation unit**, so the ledger's `open` is HONEST and the sweep pair is
+not at fault: a name that is declared nowhere is exactly what `open` means, `--check` has nothing to report, and
+`--unimplemented` agrees by construction.
+
+**AND THE TRUE GROUNDS WERE ALREADY ON THE RECORD — which is what makes the wrong bullet costly rather than merely
+untidy.** `NSFileManager -replaceItemAtURL:withItemAtURL:backupItemName:options:resultingItemURL:error:` is open BY
+DECISION: §63.221 says it "is DESTRUCTIVE and has real [concerns] … That is a unit with its own probe, not a second
+row on the way out of the door." (`NSFileManagerItemReplacementOptions` already ships beside it, so the row is a door
+whose OPTION TYPE is waiting for it.) `NSConnectionDelegate -makeNewConnection:sender:` is a function §63.211 did NOT
+ship: that unit "completed the delegate contract" with THREE doors — the authenticate pair and
+`-connection:shouldMakeNewConnection:` — and **vending a connection is not vetoing one**, so the Apple-named row is
+genuinely absent rather than shipped under another spelling.
+
+**WHY THE ERROR MATTERED.** §63.237 is the entry a FRESH SESSION READS FIRST, and its bullet said "nothing to defer
+and nothing to do" about two rows that are ordinary work — while pointing at a CLOSED tool thread (§63.231) as the
+thing at fault. **A WRONG RECORD THAT SAYS "NOTHING TO DO HERE" IS WORSE THAN NO RECORD: it costs the next session the
+discovery (§63.221's own ground was sitting in the plan the whole time) and sends it to an instrument that is working
+correctly.** Corrected in BOTH places it appears — the §63.237 bullet and §63.244's echo — each with a pointer here.
+
+**AND WHAT IT DOES NOT CHANGE: THE DEFERRAL STANDS.** Both rows are ordinary work with recorded grounds, so §63.244's
+decision covers them like the rest of the tail. This entry corrects WHERE they sit in the taxonomy, not whether they
+wait. **NO CODE CHANGES**, so the gate is the sweep pair: `--unimplemented` **0 NEW**, `--check` **consistent**.
+
 ## §63.244 — THE LEDGER TAIL IS DEFERRED BY DECISION, AND WHAT THAT DOES AND DOES NOT COVER (user, 2026-10-04)
 
 **THE USER'S CALL: the remaining ledger work can wait, and part of it has to until AppKit is ready.** Recorded with
@@ -15993,11 +16027,12 @@ later session should carry forward instead of the tail is the **METHOD**: the pa
 remaining unread hits, and the call-site-versus-contract distinction (§63.241) — because that is where the defects
 actually were.
 
-**THE TWO ROWS THAT ARE NEITHER DEFERRABLE WORK NOR APPKIT'S.** `NSConnectionDelegate -makeNewConnection:sender:`
-and `NSFileManager -replaceItemAtURL:withItemAtURL:backupItemName:options:resultingItemURL:error:` are IMPLEMENTED and
-gate-green and read `open` only because the ledger carries Apple's documentation spelling. They are an INSTRUMENT
-defect (the tool thread is CLOSED, §63.231) and the ledger UNDERSTATES them: nothing to defer and nothing to do, which
-is worth saying where a reader meets the count.
+**⚠ AND ONE PARAGRAPH OF THIS ENTRY WAS WRONG — CORRECTED BY §63.245 LATER THE SAME SESSION.** It said
+`NSConnectionDelegate -makeNewConnection:sender:` and `NSFileManager -replaceItemAtURL:…` are IMPLEMENTED and
+gate-green and read `open` only because the ledger carries Apple's documentation spelling. **MEASURED: NEITHER
+SELECTOR IS DECLARED OR IMPLEMENTED ANYWHERE IN THIS TREE** — each occurs only in PROSE (`NSConnection.h:71`,
+`NSFileManager.h:750`) — so `open` is HONEST and the sweep is not at fault. Both are ordinary work with their own
+recorded grounds, and §63.245 carries the measurement.
 
 **NO CODE CHANGES.** The gate for a unit with no library change is the sweep pair: `--unimplemented` **0 NEW**,
 `--check` **consistent** (method 1760 / 33 / 421; property 742 / 12 / 182).
@@ -16262,10 +16297,15 @@ form, NSInvocation's IMP door, and §63.235's eight-row property/delegate batch.
 * **`NSCopying -copyWithZone:` / `NSMutableCopying -mutableCopyWithZone:`** — declared on their protocols, then
   reverted: the annotation the declaration form wants CONFLICTS with how the classes already declare the same
   doors. The declaration must match the tree's annotation first.
-* **Two rows are implemented, declared and gate-green but the ledger still lists them `open`**
-  (`NSConnectionDelegate -makeNewConnection:sender:`, `NSFileManager -replaceItemAtURL:…` with its rollback),
-  because the ledger carries Apple's DOCUMENTATION spelling. The tool thread is CLOSED (§63.231) — five attempts,
-  no patch — and the failure direction is the SAFE one (the ledger understates progress).
+* **⚠ THIS BULLET WAS WRONG — CORRECTED BY §63.245, AND IT IS THE FIRST THING A FRESH SESSION READS.** It claimed
+  `NSConnectionDelegate -makeNewConnection:sender:` and `NSFileManager -replaceItemAtURL:…` are "implemented,
+  declared and gate-green" while the ledger listed them `open`, and blamed a DOCUMENTATION spelling. **MEASURED:
+  NEITHER SELECTOR IS DECLARED OR IMPLEMENTED ANYWHERE IN THIS TREE** — each appears only in PROSE
+  (`NSConnection.h:71`, `NSFileManager.h:750`). So `open` is HONEST, the sweep is not at fault, and both rows are
+  ordinary work with grounds already on the record: `-replaceItemAtURL:…` is open BY DECISION (§63.221 — "a unit
+  with its own probe, not a second row on the way out of the door"), and `-makeNewConnection:sender:` is a function
+  §63.211 did NOT ship (that unit completed the delegate contract with THREE doors; vending a connection is not
+  vetoing one).
 * `-applyTransform:reverse:range:updatedRange:` is implementable (ICU is here) but needs ICU wired into
   `NSString.m`'s build — a unit of its own, since only five files link it today.
 
