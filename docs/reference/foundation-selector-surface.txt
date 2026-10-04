@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1718	open	79	struck	417
+# method	shipped	1722	open	75	struck	417
 # property	shipped	731	open	26	struck	179
 
 
@@ -620,10 +620,10 @@ property	shipped	rootProxy	NSConnection	Low-Level Utilities / Legacy / Legacy / 
 property	shipped	sendPort	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting Ports	deprecated	objc
 property	shipped	statistics	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting Statistics	deprecated	objc
 property	shipped	valid	NSConnection	Low-Level Utilities / Legacy / Legacy / Configuring Instances	deprecated	objc
-method	open	-authenticateComponents:withData:	NSConnectionDelegate	Low-Level Utilities / Legacy / Legacy / Authenticating	deprecated	objc
-method	open	-authenticationDataForComponents:	NSConnectionDelegate	Low-Level Utilities / Legacy / Legacy / Authenticating	deprecated	objc
+method	shipped	-authenticateComponents:withData:	NSConnectionDelegate	Low-Level Utilities / Legacy / Legacy / Authenticating	deprecated	objc
+method	shipped	-authenticationDataForComponents:	NSConnectionDelegate	Low-Level Utilities / Legacy / Legacy / Authenticating	deprecated	objc
 method	shipped	-connection:handleRequest:	NSConnectionDelegate	Low-Level Utilities / Legacy / Legacy / Responding to a Connection	deprecated	objc
-method	open	-connection:shouldMakeNewConnection:	NSConnectionDelegate	Low-Level Utilities / Legacy / Legacy / Responding to a Connection	deprecated	objc
+method	shipped	-connection:shouldMakeNewConnection:	NSConnectionDelegate	Low-Level Utilities / Legacy / Legacy / Responding to a Connection	deprecated	objc
 method	shipped	-createConversationForConnection:	NSConnectionDelegate	Low-Level Utilities / Legacy / Legacy / Responding to a Connection	deprecated	objc
 method	open	-makeNewConnection:sender:	NSConnectionDelegate	Low-Level Utilities / Legacy / Legacy / Responding to a Connection	deprecated	objc
 method	open	-copyWithZone:	NSCopying	Low-Level Utilities / Copying / Copying	-	objc
@@ -1914,7 +1914,7 @@ method	shipped	-portForName:	NSPortNameServer	Low-Level Utilities / Legacy / Leg
 method	shipped	-portForName:host:	NSPortNameServer	Low-Level Utilities / Legacy / Legacy / Looking up Ports	deprecated	objc
 method	shipped	-registerPort:name:	NSPortNameServer	Low-Level Utilities / Legacy / Legacy / Registering Ports	deprecated	objc
 method	shipped	-removePortForName:	NSPortNameServer	Low-Level Utilities / Legacy / Legacy / Registering Ports	deprecated	objc
-method	open	+systemDefaultPortNameServer	NSPortNameServer	Low-Level Utilities / Legacy / Legacy / Getting the Server Object	deprecated	objc
+method	shipped	+systemDefaultPortNameServer	NSPortNameServer	Low-Level Utilities / Legacy / Legacy / Getting the Server Object	deprecated	objc
 method	struck	-evaluate	NSPositionalSpecifier	App Support / Object Specifiers / Evaluating a positional specifier	declined	objc
 method	struck	-initWithPosition:objectSpecifier:	NSPositionalSpecifier	App Support / Object Specifiers / Initializing a positional specifier	declined	objc
 method	struck	-setInsertionClassDescription:	NSPositionalSpecifier	App Support / Object Specifiers / Accessing information about a positional specifier	declined	objc

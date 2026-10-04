@@ -64,6 +64,13 @@ NS_ASSUME_NONNULL_BEGIN
  * `NSObject` instance, and that is what this library uses when the delegate does not answer. */
 - (id)createConversationForConnection:(NSConnection *)connection;
 
+
+/* §63.211: THE DELEGATE CONTRACT, completed. A protocol's methods ARE its declaration — this tree's NSConnection
+ * asks a delegate for exactly these, and Apple's four were absent. `-makeNewConnection:` is the delegate
+ * VENDING a connection; the should-make pair asks whether it may. */
+- (BOOL)authenticateComponents:(NSArray *)components withData:(NSData *)authenticationData;
+- (nullable NSData *)authenticationDataForComponents:(NSArray *)components;
+- (BOOL)connection:(NSConnection *)connection shouldMakeNewConnection:(NSConnection *)newConnection;
 @end
 
 

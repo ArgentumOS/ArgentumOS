@@ -49,6 +49,9 @@ NS_ASSUME_NONNULL_BEGIN
  * honest answer to "find me that name on another machine" when no mechanism exists to ask one. */
 - (nullable NSPort *)portForName:(NSString *)name host:(nullable NSString *)host;
 
+
+/* §63.211: the SYSTEM spelling of the default name server — Apple's own alias of the door above. */
++ (NSPortNameServer *)systemDefaultPortNameServer;
 @end
 
 NS_ASSUME_NONNULL_END

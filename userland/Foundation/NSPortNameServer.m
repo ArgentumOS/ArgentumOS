@@ -92,6 +92,12 @@ static NSString *fn_local_host_name(void)
 	return nil;		/* no mechanism here can ask another machine, so nil is the honest answer */
 }
 
+
++ (NSPortNameServer *)systemDefaultPortNameServer
+{
+	/* APPLE'S OWN ALIAS of +defaultPortNameServer, kept because source calls it. */
+	return [self defaultPortNameServer];
+}
 @end
 
 /* ===================================================================================================
