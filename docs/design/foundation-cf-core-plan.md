@@ -939,3 +939,33 @@ symbol and an addend; the probe compiles straight to a binary, so nothing here h
 one-line file with CFSTR to an OBJECT (scratch, not committed) and reading objdump -r names the symbol and the
 addend exactly. Then the fix is whichever of three it turns out to be: define that symbol correctly, steer
 clang's emission, or have CoreFoundation -- which is ours now -- define it as the class.
+
+
+**THE CFSTR DEBT, TO ITS LAST BYTE: `__CFConstantStringClassReference`.** The untruncated relocation list of a
+one-line CFSTR object named the symbol in one command:
+
+    0000000000000000 R_X86_64_64   __CFConstantStringClassReference
+       4 cfstring     00000020                        the SECTION the struct lives in
+
+(my earlier read piped through head -14 and saw only the .text relocations -- the same instrument trap this
+tree already has on record, and the sixth of that family in this debt alone. I then searched for every name
+except the right one: _CF_CONSTANT_STRING_SWIFT_CLASS, constant_string, cfstring, SWIFT_CLASS.)
+
+AND THE ANSWER, MEASURED IN BOTH LIBRARIES:
+
+    libcorefoundation  0x2b43a0 B __CFConstantStringClassReference        DEFINED, in BSS
+    libcorefoundation  0x2b4400 B __CFConstantStringClassReferencePtr     and its partner
+    libfoundation      nothing                                            never touched
+    the probe           U __CFConstantStringClassReference                 bound to CF's
+
+The relocation is R_X86_64_64 -- ABSOLUTE -- so the struct carries the ADDRESS of that variable, and CF never
+initialises it. Calling that address a class is the fault, and it is the whole fault.
+
+AND THE DECLARATION IS THE TELL: CFBase.h declares it as `void *X[]`, an ARRAY. The isa is the symbol ITSELF,
+not a value stored in it, which is why upstream gets away with this: in its Swift deployment THE CLASS IS
+EMITTED AT THAT ADDRESS -- an alias, which is exactly the trick attempted here one symbol too early. The alias
+was aimed at _CF_CONSTANT_STRING_SWIFT_CLASS; the symbol the compiler actually uses is this one.
+
+AND COREFOUNDATION OWNS THE DEFINITION, so CoreFoundation is where the fix belongs: alias it to a symbol
+Foundation provides weakly, since CF must not depend on Foundation (modification 7's property) and the class
+only exists once Foundation is loaded.
