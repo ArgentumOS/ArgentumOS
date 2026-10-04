@@ -1013,4 +1013,41 @@ static BOOL fn_mode_fires(NSString *timerMode, NSString *runningMode)
 	return NO;
 }
 
+
+- (BOOL)acceptInputForMode:(NSRunLoopMode)mode beforeDate:(NSDate *)limitDate
+{
+	/* APPLE'S ONE-TURN DOOR, and this loop already has that turn: run it. The return is the same answer
+	 * -runMode:beforeDate: gives — whether anything was processed. */
+	return [self runMode:mode beforeDate:limitDate];
+}
+
+- (NSDate *)limitDateForMode:(NSRunLoopMode)mode
+{
+	/* THE EARLIEST FIRE DATE AMONG THE TIMERS THIS MODE WOULD FIRE, or nil when it has none. The reading is
+	 * stated in the header; `_modes` is parallel to `_timers`, and fn_mode_fires is the same predicate the
+	 * running loop uses, so this cannot disagree with what would actually fire. */
+	NSDate *earliest = nil;
+	NSUInteger i;
+
+	for (i = 0; i < [_timers count] && i < [_modes count]; i++) {
+		NSTimer *timer = [_timers objectAtIndex:i];
+
+		if (!fn_mode_fires([_modes objectAtIndex:i], mode)) {
+			continue;
+		}
+		{
+			NSDate *fireDate = [timer fireDate];
+
+			if (fireDate != nil && (earliest == nil || [fireDate compare:earliest] == NSOrderedAscending)) {
+				earliest = fireDate;
+			}
+		}
+	}
+	return earliest;
+}
+
+- (void)configureAsServer
+{
+	/* APPLE: "This method does nothing." Kept so source that calls it links and runs. */
+}
 @end

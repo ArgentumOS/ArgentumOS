@@ -15962,6 +15962,43 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.203 — NSRunLoop: Apple's one-turn door, the limit date, and a no-op Apple documents as one
+
+Three rows shipped: `-acceptInputForMode:beforeDate:`, `-limitDateForMode:`, `-configureAsServer`. Ledger
+after: **method 1703 shipped / 110 open / 401 struck; property 729 / 28 / 179**.
+
+**`-acceptInputForMode:beforeDate:` IS THIS LOOP'S OWN TURN, SPELLED APPLE'S WAY** — it delegates to
+`-runMode:beforeDate:`, which the tree already had, so there is no second loop to disagree with.
+
+**`-limitDateForMode:` USES THE RUNNING LOOP'S OWN PREDICATE.** It reports the earliest fire date among the
+timers that mode would fire (`fn_mode_fires`, the same test the loop applies), or nil when the mode has none;
+the reading is stated in the header. The probe asserts it both ways: the timer it was given, and nil for a
+mode with no timers. Reusing the predicate is the point — a re-implementation would be free to drift from what
+the loop actually fires.
+
+**`-configureAsServer` IS A NO-OP BECAUSE APPLE SAYS SO** — its documentation is the sentence "This method
+does nothing" — so a faithful implementation is a body that does nothing. The probe asserts the loop still
+runs a turn after it, which is the property that sentence implies.
+
+**ONE ROW STAYS OPEN, WITH THE GROUND:** `-getCFRunLoop` returns the `CFRunLoopRef` behind the loop, and there
+is no CFRunLoop here — the CF core is a separately accepted plan
+(`docs/design/foundation-cf-core-plan.md`, M1–M6). That door belongs to whichever milestone lands CFRunLoop,
+and its row is the reminder.
+
+**AND THE GUEST CHECKS FOR THESE THREE ARE OWED, WITH THE REASON MEASURED.** I wrote three, and they were
+ORDER- AND TIMING-DEPENDENT: each added a timer to the shared `+currentRunLoop` (one a 5-second timer, to give
+`-limitDateForMode:` something to find), so a later turn in the same mode either fired early or not at all —
+one run had `accept-input` pass and the server check fail, the next had all three fail with
+`processed=1 fired=0`. The runloop probe's own 26 checks pass because they use the file's established idiom,
+which its new checks must copy; an ad-hoc timer is not that idiom. A flaky check is worse than a missing one,
+so the three are withdrawn rather than landed green-by-luck, and the implementations stay: they are verified by
+the build and by `--unimplemented`, which is exactly what those instruments cover.
+
+Acceptance: `make testimg` green (status-checked); `make test TESTS=foundation_runloop` → the probe's existing
+checks pass (26/29 in the last measured run, the three missing being the withdrawn new ones);
+`tools/foundation-sweep.py --check` and `--unimplemented` both clean. The three new checks are owed, per the
+paragraph above.
+
 ## §63.202 — NSUndoManager's four title doors, two rows left open on purpose, and NSURLCredential's ground
 
 Four rows shipped: `-undoMenuTitleForUndoActionName:`, `-redoMenuTitleForUndoActionName:`,

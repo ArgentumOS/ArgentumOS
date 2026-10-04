@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1700	open	113	struck	401
+# method	shipped	1703	open	110	struck	401
 # property	shipped	729	open	28	struck	179
 
 
@@ -2000,14 +2000,14 @@ method	struck	-initWithCoder:	NSRelativeSpecifier	App Support / Object Specifier
 method	struck	-initWithContainerClassDescription:containerSpecifier:key:relativePosition:baseSpecifier:	NSRelativeSpecifier	App Support / Object Specifiers / Initializing a relative specifier	declined	objc
 property	struck	baseSpecifier	NSRelativeSpecifier	App Support / Object Specifiers / Accessing a relative specifier	declined	objc
 property	struck	relativePosition	NSRelativeSpecifier	App Support / Object Specifiers / Accessing a relative specifier	declined	swift-page
-method	open	-acceptInputForMode:beforeDate:	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Running a Loop	-	objc
+method	shipped	-acceptInputForMode:beforeDate:	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Running a Loop	-	objc
 method	shipped	-addPort:forMode:	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Managing Ports	-	objc
 method	shipped	-addTimer:forMode:	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Managing Timers	-	objc
 method	shipped	-cancelPerformSelector:target:argument:	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Scheduling and Canceling Tasks	-	objc
 method	shipped	-cancelPerformSelectorsWithTarget:	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Scheduling and Canceling Tasks	-	objc
-method	open	-configureAsServer	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Configuring as Server Process	deprecated	objc
+method	shipped	-configureAsServer	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Configuring as Server Process	deprecated	objc
 method	open	-getCFRunLoop	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes	-	objc
-method	open	-limitDateForMode:	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes	-	objc
+method	shipped	-limitDateForMode:	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Accessing Run Loops and Modes	-	objc
 method	shipped	-performBlock:	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Scheduling and Canceling Tasks	-	objc
 method	shipped	-performInModes:block:	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Scheduling and Canceling Tasks	-	objc
 method	shipped	-performSelector:target:argument:order:modes:	NSRunLoop	Low-Level Utilities / Run Loop Scheduling / Scheduling and Canceling Tasks	-	objc

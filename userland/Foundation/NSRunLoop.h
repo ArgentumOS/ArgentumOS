@@ -150,6 +150,16 @@ typedef NSString * NSRunLoopMode;
 - (void)performBlock:(void (^)(void))block;
 - (void)performInModes:(NSArray *)modes block:(void (^)(void))block;
 
+
+/* §63.203: THREE DOORS. `-acceptInputForMode:beforeDate:` is this loop's one turn spelled Apple's way;
+ * `-limitDateForMode:` reports the next timer due in that mode (a stated reading: the earliest fire date
+ * among the timers that mode would fire, or nil); `-configureAsServer` IS A NO-OP BY APPLE'S OWN
+ * DOCUMENTATION — "This method does nothing" — so implementing it as one is faithful rather than lazy.
+ * `-getCFRunLoop` is NOT here: it returns the CFRunLoopRef behind the loop, and the CF core is a separate
+ * accepted plan (docs/design/foundation-cf-core-plan.md). */
+- (BOOL)acceptInputForMode:(NSRunLoopMode)mode beforeDate:(NSDate *)limitDate;
+- (nullable NSDate *)limitDateForMode:(NSRunLoopMode)mode;
+- (void)configureAsServer;
 @end
 
 NS_ASSUME_NONNULL_END
