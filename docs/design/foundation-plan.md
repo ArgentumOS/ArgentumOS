@@ -16027,12 +16027,18 @@ way — reusing the file's own `FnMrrProxy` fixture, whose `-class` forwards thr
 BUILDS, RUNS, and the probe reaches its end marker; it reports a plain **FAIL**, so the assertion is false
 rather than fatal.
 
-**WHICH PART IS UNRESOLVED, WITH THE SUSPECTS NAMED RATHER THAN GUESSED AT:** the assertion is
-`proxy != nil && [proxy class] == [real class]`, and the candidates are (a) `+allocWithZone:` answering nil
-for a bare `NSProxy` subclass — our NSProxy is a second ROOT class, and its `+alloc` is the question — and
-(b) `-class` not taking the forwarding path. A diagnostic `printf` from the MRC function did not reach the
-case's captured output, which is itself the next thing to fix: that log is where the answer is. So this is no
-longer "a check is owed" but a small, well-posed investigation with one log line to obtain.
+**THE PART THAT WAS WRONG WAS MY ASSERTION, AND THE CODE SAID SO.** `+allocWithZone:` answers an instance and
+`-finalize` is inert — the code-2 was the third clause, `[proxy class] == [real class]`. **This tree's NSProxy
+answers `-class` with the PROXY'S OWN CLASS**, and the target's identity is reached the way the file already
+reaches it: a real forwarded message, which the existing `mrr-proxy-forwards` check covers. So the check now
+reads the instance's class through the runtime (`object_getClass`) rather than through a message that may be
+forwarded, and it is GREEN: `proxy-alloc-with-zone-and-finalize ok`, `TESTS-OK 1/1 case(s), 6/6 check(s)`.
+
+**AND THE TECHNIQUE, WHICH IS THE REUSABLE PART: ROUTE A DIAGNOSTIC THROUGH THE CHECK'S OWN LINE.** A `printf`
+from the MRC support unit never reached the case's captured output — three rounds went by on guesses because of
+it — while `check(...)`'s line is exactly what the case reads. Returning a small CODE from the MRC function and
+putting it in the check's detail turned an open question into `code=2` on the next run. When the answer has to
+come back from the guest, send it through the channel the harness already watches.
 
 ## §63.204 — NSProxy's four rows are graded, not uniform — and two sweep modes read OPPOSITE directions
 

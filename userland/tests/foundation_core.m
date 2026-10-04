@@ -118,6 +118,7 @@ static void fn_register_block_undo(NSUndoManager *undo, FNUndoBox *box)
 }
 
 BOOL foundation_mrr_pool_add_object_autoreleases(void);
+int foundation_mrr_proxy_deprecated_doors(void);
 
 int main(void)
 {
@@ -822,6 +823,12 @@ int main(void)
 		/* AND +showPools IS A DIAGNOSTIC THAT MUST NOT DISTURB THE PROGRAM. */
 		[NSAutoreleasePool showPools];
 		check("pool-show-pools-is-a-diagnostic", 1, "it writes a line and returns");
+		{
+			int code = foundation_mrr_proxy_deprecated_doors();
+
+			check("proxy-alloc-with-zone-and-finalize", code == 0,
+			      [[NSString stringWithFormat:@"code=%d (0 ok, 1 no instance, 2 class through target, 3 finalize)", code] UTF8String]);
+		}
 		check("mrr-pool-releases-on-drain", foundation_mrr_pool_releases_on_drain(),
 		      "draining a pool releases what it held, measured as a dealloc");
 		/* THE PROXY CHECK, now ASSERTED because the diagnosis showed the class was right and my

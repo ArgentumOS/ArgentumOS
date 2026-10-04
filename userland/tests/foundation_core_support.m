@@ -244,6 +244,39 @@ static int fn_mrr_forwarded = 0;
 }
 @end
 
+/* §63.205: THE TWO DEPRECATED NSProxy DOORS, and A CODE RATHER THAN A PRINTF — the class's own check(...) line
+ * is what the case captures, so the answer comes back through the channel that is watched. 0 = the doors
+ * behave; 1 = no instance; 2 = -class did not come back through the target; 3 = -finalize raised. The calls
+ * live HERE because under ARC -allocWithZone: is unavailable. */
+int foundation_mrr_proxy_deprecated_doors(void)
+{
+	NSString *real = @"zoned";
+	id proxy = [FnMrrProxy allocWithZone:NULL];
+
+	if (proxy == nil) {
+		return 1;
+	}
+	proxy = [proxy initWithTarget:real];
+	if (proxy == nil) {
+		return 1;
+	}
+	/* -class ANSWERS THE PROXY'S OWN CLASS HERE, which is why the first version of this check was wrong: the
+	 * target's identity is reached through a real forwarded message (the file's own mrr-proxy-forwards check),
+	 * not through -class. The zone door's promise is that it answers an INSTANCE of this class, and that is what
+	 * this reads — through the runtime, so nothing is forwarded to answer it. */
+	if (object_getClass(proxy) != (Class)[FnMrrProxy class]) {
+		return 2;
+	}
+	@try {
+		[proxy finalize];
+	} @catch (NSException *exception) {
+		[proxy release];
+		return 3;
+	}
+	[proxy release];
+	return 0;
+}
+
 /*
  * THREE ANSWERS RATHER THAN A BOOLEAN, because a boolean cannot say WHICH half failed: 1 is correct,
  * 0 means the runtime never forwarded at all (the class's shape is wrong), and 2 means forwarding RAN
