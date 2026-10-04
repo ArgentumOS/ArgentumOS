@@ -146,13 +146,28 @@ int main(void) {
 		 * fails: the door is called HERE, after the first string, and a second string is then made. If the
 		 * two isas differ, the door works and the load-time registration did not run. */
 		{
-			extern void CFNXBridgeClassToType(Class cls, CFTypeID typeID);
+			extern unsigned long CFNXBridgeClassToType(Class cls, CFTypeID typeID);
 			CFStringRef after = CFStringCreateWithCString(kCFAllocatorDefault, "native2", kCFStringEncodingUTF8);
 
 			note_value("the class the probe looks for", (unsigned long)registered);
 			note_value("the first string's first word", native ? *(unsigned long *)native : 0);
 			CFNXBridgeClassToType(registered, CFStringGetTypeID());
+			note_value("and what the door read back", (unsigned long)CFNXBridgeClassToType(registered, CFStringGetTypeID()));
 			note_value("and after calling the door, a new string's", after ? *(unsigned long *)after : 0);
+			/* THE TWO IDS, WHICH IS THE QUESTION THE WHOLE FAILURE MAY TURN ON. CF creates a string with the
+			 * BUILT-IN constant _kCFRuntimeIDCFString; CFStringGetTypeID() answers the RUNTIME-REGISTERED id;
+			 * and the registration is keyed by the latter. If those two numbers differ, the class was
+			 * registered on an index that CF's own C code never asks about — and __CFISAForTypeID returns 0
+			 * by design, with the object's isa zero and the class table looking perfectly correct. The object
+			 * carries its type id in the info word (CFRuntime.c writes typeID << 8), so this is read, not
+			 * guessed: the second word's id field should equal CFStringGetTypeID() if they are the same id. */
+			note_value("CFStringGetTypeID()", (unsigned long)CFStringGetTypeID());
+			if (native != NULL) {
+				unsigned long info = ((unsigned long *)native)[1];
+
+				note_value("the object's info word", info);
+				note_value("   and its type-id field", (info >> 8) & 0xFFFFFF);
+			}
 			if (after) {
 				CFRelease(after);
 			}

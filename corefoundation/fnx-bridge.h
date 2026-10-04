@@ -180,4 +180,4 @@ static inline NSRange NSMakeRange(NSUInteger location, NSUInteger length) {
 
 /* THE BRIDGING DOOR (modification 9): register an Objective-C class as the class of a CF type, after which
  * that type's objects are messageable objects and CF's own doors take their C path on them. */
-extern void CFNXBridgeClassToType(Class cls, CFTypeID typeID);
+extern uintptr_t CFNXBridgeClassToType(Class cls, CFTypeID typeID);

@@ -824,11 +824,16 @@ static CF_INLINE Boolean _fnx_cf_is_object(CFTypeRef cf) {
  * Swift-deployment problem this tree does not have, because the caller here IS the library that owns the
  * class.
  */
-void CFNXBridgeClassToType(Class cls, CFTypeID typeID) {
+uintptr_t CFNXBridgeClassToType(Class cls, CFTypeID typeID) {
     if (cls == Nil || typeID == 0) {
-        return;
+        return 0;
     }
     _SetCFRuntimeObjcClass((uintptr_t)cls, typeID);
+    /* AND IT READS BACK, SO THE CALLER CAN TELL WHICH HALF IS BROKEN: a table the write did not reach, or
+     * a reader looking somewhere else (__CFISAForTypeID returns 0 by design when its guard
+     * `typeID < __CFRuntimeClassTableSize` is false, which in this tree is a question nothing has asked
+     * before, because the table is only populated in upstream's other deployment mode). */
+    return _GetCFRuntimeObjcClassAtIndex(typeID);
 }
 
 CFTypeRef _CFNonObjCRetain(CFTypeRef cf) {
