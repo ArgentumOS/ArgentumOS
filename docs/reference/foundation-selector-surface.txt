@@ -34,7 +34,7 @@
 #
 # kind	status	name	owner	family	why	src
 # method	shipped	1737	open	59	struck	418
-# property	shipped	731	open	26	struck	179
+# property	shipped	731	open	24	struck	181
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -2453,7 +2453,7 @@ property	shipped	currentDirectoryURL	NSTask	Low-Level Utilities / Scripts and Ex
 property	shipped	environment	NSTask	Low-Level Utilities / Scripts and External Tasks / Configuring a process	-	objc
 property	shipped	executableURL	NSTask	Low-Level Utilities / Scripts and External Tasks / Configuring a process	-	objc
 property	shipped	launchPath	NSTask	Low-Level Utilities / Scripts and External Tasks / Deprecated	deprecated	objc
-property	open	launchRequirementData	NSTask	Low-Level Utilities / Scripts and External Tasks / Instance Properties	-	objc
+property	struck	launchRequirementData	NSTask	Low-Level Utilities / Scripts and External Tasks / Instance Properties	declined	objc
 property	shipped	processIdentifier	NSTask	Low-Level Utilities / Scripts and External Tasks / Returning information	-	objc
 property	shipped	qualityOfService	NSTask	Low-Level Utilities / Scripts and External Tasks / Configuring a process	-	objc
 property	shipped	running	NSTask	Low-Level Utilities / Scripts and External Tasks / Querying the process state	-	objc
@@ -2681,7 +2681,7 @@ method	open	-initWithTrust:	NSURLCredential	Networking / Authentication and cred
 method	shipped	-initWithUser:password:persistence:	NSURLCredential	Networking / Authentication and credentials / Creating a credential	-	objc
 property	open	certificates	NSURLCredential	Networking / Authentication and credentials / Getting credential properties	-	objc
 property	shipped	hasPassword	NSURLCredential	Networking / Authentication and credentials / Getting credential properties	-	objc
-property	open	identity	NSURLCredential	Networking / Authentication and credentials / Getting credential properties	-	objc
+property	struck	identity	NSURLCredential	Networking / Authentication and credentials / Getting credential properties	declined	objc
 property	shipped	password	NSURLCredential	Networking / Authentication and credentials / Getting credential properties	-	objc
 property	shipped	persistence	NSURLCredential	Networking / Authentication and credentials / Getting credential properties	-	swift-page
 property	shipped	user	NSURLCredential	Networking / Authentication and credentials / Getting credential properties	-	objc
