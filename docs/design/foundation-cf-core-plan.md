@@ -300,13 +300,21 @@ receiver (`CFArray.c`'s `isKindOfClass:[NSMutableArray class]`), and it was the 
 CF-to-Foundation surface, now a runtime `objc_getClass` lookup. One unguarded `typedef struct __NSString__
 *NSString` in `CFURLAccess.c` collided with the class and is skipped in the ObjC build (mod 6).
 
-**THE SELECTOR WORK LIST, PRODUCED (and it is not one list but three).** CF's dispatch sites name **167
-distinct selectors**; this tree's Foundation declares **2,882**; the difference is **58**. Reading them, the
-58 sort into three kinds of blocker that must not be treated alike:
+**THE SELECTOR WORK LIST, PRODUCED — AND CORRECTED, BECAUSE THE FIRST MEASUREMENT HAD AN INSTRUMENT BUG.**
+First pass said 58 missing; it was **56**, and the two false positives were `tolerance` and `setTolerance:`,
+which Foundation DOES declare as `@property NSTimeInterval tolerance;` (NSTimer.h:100). **The bug was in the
+extractor, not in the list's purpose: the property matcher required an attribute list, so a `@property`
+written WITHOUT parentheses was invisible.** The corrected method — methods AND properties, attribute list
+optional — gives CF's dispatch sites naming **167 distinct selectors** against Foundation's **2,919**, a
+difference of **56**. The correction is recorded rather than quietly folded in because the first number went
+into this file, and because it shrinks the next bucket almost to nothing:
 
-  1. **Ordinary Cocoa selectors Foundation simply does not have** (~8): `containsKey:`, `countForKey:`,
-     `replaceObject:`, `replaceObject:forKey:`, `tolerance`, `setTolerance:`, `appendCharacters:length:`.
-     These are Foundation work, and the plainest kind: add the method.
+  1. **"Ordinary Cocoa selectors Foundation simply does not have" — the bucket barely exists.** Only SIX of
+     the 56 lack the leading `_` that marks Apple's private protocol, and of those six only `copyWithZone:`
+     is KNOWN public API — the remaining five (`containsKey:`, `countForKey:`, `replaceObject:`,
+     `replaceObject:forKey:`, `appendCharacters:length:`) are CF-internal names whose public status has NOT
+     been verified individually, and should not be assumed public because they lack an underscore. So this
+     is NOT a list of small Foundation additions: it is compatibility surface plus one decision.
   2. **APPLE'S PRIVATE PROTOCOL, which CF's fast paths assume** (the bulk, ~45): `_cfNormalize:`, `_cfTrim:`,
      `_cfUppercase:`, `_cfLowercase:`, `_cfCapitalize:`, `_getCString:maxLength:encoding:`,
      `_fastCStringContents:`, `_fastCharacterContents`, `_getValue:forType:`, `_copyLocale`, `_copyTimeZone`,
@@ -320,9 +328,13 @@ distinct selectors**; this tree's Foundation declares **2,882**; the difference 
      (NSObject.h states it), yet two CF sites dispatch `copyWithZone:`; `_cfurl` and `_cfNumberType`
      similarly assume Apple's private shapes.
 
-  THE THIRD KIND IS THE ONE THAT NEEDS A DECISION RATHER THAN AN EDIT, which is why it is called out: a
-  site like `CFDictionary.c`'s `copyWithZone:` cannot be satisfied by adding a method Foundation has
-  deliberately removed, so the CF side must be adapted (its own `copy`) or the removal reconsidered.
+  THE THIRD KIND NEEDS A DECISION RATHER THAN AN EDIT, which is why it is called out — AND INSPECTING THE
+  SITE SHOWS THE OBVIOUS EDIT WOULD BE WRONG. Its result is cast to a `CFBasicHashRef`, i.e. CF expects the
+  bridged object to be CF-SHAPED, which is exactly what Apple's `NSCF*` classes are and what this tree's
+  Foundation objects are not. So renaming `copyWithZone:` to `-copy` there would hand CF a Foundation
+  object it would then read as a hash: the site needs either the compatibility surface (kind 2) or a
+  CF-side bypass of the ObjC path, and NOT a one-token change. `tolerance`/`setTolerance:` are NOT in this
+  list at all — see the correction above.
 
   The list was produced by comparing the selectors CF's `CF_OBJC_FUNCDISPATCHV`/`_CALLV` sites name against
   every method and property Foundation's headers declare — a host-side analysis, no guest needed.
