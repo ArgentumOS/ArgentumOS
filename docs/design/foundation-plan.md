@@ -15962,6 +15962,22 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.234 — NSInvocation's IMP door, as a surgical refactor of the walk it already had
+
+One row shipped: `-invokeUsingIMP:`. Ledger after:
+`method 1755 shipped / 41 open / 418 struck; property 735 / 20 / 181`.
+
+**THE DOOR IS THE MARSHALLING WALK, WITH THE CALLER'S IMP:** `-invokeWithTarget:` built the register block and
+then called `fn_call_image(method_getImplementation(method), &regs)` — ONE line, and the only thing standing
+between it and this door. So the walk became a private `-fnInvokeWithTarget:imp:`, `-invokeWithTarget:` resolves
+the method (its checks stay with it) and passes the method's IMP, and `-invokeUsingIMP:` passes the CALLER'S —
+**skipping the method lookup entirely, which is the whole point of the door.**
+
+**WHY THE SHAPE MATTERS:** an alternative — setting an "IMP override" field and branching on it inside the walk —
+would put a conditional in the hottest, most delicate code in the file. Two entry points over one body has no
+branch, cannot drift, and leaves the existing marshalling path byte-identical for every caller that does not use
+the new door.
+
 ## §63.233 — NSXMLNode's canonical form, with its rules on the record
 
 One row shipped: `-canonicalXMLStringPreservingComments:`. Ledger after:

@@ -203,6 +203,7 @@ static void fn_install_forwarding_at_load(void)
  * image's arguments into the receiver's slots. Not in the header, because it is
  * not Cocoa's surface. */
 @interface NSInvocation (FNImage)
+- (void)fnInvokeWithTarget:(id)target imp:(IMP)imp;
 - (void)fnSetSelector:(SEL)selector;			/* the handler's setter */
 - (void)fnSetArgumentsFromImage:(const fn_regs_t *)regs;
 - (void)fnStoreReturnIntoImage:(fn_regs_t *)regs;
@@ -388,14 +389,15 @@ static void fn_install_forwarding_at_load(void)
 	[self invokeWithTarget:_target];
 }
 
+- (void)invokeUsingIMP:(IMP)imp
+{
+	/* NO METHOD LOOKUP AT ALL: the caller's IMP IS the implementation, which is what this door means. */
+	[self fnInvokeWithTarget:_target imp:imp];
+}
+
 - (void)invokeWithTarget:(id)target
 {
-	fn_placement_t places[FN_MAX_ARGUMENTS];
-	fn_regs_t regs;
 	Method method;
-	NSUInteger bad = 0, count, i;
-	size_t returnSize = [self fnReturnSlotSize];
-	int returnIsFloat = [self fnReturnSlotIsFloat];
 
 	if (target == nil || _selector == NULL) {
 		[NSException raise:NSInvalidArgumentException
@@ -407,6 +409,21 @@ static void fn_install_forwarding_at_load(void)
 			    format:@"NSInvocation: -[%s %s] is not implemented",
 				   class_getName(object_getClass(target)),
 				   sel_getName(_selector)];
+	}
+	[self fnInvokeWithTarget:target imp:method_getImplementation(method)];
+}
+
+- (void)fnInvokeWithTarget:(id)target imp:(IMP)imp
+{
+	fn_placement_t places[FN_MAX_ARGUMENTS];
+	fn_regs_t regs;
+	NSUInteger bad = 0, count, i;
+	size_t returnSize = [self fnReturnSlotSize];
+	int returnIsFloat = [self fnReturnSlotIsFloat];
+
+	if (target == nil || _selector == NULL) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"NSInvocation: -invoke needs a target and a selector"];
 	}
 	if (!fn_classify(_signature, places, &bad)) {
 		[NSException raise:NSInvalidArgumentException
@@ -438,7 +455,7 @@ static void fn_install_forwarding_at_load(void)
 		}
 	}
 	regs.sse_count = fn_sse_count(_signature);
-	fn_call_image(method_getImplementation(method), &regs);
+	fn_call_image(imp, &regs);
 	if (returnSize > 0 && _returnValue != NULL) {
 		if (returnIsFloat) {
 			memcpy(_returnValue, &regs.return_fp, returnSize);

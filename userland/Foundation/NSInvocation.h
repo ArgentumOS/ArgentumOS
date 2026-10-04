@@ -75,6 +75,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 NS_ASSUME_NONNULL_END
 
+
+/* §63.234: THE IMP DOOR. It is the SAME marshalling walk as -invoke, with the CALLER'S IMP in place of the
+ * method's, so the method lookup is skipped entirely — which is the whole point of the door, and why it is a
+ * separate entry point rather than a flag. */
+- (void)invokeUsingIMP:(IMP _Nonnull)imp;
 @end
 
 /*

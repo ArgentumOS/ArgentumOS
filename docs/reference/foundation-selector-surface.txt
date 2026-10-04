@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1754	open	42	struck	418
+# method	shipped	1755	open	41	struck	418
 # property	shipped	735	open	20	struck	181
 
 
@@ -1271,7 +1271,7 @@ method	shipped	-getArgument:atIndex:	NSInvocation	Low-Level Utilities / Invocati
 method	shipped	-getReturnValue:	NSInvocation	Low-Level Utilities / Invocations / Configuring an Invocation Object	-	objc
 method	shipped	+invocationWithMethodSignature:	NSInvocation	Low-Level Utilities / Invocations / Creating NSInvocation Objects	-	objc
 method	shipped	-invoke	NSInvocation	Low-Level Utilities / Invocations / Dispatching an Invocation	-	objc
-method	open	-invokeUsingIMP:	NSInvocation	Low-Level Utilities / Invocations / Instance Methods	-	objc
+method	shipped	-invokeUsingIMP:	NSInvocation	Low-Level Utilities / Invocations / Instance Methods	-	objc
 method	shipped	-invokeWithTarget:	NSInvocation	Low-Level Utilities / Invocations / Dispatching an Invocation	-	objc
 method	shipped	-retainArguments	NSInvocation	Low-Level Utilities / Invocations / Configuring an Invocation Object	-	objc
 method	shipped	-setArgument:atIndex:	NSInvocation	Low-Level Utilities / Invocations / Configuring an Invocation Object	-	objc
