@@ -893,6 +893,22 @@ typedef enum {
 			      withString:(NSString *)replacement
 				 options:(NSStringCompareOptions)options
 				   range:(NSRange)range;
+
+/* §63.240: THE IN-PLACE FORM OF THE TRANSFORM DOOR — the mutable twin of -stringByApplyingTransform:reverse:
+ * on NSString, and it DELEGATES to it: the substring in `range` is transformed by that door and spliced back, so
+ * the two cannot disagree about what a transform means. The answer's range is written through `updatedRange`
+ * when the caller supplies one; the parameter is `nullable` because THIS implementation accepts nil there (F6:
+ * annotate what the implementation ACCEPTS, not what Apple's spelling happens to say).
+ *
+ * ⚠ A TRANSFORM THIS LIBRARY CANNOT APPLY RAISES RATHER THAN DOING NOTHING. Apple documents the nil answer for
+ * -stringByApplyingTransform:reverse: and says NOTHING about the return-less in-place form, so that case is
+ * Apple's own UNDEFINED ground — any conforming choice is PERMITTED VARIATION (§11.6's gate 1), not a registered
+ * deviation — and the sibling option-taking fold door in this family already answers it the same way ("RAISES
+ * ... rather than silently leaving it unfolded"). A silent no-op is the one reading this family refuses. An
+ * INVALID RANGE raises NSRangeException for the same reason, and that check is this door's own: the file's
+ * -substringWithRange: is a direct byte walk and does NOT detect one (measured — it answers an empty string). */
+- (void)applyTransform:(NSString *)transform reverse:(BOOL)reverse range:(NSRange)range
+	  updatedRange:(nullable NSRangePointer)updatedRange;
 @end
 
 /*

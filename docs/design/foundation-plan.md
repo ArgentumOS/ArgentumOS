@@ -15962,6 +15962,39 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.240 — THE IN-PLACE TRANSFORM DOOR, AND THE VALIDATION `-substringWithRange:` DOES NOT DO
+
+**One row SHIPS, with real behaviour: `NSMutableString -applyTransform:reverse:range:updatedRange:`** — the mutable
+twin of the transform door this family already had. It is written as a DELEGATION: the substring in `range` goes
+through `-stringByApplyingTransform:reverse:` (which has shipped since the transforms/folding slice and honours the
+two strip transforms), and the answer is spliced back with `-replaceCharactersInRange:withString:`. The delegation is
+the point rather than a convenience — **the two doors cannot then disagree about what a transform means** — and
+`updatedRange` reports `{range.location, [transformed length]}`.
+
+**TWO REFUSALS, AND THE SECOND IS A REAL GAP THIS UNIT FOUND.** *A transform this library cannot apply RAISES
+`NSInvalidArgumentException`*: `-stringByApplyingTransform:reverse:` answers nil for the fourteen names it does not
+implement, which is Apple's own contract for an inapplicable transform, but the in-place door has NO RETURN to carry
+a refusal — and a silent no-op is the one reading this family refuses, as its sibling `-stringByFoldingWithOptions:`
+already says ("RAISES … rather than silently leaving it unfolded"). Apple documents nothing for the return-less
+form in that case, so the choice sits on Apple's own UNDEFINED ground: PERMITTED VARIATION (§11.6's gate 1), not a
+registered deviation. *And an INVALID RANGE raises `NSRangeException`* — which this door must do ITSELF, because
+**`-substringWithRange:` DOES NOT VALIDATE: it is a direct byte walk in `NSString.m` and answers an EMPTY STRING for
+a range past the end.** Every other range door in this library refuses an invalid range, so this one does too; the
+length is read BEFORE the arithmetic so `length - range.location` cannot wrap.
+
+**WHAT SHIPPED.** `NSString.h` (the declaration, with the reasoning at it) and `NSString.m` (the body, in the mutable
+class's own block). The probe: `foundation_string` gains `string-apply-transform-in-place`, which asserts a SPLICE
+rather than a whole-string rewrite — `"x café y"` with `{2, 4}` becomes `"x cafe y"` (both 8 units) and the reported
+range is `{2, 4}` — plus BOTH refusals. The ledger row flipped `open` → `shipped` and the counts recomputed from the
+file's own rows: **method shipped 1760 / open 33 / struck 421**, property 742 / 12 / 182. `--unimplemented` **0
+NEW**, `--check` **consistent**.
+
+**AND A CORRECTION THIS UNIT OWES §63.237.** That entry grouped this door under "needs ICU wired into `NSString.m`'s
+build" — **IT DOES NOT.** The ICU work was already paid for by the IMMUTABLE door (the transform slice's NFD path
+sits behind the four `…Mapping` doors), and the in-place door is a splice over it, so the unit cost NO build change
+at all. **A ROW'S STATED BLOCKER IS A CLAIM LIKE ANY OTHER: it has to be re-measured before it is believed, and this
+one had expired.**
+
 ## §63.239 — TWO MORE ROWS THE LEDGER WAS MIS-STATING, EACH WITH ITS GROUND ALREADY IN A HEADER: the CF run-loop door and the AppKit icon
 
 **Two rows closed, NO library code changed, and each ground was ALREADY WRITTEN where a reader meets the door** —

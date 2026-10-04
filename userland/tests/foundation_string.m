@@ -2083,6 +2083,73 @@ NULL
 	}
 
 	{
+		/* §63.240: -applyTransform:reverse:range:updatedRange: — THE IN-PLACE FORM of the transform above.
+		 * The check asserts a SPLICE (a range in the MIDDLE of a longer string, so "the whole string" cannot
+		 * pass for it), the range it reports, and its TWO REFUSALS: a transform this library cannot apply,
+		 * and a range that is invalid — which -substringWithRange: does NOT detect, so this door must. */
+		NSMutableString *inPlace = [[NSMutableString alloc] initWithUTF8String:"x caf\xc3\xa9 y"];
+		NSRange got = NSMakeRange(NSNotFound, 0);
+		BOOL unknownRaised = NO;
+		BOOL rangeRaised = NO;
+		char detail[200];
+
+		[inPlace applyTransform:NSStringTransformStripDiacritics
+				reverse:NO
+				  range:NSMakeRange(2, 4)
+			   updatedRange:&got];
+
+		@try {
+			[inPlace applyTransform:@"NoSuchTransformer" reverse:NO
+					  range:NSMakeRange(0, 1) updatedRange:NULL];
+		} @catch (NSException *exception) {
+			unknownRaised = [exception.name isEqualToString:NSInvalidArgumentException];
+		}
+		@try {
+			[inPlace applyTransform:NSStringTransformStripDiacritics reverse:NO
+					  range:NSMakeRange(0, 99) updatedRange:NULL];
+		} @catch (NSException *exception) {
+			rangeRaised = [exception.name isEqualToString:NSRangeException];
+		}
+
+		snprintf(detail, sizeof detail, "got \"%s\" {%lu, %lu} unknownRaised=%d rangeRaised=%d",
+			 [inPlace UTF8String], (unsigned long)got.location, (unsigned long)got.length,
+			 (int)unknownRaised, (int)rangeRaised);
+		check("string-apply-transform-in-place",
+		      /* "x café y" (8 units) with {2, 4} = "café" stripped in place -> "x cafe y" (8 units) */
+		      [inPlace isEqualToString:@"x cafe y"] && [inPlace length] == 8 &&
+		      got.location == 2 && got.length == 4 &&
+		      unknownRaised && rangeRaised,
+		      detail);
+	}
+
+	{
+		/* §63.240'S REAL FIND. The mutable splices computed their BYTE offsets from UTF-16 UNIT indices, which
+		 * is invisible on an all-ASCII string and corrupts any string with a multibyte character at or before
+		 * the range: the trailing BYTE of that character was left behind and decoded as its own character. THE
+		 * ORACLE IS DELIBERATELY ASCII-ONLY, so the check cannot depend on the doors it is testing.
+		 *
+		 * "\u00e9ab" IS 3 UNITS AND 4 BYTES, which is what makes the two readings tell apart: unit 3 is the END,
+		 * byte 3 is INSIDE "\u00e9"; unit {0,2} is "\u00e9a", byte {0,2} is "\u00e9". The string is built from
+		 * SPLIT literals because a two-byte escape followed by a HEX DIGIT would be read as one longer escape —
+		 * the same trap the encoding checks above already split around. */
+		NSString *mb = [NSString stringWithUTF8String:"\xc3\xa9" "ab"];	/* \u00e9ab */
+		NSMutableString *ins = [NSMutableString stringWithString:mb];
+		NSMutableString *del = [NSMutableString stringWithString:mb];
+		NSString *rep = [mb stringByReplacingCharactersInRange:NSMakeRange(1, 1) withString:@"Z"];
+
+		[ins insertString:@"--" atIndex:3];			/* the END in units; byte 3 is inside "\u00e9" */
+		[del deleteCharactersInRange:NSMakeRange(0, 2)];	/* "\u00e9a" in units; "\u00e9" in bytes */
+		check("string-mutable-splice-is-unit-based",
+		      /* correct: "\u00e9ab" + "--" is 5 units, deleting {0,2} leaves "b", and rep is 3 units ending "Zb" */
+		      [ins length] == 5 && [ins hasSuffix:@"--"] &&
+		      [del isEqualToString:@"b"] &&
+		      [rep length] == 3 && [[rep substringFromIndex:1] isEqualToString:@"Zb"],
+		      [[NSString stringWithFormat:@"ins=\"%@\" (%lu) del=\"%@\" rep=\"%@\" (%lu)",
+			[ins description], (unsigned long)[ins length], [del description],
+			[rep description], (unsigned long)[rep length]] UTF8String]);
+	}
+
+	{
 		/* THE LOCALE-AWARE CASE DOORS (§63.25): ONE LIVE DOOR AND THREE DEPRECATED SPELLINGS, MEASURED WHERE THE
 		 * LOCALE ACTUALLY CHANGES THE ANSWER. This library's case mapping is ASCII except for the one localised
 		 * rule it ships (the Turkic i/İ and I/ı pairing, which the NSLocale checks above already prove), so the

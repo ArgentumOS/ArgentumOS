@@ -1943,13 +1943,16 @@ static BOOL fn_format_is_allowed(NSString *format, NSString *validFormatSpecifie
 - (BOOL)hasSuffix:(NSString *)suffix
 {
 	size_t n = [suffix lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+	size_t bytes = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 
-	if (n > [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding]) {
+	if (n > bytes) {
 		return NO;
 	}
-	return [self rangeOfString:suffix
-			   options:NSLiteralSearch
-			     range:NSMakeRange([self lengthOfBytesUsingEncoding:NSUTF8StringEncoding] - n, n)].location != NSNotFound;
+	/* ⚠ §63.240: A BYTE RANGE GOES TO utf8_find, WHICH SPEAKS BYTES — the same rule -hasPrefix: above already
+	 * follows. This door used to hand a BYTE-derived NSRange to -rangeOfString:options:range:, WHICH SPEAKS
+	 * UTF-16 UNITS, so on any string with a multibyte character the range landed in the wrong place — or past
+	 * the end, answering NO for a suffix that was there (measured: -hasSuffix:@"--" on "éab--" said NO). */
+	return utf8_find(self, suffix, NSMakeRange(bytes - n, n), NSLiteralSearch) == (NSUInteger)(bytes - n);
 }
 
 - (BOOL)containsString:(NSString *)substring
@@ -3821,19 +3824,24 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	 * 2026-09-18 sweep gave it a voice). */
 	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:""];
 	size_t size = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
-	size_t start = range.location;
+	size_t start = fn_unit_to_byte(self, range.location);	/* §63.240: UNITS -> BYTES */
 	size_t end;
 
 	if (start > size) {
 		start = size;
 	}
-	end = start + range.length;
+	end = fn_unit_to_byte(self, range.location + range.length);	/* §63.240: UNITS -> BYTES */
 	if (end > size) {
 		end = size;
 	}
-	[built appendString:[self substringToIndex:start]];
+	/* ⚠ §63.240: BYTE OFFSETS GO TO utf8_substring, WHICH SPEAKS BYTES — and that is the SECOND bug this
+	 * method carried. It handed its byte offsets to -substringToIndex:/-substringFromIndex:, WHICH TAKE UTF-16
+	 * UNITS, while the offsets it had computed were unit indices used as bytes: wrong in BOTH directions, and
+	 * invisible for as long as every character was ASCII (there units == bytes). The mutable sibling above
+	 * already splices with utf8_substring; this IS now that splice. */
+	[built appendString:utf8_substring(self, 0, start)];
 	[built appendString:replacement];
-	[built appendString:[self substringFromIndex:end]];
+	[built appendString:utf8_substring(self, end, size - end)];
 	return built;
 }
 
@@ -4885,6 +4893,46 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	return [NSMutableString class];
 }
 
+/* §63.240: see NSString.h. The transform is the IMMUTABLE door's, applied to the SUBSTRING in `range`, and the
+ * answer is spliced back — so the two doors cannot disagree about what a transform means.
+ *
+ * THE RANGE IS VALIDATED HERE AND NOT BY -substringWithRange:, WHICH DOES NOT VALIDATE: that method is a direct
+ * byte walk in this file and answers an EMPTY STRING for a range that runs past the end rather than raising.
+ * Apple's page for the immutable transform pair speaks of an invalid range "caus[ing] an exception", so this
+ * door raises NSRangeException — the refusal every other range door in this library makes. The length is read
+ * BEFORE the arithmetic, so `length - range.location` cannot wrap. */
+- (void)applyTransform:(NSString *)transform reverse:(BOOL)reverse range:(NSRange)range
+	  updatedRange:(NSRangePointer)updatedRange
+{
+	NSUInteger length = [self length];
+	NSString *original;
+	NSString *transformed;
+
+	if (range.location == NSNotFound || range.location > length || range.length > length - range.location) {
+		[NSException raise:NSRangeException
+			    format:@"-%s: the range {%lu, %lu} is invalid for a string of length %lu",
+				   sel_getName(_cmd), (unsigned long)range.location,
+				   (unsigned long)range.length, (unsigned long)length];
+	}
+
+	original = [self substringWithRange:range];
+	transformed = [original stringByApplyingTransform:transform reverse:reverse];
+
+	if (transformed == nil) {
+		/* THE SIBLING FOLD DOOR'S CHOICE, for the same reason (see NSString.h): a transform this library
+		 * cannot apply is REFUSED rather than silently ignored. */
+		[NSException raise:NSInvalidArgumentException
+			    format:@"-%s: this library cannot apply the transform \"%@\"",
+				   sel_getName(_cmd), transform];
+	}
+
+	[self replaceCharactersInRange:range withString:transformed];
+
+	if (updatedRange != NULL) {
+		*updatedRange = NSMakeRange(range.location, [transformed length]);
+	}
+}
+
 /* THE RECEIVER'S KIND IS KEPT, AND THIS IS WHERE IT WAS NOT. NSString's abstract -initWithUTF8String: (and
  * its -...Characters:length: sibling) SUBSTITUTES an NSOwnedString - "a SUBCLASS overrides this and never
  * reaches here", says the comment there - and NSMutableString did not, so
@@ -5069,13 +5117,14 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:""];
 
 	size_t size = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];	/* BYTES: what utf8_substring speaks */
+	size_t at = fn_unit_to_byte(self, index);	/* §63.240: an INDEX is a UTF-16 UNIT, so it is converted */
 
-	if (index > size) {
-		index = size;
+	if (at > size) {
+		at = size;
 	}
-	[built appendString:utf8_substring(self, 0, index)];
+	[built appendString:utf8_substring(self, 0, at)];
 	[built appendString:string];
-	[built appendString:utf8_substring(self, index, size - index)];
+	[built appendString:utf8_substring(self, at, size - at)];
 	[self setString:built];
 }
 
@@ -5083,13 +5132,13 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 {
 	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:""];
 	size_t size = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];	/* BYTES */
-	size_t start = range.location;
+	size_t start = fn_unit_to_byte(self, range.location);	/* §63.240: UNITS -> BYTES */
 	size_t end;
 
 	if (start > size) {
 		start = size;
 	}
-	end = start + range.length;
+	end = fn_unit_to_byte(self, range.location + range.length);	/* §63.240: UNITS -> BYTES */
 	if (end > size) {
 		end = size;
 	}
@@ -5102,13 +5151,13 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 {
 	NSMutableString *built = [[NSMutableString alloc] initWithUTF8String:""];
 	size_t size = [self lengthOfBytesUsingEncoding:NSUTF8StringEncoding];	/* BYTES */
-	size_t start = range.location;
+	size_t start = fn_unit_to_byte(self, range.location);	/* §63.240: UNITS -> BYTES */
 	size_t end;
 
 	if (start > size) {
 		start = size;
 	}
-	end = start + range.length;
+	end = fn_unit_to_byte(self, range.location + range.length);	/* §63.240: UNITS -> BYTES */
 	if (end > size) {
 		end = size;
 	}
