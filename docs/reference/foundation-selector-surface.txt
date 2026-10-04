@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1726	open	71	struck	417
+# method	shipped	1732	open	65	struck	417
 # property	shipped	731	open	26	struck	179
 
 
@@ -591,7 +591,7 @@ method	shipped	+allConnections	NSConnection	Low-Level Utilities / Legacy / Legac
 method	shipped	+connectionWithReceivePort:sendPort:	NSConnection	Low-Level Utilities / Legacy / Legacy / Creating Instances	deprecated	objc
 method	shipped	+connectionWithRegisteredName:host:	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting a Remote Object	deprecated	objc
 method	shipped	+connectionWithRegisteredName:host:usingNameServer:	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting a Remote Object	deprecated	objc
-method	open	+currentConversation	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting a Conversation	deprecated	objc
+method	shipped	+currentConversation	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting a Conversation	deprecated	objc
 method	shipped	+defaultConnection	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting the Default Instance	deprecated	objc
 method	shipped	-dispatchWithComponents:	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting Ports	deprecated	objc
 method	shipped	-enableMultipleThreads	NSConnection	Low-Level Utilities / Legacy / Legacy / Running the Connection in a New Thread	deprecated	objc
@@ -603,7 +603,7 @@ method	shipped	-removeRequestMode:	NSConnection	Low-Level Utilities / Legacy / L
 method	shipped	-removeRunLoop:	NSConnection	Low-Level Utilities / Legacy / Legacy / Running the Connection in a New Thread	deprecated	objc
 method	shipped	+rootProxyForConnectionWithRegisteredName:host:	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting a Remote Object	deprecated	objc
 method	shipped	+rootProxyForConnectionWithRegisteredName:host:usingNameServer:	NSConnection	Low-Level Utilities / Legacy / Legacy / Getting a Remote Object	deprecated	objc
-method	open	-runInNewThread	NSConnection	Low-Level Utilities / Legacy / Legacy / Running the Connection in a New Thread	deprecated	objc
+method	shipped	-runInNewThread	NSConnection	Low-Level Utilities / Legacy / Legacy / Running the Connection in a New Thread	deprecated	objc
 method	shipped	+serviceConnectionWithName:rootObject:	NSConnection	Low-Level Utilities / Legacy / Legacy / Vending a Service	deprecated	objc
 method	shipped	+serviceConnectionWithName:rootObject:usingNameServer:	NSConnection	Low-Level Utilities / Legacy / Legacy / Vending a Service	deprecated	objc
 property	shipped	delegate	NSConnection	Low-Level Utilities / Legacy / Legacy / Setting the Delegate	deprecated	objc
@@ -3030,7 +3030,7 @@ property	shipped	version	NSXMLDocument	Files and Data Persistence / XML / Tree-B
 method	shipped	-addAttribute:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Handling Attributes	-	objc
 method	shipped	-addChild:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Manipulating Child Elements	-	objc
 method	shipped	-addNamespace:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Handling Namespaces	-	objc
-method	open	-attributeForLocalName:URI:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Handling Attributes	-	objc
+method	shipped	-attributeForLocalName:URI:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Handling Attributes	-	objc
 method	shipped	-attributeForName:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Handling Attributes	-	objc
 method	shipped	-elementsForLocalName:URI:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Obtaining Child Elements	-	objc
 method	shipped	-elementsForName:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Obtaining Child Elements	-	objc
@@ -3038,7 +3038,7 @@ method	shipped	-initWithKind:options:	NSXMLElement	Files and Data Persistence / 
 method	shipped	-initWithName:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Initializing NSXMLElement Objects	-	objc
 method	shipped	-initWithName:URI:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Initializing NSXMLElement Objects	-	objc
 method	shipped	-initWithName:stringValue:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Initializing NSXMLElement Objects	-	objc
-method	open	-initWithXMLString:error:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Initializing NSXMLElement Objects	-	objc
+method	shipped	-initWithXMLString:error:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Initializing NSXMLElement Objects	-	objc
 method	shipped	-insertChild:atIndex:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Manipulating Child Elements	-	objc
 method	shipped	-insertChildren:atIndex:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Manipulating Child Elements	-	objc
 method	shipped	-namespaceForPrefix:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Handling Namespaces	-	objc
@@ -3049,7 +3049,7 @@ method	shipped	-removeNamespaceForPrefix:	NSXMLElement	Files and Data Persistenc
 method	shipped	-replaceChildAtIndex:withNode:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Manipulating Child Elements	-	objc
 method	shipped	-resolveNamespaceForName:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Handling Namespaces	-	objc
 method	shipped	-resolvePrefixForNamespaceURI:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Handling Namespaces	-	objc
-method	open	-setAttributesAsDictionary:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Handling Attributes	deprecated	objc
+method	shipped	-setAttributesAsDictionary:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Handling Attributes	deprecated	objc
 method	shipped	-setAttributesWithDictionary:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Handling Attributes	-	objc
 method	shipped	-setChildren:	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Manipulating Child Elements	-	objc
 property	shipped	attributes	NSXMLElement	Files and Data Persistence / XML / Tree-Based Processing / Handling Attributes	-	objc
@@ -3104,7 +3104,7 @@ property	shipped	stringValue	NSXMLNode	Files and Data Persistence / XML / Tree-B
 method	shipped	-abortParsing	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Parsing	-	objc
 method	shipped	-initWithContentsOfURL:	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Initializing a Parser Object	-	objc
 method	shipped	-initWithData:	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Initializing a Parser Object	-	objc
-method	open	-initWithStream:	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Initializing a Parser Object	-	objc
+method	shipped	-initWithStream:	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Initializing a Parser Object	-	objc
 method	shipped	-parse	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Parsing	-	objc
 property	open	allowedExternalEntityURLs	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Instance Properties	-	objc
 property	shipped	columnNumber	NSXMLParser	Files and Data Persistence / XML / Event-Based Processing / Obtaining Parser State	-	objc

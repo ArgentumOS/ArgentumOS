@@ -23,6 +23,7 @@
 #ifndef FOUNDATION_NSXMLPARSER_H
 #define FOUNDATION_NSXMLPARSER_H
 
+@class NSInputStream;	/* §63.213: named by -initWithStream:; the door only passes it */
 #import <Foundation/NSObject.h>
 
 @class NSArray;
@@ -195,6 +196,9 @@ typedef enum {
 - (nullable NSString *)publicID;
 - (nullable NSString *)systemID;
 
+
+/* §63.213: READ TO THE END, THEN PARSE — the parser's whole scan is over a buffer, so this door reads the stream rather than growing a second incremental reader. */
+- (instancetype)initWithStream:(NSInputStream *)stream;
 @end
 
 /* "The interface an XML parser uses to inform its delegate about the content of the parsed document" - the

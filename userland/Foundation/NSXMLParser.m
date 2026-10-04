@@ -5,6 +5,7 @@
  */
 
 #import <Foundation/NSXMLParser.h>
+#import <Foundation/NSInputStream.h>	/* §63.213: the stream door reads an NSInputStream into an NSMutableData */
 #import <Foundation/NSArray.h>
 #import <Foundation/NSData.h>
 #import <Foundation/NSDictionary.h>
@@ -849,4 +850,18 @@ static NSString *fn_xml_decode(NSString *raw, int *outFailure)
 	[super dealloc];
 }
 
+
+- (instancetype)initWithStream:(NSInputStream *)stream
+{
+	/* READ TO THE END, THEN PARSE: the parser's whole scan is over _data, and an incremental reader for this
+	 * door would be a second parser with its own bugs. */
+	NSMutableData *buffer = (NSMutableData *)[NSMutableData data];	/* +data is NSData's; the cast is the house idiom */
+	uint8_t chunk[4096];
+	NSInteger got;
+
+	while ((got = [stream read:chunk maxLength:sizeof(chunk)]) > 0) {
+		[buffer appendBytes:chunk length:(NSUInteger)got];
+	}
+	return [self initWithData:buffer];
+}
 @end

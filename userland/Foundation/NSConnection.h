@@ -34,6 +34,8 @@
 #define FOUNDATION_NSCONNECTION_H
 
 #import <Foundation/NSObject.h>
+#import <Foundation/NSData.h>	/* §63.213: this header NAMES NSData, so it imports it; it used to rely on include order */
+#import <Foundation/NSArray.h>	/* §63.213: this header NAMES NSArray, so it imports it; it used to rely on include order */
 #import <Foundation/NSDictionary.h>	/* the type of `statistics` below, and the SEVENTH time this
 					 * session has had to add an import a declaration needed — ONE LINE TO CHECK, A ROUND TO MISS. */
 #import <Foundation/NSPort.h>
@@ -233,6 +235,12 @@ extern NSString *const NSFailedAuthenticationException;
 - (NSTimeInterval)replyTimeout;
 - (void)setReplyTimeout:(NSTimeInterval)timeout;
 
+
+/* §63.213: THE CONVERSATION PAIR. Apple's "conversation" is the connection a THREAD is in — so the thread's own
+ * dictionary carries it, which is what makes +currentConversation answerable inside -runInNewThread and nil
+ * everywhere else (Apple's own documented answer). */
++ (nullable NSConnection *)currentConversation;
+- (void)runInNewThread;
 @end
 
 NS_ASSUME_NONNULL_END

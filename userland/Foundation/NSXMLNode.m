@@ -1018,4 +1018,59 @@ static NSString *fn_xml_escape_attribute(NSString *text, BOOL singleQuoted)
 	[super dealloc];
 }
 
+
+- (id)attributeForLocalName:(NSString *)localName URI:(NSString *)URI
+{
+	/* THE TABLE IS KEYED BY FULL NAME, so this scans the ORDER array — the one the serializer walks — and
+	 * compares the pieces through the class's own name helper. */
+	NSUInteger i;
+
+	for (i = 0; i < [_attributeOrder count]; i++) {
+		id attribute = [_attributesByName objectForKey:[_attributeOrder objectAtIndex:i]];
+		NSString *candidateLocal = (NSString *)[[self class] localNameForName:[attribute name]];
+		NSString *candidateURI = [attribute URI];
+
+		if (candidateLocal != nil && [candidateLocal isEqual:localName] &&
+		    (URI == nil || (candidateURI != nil && [candidateURI isEqual:URI]))) {
+			return attribute;
+		}
+	}
+	return nil;
+}
+
+- (void)setAttributesAsDictionary:(NSDictionary *)attributes
+{
+	/* REPLACE, NOT MERGE: Apple's door takes the whole set, and a nil VALUE is the dictionary's way of saying
+	 * the attribute carries no value. */
+	NSArray *names = [[_attributeOrder copy] autorelease];
+	NSUInteger i;
+
+	for (i = 0; i < [names count]; i++) {
+		[self removeAttributeForName:[names objectAtIndex:i]];
+	}
+	{
+		NSEnumerator *keys = [attributes keyEnumerator];
+		id key;
+
+		while ((key = [keys nextObject]) != nil) {
+			[self addAttribute:[NSXMLNode attributeWithName:(NSString *)key
+							    stringValue:[attributes objectForKey:key]]];
+		}
+	}
+}
+
+- (id)initWithXMLString:(NSString *)string error:(NSError **)errorPtr
+{
+	/* THE FAILING FORM OF THE DOOR THE CLASS ALREADY HAS: the node is the same one, and the error path answers
+	 * the parse failure rather than a guess. The key is spelled as the literal it is, so this file needs no
+	 * import it does not already have. */
+	self = [self initWithXMLString:string];
+	if (self == nil && errorPtr != NULL) {
+		*errorPtr = [NSError errorWithDomain:@"NSXMLParserErrorDomain"
+						code:1
+					    userInfo:[NSDictionary dictionaryWithObject:@"the XML fragment could not be parsed"
+										 forKey:@"NSLocalizedDescriptionKey"]];
+	}
+	return self;
+}
 @end

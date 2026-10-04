@@ -13,6 +13,8 @@
  */
 
 #import <Foundation/NSConnection.h>
+#import <Foundation/NSThread.h>	/* §63.213: the conversation pair runs the loop in a thread */
+#import <Foundation/NSAutoreleasePool.h>	/* §63.213: the conversation pair runs the loop in a thread */
 #import <Foundation/NSNumber.h>	/* the values of `statistics` — the EIGHTH import this session has had
 				      * to add for a declaration's own type, and the first that cost WARNINGS rather than errors. */
 #import <Foundation/NSDistantObjectRequest.h>
@@ -95,6 +97,10 @@ static void fn_unregister_connection(NSConnection *connection)
 		}
 	}
 }
+
+@interface NSConnection (FNConversation)
+- (void)fnRunConnectionLoop;
+@end
 
 @implementation NSConnection
 
@@ -705,4 +711,34 @@ static NSConnection *fn_default_connection = nil;
 	[super dealloc];
 }
 
+
++ (NSConnection *)currentConversation
+{
+	/* THE THREAD'S OWN DICTIONARY is where a conversation lives: -runInNewThread puts it there, and a thread
+	 * that never ran one answers nil — Apple's documented answer. */
+	return (NSConnection *)[[[NSThread currentThread] threadDictionary]
+				 objectForKey:@"NSConnectionConversation"];
+}
+
+- (void)runInNewThread
+{
+	/* THE CONNECTION'S RUN LOOP, IN ITS OWN THREAD. The thread's dictionary carries the conversation, and the
+	 * loop runs until the connection is invalidated — which is Apple's contract for this door. */
+	NSThread *thread = [[NSThread alloc] initWithTarget:self
+						    selector:@selector(fnRunConnectionLoop)
+						      object:nil];
+
+	[thread setName:@"NSConnection"];
+	[thread start];
+	[thread release];
+}
+
+- (void)fnRunConnectionLoop
+{
+	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
+	[[[NSThread currentThread] threadDictionary] setObject:self forKey:@"NSConnectionConversation"];
+	[[NSRunLoop currentRunLoop] run];
+	[pool drain];
+}
 @end

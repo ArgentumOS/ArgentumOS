@@ -203,6 +203,14 @@ typedef enum {
 - (nullable id)resolveNamespaceForName:(NSString *)name;
 - (nullable id)resolvePrefixForNamespaceURI:(NSString *)namespaceURI;
 
+
+/* §63.213: THE ELEMENT'S THREE. `-attributeForLocalName:URI:` reads the SAME order array the serializer walks,
+ * so the two cannot disagree about which attribute is which; `-setAttributesAsDictionary:` REPLACES the set
+ * (Apple's door takes the whole of it); `-initWithXMLString:error:` is the failing form of the door the class
+ * already has. */
+- (nullable id)attributeForLocalName:(NSString *)localName URI:(nullable NSString *)URI;
+- (void)setAttributesAsDictionary:(NSDictionary *)attributes;
+- (nullable id)initWithXMLString:(NSString *)string error:(NSError **)errorPtr;
 @end
 
 /* OURS: THE SERIALIZER AS A METHOD RATHER THAN A C FUNCTION, because a SUBCLASS has to be able to override
