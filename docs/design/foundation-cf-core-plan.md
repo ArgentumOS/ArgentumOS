@@ -675,3 +675,25 @@ THE INSTRUMENT THAT CLOSES IT is one line, and it reuses the hex printer: note t
 __CFISAForTypeID(typeID) at the assignment site, beside the object's address. Then the log says per creation
 both WHERE it wrote and WHAT it wrote — which separates "zero was assigned" (the registration was not in
 place for that call) from "a class was assigned and did not survive".
+
+
+**THE VALUE IS ZERO, AND THAT NAMES THE MECHANISM.** With the constructor PROVEN to run and register, and the
+value instrument at the assignment site:
+
+    at:  0x0000400000499b90
+    val: 0x0000000000000000      <- __CFISAForTypeID returned ZERO at the first string's creation
+    got: 0x0000000000000000
+
+The disagreement is BETWEEN THE WRITE AND THE READ, in the same translation unit, over the same array — the
+door's own read-back returns the class, and _CFRuntimeCreateInstance's read of the same index returns 0.
+
+ONLY ONE MECHANISM PRODUCES THAT: SOMETHING CLEARS OR RE-INITIALISES __CFRuntimeClassTables AFTER THE
+CONSTRUCTOR RUNS. The constructor registers; CF's own startup, or the creation of the first string, wipes the
+tables; and a registration made LATER survives — which is exactly what the probe's explicit door call does,
+and why it made the class appear mid-run and looked like proof that the door worked and load-time registration
+did not.
+
+THE NEXT READ IS ONE GREP: `grep -n "__CFRuntimeClassTables" CFRuntime.c` for the initialisation site. The
+fix is then either to register after that initialisation or to stop it clobbering what it does not own — and
+whichever it is, it is the last step of the free-casting goal, because everything else in the chain has now
+been measured rather than argued.
