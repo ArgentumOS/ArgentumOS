@@ -15962,6 +15962,46 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.244 — THE LEDGER TAIL IS DEFERRED BY DECISION, AND WHAT THAT DOES AND DOES NOT COVER (user, 2026-10-04)
+
+**THE USER'S CALL: the remaining ledger work can wait, and part of it has to until AppKit is ready.** Recorded with
+the measurement it rests on, so a later session neither re-derives it nor mistakes the deferral for a gap.
+
+**IT IS SAFE IN THE SENSE THAT MATTERS: NOTHING THAT SHIPS IS BROKEN.** The SYMBOL ledger is at **0 open** (2810
+rows, every one shipped or struck by a recorded ground), and the SELECTOR ledger's **45 open rows are 45 pieces of
+API that are DECLARED NOWHERE** — absent, not wrong. A caller cannot be misled by a door that does not exist.
+
+**WHICH PART IS REALLY APPKIT'S — FOUR ROWS, PRECISELY.** `NSBundle -imageForResource:` (an `NSImage`);
+`NSBundle -contextHelpForKey:` (an `NSHelpManager`); `NSURL +URLFromPasteboard:` and `NSURL -writeToPasteboard:`
+(an `NSPasteboard` — and this system has ONE session pasteboard, UIKit-only, by the clipboard decision).
+`NSFileWrapper -icon` was the sixth of that family and was STRUCK in §63.239 on its own header's ground.
+`NSArray -shuffledArrayWithRandomSource:` needs a RANDOM-SOURCE class this tree does not have — **its provenance is
+NOT verified**, so it is a class gap of unsettled ownership rather than an AppKit row, and it is named that way.
+
+**AND THE REST IS BLOCKED ON SOMETHING ELSE ENTIRELY — so "deferred" is not one blocker but six.** The XSLT/XPath/
+XQuery quartet and `NSXMLDocument -validateAndReturnError:` need an engine (§11.6 ground (ii)); `NSURLCredential`'s
+five WAIT with the keychain half, which §63.202 states in as many words; `NSURLProtocol`'s three task doors need the
+session family; the UTI-conformance quartet needs a uniform-type-identifier database; `NSDate`'s
+natural-language pair needs a date parser; and `NSUndoManager -groupsByEvent` / `-runLoopModes` are open BY DECISION
+(§63.202) and are work rather than a boundary. **A DEFERRAL THAT NAMES ONE BLOCKER FOR SIX IS THE KIND OF RECORD
+THAT GOES STALE** — the failure §63.236, §63.237 and §63.243 each caught in a different file.
+
+**AND ONE CORRECTION TO THE FRAMING, BECAUSE THIS SESSION MEASURED IT: THE RISK IS NOT IN THE OPEN ROWS.**
+§§63.240–§63.243 found **EIGHT real defects and every one sat behind a `shipped` row with green gates** — the sweep
+pair judges a shipped row by its DECLARATION and never by its body. Deferring the 45 therefore costs nothing; what a
+later session should carry forward instead of the tail is the **METHOD**: the parameter scan (§63.242) and its
+remaining unread hits, and the call-site-versus-contract distinction (§63.241) — because that is where the defects
+actually were.
+
+**THE TWO ROWS THAT ARE NEITHER DEFERRABLE WORK NOR APPKIT'S.** `NSConnectionDelegate -makeNewConnection:sender:`
+and `NSFileManager -replaceItemAtURL:withItemAtURL:backupItemName:options:resultingItemURL:error:` are IMPLEMENTED and
+gate-green and read `open` only because the ledger carries Apple's documentation spelling. They are an INSTRUMENT
+defect (the tool thread is CLOSED, §63.231) and the ledger UNDERSTATES them: nothing to defer and nothing to do, which
+is worth saying where a reader meets the count.
+
+**NO CODE CHANGES.** The gate for a unit with no library change is the sweep pair: `--unimplemented` **0 NEW**,
+`--check` **consistent** (method 1760 / 33 / 421; property 742 / 12 / 182).
+
 ## §63.243 — THE CANONICAL FORM'S FLAG: a door §63.233 shipped with NO CHECK AT ALL, and the "sibling" its note leaned on does not exist
 
 **Three findings in one door, and the first is that the door had no check.** `foundation_xmltree` carries SEVENTEEN
