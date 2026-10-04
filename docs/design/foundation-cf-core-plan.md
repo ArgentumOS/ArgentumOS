@@ -911,3 +911,31 @@ Both dead theories are worth naming, because both were plausible and both were k
 that the isa came from a variable in CoreFoundation's BSS (it is a library address, but nothing in the probe
 references that symbol), and that the class merely needed to exist under the right name (it does, and it
 changed nothing, because the lookup happened before it did).
+
+
+**THE RUNTIME'S PART IS REFCOUNTING, NOT THE ISA — and the one measurement left is a RELOCATION.** libobjc2's
+own source says so, in class_table.c:
+
+    // Mark constant string instances as never needing refcount manipulation.
+    if (strcmp(class->name, "NSConstantString") == 0)
+        objc_set_class_flag(class, objc_class_flag_permanent_instances);
+
+So the runtime finds the constant-string class BY THE NAME the wrapper already passes, and sets a refcount flag
+on it. IT DOES NOT WALK __objc_constant_string AND DOES NOT SET ANY ISA. The isa is emitted by the compiler --
+which is why writing the class, naming it correctly, and aliasing the symbol all changed nothing.
+
+AND THE THREE MEASUREMENTS THAT BOUND IT:
+
+    CoreFoundation:   neither defines nor references _CF_CONSTANT_STRING_SWIFT_CLASS
+    libfoundation:    0x61c8 D it, equal to ._OBJC_CLASS_NSConstantString -- the alias works
+    the probe's isa:  0x4000002bb3a0 -- NEITHER of those addresses
+
+so the probe's reference did not bind to the alias, and the isa points into an unnamed region of a loaded
+image: the nearest named symbol below it is CoreFoundation's __CFCharToUniCharFunc, 27KB away, which is about
+the size of __CFRuntimeClassTables.
+
+**THE ONE MEASUREMENT LEFT IS THE RELOCATION.** clang emits the struct's isa as a relocatable reference with a
+symbol and an addend; the probe compiles straight to a binary, so nothing here has shown it. Compiling a
+one-line file with CFSTR to an OBJECT (scratch, not committed) and reading objdump -r names the symbol and the
+addend exactly. Then the fix is whichever of three it turns out to be: define that symbol correctly, steer
+clang's emission, or have CoreFoundation -- which is ours now -- define it as the class.
