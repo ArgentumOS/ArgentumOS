@@ -775,3 +775,37 @@ was right for a branch this library should not have been taking at all.
 The lesson is the same one the whole stretch keeps teaching, in a new place: the trust-worthy reading was the
 HEADER'S GUARD around the macro, not the macro's text. Everything above it -- the class name, the symbol's
 spelling, the struct's size -- was a consequence of one preprocessor default nobody had looked at.
+
+
+### WHAT BINDS THE ROOT CLASSES: THE PROTOCOL, AND WE HAVE NOT WRITTEN IT (2026-10)
+
+**THE QUESTION, and it is the right one to ask of this design:** is the NSObject PROTOCOL what binds the root
+classes together rather than direct inheritance? Measured against both trees:
+
+    archive/Foundation/NSObject.h:91    @protocol NSObject
+    archive/Foundation/NSObject.h:120   @interface NSObject <NSObject>     the class conforms to the protocol
+    userland/Foundation/NSObject.h:112  @interface NSObject                the class alone
+
+**ON APPLE — AND IN THE ARCHIVED TREE — BOTH MECHANISMS EXIST AND THE PROTOCOL IS FOR THE EXCEPTION.**
+Ordinary classes INHERIT the class, which is why the protocol looks redundant; the protocol exists for the
+case where inheritance is impossible, and Apple has exactly one: NSProxy, the other root class, conforms to
+<NSObject> so that a proxy is INTERCHANGEABLE with an NSObject-derived object — you can send it -isEqual:,
+-hash, -class, -retain.
+
+**IN THIS DESIGN THE PROTOCOL IS NOT THE EXCEPTION, IT IS THE ONLY OPTION — AND THAT IS A CONSEQUENCE OF
+MAKING THE OBJECTS CF'S.** A bridged NSString IS the CF object: its memory is CF's header plus CFString's
+fields, so it CANNOT inherit NSObject's ivars (an NSObject base would expect its own field at offset 8, where
+CF keeps the object's info word). The classes that matter here are therefore ROOT CLASSES BY NECESSITY — and
+what binds them today is the CF runtime and the runtime's side-table count, via the ownership arm, NOT a
+declared contract.
+
+**AND THAT LEAVES REAL DOORS MISSING, which is the part worth acting on.** Our string classes answer -length
+and +class; they do NOT answer -retain, -release, -isEqual:, -hash or -description, because those live on
+NSObject the class and a root class does not inherit it. So an object here is not yet interchangeable with an
+NSObject-derived one, and `id`-typed code that expects the protocol's surface would fail on it.
+
+**THE SHAPE OF THE FIX, and one non-obvious detail that makes it safe:** extract the doors into
+`@protocol NSObject`, have NSObject the class and every bridged root class CONFORM, and implement what each
+needs. For a CF-backed class -retain/-release should delegate to CFRetain/CFRelease — and that does NOT loop,
+because such a class is REGISTERED for its type, so CF_IS_OBJC is FALSE for it and CFRetain takes its C path
+rather than returning into the method. One count, CF's, reached from both sides.
