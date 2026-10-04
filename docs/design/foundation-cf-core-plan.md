@@ -300,6 +300,33 @@ receiver (`CFArray.c`'s `isKindOfClass:[NSMutableArray class]`), and it was the 
 CF-to-Foundation surface, now a runtime `objc_getClass` lookup. One unguarded `typedef struct __NSString__
 *NSString` in `CFURLAccess.c` collided with the class and is skipped in the ObjC build (mod 6).
 
+**THE SELECTOR WORK LIST, PRODUCED (and it is not one list but three).** CF's dispatch sites name **167
+distinct selectors**; this tree's Foundation declares **2,882**; the difference is **58**. Reading them, the
+58 sort into three kinds of blocker that must not be treated alike:
+
+  1. **Ordinary Cocoa selectors Foundation simply does not have** (~8): `containsKey:`, `countForKey:`,
+     `replaceObject:`, `replaceObject:forKey:`, `tolerance`, `setTolerance:`, `appendCharacters:length:`.
+     These are Foundation work, and the plainest kind: add the method.
+  2. **APPLE'S PRIVATE PROTOCOL, which CF's fast paths assume** (the bulk, ~45): `_cfNormalize:`, `_cfTrim:`,
+     `_cfUppercase:`, `_cfLowercase:`, `_cfCapitalize:`, `_getCString:maxLength:encoding:`,
+     `_fastCStringContents:`, `_fastCharacterContents`, `_getValue:forType:`, `_copyLocale`, `_copyTimeZone`,
+     `_prefs`, `_encodingCantBeStoredInEightBitCFString`, the `__apply:`/`__getValue:` family, and the
+     `CFCalendar` component-descriptor set (`_composeAbsoluteTime:atp:componentDesc:` and friends). These are
+     the method set the REAL `NSCF*` classes implement — "the bridge" in Apple's design — and this tree's
+     Foundation was written independently, so it answers a different one. **This is the largest single body
+     of M2/M3 work and it is a compatibility surface, not a bug list.**
+  3. **Where this tree has deliberately decided otherwise** (a few, and they need a CF-side answer rather
+     than a Foundation one): `copyWithZone:` — the zone API is REMOVED in this tree by decision
+     (NSObject.h states it), yet two CF sites dispatch `copyWithZone:`; `_cfurl` and `_cfNumberType`
+     similarly assume Apple's private shapes.
+
+  THE THIRD KIND IS THE ONE THAT NEEDS A DECISION RATHER THAN AN EDIT, which is why it is called out: a
+  site like `CFDictionary.c`'s `copyWithZone:` cannot be satisfied by adding a method Foundation has
+  deliberately removed, so the CF side must be adapted (its own `copy`) or the removal reconsidered.
+
+  The list was produced by comparing the selectors CF's `CF_OBJC_FUNCDISPATCHV`/`_CALLV` sites name against
+  every method and property Foundation's headers declare — a host-side analysis, no guest needed.
+
 **WHAT THIS UNIT DOES NOT COVER, stated so it is not assumed.** Only the two CFString doors above are
 *exercised*; CFArray's dispatch path is compiled but unrun. `CFStringGetCString` is deliberately NOT called
 by the probe, because its site wants `-getCString:maxLength:encoding:` and a Foundation that does not
