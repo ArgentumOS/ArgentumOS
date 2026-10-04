@@ -62,7 +62,7 @@ CHECKS = (
           "adding-one-month-to-the-31st-lands-in-february",
           "the-decomposition-is-largest-component-first",
           "the-day-of-the-common-era-counts-from-year-one",
-          "the-constant-dates-are-calendar-dates")
+          "the-constant-dates-are-calendar-dates", "date-sr-absolute-time-is-the-reference-epoch", "date-with-string-parses-apples-form", "date-add-time-interval-and-now")
 
 
 class Case(BaseCase):

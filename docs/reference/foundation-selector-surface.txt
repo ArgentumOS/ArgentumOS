@@ -33,8 +33,8 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1686	open	129	struck	399
-# property	shipped	725	open	39	struck	172
+# method	shipped	1690	open	125	struck	399
+# property	shipped	727	open	37	struck	172
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -678,15 +678,15 @@ method	shipped	-writeToURL:options:error:	NSData	Fundamentals / Binary Data / Wr
 property	shipped	bytes	NSData	Fundamentals / Binary Data / Accessing Underlying Bytes	-	objc
 property	shipped	description	NSData	Fundamentals / Binary Data / Describing Data	-	objc
 property	shipped	length	NSData	Fundamentals / Binary Data / Testing Data	-	objc
-method	open	-addTimeInterval:	NSDate	Fundamentals / Date Representations / Legacy Operations	deprecated	objc
+method	shipped	-addTimeInterval:	NSDate	Fundamentals / Date Representations / Legacy Operations	deprecated	objc
 method	shipped	-compare:	NSDate	Fundamentals / Date Representations / Comparing Dates	-	objc
 method	shipped	+date	NSDate	Fundamentals / Date Representations / Creating a Date	-	objc
 method	shipped	-dateByAddingTimeInterval:	NSDate	Fundamentals / Date Representations / Adding Time Intervals	-	objc
 method	open	-dateWithCalendarFormat:timeZone:	NSDate	Fundamentals / Date Representations / Legacy Operations	deprecated	objc
 method	open	+dateWithNaturalLanguageString:	NSDate	Fundamentals / Date Representations / Legacy Operations	deprecated	objc
 method	open	+dateWithNaturalLanguageString:locale:	NSDate	Fundamentals / Date Representations / Legacy Operations	deprecated	objc
-method	open	+dateWithSRAbsoluteTime:	NSDate	Fundamentals / Date Representations / Type Methods	-	objc
-method	open	+dateWithString:	NSDate	Fundamentals / Date Representations / Legacy Operations	deprecated	objc
+method	shipped	+dateWithSRAbsoluteTime:	NSDate	Fundamentals / Date Representations / Type Methods	-	objc
+method	shipped	+dateWithString:	NSDate	Fundamentals / Date Representations / Legacy Operations	deprecated	objc
 method	shipped	+dateWithTimeInterval:sinceDate:	NSDate	Fundamentals / Date Representations / Type Methods	-	objc
 method	shipped	+dateWithTimeIntervalSince1970:	NSDate	Fundamentals / Date Representations / Creating a Date	-	objc
 method	shipped	+dateWithTimeIntervalSinceNow:	NSDate	Fundamentals / Date Representations / Creating a Date	-	objc
@@ -696,7 +696,7 @@ method	shipped	-descriptionWithLocale:	NSDate	Fundamentals / Date Representation
 method	shipped	-earlierDate:	NSDate	Fundamentals / Date Representations / Comparing Dates	-	objc
 method	shipped	-init	NSDate	Fundamentals / Date Representations / Initializing a Date	-	objc
 method	shipped	-initWithCoder:	NSDate	Fundamentals / Date Representations / Initializing a Date	-	objc
-method	open	-initWithSRAbsoluteTime:	NSDate	Fundamentals / Date Representations / Instance Methods	-	objc
+method	shipped	-initWithSRAbsoluteTime:	NSDate	Fundamentals / Date Representations / Instance Methods	-	objc
 method	shipped	-initWithString:	NSDate	Fundamentals / Date Representations / Legacy Operations	deprecated	objc
 method	shipped	-initWithTimeInterval:sinceDate:	NSDate	Fundamentals / Date Representations / Instance Methods	-	objc
 method	shipped	-initWithTimeIntervalSince1970:	NSDate	Fundamentals / Date Representations / Initializing a Date	-	objc
@@ -708,8 +708,8 @@ method	shipped	-timeIntervalSinceDate:	NSDate	Fundamentals / Date Representation
 property	shipped	description	NSDate	Fundamentals / Date Representations / Describing Dates	-	objc
 property	shipped	distantFuture	NSDate	Fundamentals / Date Representations / Getting Temporal Boundaries	-	objc
 property	shipped	distantPast	NSDate	Fundamentals / Date Representations / Getting Temporal Boundaries	-	objc
-property	open	now	NSDate	Fundamentals / Date Representations / Retrieving the Current Date	-	objc
-property	open	srAbsoluteTime	NSDate	Fundamentals / Date Representations / Instance Properties	-	objc
+property	shipped	now	NSDate	Fundamentals / Date Representations / Retrieving the Current Date	-	objc
+property	shipped	srAbsoluteTime	NSDate	Fundamentals / Date Representations / Instance Properties	-	objc
 property	shipped	timeIntervalSince1970	NSDate	Fundamentals / Date Representations / Getting Time Intervals	-	objc
 property	shipped	timeIntervalSinceNow	NSDate	Fundamentals / Date Representations / Getting Time Intervals	-	objc
 property	shipped	timeIntervalSinceReferenceDate	NSDate	Fundamentals / Date Representations / Getting Time Intervals	-	swift-page

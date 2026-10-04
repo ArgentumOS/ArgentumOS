@@ -94,6 +94,78 @@
 	return [self initWithTimeIntervalSince1970:FN_REFERENCE_DATE_SECONDS + seconds];
 }
 
++ (id)dateWithSRAbsoluteTime:(double)seconds
+{
+	return [self dateWithTimeIntervalSinceReferenceDate:seconds];
+}
+
+- (id)initWithSRAbsoluteTime:(double)seconds
+{
+	return [self initWithTimeIntervalSinceReferenceDate:seconds];
+}
+
+- (double)srAbsoluteTime
+{
+	return [self timeIntervalSinceReferenceDate];
+}
+
++ (NSDate *)now
+{
+	return [self date];
+}
+
++ (NSDate *)dateWithString:(NSString *)description
+{
+	/* APPLE'S DOCUMENTED FORM, parsed by hand because there is no strptime door here:
+	 * "YYYY-MM-DD HH:MM:SS +HHMM". nil for anything else, which is the documented answer. */
+	NSInteger year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0;
+	char zoneSign = 0;
+	int zoneHour = 0, zoneMinute = 0;
+	const char *text = [description UTF8String];
+	int consumed = 0;
+
+	if (text == NULL || [description length] == 0) {
+		return nil;
+	}
+	if (sscanf(text, "%4ld-%2ld-%2ld %2ld:%2ld:%2ld %c%2d%2d%n", (long *)&year, (long *)&month,
+		   (long *)&day, (long *)&hour, (long *)&minute, (long *)&second, &zoneSign, &zoneHour,
+		   &zoneMinute, &consumed) != 9) {
+		return nil;
+	}
+	if ((zoneSign != '+' && zoneSign != '-') || text[consumed] != '\0') {	/* one byte past the match IS the end check */
+		return nil;
+	}
+	{
+		/* THE FIELDS ARE UTC, so the offset is applied to reach the instant: the epoch here is 2001, and
+		 * the day arithmetic is Howard Hinnant's days-from-civil. */
+		NSInteger y = year, m = (month >= 3) ? month - 3 : month + 9;
+
+		if (month <= 2) {
+			y -= 1;	/* the March-based year days_from_civil requires: WITHOUT it every January and
+				 * February lands exactly one year late (the probe said 31536000 for 2001-01-01) */
+		}
+		NSInteger era = (y >= 0 ? y : y - 399) / 400;
+		NSInteger yoe = y - era * 400;
+		NSInteger doy = (153 * m + 2) / 5 + day - 1;
+		NSInteger doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+		NSInteger days = era * 146097 + doe - 719468;
+		double seconds = (double)days * 86400.0 + (double)hour * 3600.0 + (double)minute * 60.0 +
+				 (double)second;
+		int offset = (zoneSign == '-' ? -1 : 1) * (zoneHour * 3600 + zoneMinute * 60);
+
+		seconds -= (double)offset;			/* the string's own offset -> UTC */
+		seconds -= 978307200.0;				/* 2001-01-01 GMT in the Unix epoch */
+		return [self dateWithTimeIntervalSinceReferenceDate:seconds];
+	}
+}
+
+- (NSDate *)addTimeInterval:(double)seconds
+{
+	return [self dateByAddingTimeInterval:seconds];
+}
+
+
+
 - (double)timeIntervalSinceReferenceDate
 {
 	return _timeIntervalSince1970 - FN_REFERENCE_DATE_SECONDS;

@@ -272,6 +272,44 @@ int main(void)
 			[future descriptionWithLocale:nil]]);
 	}
 
+
+	{
+		/* §63.197: THE SR EPOCH IS THE REFERENCE EPOCH, and this asserts it as a NUMBER rather than a claim:
+		 * both are seconds since 2001-01-01 GMT, so 0 SR is 978307200 in the Unix epoch. */
+		NSDate *epoch = [NSDate dateWithSRAbsoluteTime:0];
+		NSDate *made = [[NSDate alloc] initWithSRAbsoluteTime:0];
+
+		check("date-sr-absolute-time-is-the-reference-epoch",
+		      [epoch timeIntervalSinceReferenceDate] == 0 && [epoch srAbsoluteTime] == 0 &&
+		      [epoch timeIntervalSince1970] == 978307200.0 && [made srAbsoluteTime] == 0,
+		      [NSString stringWithFormat:@"sr=%g ref=%g unix=%g", [epoch srAbsoluteTime],
+			[epoch timeIntervalSinceReferenceDate], [epoch timeIntervalSince1970]]);
+	}
+	{
+		/* APPLE'S DOCUMENTED FORM, and the offset is APPLIED: the same instant written two ways. */
+		NSDate *utc = [NSDate dateWithString:@"2001-01-01 00:00:00 +0000"];
+		NSDate *shifted = [NSDate dateWithString:@"2001-01-01 01:00:00 +0100"];
+		NSDate *nope = [NSDate dateWithString:@"not a date"];
+
+		check("date-with-string-parses-apples-form",
+		      utc != nil && shifted != nil && [utc srAbsoluteTime] == 0 && [shifted srAbsoluteTime] == 0 &&
+		      nope == nil,
+		      [NSString stringWithFormat:@"utc=%g shifted=%g nope=%@", [utc srAbsoluteTime],
+			[shifted srAbsoluteTime], nope == nil ? @"nil" : @"NOT nil"]);
+	}
+	{
+		/* THE PRE-10.6 SPELLING IS THE MODERN ONE, and `now` is Swift's spelling of +date. */
+		NSDate *base = [NSDate dateWithTimeIntervalSinceReferenceDate:1000];
+		NSDate *later = [base addTimeInterval:60];
+		NSDate *now = [NSDate now];
+
+		check("date-add-time-interval-and-now",
+		      [later isEqualToDate:[base dateByAddingTimeInterval:60]] && [later srAbsoluteTime] == 1060 &&
+		      now != nil && [now timeIntervalSinceNow] < 5.0 && [now timeIntervalSinceNow] > -5.0,
+		      [NSString stringWithFormat:@"later=%g now-off=%g", [later srAbsoluteTime],
+			[now timeIntervalSinceNow]]);
+	}
+
 	printf("FOUNDATION-CALENDARDATE RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-CALENDARDATE DONE\n");
 	return failc == 0 ? 0 : 1;

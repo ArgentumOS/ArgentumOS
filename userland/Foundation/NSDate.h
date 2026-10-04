@@ -31,6 +31,8 @@ typedef double NSTimeInterval;
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class NSTimeZone;	/* named by the CalendarFormat doors; declared in its own header */
+
 @interface NSDate : NSObject <NSCopying, NSCoding>
 {
 	double _timeIntervalSince1970;
@@ -41,6 +43,20 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSDate *)dateWithTimeIntervalSinceNow:(double)seconds;
 + (NSDate *)dateWithTimeInterval:(double)seconds sinceDate:(NSDate *)date;
 + (NSDate *)dateWithTimeIntervalSinceReferenceDate:(double)seconds;
+/* THE SR ABSOLUTE TIME PAIR (§63.197). "SR" is CoreFoundation's software reference absolute time: SECONDS
+ * SINCE 2001-01-01 GMT, the same epoch -timeIntervalSinceReferenceDate: uses, which is why these three are
+ * one-line doors onto it rather than a second time base. `now` is Swift's spelling of +date. */
++ (id)dateWithSRAbsoluteTime:(double)seconds;
+- (id)initWithSRAbsoluteTime:(double)seconds;
+@property (readonly) double srAbsoluteTime;
+@property (class, readonly) NSDate *now;
+
+/* THE LEGACY DOORS (§63.197). +dateWithString: takes Apple's documented "%Y-%m-%d %H:%M:%S +0000" and
+ * answers nil when it does not match. -addTimeInterval: is the pre-10.6 spelling of
+ * -dateByAddingTimeInterval:. The two -...CalendarFormat: doors are NOT here: they go through NSCalendarDate,
+ * whose description doors take a format and an optional LOCALE but no time zone — see §63.197. */
++ (nullable NSDate *)dateWithString:(NSString *)description;
+- (NSDate *)addTimeInterval:(double)seconds;
 + (NSDate *)distantPast;
 + (NSDate *)distantFuture;
 + (double)timeIntervalSinceReferenceDate;

@@ -15962,6 +15962,34 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.197 — NSDate: the SR absolute time, `now`, `+dateWithString:`, and `-addTimeInterval:`
+
+Six rows: `+dateWithSRAbsoluteTime:`, `-initWithSRAbsoluteTime:`, `srAbsoluteTime`, `now`,
+`+dateWithString:`, `-addTimeInterval:`. Ledger after: **method 1690 shipped / 125 open / 399 struck; property 727 / 37 / 172**.
+
+**THE SR EPOCH IS THE REFERENCE EPOCH, AND THE PROBE ASSERTS IT AS A NUMBER.** "SR" is CoreFoundation's
+software reference absolute time — seconds since 2001-01-01 GMT — the same epoch
+`-timeIntervalSinceReferenceDate` already uses, so 0 SR is 978307200 in the Unix epoch. The check asserts
+`srAbsoluteTime == 0` AND `timeIntervalSince1970 == 978307200` on the same object, which is the equivalence
+stated rather than assumed. That is also the time base the CF plan's `CFAbsoluteTime` will need.
+
+**AND THE PARSE FOUND A REAL ARITHMETIC BUG, because the check compared an INSTANT rather than a shape.**
+`+dateWithString:` parses Apple's documented `"YYYY-MM-DD HH:MM:SS +HHMM"` and answers nil otherwise; the
+first version landed both test strings at exactly `31536000` — 365 days — because Howard Hinnant's
+`days_from_civil` needs its March-based year step (`y -= m <= 2`) and I had left it out. Only a check that
+asserted the resulting instant caught it.
+
+**Left open, with the grounds.** `+dateWithNaturalLanguageString:` and `…:locale:` are a natural-language
+parser, not an accessor. And **the two `-…CalendarFormat:` doors are open because this tree's NSCalendarDate
+cannot serve them yet**: it declares `-descriptionWithCalendarFormat:` and
+`-descriptionWithCalendarFormat:locale:` — a format and an optional LOCALE, but **no time-zone form** — so an
+NSDate door taking `timeZone:` was calling a selector that does not exist. The probe faulted on it (and the
+harness's retry is why that gate run took 58s instead of 12s), so the doors are withdrawn rather than shipped
+broken: they need a decision about NSCalendarDate's description surface first.
+
+Acceptance: `make testimg` green (status-checked); `make test TESTS=foundation_calendardate` → `TESTS-OK` with
+three new checks; `tools/foundation-sweep.py --check` consistent.
+
 ## §63.196 — NSXMLNode: the URI constructors, the node's own options, the name's parts, XPath, and a real entity resolver
 
 Ten rows: `+attributeWithName:URI:stringValue:`, `+elementWithName:URI:`, `-initWithKind:options:` (plus its
