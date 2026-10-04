@@ -10,6 +10,8 @@
  */
 
 #import <Foundation/NSDate.h>
+#import <Foundation/NSTimeZone.h>	/* §63.229: the zone is set on the object */
+#import <Foundation/NSCalendarDate.h>	/* §63.229: the CalendarFormat: doors answer an NSCalendarDate */
 #import <Foundation/NSCoder.h>	/* the coder forms below */
 #import <Foundation/NSString.h>
 #include <stdio.h>
@@ -303,5 +305,28 @@
 - (instancetype)initWithCoder:(NSCoder *)coder
 {
 	return [self initWithTimeIntervalSince1970:[coder decodeDoubleForKey:@"NS.time"]];
+}
+
+- (NSCalendarDate *)dateWithCalendarFormat:(NSString *)format timeZone:(NSTimeZone *)aTimeZone
+{
+	/* NSCalendarDate IS AN NSDate SUBCLASS whose FORMAT AND ZONE ARE SETTABLE, so this is the inherited
+	 * initializer plus the pair — one formatting engine, not two. */
+	NSCalendarDate *date = [[NSCalendarDate alloc] initWithTimeIntervalSinceReferenceDate:
+							[self timeIntervalSinceReferenceDate]];
+
+	[date setCalendarFormat:format];
+	[date setTimeZone:aTimeZone];
+	return [date autorelease];
+}
+
+- (NSString *)descriptionWithCalendarFormat:(NSString *)format
+				   timeZone:(NSTimeZone *)aTimeZone
+				     locale:(id)locale
+{
+	/* THE LOCALE FORM IS THE ONE NSCalendarDate HAS; the zone goes on the OBJECT first, which is why this door
+	 * needs no third spelling from it. */
+	NSCalendarDate *date = [self dateWithCalendarFormat:format timeZone:aTimeZone];
+
+	return [date descriptionWithCalendarFormat:format locale:locale];
 }
 @end

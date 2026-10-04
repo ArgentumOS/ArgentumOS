@@ -15962,6 +15962,17 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.229 — THE TWO CalendarFormat: DOORS, AND §63.197's GROUND OVERTURNED
+
+Two rows shipped: `-dateWithCalendarFormat:timeZone:`, `-descriptionWithCalendarFormat:timeZone:locale:`.
+Ledger after: `method 1750 shipped / 46 open / 418 struck; property 734 / 21 / 181`.
+
+§63.197 left these OPEN with the ground *"NSCalendarDate declares `-descriptionWithCalendarFormat:` and
+`-descriptionWithCalendarFormat:locale:` — a format and an optional LOCALE, but no time-zone form."* The ground
+was accurate and the conclusion wrong: **NSCalendarDate's FORMAT AND ZONE ARE THE SETTABLE PAIR**, so the zone
+needs no third spelling from it — it is set ON THE OBJECT, and the locale form carries the locale. Both doors are
+then the inherited initializer plus two settings: one formatting engine, not two.
+
 ## §63.227 — NSBundle's framework list and receipt URL, and the tool thread parked on purpose
 
 Two rows shipped: `+allFrameworks`, `appStoreReceiptURL`. Ledger after:

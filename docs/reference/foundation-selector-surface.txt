@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1748	open	48	struck	418
+# method	shipped	1750	open	46	struck	418
 # property	shipped	734	open	21	struck	181
 
 
@@ -682,7 +682,7 @@ method	shipped	-addTimeInterval:	NSDate	Fundamentals / Date Representations / Le
 method	shipped	-compare:	NSDate	Fundamentals / Date Representations / Comparing Dates	-	objc
 method	shipped	+date	NSDate	Fundamentals / Date Representations / Creating a Date	-	objc
 method	shipped	-dateByAddingTimeInterval:	NSDate	Fundamentals / Date Representations / Adding Time Intervals	-	objc
-method	open	-dateWithCalendarFormat:timeZone:	NSDate	Fundamentals / Date Representations / Legacy Operations	deprecated	objc
+method	shipped	-dateWithCalendarFormat:timeZone:	NSDate	Fundamentals / Date Representations / Legacy Operations	deprecated	objc
 method	open	+dateWithNaturalLanguageString:	NSDate	Fundamentals / Date Representations / Legacy Operations	deprecated	objc
 method	open	+dateWithNaturalLanguageString:locale:	NSDate	Fundamentals / Date Representations / Legacy Operations	deprecated	objc
 method	shipped	+dateWithSRAbsoluteTime:	NSDate	Fundamentals / Date Representations / Type Methods	-	objc
@@ -691,7 +691,7 @@ method	shipped	+dateWithTimeInterval:sinceDate:	NSDate	Fundamentals / Date Repre
 method	shipped	+dateWithTimeIntervalSince1970:	NSDate	Fundamentals / Date Representations / Creating a Date	-	objc
 method	shipped	+dateWithTimeIntervalSinceNow:	NSDate	Fundamentals / Date Representations / Creating a Date	-	objc
 method	shipped	+dateWithTimeIntervalSinceReferenceDate:	NSDate	Fundamentals / Date Representations / Creating a Date	-	objc
-method	open	-descriptionWithCalendarFormat:timeZone:locale:	NSDate	Fundamentals / Date Representations / Legacy Operations	deprecated	objc
+method	shipped	-descriptionWithCalendarFormat:timeZone:locale:	NSDate	Fundamentals / Date Representations / Legacy Operations	deprecated	objc
 method	shipped	-descriptionWithLocale:	NSDate	Fundamentals / Date Representations / Describing Dates	-	objc
 method	shipped	-earlierDate:	NSDate	Fundamentals / Date Representations / Comparing Dates	-	objc
 method	shipped	-init	NSDate	Fundamentals / Date Representations / Initializing a Date	-	objc

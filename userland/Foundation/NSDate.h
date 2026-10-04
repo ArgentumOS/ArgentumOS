@@ -31,6 +31,7 @@ typedef double NSTimeInterval;
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class NSCalendarDate;	/* §63.229: returned by the CalendarFormat: doors */
 @class NSTimeZone;	/* named by the CalendarFormat doors; declared in its own header */
 
 @interface NSDate : NSObject <NSCopying, NSCoding>
@@ -83,6 +84,16 @@ NS_ASSUME_NONNULL_BEGIN
 
 NS_ASSUME_NONNULL_END
 
+
+/* §63.229: THE TWO LEGACY CalendarFormat: DOORS, and §63.197's blocker is what they answer: NSCalendarDate's
+ * FORMAT AND ZONE ARE THE SETTABLE PAIR, so neither needs a second formatting engine. The `timeZone:locale:`
+ * description spelling does not exist on NSCalendarDate (the LOCALE form does), so the zone is set ON THE
+ * OBJECT and the locale passed through. */
+- (NSCalendarDate * _Nonnull)dateWithCalendarFormat:(nullable NSString *)format
+				  timeZone:(nullable NSTimeZone *)aTimeZone;
+- (NSString * _Nullable)descriptionWithCalendarFormat:(nullable NSString *)format
+					    timeZone:(nullable NSTimeZone *)aTimeZone
+					      locale:(nullable id)locale;
 @end
 
 #endif /* FOUNDATION_NSDATE_H */
