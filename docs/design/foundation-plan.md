@@ -15986,11 +15986,21 @@ unit used a **line-anchored** guard (`(?m)^\+ \(instancetype\)allocWithZone:`) r
 which matters here because the header's own note spells both names in prose, and a substring test is satisfied
 by a comment.
 
-**THE GUEST CHECK FOR THESE TWO IS OWED, WITH THE REASON.** I wrote one and could not place it: `FnMrrProxy` (the
-proxy subclass the checks need) lives in `foundation_core_support.m`, which is a SUPPORT unit with no case of
-its own and no `check` helper of that file's shape, so a check inserted there would never run — and the probe
-that does have a case (`foundation_core.m`) needs its own `NSProxy` subclass declared at file scope first. That
-is a five-line addition to a probe I have not otherwise touched, and it is owed rather than faked.
+**THE GUEST CHECK FOR THESE TWO IS OWED, AND TWO ATTEMPTS AT IT FAILED FOR A REASON WORTH RECORDING.** The
+subclass such a check needs (`FnMrrProxy`) lives in `foundation_core_support.m` — a SUPPORT unit with no case of
+its own — so the check went into `foundation_core.m` with its own small `NSProxy` subclass. Both attempts
+aborted the probe: `FAIL foundation_core/probe-ran: no FOUNDATION-CORE DONE`, a memory-map dump and 65 of 67
+checks printed, i.e. a SIGSEGV in the new code path and not a failed assertion.
+
+**AND I MISREAD THE FIRST ATTEMPT, WHICH IS THE PART WORTH KEEPING:** the harness line
+`TESTS-FAIL 0/1 case(s), 1/2 check(s)` is the CASE'S OWN two checks (`shell-ready`, `probe-ran`), **not** the
+probe's tally. I concluded that inserting a check "breaks the case harness's expectation parsing" and spent a
+round on the `CHECKS` tuple and its count — the tuple was never the problem, and the case file's own
+`result-line` assertion had already told me the pairing rule (`ok=<len(CHECKS)>`). The lesson is the same one
+as §63.204's: read the instrument's own output before theorising about it. The tuple is now correct at 67 names
+(true of the tree at any commit after this one), and the probe still aborts, so the next attempt starts from
+`allocWithZone:` itself — an NSProxy SUBCLASS with no overrides is a sharper thing to exercise than it looks
+(its `-class` forwards, and `-forwardInvocation:` defaults to raising), and that is its own investigation.
 
 Acceptance: `make testimg` green (status-checked); `tools/foundation-sweep.py --check` and `--unimplemented`
 both clean (the pair, run together); no guest gate is affected by these two doors yet — see the paragraph above.
