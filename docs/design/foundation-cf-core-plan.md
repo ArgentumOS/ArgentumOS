@@ -747,3 +747,31 @@ choice belongs with the build.
 **3. AND IT NEEDS A HEADER, WHICH IS A STRUCTURAL FACT RATHER THAN A PREFERENCE.** This tree's `NSString` is
 declared INSIDE NSString.m, which was right while it had no subclasses. `_NSCFConstantString` is a subclass, so
 the interface has to move into an `NSString.h` for it to compile at all — the first header this library owns.
+
+
+**THE CFSTR SAGA IS ONE MISSING DEFINE, AND IT INVERTS A CONCLUSION MADE AN HOUR EARLIER.**
+
+CFString.h's own text settles it:
+
+    153| #if DEPLOYMENT_RUNTIME_SWIFT
+    157|     #define _CF_CONSTANT_STRING_SWIFT_CLASS $s10Foundation19_NSCFConstantStringCN
+    161| #endif
+
+That macro is INSIDE the guard, so the undefined Swift symbol every CFSTR in this tree asks for can only mean
+THE GUARD IS TRUE WHERE FOUNDATION IS COMPILED. And it is: the CF package passes -DDEPLOYMENT_RUNTIME_SWIFT=0
+IN ITS OWN BUILD SCRIPT, and the Foundation build's flag list never mentions it -- so every file of this
+library is compiled against Swift-mode headers, takes the Swift arm of CFSTR, and names a Swift class.
+
+**THE FIX IS ONE FLAG: -DDEPLOYMENT_RUNTIME_SWIFT=0 belongs in the Foundation build.** With it, CFSTR becomes
+clang's built-in __builtin___CFStringMakeConstantString, which emits Apple's __CFConstantString and a class
+reference the RUNTIME supplies.
+
+**AND IT REVERSES THE LAYOUT CORRECTION THIS SESSION JUST MADE.** The Swift arm's struct is FIVE words
+(isa, swift_rc, cfinfoa, ptr, length) and the class was changed to match it. The BUILT-IN's struct is Apple's
+FOUR-word __CFConstantString (isa, flags, ptr, length). The class must match whichever CFSTR emits, and that
+is decided by this flag -- so the field list goes back to four once the flag is in, and the five-word version
+was right for a branch this library should not have been taking at all.
+
+The lesson is the same one the whole stretch keeps teaching, in a new place: the trust-worthy reading was the
+HEADER'S GUARD around the macro, not the macro's text. Everything above it -- the class name, the symbol's
+spelling, the struct's size -- was a consequence of one preprocessor default nobody had looked at.
