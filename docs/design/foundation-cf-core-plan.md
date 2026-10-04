@@ -339,6 +339,22 @@ into this file, and because it shrinks the next bucket almost to nothing:
   The list was produced by comparing the selectors CF's `CF_OBJC_FUNCDISPATCHV`/`_CALLV` sites name against
   every method and property Foundation's headers declare — a host-side analysis, no guest needed.
 
+**AND THE FIRST COMPATIBILITY METHOD LANDED — WHICH IS ALSO WHERE THE LAYERING HAPPENS.**
+`userland/Foundation/FNCoreFoundationBridge.m` answers CFStringGetCString's private site
+(`_getCString:maxLength:encoding:`, at CFString.c:2324), and landing it makes **Foundation depend on
+CoreFoundation**: it imports `<CoreFoundation/CFString.h>` to NAME CF's encodings rather than copying
+values that would drift from the header that owns them. That direction is one-way and clean BECAUSE CF no
+longer references any Foundation symbol (modification 7 replaced the one class-object reference with an
+`objc_getClass` lookup), and it is the plan's own direction — M2's gate is the Foundation probes passing
+against CF-backed classes, which is Foundation standing ON CF. Three details are contracts, not choices,
+and each is stated at the method: CF's `maxLength` EXCLUDES the terminator while this library's public door
+counts it (so +1, and CF's own fallback NUL-terminates before refusing); the encoding argument is a
+**CFStringEncoding**; and the four encodings this tree can actually convert to are mapped, with everything
+else refused rather than guessed. The probe's new check is the door the first unit *deliberately avoided* —
+`a-cf-door-needing-private-foundation-crosses-the-bridge` — it passes, and `foundation_string` still passes
+with it, so the dependency cost nothing on this tree's own surface. The remaining ~50 private-protocol
+selectors have a home now; this is the first of them.
+
 **WHAT THIS UNIT DOES NOT COVER, stated so it is not assumed.** Only the two CFString doors above are
 *exercised*; CFArray's dispatch path is compiled but unrun. `CFStringGetCString` is deliberately NOT called
 by the probe, because its site wants `-getCString:maxLength:encoding:` and a Foundation that does not

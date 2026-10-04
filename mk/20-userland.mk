@@ -280,7 +280,7 @@ FOUNDATION_HDRS = $(FOUNDATION_SRC)/NSObjCRuntime.h $(FOUNDATION_SRC)/NSObject.h
 # sweep's own gate: a file with some annotations and not others fails the build,
 # while an untouched file (no annotations at all) stays silent, which is what lets
 # the sweep land one slice at a time.
-FOUNDATION_CFLAGS = -fPIC -Iinclude -Wno-objc-missing-super-calls -Wno-incomplete-implementation \
+FOUNDATION_CFLAGS = -fPIC -I.build/cf-shim -Iinclude -Wno-objc-missing-super-calls -Wno-incomplete-implementation \
 	-Werror=nullability-completeness
 # WHY THE LIBRARY HAS NO -fobjc-arc, stated as the POLICY it is (user, 2026-09-19): ARC is for
 # everything that USES the Foundation; the Foundation's own ownership is a free choice as long as it
@@ -453,10 +453,19 @@ $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP) $(FN_FOUN
 	# backslash-continued recipe is part of that command: a '#' there does not comment out a makefile
 	# line, it comments out the rest of the SHELL command — measured here as a link that silently lost
 	# every flag after it.
+	# FOUNDATION DEPENDS ON COREFOUNDATION AS OF THE M2 COMPATIBILITY SURFACE (FNCoreFoundationBridge.m),
+	# which imports <CoreFoundation/CFString.h> to name CF's encodings rather than copying them. The
+	# direction is one-way and clean because CF no longer references any Foundation symbol. The gate is
+	# the staging blocks' gate: a missing prefix should name its own fix.
+	@if [ ! -d "$(COREFOUNDATION_PREFIX)/lib" ]; then \
+		echo "CoreFoundation prefix missing - run tools/corefoundation-build.sh first"; \
+		exit 1; \
+	fi
 	$(MUSL64_OBJC) -shared -Wl,-soname,libfoundation.so.1 \
 		$(FN_FOUNDATION_OBJS) \
 		.build/plist.o -L$(X11PREFIX)/lib -lz -L$(ICUPREFIX)/lib -licui18n -licuuc -licudata \
-		-L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto -o $@
+		-L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-L$(COREFOUNDATION_PREFIX)/lib -lcorefoundation -o $@
 	ln -sf libfoundation.so.1 $(FNXLIB)/libfoundation.so
 userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(OBJC_STAMP) foundation-gate $(FOUNDATION_LIB) $(CG_LIB) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
 	rm -rf $(ROOTFS64)

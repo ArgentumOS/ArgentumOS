@@ -26,6 +26,7 @@
 #import <Foundation/Foundation.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <stdio.h>
+#include <string.h>
 
 static int ok_count = 0;
 static int fail_count = 0;
@@ -76,6 +77,18 @@ int main(void) {
 	check("an-nsarray-dispatches-to-its-class",
 	      array != nil && CFArrayGetCount(bridgedArray) == 2,
 	      "CFArrayGetCount did not answer 2 through the bridge");
+
+	/* THE DOOR THE FIRST UNIT DELIBERATELY AVOIDED, NOW OPEN. CFStringGetCString's dispatch site asks the
+	 * object for `-_getCString:maxLength:encoding:` - CF's PRIVATE protocol, and one that takes a
+	 * CFStringEncoding rather than an NSStringEncoding - so before the compatibility surface existed this
+	 * check would have died of an unrecognized selector instead of reporting. FNCoreFoundationBridge.m
+	 * answers it, and this is that answer measured: the bytes CF asked for, in the buffer CF provided. */
+	char cbuf[32];
+	Boolean gotCString = CFStringGetCString(bridged, cbuf, (CFIndex)sizeof(cbuf), kCFStringEncodingUTF8);
+
+	check("a-cf-door-needing-private-foundation-crosses-the-bridge",
+	      gotCString && strcmp(cbuf, "Bridge") == 0,
+	      "CFStringGetCString did not answer through the bridge");
 
 	CFStringRef native = CFStringCreateWithCString(kCFAllocatorDefault, "Bridge", kCFStringEncodingUTF8);
 	check("a-cf-native-string-still-takes-cfs-own-path",

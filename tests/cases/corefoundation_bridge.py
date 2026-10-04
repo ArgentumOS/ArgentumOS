@@ -39,6 +39,7 @@ CHECKS = (
     "a-factory-string-dispatches-to-its-class",
     "a-parameterised-site-crosses-the-bridge",
     "an-nsarray-dispatches-to-its-class",
+    "a-cf-door-needing-private-foundation-crosses-the-bridge",
     "a-cf-native-string-still-takes-cfs-own-path",
 )
 
