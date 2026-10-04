@@ -705,6 +705,16 @@ typedef enum {
 		       withConflictResolutionPolicy:(NSFileManagerUploadLocalVersionConflictPolicy)policy
 			     completionHandler:(void (^)(NSError * _Nullable error))completionHandler;
 
+
+/* §63.221: THE DOMAIN FORM OF THE RELATIONSHIP DOOR. The URL pair above already answers the question, so this
+ * takes Apple's `inDomain:` mask and asks them: THE RELATIONSHIP DOES NOT DEPEND ON THE MASK, which pins WHICH
+ * tree the question is about — and this door's directory argument already names that tree. The reading is stated
+ * where it is taken rather than implied. */
+- (BOOL)getRelationship:(NSURLRelationship *)outRelationship
+	    ofDirectory:(NSURL *)directoryURL
+	       inDomain:(NSSearchPathDomainMask)domainMask
+	      toItemAtURL:(NSURL *)url
+		    error:(NSError ** _Nullable)errorPtr;
 @end
 
 /*

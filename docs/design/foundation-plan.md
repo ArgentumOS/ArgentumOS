@@ -15962,6 +15962,28 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.221 — NSFileManager's domain relationship door, and the one door next to it that deserves its own unit
+
+One row shipped: `-getRelationship:ofDirectory:inDomain:toItemAtURL:error:`. Ledger after:
+`method 1747 shipped / 49 open / 418 struck; property 732 / 23 / 181`.
+
+**IT IS A MAPPING, AND THE MAPPING IS THE HONEST FORM:** the class already had the URL pair
+(`-getRelationship:ofDirectoryAtURL:toItemAtURL:error:`, which is itself the URL spelling of the path pair that
+does the work), so this door takes Apple's `inDomain:` mask and asks them. **The relationship does not depend
+on the mask** — the mask pins WHICH tree the question is about, and this door's directory argument already
+names that tree — so the reading is stated where the argument is taken rather than implied.
+
+**AND THE DOOR BESIDE IT IS DELIBERATELY NOT IN THIS UNIT:**
+`-replaceItemAtURL:withItemAtURL:backupItemName:options:resultingItemURL:error:` is DESTRUCTIVE and has real
+semantics to get right — the new item takes the original's place, the original is optionally kept as a backup
+beside it, the RESULTING URL is the original's (which is what makes the swap invisible to a caller holding it),
+and a failed move must PUT THE ORIGINAL BACK rather than leave the caller with nothing where something was. Its
+options enum (`NSFileManagerItemReplacementOptions`) also has to be declared, with values that are ours under
+D2. That is a unit with its own probe, not a second row on the way out of the door.
+
+Acceptance: `make testimg` green (status-checked); `tools/foundation-sweep.py --check` and `--unimplemented`
+clean; the guest gate for the file-manager probe.
+
 ## §63.220 — THE FULL-SELECTOR RULE: the sweep pair's verdict, now verified by reading signatures
 
 **A SECOND, STRONGER PASS AT §63.219's CORRECTION — and this time by reading, not by grepping.** The fixed audit

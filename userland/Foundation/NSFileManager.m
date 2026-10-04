@@ -2087,6 +2087,21 @@ static NSString *fn_link_target(NSString *path, int *outErrno)
 	completionHandler(nil);   /* the file system was unmounted */
 }
 
+
+- (BOOL)getRelationship:(NSURLRelationship *)outRelationship
+	    ofDirectory:(NSURL *)directoryURL
+	       inDomain:(NSSearchPathDomainMask)domainMask
+	      toItemAtURL:(NSURL *)url
+		    error:(NSError **)errorPtr
+{
+	/* THE MASK PINS WHICH TREE THE QUESTION IS ABOUT, and the directory argument already names that tree, so
+	 * the URL pair answers it — one implementation of the relationship question, not two. */
+	(void)domainMask;
+	return [self getRelationship:outRelationship
+		   ofDirectoryAtURL:directoryURL
+		     toItemAtURL:url
+			   error:errorPtr];
+}
 @end
 
 /* THE FSH'S OWN ANSWER, WITH APPLE'S TRAILING SEPARATOR. It is a CONSTANT rather than a lookup because the

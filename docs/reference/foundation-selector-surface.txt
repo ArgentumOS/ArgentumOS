@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1746	open	50	struck	418
+# method	shipped	1747	open	49	struck	418
 # property	shipped	732	open	23	struck	181
 
 
@@ -1040,7 +1040,7 @@ method	open	+fileManagerWithAuthorization:	NSFileManager	Files and Data Persiste
 method	shipped	-fileSystemAttributesAtPath:	NSFileManager	Files and Data Persistence / File system operations / Deprecated Methods	deprecated	objc
 method	shipped	-fileSystemRepresentationWithPath:	NSFileManager	Files and Data Persistence / File system operations / Converting file paths to strings	-	objc
 method	shipped	-getFileProviderServicesForItemAtURL:completionHandler:	NSFileManager	Files and Data Persistence / File system operations / Accessing file provider services	-	objc
-method	open	-getRelationship:ofDirectory:inDomain:toItemAtURL:error:	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items	-	objc
+method	shipped	-getRelationship:ofDirectory:inDomain:toItemAtURL:error:	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items	-	objc
 method	shipped	-getRelationship:ofDirectoryAtURL:toItemAtURL:error:	NSFileManager	Files and Data Persistence / File system operations / Getting the relationship between items	-	objc
 method	shipped	-homeDirectoryForUser:	NSFileManager	Files and Data Persistence / File system operations / Accessing user directories	-	objc
 method	shipped	-isDeletableFileAtPath:	NSFileManager	Files and Data Persistence / File system operations / Determining access to files	-	objc
