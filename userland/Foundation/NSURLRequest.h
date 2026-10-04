@@ -161,6 +161,9 @@ typedef NS_ENUM(NSUInteger, NSURLRequestAttribution) {
 
 - (nullable NSString *)valueForHTTPHeaderField:(NSString *)field;
 
+
+/* §63.235: NSSecureCoding's class answer — this class IS secure-codable, which is what the protocol asks. */
++ (BOOL)supportsSecureCoding;
 @end
 
 /* THE MUTABLE FORM. Its -copy answers an IMMUTABLE NSURLRequest — Cocoa's rule, and the reason a request

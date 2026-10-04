@@ -281,4 +281,11 @@ suspensionBehavior:(NSNotificationSuspensionBehavior)behavior
 	}
 }
 
+
+/* §63.235: THE GETTER ONLY — the setter has been here all along (-setSuspended:, above), so the property was
+ * owed its READ half and nothing else. The gate itself is the class's own doing. */
+- (BOOL)isSuspended
+{
+	return _suspended;
+}
 @end

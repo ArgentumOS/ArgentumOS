@@ -33,8 +33,8 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1755	open	41	struck	418
-# property	shipped	735	open	20	struck	181
+# method	shipped	1758	open	38	struck	418
+# property	shipped	740	open	15	struck	181
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -752,9 +752,9 @@ property	shipped	PMSymbol	NSDateFormatter	Fundamentals / Date Formatting / Manag
 property	shipped	calendar	NSDateFormatter	Fundamentals / Date Formatting / Managing Attributes	-	objc
 property	shipped	dateFormat	NSDateFormatter	Fundamentals / Date Formatting / Managing Formats and Styles	-	objc
 property	shipped	dateStyle	NSDateFormatter	Fundamentals / Date Formatting / Managing Formats and Styles	-	objc
-property	open	defaultDate	NSDateFormatter	Fundamentals / Date Formatting / Managing Attributes	-	objc
+property	shipped	defaultDate	NSDateFormatter	Fundamentals / Date Formatting / Managing Attributes	-	objc
 property	shipped	defaultFormatterBehavior	NSDateFormatter	Fundamentals / Date Formatting / Managing Behavior Version	-	objc
-property	open	doesRelativeDateFormatting	NSDateFormatter	Fundamentals / Date Formatting / Managing Natural Language Support	-	objc
+property	shipped	doesRelativeDateFormatting	NSDateFormatter	Fundamentals / Date Formatting / Managing Natural Language Support	-	objc
 property	shipped	eraSymbols	NSDateFormatter	Fundamentals / Date Formatting / Managing Era Symbols	-	objc
 property	shipped	formatterBehavior	NSDateFormatter	Fundamentals / Date Formatting / Managing Behavior Version	-	objc
 property	shipped	formattingContext	NSDateFormatter	Fundamentals / Date Formatting / Managing Formats and Styles	-	objc
@@ -922,7 +922,7 @@ method	shipped	-postNotificationName:object:userInfo:	NSDistributedNotificationC
 method	shipped	-postNotificationName:object:userInfo:deliverImmediately:	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Posting Notifications	-	objc
 method	shipped	-postNotificationName:object:userInfo:options:	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Posting Notifications	-	objc
 method	shipped	-removeObserver:name:object:	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Managing Observers	-	objc
-property	open	suspended	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Suspending and Resuming Notification Delivery	-	objc
+property	shipped	suspended	NSDistributedNotificationCenter	App Support / Cross-Process Notifications / Suspending and Resuming Notification Delivery	-	objc
 method	shipped	-nextObject	NSEnumerator	Fundamentals / Iteration / Getting the Enumerated Objects	-	objc
 property	shipped	allObjects	NSEnumerator	Fundamentals / Iteration / Getting the Enumerated Objects	-	objc
 method	shipped	+errorWithDomain:code:userInfo:	NSError	App Support / User-Relevant Errors / Creating Error Objects	-	objc
@@ -1389,7 +1389,7 @@ property	shipped	groupingSeparator	NSLocale	Fundamentals / Localization / Gettin
 property	shipped	languageCode	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
 property	shipped	languageIdentifier	NSLocale	Fundamentals / Localization / Instance Properties	-	objc
 property	shipped	localeIdentifier	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
-property	open	preferredLanguages	NSLocale	Fundamentals / Localization / Getting the User’s Preferred Languages	-	objc
+property	shipped	preferredLanguages	NSLocale	Fundamentals / Localization / Getting the User’s Preferred Languages	-	objc
 property	shipped	quotationBeginDelimiter	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
 property	shipped	quotationEndDelimiter	NSLocale	Fundamentals / Localization / Getting Information About a Locale	-	objc
 property	shipped	regionCode	NSLocale	Fundamentals / Localization / Instance Properties	-	objc
@@ -2228,7 +2228,7 @@ method	shipped	-spellServer:checkString:offset:types:options:orthography:wordCou
 method	shipped	-spellServer:didForgetWord:inLanguage:	NSSpellServerDelegate	Fundamentals / Spelling and Grammar / Managing the Spelling Dictionary	-	objc
 method	shipped	-spellServer:didLearnWord:inLanguage:	NSSpellServerDelegate	Fundamentals / Spelling and Grammar / Managing the Spelling Dictionary	-	objc
 method	shipped	-spellServer:findMisspelledWordInString:language:wordCount:countOnly:	NSSpellServerDelegate	Fundamentals / Spelling and Grammar / Check Grammar and Spelling in Strings	-	objc
-method	open	-spellServer:recordResponse:toCorrection:forWord:language:	NSSpellServerDelegate	Fundamentals / Spelling and Grammar / Managing the Spelling Dictionary	-	objc
+method	shipped	-spellServer:recordResponse:toCorrection:forWord:language:	NSSpellServerDelegate	Fundamentals / Spelling and Grammar / Managing the Spelling Dictionary	-	objc
 method	shipped	-spellServer:suggestCompletionsForPartialWordRange:inString:language:	NSSpellServerDelegate	Fundamentals / Spelling and Grammar / Managing the Spelling Dictionary	-	objc
 method	shipped	-spellServer:suggestGuessesForWord:inLanguage:	NSSpellServerDelegate	Fundamentals / Spelling and Grammar / Check Grammar and Spelling in Strings	-	objc
 method	shipped	-close	NSStream	Low-Level Utilities / Streams / Using Streams	-	objc
@@ -2688,8 +2688,8 @@ property	shipped	user	NSURLCredential	Networking / Authentication and credential
 method	shipped	-credentialsForProtectionSpace:	NSURLCredentialStorage	Networking / Authentication and credentials / Retrieving credentials	-	objc
 method	shipped	-defaultCredentialForProtectionSpace:	NSURLCredentialStorage	Networking / Authentication and credentials / Getting and setting default credentials	-	objc
 method	shipped	-removeCredential:forProtectionSpace:	NSURLCredentialStorage	Networking / Authentication and credentials / Adding and removing credentials	-	objc
-method	open	-removeCredential:forProtectionSpace:options:	NSURLCredentialStorage	Networking / Authentication and credentials / Adding and removing credentials	-	objc
-method	open	-removeCredential:forProtectionSpace:options:task:	NSURLCredentialStorage	Networking / Authentication and credentials / Adding and removing credentials	-	objc
+method	shipped	-removeCredential:forProtectionSpace:options:	NSURLCredentialStorage	Networking / Authentication and credentials / Adding and removing credentials	-	objc
+method	shipped	-removeCredential:forProtectionSpace:options:task:	NSURLCredentialStorage	Networking / Authentication and credentials / Adding and removing credentials	-	objc
 method	shipped	-setCredential:forProtectionSpace:	NSURLCredentialStorage	Networking / Authentication and credentials / Adding and removing credentials	-	objc
 method	shipped	-setDefaultCredential:forProtectionSpace:	NSURLCredentialStorage	Networking / Authentication and credentials / Getting and setting default credentials	-	objc
 property	shipped	allCredentials	NSURLCredentialStorage	Networking / Authentication and credentials / Retrieving credentials	-	objc
@@ -2806,7 +2806,7 @@ property	shipped	cookiePartitionIdentifier	NSURLRequest	Networking / Requests an
 property	shipped	mainDocumentURL	NSURLRequest	Networking / Requests and responses / Accessing request components	-	objc
 property	shipped	networkServiceType	NSURLRequest	Networking / Requests and responses / Accessing the service type	-	swift-page
 property	shipped	requiresDNSSECValidation	NSURLRequest	Networking / Requests and responses / Instance Properties	-	objc
-property	open	supportsSecureCoding	NSURLRequest	Networking / Requests and responses / Supporting secure coding	-	objc
+property	shipped	supportsSecureCoding	NSURLRequest	Networking / Requests and responses / Supporting secure coding	-	objc
 property	shipped	timeoutInterval	NSURLRequest	Networking / Requests and responses / Controlling request behavior	-	objc
 method	shipped	-initWithURL:MIMEType:expectedContentLength:textEncodingName:	NSURLResponse	Networking / Requests and responses / Creating a response	-	objc
 property	shipped	MIMEType	NSURLResponse	Networking / Requests and responses / Getting the response properties	-	objc

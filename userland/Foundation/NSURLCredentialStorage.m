@@ -177,4 +177,22 @@ NSString * const NSURLCredentialStorageChangedNotification =
 
 
 
+
+- (void)removeCredential:(NSURLCredential *)credential
+       forProtectionSpace:(NSURLProtectionSpace *)protectionSpace
+		 options:(NSDictionary *)options
+{
+	(void)options;	/* see the header: no option is honoured here, and saying so beats pretending */
+	[self removeCredential:credential forProtectionSpace:protectionSpace];
+}
+
+- (void)removeCredential:(NSURLCredential *)credential
+       forProtectionSpace:(NSURLProtectionSpace *)protectionSpace
+		    options:(NSDictionary *)options
+		       task:(id)task
+{
+	(void)options;
+	(void)task;	/* no per-task credential registry exists here */
+	[self removeCredential:credential forProtectionSpace:protectionSpace];
+}
 @end

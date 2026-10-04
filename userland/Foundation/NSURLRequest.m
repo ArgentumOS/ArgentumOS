@@ -331,6 +331,11 @@ static BOOL fn_object_equal(NSObject *a, NSObject *b)
 	return [[NSMutableURLRequest alloc] fnInitWithRequest:self];
 }
 
+
++ (BOOL)supportsSecureCoding
+{
+	return YES;
+}
 @end
 
 @implementation NSMutableURLRequest

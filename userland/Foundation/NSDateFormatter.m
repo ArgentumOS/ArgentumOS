@@ -829,4 +829,30 @@ static NSString *fn_df_string(const UChar *text, int32_t length)
 	return YES;
 }
 
+
+static NSDate *fn_default_date = nil;
+
++ (NSDate *)defaultDate
+{
+	/* THE CLASS VALUE, retained until it is replaced; nil means "no default", which is Apple's own. */
+	return fn_default_date;
+}
+
++ (void)setDefaultDate:(NSDate *)date
+{
+	id old = fn_default_date;
+
+	fn_default_date = [date retain];
+	[old release];
+}
+
+- (BOOL)doesRelativeDateFormatting
+{
+	return _doesRelativeDateFormatting;
+}
+
+- (void)setDoesRelativeDateFormatting:(BOOL)flag
+{
+	_doesRelativeDateFormatting = flag;
+}
 @end

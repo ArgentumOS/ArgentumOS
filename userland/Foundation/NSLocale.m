@@ -942,4 +942,11 @@ NSString *const NSLocaleVariantCode = @"NSLocaleVariantCode";
 	return fn_currency_display(currencyCode, _identifier);
 }
 
+
++ (NSArray *)preferredLanguages
+{
+	NSString *code = [[self currentLocale] objectForKey:NSLocaleLanguageCode];
+
+	return code != nil ? [NSArray arrayWithObject:code] : [NSArray array];
+}
 @end

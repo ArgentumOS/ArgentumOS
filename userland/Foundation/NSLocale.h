@@ -234,6 +234,10 @@ extern NSString *const NSLocaleVariantCode;
 
 NS_ASSUME_NONNULL_END
 
+
+/* §63.235: THE PREFERRED LANGUAGES, from the ONE locale this system resolves (its own), so the list is the
+ * current locale's language rather than a preference chain a caller could reorder — the reading is stated. */
++ (NSArray * _Nonnull)preferredLanguages;
 @end
 
 

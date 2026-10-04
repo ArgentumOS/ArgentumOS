@@ -54,6 +54,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface NSDateFormatter : NSFormatter
 {
+	BOOL _doesRelativeDateFormatting;
 	void *_formatter;			/* a UDateFormat *; opaque so this header needs no ICU */
 	NSDateFormatterStyle _dateStyle;
 	NSDateFormatterStyle _timeStyle;
@@ -185,6 +186,12 @@ typedef enum {
 		 range:(inout NSRange * _Nullable)rangep
 		 error:(out NSError * _Nullable * _Nullable)error;
 
+
+/* §63.235: THE TWO FORMATTER SWITCHES. `defaultDate` is what fills date fields the FORMAT leaves out, so it is a
+ * stored CLASS value with -dateFromString: consulting it; `doesRelativeDateFormatting` is the per-formatter
+ * switch for "today"/"tomorrow" wording, and this tree's formatter spells those in the one locale it has. */
+@property (class, nullable, copy) NSDate *defaultDate;
+@property BOOL doesRelativeDateFormatting;
 @end
 
 NS_ASSUME_NONNULL_END

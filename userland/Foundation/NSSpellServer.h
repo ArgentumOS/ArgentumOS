@@ -90,6 +90,14 @@ NS_ASSUME_NONNULL_BEGIN
       didForgetWord:(NSString *)word
 	 inLanguage:(nullable NSString *)language;
 
+
+/* §63.235: THE DELEGATE'S RECORD RESPONSE. A protocol's methods are its declaration — a spell server asks its
+ * delegate to record what the user chose for a correction, and this is the door it asks through. */
+- (void)spellServer:(NSSpellServer *)sender
+     recordResponse:(NSUInteger)response
+       toCorrection:(NSString * _Nonnull)correction
+	    forWord:(NSString * _Nonnull)word
+	   language:(NSString * _Nonnull)language;
 @end
 
 @interface NSSpellServer : NSObject

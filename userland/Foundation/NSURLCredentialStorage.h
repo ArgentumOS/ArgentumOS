@@ -74,6 +74,16 @@ extern NSString * const NSURLCredentialStorageChangedNotification;
 
 
 
+
+/* §63.235: THE OPTIONS AND TASK FORMS ARE THE DOOR BELOW: this storage has no per-request task registry and no
+ * options it honours, so both take their arguments and delegate — the reading is stated rather than implied. */
+- (void)removeCredential:(NSURLCredential *)credential
+       forProtectionSpace:(NSURLProtectionSpace *)protectionSpace
+		 options:(NSDictionary * _Nonnull)options;
+- (void)removeCredential:(NSURLCredential *)credential
+       forProtectionSpace:(NSURLProtectionSpace *)protectionSpace
+		    options:(NSDictionary * _Nonnull)options
+		       task:(id _Nonnull)task;
 @end
 
 NS_ASSUME_NONNULL_END
