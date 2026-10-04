@@ -15980,12 +15980,14 @@ writes the parameter name on the end (`-makeNewConnection:sender:`, and the same
 spelling never matches. That is a *comparison* gap, not a parse gap — and the members are pairs, which §63.223
 had wrong.
 
-**WHY THE PATCH KEPT MISSING, AND THE ONE THING TO CHECK FIRST:** `found = bool(declared(kind, name, text, declared_set))`
-appears at **two** places in the file — the grep above names them — and my `str.replace(…, 1)` edited whichever
-came first, which is not necessarily `check()`'s. **So: locate `check()`'s own call site by line, patch THAT line,
-and re-run `--check` before touching any row** — the acceptance criterion that has caught every wrong attempt so
-far ("both rows flip AND `--check` stays green for the other 3,150") is exactly the test to run, and it should be
-run on the *tool alone* first.
+**WHY THE PATCH KEPT MISSING — CORRECTED, BECAUSE MY FIRST ANSWER TO THIS WAS ALSO WRONG:** I claimed the line
+`found = bool(declared(kind, name, text, declared_set))` appears at TWO call sites and my first-match replace hit
+the wrong one. **The grep disproves it: there is ONE, at line 2152, and it DID take the patch** — so
+`_member_declared()` really ran and really returned False for `('-', 'makeNewConnection:')`, which the same
+session had *measured* to be present. Two measurements that disagree about the same set means the disagreement is
+in the *code between them*, not in either measurement — and the next step is therefore **a runtime print inside
+`_member_declared` when `check()` reaches those two rows** (the owner key it looks up, the sign it derives, and
+the two candidates it tries), not more reasoning about shapes.
 
 **AND THE FRANK NOTE:** this is the third turn on one tool patch. The work is small and the criterion is sharp;
 what it is missing is not cleverness but a quiet moment, and the end of a long turn is when I have been making
