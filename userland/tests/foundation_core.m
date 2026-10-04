@@ -117,6 +117,8 @@ static void fn_register_block_undo(NSUndoManager *undo, FNUndoBox *box)
 	}];
 }
 
+BOOL foundation_mrr_pool_add_object_autoreleases(void);
+
 int main(void)
 {
 	/* MRR side: the lifetimes and the equality defaults. */
@@ -814,6 +816,12 @@ int main(void)
 		 * a refusal, a deallocation, and a forwarded return value. */
 		check("mrr-pool-refuses-retain", foundation_mrr_pool_refuses_retain(),
 		      "a pool refuses -retain, which an ARC translation unit cannot even spell");
+		check("pool-add-object-autoreleases-into-the-region",
+		      foundation_mrr_pool_add_object_autoreleases(),
+		      "both doors mean an autorelease: the drained pool took exactly two references");
+		/* AND +showPools IS A DIAGNOSTIC THAT MUST NOT DISTURB THE PROGRAM. */
+		[NSAutoreleasePool showPools];
+		check("pool-show-pools-is-a-diagnostic", 1, "it writes a line and returns");
 		check("mrr-pool-releases-on-drain", foundation_mrr_pool_releases_on_drain(),
 		      "draining a pool releases what it held, measured as a dealloc");
 		/* THE PROXY CHECK, now ASSERTED because the diagnosis showed the class was right and my

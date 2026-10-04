@@ -15962,6 +15962,38 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.206 — NSAutoreleasePool: the legacy trio defined anyway, and HOW this tree writes an MRC check
+
+Three rows shipped: `+addObject:`, `-addObject:`, `+showPools`. Ledger after: **method 1708 shipped / 105 open / 401 struck; property 729 / 28 / 179**.
+
+**THE HEADER'S OWN NOTE CALLED THIS "SAFE TO LEAVE OUT", AND IT IS — WHICH IS NOT THE SAME AS "RIGHT".** The
+private marker makes libobjc2 keep its ARC pool path, so the legacy path is never taken and nothing calls these
+today. They are defined regardless, because that path BINDS `+addObject:` and the cost of being wrong is a
+halted guest (the header records measuring exactly that, twice). The legacy meaning is unambiguous:
+**adding an object to a pool IS an autorelease**, which is what both spellings now do. The instance form states
+its reading — a stack-entry pool keeps no list, so it cannot target a particular pool. `+showPools` is a
+truthful diagnostic rather than a pretended listing: pools here ARE the runtime's stack entries and this class
+keeps no registry, so it writes that, through raw `write(2)` because a library diagnostic must not depend on
+`printf`.
+
+**AND THE UNIT FOUND THE HOUSE IDIOM FOR AN MRC CHECK, WHICH IS WHAT §63.205 TRIPPED OVER.** The work belongs
+in `foundation_core_support.m` as a `BOOL foundation_mrr_*` function — beside `foundation_mrr_pool_refuses_retain`,
+which is the same shape — and the ARC probe only CALLS it inside `check(...)`. An ARC translation unit cannot
+even write `[[NSAutoreleasePool alloc] init]` or `-autorelease`, which is why my attempt to do that work inline
+in `foundation_core.m` segfaulted: not a harness mystery, but a translation unit asked to express something it
+cannot. `foundation_mrr_pool_add_object_autoreleases()` retains an object three times, sends both doors, and
+requires the drain to take exactly two references away.
+
+**FIFTH INSTANCE OF THE SAME RULE, AND NOW THE PRACTICE THAT CATCHES IT.** The ledger flip printed
+`flipped: 3` while the rows stayed OPEN, and the build named it (`PRESENT BUT LISTED OPEN` ×3). Every edit in
+this unit is therefore verified by an INSTRUMENT in the same round — `grep` on the header, `grep` on the ledger
+rows, and BOTH sweep modes (`--unimplemented` counts declarations lacking definitions; `--check` counts
+definitions whose owner does not declare them; they read opposite directions and must be run as a pair).
+
+Acceptance: `make testimg` green (status-checked); `make test TESTS=foundation_core` → `TESTS-OK` with
+`pool-add-object-autoreleases-into-the-region` and `pool-show-pools-is-a-diagnostic` both ok;
+`tools/foundation-sweep.py --check` and `--unimplemented` both clean.
+
 ## §63.205 — NSProxy: the two deprecated doors ship, the two unavailable ones keep their citation
 
 Two rows shipped: `+allocWithZone:`, `-finalize`. Ledger after: **method 1705 shipped / 108 open / 401 struck; property 729 / 28 / 179**.

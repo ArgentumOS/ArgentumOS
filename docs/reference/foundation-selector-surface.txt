@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1705	open	108	struck	401
+# method	shipped	1708	open	105	struck	401
 # property	shipped	729	open	28	struck	179
 
 
@@ -285,10 +285,10 @@ property	shipped	length	NSAttributedString	Fundamentals / Strings with Metadata 
 property	shipped	string	NSAttributedString	Fundamentals / Strings with Metadata / Getting the characters	-	objc
 property	shipped	textTypes	NSAttributedString	Fundamentals / Strings with Metadata / Getting the supported text-file formats	-	objc
 property	shipped	textUnfilteredTypes	NSAttributedString	Fundamentals / Strings with Metadata / Getting the supported text-file formats	-	objc
-method	open	+addObject:	NSAutoreleasePool	Low-Level Utilities / Memory Management / Adding an Object to a Pool	-	objc
-method	open	-addObject:	NSAutoreleasePool	Low-Level Utilities / Memory Management / Adding an Object to a Pool	-	objc
+method	shipped	+addObject:	NSAutoreleasePool	Low-Level Utilities / Memory Management / Adding an Object to a Pool	-	objc
+method	shipped	-addObject:	NSAutoreleasePool	Low-Level Utilities / Memory Management / Adding an Object to a Pool	-	objc
 method	shipped	-drain	NSAutoreleasePool	Low-Level Utilities / Memory Management / Managing a Pool	-	objc
-method	open	+showPools	NSAutoreleasePool	Low-Level Utilities / Memory Management / Debugging	-	objc
+method	shipped	+showPools	NSAutoreleasePool	Low-Level Utilities / Memory Management / Debugging	-	objc
 method	shipped	-URLForAuxiliaryExecutable:	NSBundle	App Support / Bundle Resources / Getting the standard bundle directories	-	objc
 method	struck	-URLForImageResource:	NSBundle	App Support / Bundle Resources / Finding image resources	declined	objc
 method	shipped	-URLForResource:withExtension:	NSBundle	App Support / Bundle Resources / Finding resource files	-	objc

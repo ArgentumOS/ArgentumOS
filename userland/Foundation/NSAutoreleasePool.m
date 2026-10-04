@@ -5,6 +5,7 @@
 /*
  * NSAutoreleasePool.m — the implementation (W2h).
  */
+#include <unistd.h>
 #import <Foundation/NSAutoreleasePool.h>
 #import <Foundation/NSException.h>
 #import <Foundation/NSString.h>
@@ -68,4 +69,31 @@
 	return [NSString stringWithFormat:@"<%@: %p>", [self class], (void *)self];
 }
 
+
++ (void)addObject:(id)object
+{
+	/* THE LEGACY RUNTIME'S OWN MEANING: add the object to the current pool — which, for a class whose pool IS
+	 * a runtime stack entry, is exactly -autorelease. Nothing calls this while the marker keeps libobjc2 on
+	 * its ARC path; if that ever changes, an autorelease lands HERE instead of halting the guest. */
+	[object autorelease];
+}
+
+- (void)addObject:(id)object
+{
+	/* THE INSTANCE FORM, reading stated: this class is a STACK ENTRY and keeps no object list, so it cannot
+	 * target a particular pool. Adding an object to a pool means autoreleasing it into the current region —
+	 * the same thing the class-side door does, and what the legacy path asks for. */
+	[object autorelease];
+}
+
++ (void)showPools
+{
+	/* A TRUTHFUL DIAGNOSTIC RATHER THAN A PRETENDED LISTING: pools here ARE the runtime's stack entries and
+	 * this class keeps no registry to print. Raw write(2), because a library diagnostic must not depend on
+	 * printf. */
+	static const char line[] =
+		"NSAutoreleasePool: pools are runtime stack entries; this class keeps no registry\n";
+
+	(void)write(2, line, sizeof(line) - 1);
+}
 @end

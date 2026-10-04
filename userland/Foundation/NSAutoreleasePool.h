@@ -34,6 +34,14 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)_ARCCompatibleAutoreleasePool;	/* THE RUNTIME ASKS FOR THIS BY NAME — see above */
 - (void)drain;
 
+
+/* §63.206: THE LEGACY TRIO, DEFINED ANYWAY. The note above is right that the marker keeps libobjc2 on its ARC
+ * path, so nothing calls these today. They are defined regardless, because the legacy runtime path BINDS them
+ * and the cost of being wrong is a halted guest: if that path is ever taken, the first autorelease lands on a
+ * door whose meaning is unambiguous rather than on a missing one. */
++ (void)addObject:(id)object;
+- (void)addObject:(id)object;
++ (void)showPools;
 @end
 
 NS_ASSUME_NONNULL_END

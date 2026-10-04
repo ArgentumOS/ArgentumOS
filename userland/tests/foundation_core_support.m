@@ -149,6 +149,27 @@ int foundation_core_equality(void)
 
 /* A POOL REFUSES -retain, which is Apple's own diagnostic and the reason a pool cannot outlive the
  * region whose objects it holds. An ARC translation unit cannot even write this call. */
+/* §63.206: THE LEGACY DOOR'S MEANING IS AN AUTORELEASE, and both spellings are exercised here because an ARC
+ * translation unit cannot write either call. The object is retained three times, the two doors add it to the
+ * pool, and draining must take exactly two of those references away. */
+BOOL foundation_mrr_pool_add_object_autoreleases(void)
+{
+	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+	id object = [[[[NSObject alloc] init] retain] retain];
+	NSUInteger before;
+
+	[NSAutoreleasePool addObject:object];
+	[pool addObject:object];
+	before = [object retainCount];
+	[pool drain];
+	{
+		BOOL ok = (before == 3 && [object retainCount] == 1);
+
+		[object release];
+		return ok;
+	}
+}
+
 BOOL foundation_mrr_pool_refuses_retain(void)
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
