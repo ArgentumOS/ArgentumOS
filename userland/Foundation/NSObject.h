@@ -56,10 +56,10 @@
  *      whose doors it will be handed to. CFStringGetLength on a CFArray is a programmer error in CF; the
  *      same is true here, and the classes say which CF type they stand in for.
  *
- * WHAT IS DELIBERATELY ABSENT: no -retainCount, no zones, no -copyWithZone:, no autorelease pools yet.
- * The first two are Apple-deprecated or removed by recorded decision (the old tree struck the zone API,
- * and a class made to answer it again would be re-adding what was removed); autorelease is deferred until
- * there is a pool to belong to. Absent-and-stated is the rule here, not absent-by-accident.
+ * WHAT IS DELIBERATELY ABSENT: no zones, no -copyWithZone:, no autorelease pools yet. The first was
+ * removed by recorded decision (the old tree struck the zone API, and a class made to answer it again
+ * would be re-adding what was removed); autorelease is deferred until there is a pool to belong to.
+ * Absent-and-stated is the rule here, not absent-by-accident.
  */
 
 #ifndef FNX_FOUNDATION_NSOBJECT_H
@@ -125,6 +125,12 @@ __attribute__((objc_root_class))
 /* IDENTITY AND EQUALITY — and -hash must agree with CFHash's expectations, because a CF container will
  * call whichever one it is holding: an object whose -hash disagreed with CFHash would be findable by one
  * world and not the other. */
+/* -retainCount IS APPLE'S DOOR AND IT IS HERE BECAUSE TWO REASONS AGREED: the surface rule (match Apple
+ * class-for-class) says NSObject has it, and the first probe needed a public way to ask whether CF's arm
+ * moved the count, which reading the ivar from outside the class cannot do. It is not for reasoning about
+ * lifetime — Apple says so too — it is for asking a question about the machinery. */
+- (NSUInteger)retainCount;
+
 - (Class)class;
 + (Class)class;
 - (BOOL)isKindOfClass:(Class)cls;

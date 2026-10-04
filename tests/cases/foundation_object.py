@@ -35,6 +35,8 @@ CHECKS = (
     "a-subclass-is-a-kind-of-its-superclass",
     "cf-retain-keeps-an-object-of-this-library-alive",
     "cf-release-lets-it-go",
+    "the-objects-first-word-is-its-class",
+    "cf-retain-moves-the-count-the-class-owns",
     "a-cf-array-holds-an-object-of-this-library",
     "and-hands-the-same-object-back",
     "a-cf-array-releases-it-when-the-array-goes",

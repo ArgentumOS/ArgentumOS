@@ -85,6 +85,28 @@ int main(void) {
 		      "the object outlived CF's release - CFRelease does not reach this library");
 	}
 
+	/* THE DIRECT INSTRUMENT FOR THE ONE QUESTION THE TWO CHECKS ABOVE LEAVE OPEN, and it comes BEFORE the
+	 * container check because the container cannot answer it: "the object died" and "the container dropped
+	 * it" are both consistent with TWO different faults — an arm that does not fire, and an object shaped
+	 * the way the arm's test does not expect. These two facts separate them, and they are separate checks
+	 * on purpose: the first word must BE the class (that is what CF_IS_OBJC compares), and CFRetain must
+	 * move the count the class owns. First holds and second does not = the arm is not firing. First fails =
+	 * the object is not shaped as assumed. */
+	{
+		FNProbeObject *who = [[FNProbeObject alloc] init];
+		unsigned long before = (unsigned long)[who retainCount];
+		unsigned long first = *(unsigned long *)who;
+
+		check("the-objects-first-word-is-its-class",
+		      first != 0 && first == (unsigned long)object_getClass(who),
+		      "the object's first word is not its class, which is what CF_IS_OBJC compares");
+		CFRetain((CFTypeRef)who);
+		check("cf-retain-moves-the-count-the-class-owns",
+		      (unsigned long)[who retainCount] == before + 1,
+		      "CFRetain did not move the count the class owns - the ownership arm is not firing");
+		[who release];
+	}
+
 	/* A CF CONTAINER, WITH CF'S OWN CALLBACKS — the failure this design exists to prevent. */
 	probe_deallocs = 0;
 	{

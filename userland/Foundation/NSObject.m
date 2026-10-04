@@ -71,6 +71,11 @@
 	object_dispose(self);
 }
 
+- (NSUInteger)retainCount
+{
+	return (NSUInteger)_refcount;
+}
+
 - (Class)class
 {
 	return object_getClass(self);
