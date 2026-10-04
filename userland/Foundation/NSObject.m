@@ -97,17 +97,44 @@
 
 /* THE DESCRIPTION DOORS, AND THEY ARE ONE DOOR. -description is the Objective-C spelling and
  * -copyDescription is the C one CF calls; both build the same CoreFoundation string, so a description that
- * looks right on one side cannot look wrong on the other. The class name comes from the runtime. */
+ * looks right on one side cannot look wrong on the other. The class name comes from the runtime.
+ *
+ * ⚠ THE FORMAT STRING IS BUILT AT RUNTIME, AND THAT IS A DEBT BEING PAID VISIBLY RATHER THAN HIDDEN.
+ * `CFSTR("...")` compiled with -fconstant-cfstrings is not a literal: it is a __CFConstantString STRUCT
+ * whose isa field names the class _NSCFConstantString, and the link therefore needs that class to exist.
+ * In swift-corelibs-foundation it is Swift's, and the linker asks for `$s10Foundation19_NSCFConstantStringCN`
+ * — which this unit's first build did, in both the library and its probe. Supplying that class means the
+ * constant-string layout AND the doors that read it (-length, -characterAtIndex:), which is the NSString
+ * unit's work, not the base object's. UNTIL THEN: no CFSTR in this library, and no @"..." literal either —
+ * both need the same missing class — and the debt is written here where the next unit will find it. */
+static CFStringRef fn_format_with(const char *utf8)
+{
+	return CFStringCreateWithCString(kCFAllocatorDefault, utf8, kCFStringEncodingUTF8);
+}
+
 - (NSString *)description
 {
-	return (NSString *)CFStringCreateWithFormat(kCFAllocatorDefault, NULL, CFSTR("<%s: %p>"),
-		class_getName(object_getClass(self)), (void *)self);
+	CFStringRef format = fn_format_with("<%s: %p>");
+	CFStringRef text = NULL;
+
+	if (format != NULL) {
+		text = CFStringCreateWithFormat(kCFAllocatorDefault, NULL, format,
+			class_getName(object_getClass(self)), (void *)self);
+		CFRelease(format);
+	}
+	return (NSString *)text;
 }
 
 + (NSString *)description
 {
-	return (NSString *)CFStringCreateWithFormat(kCFAllocatorDefault, NULL, CFSTR("<%s>"),
-		class_getName(self));
+	CFStringRef format = fn_format_with("<%s>");
+	CFStringRef text = NULL;
+
+	if (format != NULL) {
+		text = CFStringCreateWithFormat(kCFAllocatorDefault, NULL, format, class_getName(self));
+		CFRelease(format);
+	}
+	return (NSString *)text;
 }
 
 - (CFStringRef)copyDescription

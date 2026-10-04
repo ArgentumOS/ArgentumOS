@@ -1,0 +1,63 @@
+# Foundation — the new library's build, in its own fragment from day one.
+#
+# Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+# SPDX-License-Identifier: MIT
+#
+# WHY A NEW FRAGMENT RATHER THAN MORE LINES IN mk/20-userland.mk. The old Foundation's rule lived there and
+# grew one line per ledger entry over hundreds of commits until locating a target in that file stopped being
+# reliable — twice in one session, two different instruments gave two different answers about which target
+# owned the recipes around mk/20-userland.mk's probe block, and both answers were wrong. A build that cannot
+# be read is a build that cannot be fixed, so the new library starts in a file small enough to read whole.
+#
+# THE ONE FLAG WORTH A COMMENT IS -fconstant-cfstrings. NSObject.m's description doors build a CFString
+# with CFSTR, and this project has already paid for that trap once: without the flag, CFSTR references the
+# CF constant string class, which in swift-corelibs-foundation is SWIFT's, and the link asks for
+# $s10Foundation19_NSCFConstantStringCN. Every file in this library that spells CFSTR needs it.
+
+FOUNDATION_SRC     = userland/Foundation
+FOUNDATION_MSRCS   = $(notdir $(wildcard $(FOUNDATION_SRC)/*.m))
+FOUNDATION_OBJS    = $(addprefix .build/foundation-,$(FOUNDATION_MSRCS:.m=.o))
+FOUNDATION_LIB     = $(FNXLIB)/libfoundation.so
+
+# -Iuserland so that `#import <Foundation/...>` resolves, which is the spelling every consumer will use.
+# -I.build/cf-shim and $(COREFOUNDATION_SRC)/include for CF's headers, as the CF probes already do.
+FOUNDATION_CFLAGS  = -fPIC -fblocks -fconstant-cfstrings -Iuserland -I.build/cf-shim \
+                     -I$(COREFOUNDATION_SRC)/include -I$(LIBDISPATCH_PREFIX)/include
+
+FOUNDATION_CF_LIBS = -L$(COREFOUNDATION_PREFIX)/lib -lcorefoundation \
+                     -L$(LIBDISPATCH_PREFIX)/lib -ldispatch -lBlocksRuntime \
+                     -L$(OBJC_PREFIX)/lib -lobjc \
+                     -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib \
+                     -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+                     -Wl,-rpath-link,$(OBJC_PREFIX)/lib
+
+# ONE OBJECT PER CLASS, and the pattern rule is the whole build: there is no generated source, no
+# configure, and (deliberately) no third build system — the same measurement the CF package's build.sh
+# records for itself.
+.build/foundation-%.o: $(FOUNDATION_SRC)/%.m
+	@mkdir -p $(dir $@)
+	$(MUSL64_OBJC) -c $(FOUNDATION_CFLAGS) $< -o $@
+
+# THE SONAME IS NOT DECORATION: without it `-lfoundation` records NEEDED=libfoundation.so, so a guest that
+# has the library staged as libfoundation.so.1 cannot find it — measured, as a relocation failure naming the
+# directory it looked in and then every class symbol as missing. With the soname set, the link records the
+# versioned name and the staged file is the one the loader asks for.
+$(FOUNDATION_LIB): $(FOUNDATION_OBJS)
+	@mkdir -p $(FNXLIB)
+	$(MUSL64_OBJC) -shared -Wl,-soname,libfoundation.so.1 $(FOUNDATION_OBJS) $(FOUNDATION_CF_LIBS) -o $@
+	@echo "foundation: $(words $(FOUNDATION_MSRCS)) class file(s) -> $(FOUNDATION_LIB)"
+
+# THE FIRST ACCEPTANCE, and it is staged with its library: a probe that cannot find libfoundation at RUN
+# time would fail for a reason that has nothing to do with what it asserts.
+FOUNDATION_OBJECT_PROBE = foundation_object
+
+$(ROOTFS64)/System/Shared/tests/$(FOUNDATION_OBJECT_PROBE): userland/tests/$(FOUNDATION_OBJECT_PROBE).m $(FOUNDATION_LIB)
+	@mkdir -p "$(ROOTFS64)/System/Shared/tests" "$(ROOTFS64)/System/Libraries"
+	@cp $(FOUNDATION_LIB) "$(ROOTFS64)/System/Libraries/libfoundation.so.1"
+	$(MUSL64_OBJC) userland/tests/$(FOUNDATION_OBJECT_PROBE).m $(FOUNDATION_CFLAGS) \
+		-L$(FNXLIB) -lfoundation $(FOUNDATION_CF_LIBS) \
+		-Wl,-rpath-link,$(FNXLIB) \
+		-o "$@"
+
+.PHONY: foundation2
+foundation2: $(ROOTFS64)/System/Shared/tests/$(FOUNDATION_OBJECT_PROBE)

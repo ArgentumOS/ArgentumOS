@@ -29,6 +29,7 @@ clean:
 include mk/00-base.mk
 include mk/10-toolchain.mk
 include mk/20-userland.mk
+include mk/25-foundation.mk
 include mk/30-images.mk
 include mk/40-kernel.mk
 include mk/50-tests.mk

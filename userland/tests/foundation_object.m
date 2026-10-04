@@ -109,8 +109,18 @@ int main(void) {
 
 		check("the-description-door-builds-a-cf-string", text != NULL && CFStringGetLength(text) > 0,
 		      "description did not build a non-empty CoreFoundation string");
-		check("and-that-string-names-the-class", text != NULL && CFStringFind(text, CFSTR("NSObject"), 0).location != kCFNotFound,
+		/* THE SEARCH STRING IS BUILT AT RUNTIME for the reason NSObject.m records: this library has no
+		 * constant-string class yet, so a CFSTR here would be a reference to one that does not exist
+		 * (swift-corelibs-foundation's is Swift's, hence the $s10..._NSCFConstantStringCN the linker asks
+		 * for). The class, and @"...", are the NSString unit's first order of business. */
+		CFStringRef wanted = CFStringCreateWithCString(kCFAllocatorDefault, "NSObject", kCFStringEncodingUTF8);
+
+		check("and-that-string-names-the-class",
+		      text != NULL && wanted != NULL && CFStringFind(text, wanted, 0).location != kCFNotFound,
 		      "the description does not name the class");
+		if (wanted != NULL) {
+			CFRelease(wanted);
+		}
 		CFRelease(text);
 		[described release];
 	}
