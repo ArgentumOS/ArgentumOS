@@ -808,6 +808,29 @@ static CF_INLINE Boolean _fnx_cf_is_object(CFTypeRef cf) {
 }
 #endif
 
+/* FNX LOCAL MODIFICATION 9 (Apache-2.0 §4(b)): THE BRIDGING DOOR, and it is the other half of the free
+ * casting the user asked for. CF_IS_OBJC is an ISA COMPARISON against the class CF has registered for a
+ * type, and __CFISAForTypeID reads that registration -- so with the table EMPTY, as this tree ships it,
+ * every CF-NATIVE object has isa 0 and cannot be messaged at all. A CFStringRef can therefore be handed to
+ * an NS API only in the direction that dispatches; the reverse cast has nowhere to go.
+ *
+ * Registering a class for a type changes that: objects of the type are created with that class as their isa
+ * (CFRuntime.c sets _cfisa = __CFISAForTypeID(typeID)), so (NSString *)cfStr becomes a messageable object,
+ * while CF's own doors -- which compare the isa -- take their C path, which is the correct path for a
+ * CF-shaped object. THAT IS FREE CASTING IN BOTH DIRECTIONS.
+ *
+ * IT TAKES A Class AND NOT A NAME: upstream's own comment names a _CFRuntimeBridgeClasses that is not in
+ * this source, and a name-based door would exist to survive the class not being loaded yet -- which is a
+ * Swift-deployment problem this tree does not have, because the caller here IS the library that owns the
+ * class.
+ */
+void CFNXBridgeClassToType(Class cls, CFTypeID typeID) {
+    if (cls == Nil || typeID == 0) {
+        return;
+    }
+    _SetCFRuntimeObjcClass((uintptr_t)cls, typeID);
+}
+
 CFTypeRef _CFNonObjCRetain(CFTypeRef cf) {
     __CFGenericAssertIsCF(cf);
     return _CFRetain(cf, false);

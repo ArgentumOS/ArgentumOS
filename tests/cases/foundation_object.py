@@ -42,6 +42,9 @@ CHECKS = (
     "a-cf-array-releases-it-when-the-array-goes",
     "the-description-door-builds-a-cf-string",
     "and-that-string-names-the-class",
+    "a-cf-native-string-has-a-class",
+    "and-is-messageable-as-an-ns-string",
+    "and-casts-back-to-cf",
 )
 
 

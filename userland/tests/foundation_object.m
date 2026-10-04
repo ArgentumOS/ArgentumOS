@@ -124,6 +124,26 @@ int main(void) {
 		      "the object outlived the CF array that held it");
 	}
 
+	/* FREE CASTING, WHICH IS THE POINT OF THE WHOLE EXERCISE. A CF-NATIVE string is not merely usable by
+	 * CF: it is a messageable OBJECT, and the same pointer goes both ways without a conversion step. The
+	 * checks are in that order on purpose — an isa FIRST (nothing can be messaged without one), then the
+	 * message, then the cast back to the C API. */
+	{
+		CFStringRef native = CFStringCreateWithCString(kCFAllocatorDefault, "native", kCFStringEncodingUTF8);
+		Class registered = objc_getClass("_NSCFString");
+
+		check("a-cf-native-string-has-a-class",
+		      native != NULL && registered != NULL && *(unsigned long *)native == (unsigned long)registered,
+		      "a CF-native string's first word is not the registered class - the bridging registration did not take");
+		check("and-is-messageable-as-an-ns-string", native != NULL && [(id)native length] == 6,
+		      "[(id)cfStr length] did not answer 6 - a CF object cannot be messaged");
+		check("and-casts-back-to-cf", native != NULL && CFStringGetLength(native) == 6,
+		      "CFStringGetLength on the same pointer did not answer 6 - the cast back does not work");
+		if (native != NULL) {
+			CFRelease(native);
+		}
+	}
+
 	/* THE DESCRIPTION DOOR IS CF'S OWN STRING, so CF's own code path can read it. */
 	{
 		id described = [[NSObject alloc] init];
