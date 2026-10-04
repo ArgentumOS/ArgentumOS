@@ -969,3 +969,27 @@ was aimed at _CF_CONSTANT_STRING_SWIFT_CLASS; the symbol the compiler actually u
 AND COREFOUNDATION OWNS THE DEFINITION, so CoreFoundation is where the fix belongs: alias it to a symbol
 Foundation provides weakly, since CF must not depend on Foundation (modification 7's property) and the class
 only exists once Foundation is loaded.
+
+
+**THE FIX, READ OUT OF CF'S OWN CODE RATHER THAN DERIVED.** Three of CF's own lines give it:
+
+    CFRuntime.c:274   void *__CFConstantStringClassReferencePtr = &_CF_CONSTANT_STRING_SWIFT_CLASS;   the Swift arm
+    CFRuntime.c:291   void *__CFConstantStringClassReferencePtr = NULL;                              OURS
+    CFRuntime.c:1956  if (obj->isa == (uintptr_t)__CFConstantStringClassReferencePtr) return false;
+    CFInternal.h:546  static struct CF_CONST_STRING __##S##__ = {{(uintptr_t)&__CFConstantStringClassReference, 0x000007c8U}, (uint8_t *)V, sizeof(V) - 1};
+    CFInternal.h:541  CF_EXPORT int __CFConstantStringClassReference[];
+
+1. CF HAS ITS OWN CFSTR MACRO, building the same struct with &__CFConstantStringClassReference as its isa and
+   0x07c8 as its flags -- the very value the probe printed. So the ARRAY IS DELIBERATE: the isa is the array's
+   ADDRESS, which means the message send reads a class out of the array's FIRST WORD. That is why it is
+   declared as int[24] -- a fake object big enough to be read as one.
+2. __CFConstantStringClassReferencePtr EXISTS, and CFRuntime.c:1956 ALREADY COMPARES an object's isa against
+   it -- the "is this a constant string" test is written, and in this build the pointer is NULL, so it never
+   matches.
+3. Therefore the fix is TWO ASSIGNMENTS, in the Foundation hook that already runs at the right moment:
+
+       __CFConstantStringClassReferencePtr = &__CFConstantStringClassReference;   CF's own test then matches
+       ((void **)&__CFConstantStringClassReference)[0] = the constant class;     and the message send finds one
+
+Both symbols are CF_EXPORTed, so Foundation may write them, and neither line is a guess: each is the
+counterpart of a line CF already contains.
