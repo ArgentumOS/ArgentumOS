@@ -809,3 +809,25 @@ NSObject-derived one, and `id`-typed code that expects the protocol's surface wo
 needs. For a CF-backed class -retain/-release should delegate to CFRetain/CFRelease — and that does NOT loop,
 because such a class is REGISTERED for its type, so CF_IS_OBJC is FALSE for it and CFRetain takes its C path
 rather than returning into the method. One count, CF's, reached from both sides.
+
+
+**THE PROTOCOL'S DOORS HAVE EXACT TARGETS, AND THEY ARE THE TWINS RATHER THAN THE PUBLIC DOORS.** Designing
+@protocol NSObject exposed the trap before any code: -isEqual: cannot be `CFEqual(self, other)`, because
+CFEqual DISPATCHES ON ITS FIRST ARGUMENT -- so a method that calls it calls itself, the same self-delegation
+loop as the objc_retain recursion, and no CF header read is available to break the tie because our NSObject
+has none.
+
+The rule that resolves it is the one this design already runs on -- CALL THE TWIN, NEVER THE DISPATCHING DOOR
+-- and the twins are named for the class they serve:
+
+    CFString.c:1195   CFHashCode CFStringHashNSString(CFStringRef str)
+    CFString.c:1258   the type's OWN function table, beside __CFStringHash(CFTypeRef)
+
+So each door has a target that cannot re-enter: -hash -> CFStringHashNSString, and the equality and
+description entries come from the same table at 1258, which lists the CFString type's own functions. (My
+first guesses -- _CFStringEqual, a `2` suffix -- found nothing; the naming convention here is the one the
+length twin already taught, a function named for the class it is FOR.)
+
+AND THE CONFORMANCE SHAPE IS NSProxy's: `@interface NSString <NSObject>` -- a ROOT class declaring a protocol
+rather than inheriting a class. That is the pattern Apple uses for its second root class, and this design has
+several.
