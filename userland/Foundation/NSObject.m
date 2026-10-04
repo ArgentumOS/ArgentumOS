@@ -64,8 +64,12 @@ void _FNXBridgeClass(Class cls, unsigned long typeID)
 }
 
 /* A SUBCLASS OF A BRIDGED CLASS IS BRIDGED TOO, by walking up: an NSArray's subclass is still a CFArray. The
- * walk is deliberate rather than a lookup that would miss, so a class added later needs no second entry. */
-static unsigned long fnx_typeid_for_class(Class cls)
+ * walk is deliberate rather than a lookup that would miss, so a class added later needs no second entry.
+ *
+ * NOT static, BECAUSE A ROOT CLASS NEEDS THE SAME ANSWER: NSArray answers -_cfTypeID and +alloc itself (it
+ * inherits nothing), and a second copy of this walk living in NSArray.m is how two classes come to disagree
+ * about which type they are. */
+unsigned long FNXTypeIDForClass(Class cls)
 {
 	int i;
 
@@ -90,7 +94,7 @@ static unsigned long fnx_typeid_for_class(Class cls)
 
 	/* class_createInstance ZEROES THE STORAGE, so the count is 1 only because this line says so. */
 	if (obj != nil) {
-		unsigned long typeID = fnx_typeid_for_class(self);
+		unsigned long typeID = FNXTypeIDForClass(self);
 
 		((NSObject *)obj)->_refcount = 1;
 
@@ -119,7 +123,7 @@ static unsigned long fnx_typeid_for_class(Class cls)
  * bridged -- which is the same "not a CF object" answer CF gives, arrived at by CF's own route. */
 - (unsigned long)_cfTypeID
 {
-	return fnx_typeid_for_class(object_getClass(self));
+	return FNXTypeIDForClass(object_getClass(self));
 }
 
 /* THE ONE COUNTER, AND WHY THESE DO NOT CALL objc_retain/objc_release — the short version is that doing so
@@ -197,15 +201,19 @@ static unsigned long fnx_typeid_for_class(Class cls)
  * — which this unit's first build did, in both the library and its probe. Supplying that class means the
  * constant-string layout AND the doors that read it (-length, -characterAtIndex:), which is the NSString
  * unit's work, not the base object's. UNTIL THEN: no CFSTR in this library, and no @"..." literal either —
- * both need the same missing class — and the debt is written here where the next unit will find it. */
-static CFStringRef fn_format_with(const char *utf8)
+ * both need the same missing class — and the debt is written here where the next unit will find it.
+ *
+ * NOTE, LATER: the debt above was PAID (the constant-string class exists and CFSTR resolves), but this helper
+ * stays rather than reverting to CFSTR, because NSArray is a ROOT CLASS and must build its own description
+ * too: one runtime-built format string is shared by both classes instead of two copies of the same literal. */
+CFStringRef FNXCreateFormatString(const char *utf8)
 {
 	return CFStringCreateWithCString(kCFAllocatorDefault, utf8, kCFStringEncodingUTF8);
 }
 
 - (NSString *)description
 {
-	CFStringRef format = fn_format_with("<%s: %p>");
+	CFStringRef format = FNXCreateFormatString("<%s: %p>");
 	CFStringRef text = NULL;
 
 	if (format != NULL) {
@@ -218,7 +226,7 @@ static CFStringRef fn_format_with(const char *utf8)
 
 + (NSString *)description
 {
-	CFStringRef format = fn_format_with("<%s>");
+	CFStringRef format = FNXCreateFormatString("<%s>");
 	CFStringRef text = NULL;
 
 	if (format != NULL) {

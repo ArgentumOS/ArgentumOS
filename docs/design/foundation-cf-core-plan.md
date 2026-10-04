@@ -1307,3 +1307,61 @@ will read its header as the CF object's.
   `tools/foundation-sweep.py --unimplemented` reports the same single hit with this change set stashed. It is
   the twin whose name the file's own comment records as GUESSED once and left unwritten.
 * NSArray's factory methods (+array and relatives) remain absent — the autorelease-pool reason above stands.
+
+
+# THE ROOT-CLASS CORRECTION, AND THE WORD COLLISION IT CLOSES
+
+**`foundation_collection` is 16/16** (two checks added for this), `foundation_object` 18/18, the smoke tier
+green. The user's question — *shouldn't NSArray conform to NSObject as well?* — turned out to have a sharper
+answer than the one asked for, and the user chose it (`dec-7a855f06000162d7`).
+
+## IT ALREADY CONFORMED, AND THAT WAS NOT THE POINT
+
+`@interface NSArray : NSObject` DID conform to the `NSObject` protocol, by inheritance — clang inherits
+conformance, `id<NSObject>` bound, and Apple's own `NSArray.h` does not spell it either. What the question
+exposed is WHY `NSString` spells it: **a root class must, because it inherits nothing.**
+
+## AND WHY NSArray HAD TO BE A ROOT CLASS TOO: OFFSET 16
+
+    NSObject:            Class isa;  unsigned long long _cfinfoa;  unsigned int _refcount;   // _refcount @ 16
+    struct __CFArray:    CFRuntimeBase _base;  CFIndex _count;  CFIndex _mutations;  ...    // _count   @ 16
+
+`@interface NSArray : NSObject` made `_refcount` and CF's `_count` **the same word**. It was invisible only
+because `NSArray` overrode the two methods that touch `_refcount` (-retain/-release) — but every OTHER
+inherited `NSObject` method still read CF's element count. Measured, in the version that shipped an hour before
+this: `[array retainCount]` on a three-element array answered **3**.
+
+**THE FIX IS THE SHAPE, AND NSArray NOW DECLARES NO STORAGE AT ALL:**
+
+    __attribute__((objc_root_class))
+    @interface NSArray <NSObject> { Class isa; }
+
+and answers the protocol itself, taking CF's answer wherever CF has one: `-retain`/`-release` are
+`CFRetain`/`CFRelease`; `-retainCount` is `CFGetRetainCount`; `-_cfTypeID` asks the bridge which type this
+class was registered for; `+alloc` **creates an empty CF array**, because there is no shell in this design —
+a root class holding only `isa` is 8 bytes wide, and `NSObject`'s `+alloc` would write `_refcount` at offset 16,
+which is both the wrong word on this class AND past the end of that allocation.
+
+**THE TWO NEW CHECKS ARE THE ONES THE QUESTION IMPLIED**, and both are green:
+
+    the-class-declares-the-nsobject-protocol-itself              class_conformsToProtocol(isa, @protocol(NSObject))
+    retainCount-answers-CFs-count-and-not-the-element-count      rc == CFGetRetainCount(self)  AND  rc != 3
+
+(the conformance is asked of the RUNTIME, because the METHOD `-conformsToProtocol:` is implemented nowhere in
+this library — a separate gap, now named rather than implied.)
+
+## WHAT IS DELIBERATELY NOT DONE HERE, NAMED IN THE SOURCE
+
+* `-isEqual:`/`-hash` stay IDENTITY. That is exactly what the class answered before it became a root class, so
+  nothing regresses — and reaching for `CFEqual` would TRAP on an unbridged argument (the same
+  `__CFGenericAssertIsCF` fall-through the array's own equal shim exists to avoid). Apple's content comparison
+  is the collection family's question to answer once, with NSSet and NSDictionary.
+* `-description` is still `<Class: 0x...>`, not the element list. Again unchanged behaviour, and named.
+* `-conformsToProtocol:` (the method) is implemented on neither root class.
+
+## THE RULE THIS GENERALISES, ADDED TO THE ONE ALREADY RECORDED
+
+A class that is BOTH registered for a CF type AND instantiated by this library must BE CF-shaped — and that
+includes its IVAR LAYOUT, not only its dispatch: the class must not declare, or inherit, a field that lands on
+one of CF's. `NSObject` is exempt because it IS the CF header (isa + `_cfinfoa`) plus one word of its own; every
+bridged class below it must be a root class, or CF's storage and Foundation's will share a word.

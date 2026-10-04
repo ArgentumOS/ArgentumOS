@@ -4,25 +4,36 @@
  * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
  * SPDX-License-Identifier: MIT
  *
- * WHY THIS CLASS DECLARES NO IVARS, AND WHY THAT IS THE WHOLE POINT. This library's claim is that an NS
- * object IS a CF object, not a copy of one, and a container is where that claim is easiest to cheat on. Two
- * shapes were possible, and the wrong one is instructive: a class holding a CFArrayRef in an ivar satisfies
- * every signature while the two worlds hold DIFFERENT objects — and CF cannot be fooled about it, because
- * CF's own doors read a CFRuntimeBase header out of the object's first words. With an ivar in the way,
- * `CFArrayGetCount((CFArrayRef)anArray)` reads the object's SECOND word, which for a non-CF-shaped object is
- * not a count at all (measured: it answered 1 — the object's retain count).
+ * WHY THIS CLASS DECLARES NO STORAGE IVARS, AND WHY THAT IS THE WHOLE POINT. This library's claim is that an
+ * NS object IS a CF object, not a copy of one, and a container is where that claim is easiest to cheat on.
+ * Two shapes were possible, and the wrong one is instructive: a class holding a CFArrayRef in an ivar
+ * satisfies every signature while the two worlds hold DIFFERENT objects — and CF cannot be fooled about it,
+ * because CF's own doors read a CFRuntimeBase header out of the object's first words. With an ivar in the
+ * way, `CFArrayGetCount((CFArrayRef)anArray)` reads the object's SECOND word, which for a non-CF-shaped
+ * object is not a count at all (measured: it answered 1 — the object's retain count).
  *
  * So the storage is not "CF's rather than ours" — THERE IS NO SEPARATE STORAGE. Self IS the CFArray: the
  * object CFArrayCreate returns, with this class as its isa. `(CFArrayRef)array` and `(NSArray *)cfArray` are
- * then both free, which is the only reason the cast this campaign is built on can be written at all. This is
- * NSString's shape exactly, and NSArray follows it for the re-base's own reason: a half-swapped storage that
- * two ownership regimes share is how a class starts reading foreign words.
+ * then both free, which is the only reason the cast this campaign is built on can be written at all.
  *
- * AND THE ITEMS' OWNERSHIP IS CF'S, WHICH WAS MEASURED RATHER THAN ASSUMED. CFArray with CF's own callbacks
- * retains what it is given and releases it when the array goes; two checks in the object probe prove it for
- * objects THIS library builds (a-cf-array-holds-an-object-of-this-library and
- * a-cf-array-releases-it-when-the-array-goes). So there is no hand-retained vector to keep in step, which is
- * the failure mode this re-base was warned about.
+ * AND IT IS A ROOT CLASS FOR THE SAME REASON, WHICH IS THE SHARPER HALF. NSObject carries three words —
+ * `Class isa`, `unsigned long long _cfinfoa`, `unsigned int _refcount` — and the third one sits at OFFSET 16.
+ * CFArray's `_count` sits at offset 16 too:
+ *
+ *     struct __CFArray { CFRuntimeBase _base;  // _cfisa + _cfinfoa  = 16 bytes
+ *                        CFIndex _count;        // <- offset 16: the same word
+ *                        ... };
+ *
+ * So an NSObject SUBCLASS would shadow CF's first storage field with a refcount, and every NSObject method
+ * that reads `_refcount` would read CF's element count instead — `-retainCount` would answer 3 for a
+ * three-element array. That is exactly the "two things sharing one word" failure this re-base exists to end,
+ * and it is why NSString is a root class as well. Declaring `Class isa` and nothing else makes the object's
+ * words CF's words.
+ *
+ * WHAT A ROOT CLASS OWES, THEREFORE: it inherits NOTHING, so the NSObject protocol's doors — -retain,
+ * -release, -class, -isKindOfClass:, -isEqual:, -hash, -description — and +alloc are all answered here, and
+ * each is CF's answer wherever CF has one. (An NSObject SUBCLASS conforms to that protocol by inheritance and
+ * needs no clause; a root class must name it, which is the spelling difference this header used to lack.)
  *
  * THE FACTORY METHODS ARE NOT HERE YET, AND THAT IS A STATEMENT RATHER THAN AN OMISSION. +array and its
  * relatives return an AUTORELEASED object under Apple's contract, and this library has no autorelease pool:
@@ -42,12 +53,27 @@
 
 @class NSString;
 
-/* NO IVARS, DELIBERATELY: an NSArray IS a CFArray, and a field here would describe an object that is not one. */
-@interface NSArray : NSObject
+/* A ROOT CLASS — objc_root_class is how libobjc2 is told the absent superclass is deliberate — whose only
+ * field is CF's own first word. */
+__attribute__((objc_root_class))
+@interface NSArray <NSObject>
+{
+	Class isa;		/* the CF object's own first word: CF's header IS the object here */
+}
 
-/* THE ONE DOOR THAT BUILDS AN ARRAY, and it cannot answer with `self`. The receiver it is sent to is the
- * +alloc'd shell, which has this class as its isa but no CF storage, so the door builds the CFArray this class
- * is the face of and returns IT, disposing the shell — the class-cluster initialiser shape. That is why the
+/* ALLOCATING AN NSArray MAKES AN EMPTY CF ARRAY, which is the only kind of object this class can be. It must
+ * be +alloc rather than a "shell" for one measured reason: a receiver with no CF storage would be an NSArray
+ * whose words are not CF's, and the +alloc every object would otherwise inherit is NSObject's, which writes a
+ * refcount into a class that has nowhere to put one (offset 16 is CF's `_count`, and a root class with only
+ * `isa` is 8 bytes wide). There is no shell in this design, so there is nothing to size.
+ *
+ * NEITHER OF THESE IS ANNOTATED, AND THAT MATCHES NSObject.h AND THE TRUTH: +alloc CAN answer nil, because it
+ * returns what CFArrayCreate returns. */
++ (id)alloc;
+
+- (id)init;
+
+/* THE ONE DOOR THAT FILLS AN ARRAY, and it cannot answer with `self` — see the implementation. That is why the
  * result is `instancetype` rather than a promise that the address is unchanged. */
 - (instancetype _Nonnull)initWithObjects:(const id _Nonnull * _Nullable)objects count:(NSUInteger)count;
 

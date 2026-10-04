@@ -21,8 +21,10 @@
 
 #include <stdio.h>
 #include <CoreFoundation/CFArray.h>
+#include <CoreFoundation/CFRuntime.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSObject.h>
+#import <objc/runtime.h>
 
 static int ok_count = 0;
 static int fail_count = 0;
@@ -92,6 +94,30 @@ int main(void)
 		note_value("IMMEDIATELY after creation: word 2", w[2]);
 	}
 	check("an-array-can-be-made-from-a-vector", array != nil, "the initializer answered nil");
+
+	/* THE ROOT-CLASS CLAIM, ASKED OF THE RUNTIME. NSArray is not an NSObject subclass any more, so its
+	 * conformance to the NSObject protocol is a DECLARATION the class makes rather than one it inherits — and
+	 * the runtime is what answers the question, so the runtime is what this asks. (The METHOD of that name,
+	 * -conformsToProtocol:, is not implemented in this library at all; that is a separate and named gap, so
+	 * the runtime function is the honest instrument here.) */
+	check("the-class-declares-the-nsobject-protocol-itself",
+	      (array != nil) && class_conformsToProtocol(object_getClass(array), @protocol(NSObject)),
+	      "the runtime does not report NSArray as conforming to the NSObject protocol");
+
+	/* AND THE WORD COLLISION THE ROOT-CLASS CHANGE EXISTS TO PREVENT. NSObject answers -retainCount from its
+	 * own `_refcount`, which sits at offset 16 — the same offset as CFArray's `_count` — so an NSObject
+	 * SUBCLASS reports the ELEMENT COUNT as a retain count. The assertion is therefore a pair: this door
+	 * agrees with CF's own answer, AND it is not the element count. */
+	{
+		unsigned long rc = (array != nil) ? (unsigned long)[(id)array retainCount] : 0;
+		unsigned long cf = (array != nil) ? (unsigned long)CFGetRetainCount((CFTypeRef)array) : 0;
+
+		note_value("[array retainCount]", rc);
+		note_value("CFGetRetainCount of the NSArray", cf);
+		check("retainCount-answers-CFs-count-and-not-the-element-count",
+		      (array != nil) && (rc == cf) && (rc != 3),
+		      "retainCount disagreed with CF's own answer, or answered the element count");
+	}
 
 	n = (array != nil) ? (int)[array count] : -1;
 	note_value("count", (unsigned long)n);

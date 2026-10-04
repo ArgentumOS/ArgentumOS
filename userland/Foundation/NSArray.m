@@ -5,14 +5,18 @@
  * SPDX-License-Identifier: MIT
  *
  * SELF IS THE ARRAY. There is no second storage to fall out of step with CF's: every door below casts the
- * RECEIVER — not an ivar — to a CFArrayRef and calls CF's own function on it. That is what makes the free
- * cast in both directions true rather than merely compiled, and it is the same shape this library's NSString
- * takes toward CFString.
+ * RECEIVER — not an ivar — to a CFArrayRef and calls CF's own function on it. That is what makes the free cast
+ * in both directions true rather than merely compiled, and it is the same shape this library's NSString takes
+ * toward CFString.
  *
- * WHICH MEANS -retain AND -release ARE CF'S, NOT NSObject's. An object whose first three words are CF's header
- * cannot keep a private count in them: NSObject's -release decrements `_refcount`, which on a CF-shaped object
- * is CF's own storage. So the pair is spelled with CFRetain/CFRelease, exactly as NSString spells it, and the
- * one count is CF's, reached from both sides.
+ * AND BECAUSE SELF IS THE ARRAY, THIS CLASS IS A ROOT CLASS. It inherits nothing, so it answers the NSObject
+ * protocol itself — and the reason it must be a root class rather than an NSObject subclass is a word
+ * collision, worth stating where the doors are: NSObject's `_refcount` sits at offset 16, and so does CFArray's
+ * `_count`. A subclass would shadow CF's count with a refcount, and every inherited NSObject method that reads
+ * `_refcount` would read CF's element count. So EVERY DOOR BELOW TAKES CF'S ANSWER WHEREVER CF HAS ONE:
+ * -retain/-release are CFRetain/CFRelease, because the one count is CF's; -retainCount asks CF for it;
+ * -_cfTypeID asks the bridge which type this class was registered for; +alloc makes an empty CF array, because
+ * that is the only kind of object this class can be.
  *
  * THE SENTINEL IS CF'S, because this tree defines no NSNotFound. CFArrayGetFirstIndexOfValue answers
  * kCFNotFound when the value is absent, so the door returns exactly what CF returned rather than translating
@@ -20,9 +24,15 @@
  */
 
 #import <Foundation/NSArray.h>
-#import <objc/runtime.h>
+#include <objc/runtime.h>
 
 extern unsigned long CFNXBridgeClassToType(Class cls, CFTypeID typeID);
+
+/* THE TWO ANSWERS THIS ROOT CLASS SHARES WITH NSObject RATHER THAN COPYING. The type lookup and the
+ * runtime-built format string live in NSObject.m because that is where the bridge map is filled; a second copy
+ * here is how two classes come to disagree about which type they are, or about how they describe themselves. */
+extern unsigned long FNXTypeIDForClass(Class cls);
+extern CFStringRef FNXCreateFormatString(const char *utf8);
 
 /*
  * THE COMPARISON IS OURS; EVERYTHING ELSE IN THE PAIR IS CF'S. This was decided by measurement.
@@ -69,13 +79,23 @@ static const CFArrayCallBacks *fnx_array_callbacks_get(void)
 
 @implementation NSArray
 
-/* -init CANNOT BE NSObject's, for the same reason -retain cannot: NSObject's leaves the receiver as itself,
- * and `self` here is the +alloc'd shell — an object with this class as its isa and no CF storage. Routing it
- * through the real initialiser means `[[NSArray alloc] init]` answers an empty CFArray rather than an object
- * that would read its own retain count as a count. */
-- (instancetype)init
+/*
+ * ALLOCATING AN NSArray CREATES AN EMPTY CF ARRAY, AND THERE IS NO OTHER HONEST ANSWER FOR THIS CLASS. It
+ * declares no storage of its own — an NSArray IS a CFArray — so a receiver with no CF storage would be an
+ * object whose words are not CF's. And the +alloc it would otherwise inherit is NSObject's, which writes
+ * `_refcount` at offset 16: on this class that offset is CF's `_count`, AND a root class holding only `isa` is
+ * 8 bytes wide, so the write would be both the wrong word and past the end of the allocation. Creating the
+ * real thing avoids both — there is no shell in this design, so there is nothing to size.
+ */
++ (id)alloc
 {
-	return [self initWithObjects:NULL count:0];
+	return (id)CFArrayCreate(kCFAllocatorDefault, NULL, 0, fnx_array_callbacks_get());
+}
+
+- (id)init
+{
+	/* NOTHING TO DO, AND THAT IS NOT A SHORTCUT: what +alloc handed over already IS an empty CF array. */
+	return self;
 }
 
 - (instancetype)initWithObjects:(const id _Nonnull * _Nullable)objects count:(NSUInteger)count
@@ -84,19 +104,18 @@ static const CFArrayCallBacks *fnx_array_callbacks_get(void)
 	 * here; only the comparison is ours (see fnx_array_equal). A count of zero is legal with a NULL vector. */
 	CFArrayRef array = CFArrayCreate(kCFAllocatorDefault, (const void **)objects, (CFIndex)count, fnx_array_callbacks_get());
 
-	/* THE SHELL IS DISPOSED, NOT RELEASED, AND THAT DISTINCTION IS LOAD-BEARING. `self` is the +alloc'd
-	 * receiver: an ordinary Objective-C allocation with this class as its isa and NO CF storage, so sending
-	 * it -release would route into the CF-shaped pair below and hand CFRelease an object that is not one.
-	 * object_dispose is what NSObject's own -dealloc calls to return the memory, and it is the honest way to
-	 * say "this allocation is not the object"; nothing of ours needs unwinding because this class has no
-	 * fields (an NSArray IS a CFArray). */
-	object_dispose(self);
+	/* THE RECEIVER IS RELEASED, NOT DISPOSED, BECAUSE IT IS A CF OBJECT RATHER THAN A SHELL. Re-initialising
+	 * is not a supported operation; what this does support is the shape the compiler writes for
+	 * `[[NSArray alloc] initWithObjects:count:]` — the +alloc'd EMPTY ARRAY is dropped and the filled one is
+	 * handed back, which is the class-cluster initialiser contract. CFRelease is the right spelling because
+	 * the receiver's +1 came from CFArrayCreate. */
+	CFRelease((CFTypeRef)self);
 
 	/* A NULL CFArrayCreate is a failed allocation, and Apple's contract for a failed -init is nil. */
 	return (NSArray *)array;
 }
 
-/* THE ONE COUNT, AND IT IS CF'S — see the file header for why this pair cannot be NSObject's. */
+/* THE ONE COUNT, AND IT IS CF'S — the file header says why this pair cannot be NSObject's. */
 - (id)retain
 {
 	return (id)CFRetain((CFTypeRef)self);
@@ -105,6 +124,93 @@ static const CFArrayCallBacks *fnx_array_callbacks_get(void)
 - (void)release
 {
 	CFRelease((CFTypeRef)self);
+}
+
+/* ASKED OF CF, BECAUSE CF IS WHAT HOLDS IT. NSObject answers this from its own `_refcount`, which on this
+ * class is CF's `_count` — a three-element array would report a retain count of three. CF's own door is the
+ * only answer here that is not a coincidence. */
+- (NSUInteger)retainCount
+{
+	return (NSUInteger)CFGetRetainCount((CFTypeRef)self);
+}
+
+- (Class)class
+{
+	return object_getClass(self);
+}
+
++ (Class)class
+{
+	return self;
+}
+
+- (BOOL)isKindOfClass:(Class)cls
+{
+	/* THE SAME WALK NSObject USES, taken from the header, so both root classes answer this identically. */
+	return FNXClassIsKindOfClass(object_getClass(self), cls);
+}
+
+/* CF'S OWN PROTOCOL FOR OBJC OBJECTS, AND IT IS NOT OPTIONAL: CFGetTypeID SENDS THIS rather than reading the
+ * object's header when it recognises an object as Objective-C (CFRuntime.c:793). A root class must answer it
+ * itself — NSObject's implementation is not inherited. */
+- (unsigned long)_cfTypeID
+{
+	return FNXTypeIDForClass(object_getClass(self));
+}
+
+/* IDENTITY AND HASH, WHICH IS WHAT NSObject ANSWERS TOO, AND THEY STAY A COHERENT PAIR.
+ *
+ * ⚠ A CONTENT-COMPARING -isEqual: IS OWED, AND DELIBERATELY NOT GUESSED AT HERE. Apple's NSArray compares its
+ * elements; this answers identity, which is exactly what the class answered before it became a root class, so
+ * nothing regresses — and -hash is identity for the same reason. The reason not to simply reach for CFEqual:
+ * it dispatches only for a class CF knows (the trap named above), so comparing against an UNBRIDGED object
+ * would fall through to __CFGenericAssertIsCF and TRAP rather than answering NO. That is the collection
+ * family's question to answer once, together with NSSet and NSDictionary. */
+- (BOOL)isEqual:(id)other
+{
+	return (other == self) ? YES : NO;
+}
+
+- (NSUInteger)hash
+{
+	return (NSUInteger)(uintptr_t)self;
+}
+
+/* THE DESCRIPTION DOORS, SHARED WITH NSObject THROUGH THE FORMAT HELPER RATHER THAN BY INHERITANCE.
+ *
+ * ⚠ AN NSArray's description SHOULD LIST ITS ELEMENTS (Apple's) AND THIS ONE DOES NOT YET — it is NSObject's
+ * `<Class: 0x...>` shape, which is again exactly what was inherited before, so nothing regresses. Building the
+ * list means a separator, per-element descriptions and a walk of CF's storage; it is owed and named here rather
+ * than half-written. */
+- (NSString *)description
+{
+	CFStringRef format = FNXCreateFormatString("<%s: %p>");
+	CFStringRef text = NULL;
+
+	if (format != NULL) {
+		text = CFStringCreateWithFormat(kCFAllocatorDefault, NULL, format,
+			class_getName(object_getClass(self)), (void *)self);
+		CFRelease(format);
+	}
+	return (NSString *)text;
+}
+
++ (NSString *)description
+{
+	CFStringRef format = FNXCreateFormatString("<%s>");
+	CFStringRef text = NULL;
+
+	if (format != NULL) {
+		text = CFStringCreateWithFormat(kCFAllocatorDefault, NULL, format, class_getName(self));
+		CFRelease(format);
+	}
+	return (NSString *)text;
+}
+
+- (CFStringRef)copyDescription
+{
+	/* CF's own spelling of the same door, and it RETURNS RETAINED because CF's naming says so. */
+	return (CFStringRef)[self description];
 }
 
 - (NSUInteger)count
@@ -165,8 +271,8 @@ static const CFArrayCallBacks *fnx_array_callbacks_get(void)
  */
 void _CFNXBridgeArrayClasses(void)
 {
-	/* Warm the callback pair too, so a caller that somehow reaches -initWithObjects:count: first still gets
-	 * a complete pair rather than the all-zero one a static starts as. */
+	/* Warm the callback pair too, so a caller that somehow reaches +alloc first still gets a complete pair
+	 * rather than the all-zero one a static starts as. */
 	(void)fnx_array_callbacks_get();
 	extern void _FNXBridgeClass(Class cls, unsigned long typeID);
 

@@ -25,6 +25,8 @@ PROBE = "/System/Shared/tests/foundation_collection"
 CHECKS = (
     "an-object-can-be-allocated-to-put-in",
     "an-array-can-be-made-from-a-vector",
+    "the-class-declares-the-nsobject-protocol-itself",
+    "retainCount-answers-CFs-count-and-not-the-element-count",
     "and-count-reports-what-was-put-in",
     "objectAtIndex-returns-the-object-that-went-in",
     "the-subscript-door-agrees-with-objectAtIndex",
