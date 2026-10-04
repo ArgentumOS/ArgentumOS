@@ -103,10 +103,14 @@ typedef NSString *NSAttributedStringKey;
  * deviation is on the record rather than hidden behind a home the tree does not have. */
 extern NSAttributedStringKey const NSLinkAttributeName;
 
-/* "The options for enumerating attributes" - the two members Apple publishes. Reverse walks the runs
- * BACKWARDS, and LongestEffectiveRangeNotRequired PERMITS a shorter range than the longest one: this
- * implementation reports the coalesced runs either way, which is compliant rather than optimal, and the probe
- * shows both that the option is accepted and that the coverage is the same. */
+/* "The options for enumerating attributes" - the two members Apple publishes. Reverse walks BACKWARDS, and
+ * LongestEffectiveRangeNotRequired PERMITS a shorter range than the longest one: this implementation reports
+ * the longest effective range either way, which is compliant rather than optimal, and the probe shows both
+ * that the option is accepted and that the coverage is the same.
+ *
+ * BOTH ENUMERATE DOORS HONOUR REVERSE (§63.246). The attribute enumerator TOOK the option and ignored it -
+ * silently walking forwards while this note and its sibling said backwards - and no probe check had ever
+ * passed it anything but 0, which is why it survived. The probe now walks that door both ways. */
 typedef enum {
 	NSAttributedStringEnumerationLongestEffectiveRangeNotRequired = 1 << 0,
 	NSAttributedStringEnumerationReverse = 1 << 1

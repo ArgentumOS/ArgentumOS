@@ -677,6 +677,13 @@ int main(void)
 			[values addObject:[NSString stringWithFormat:@"%@:%@", value, NSStringFromRange(range)]];
 			(void)stop;
 		}];
+		NSMutableArray *reverseValues = [NSMutableArray array];
+		[s enumerateAttribute:fn_B() inRange:NSMakeRange(0, 6)
+			      options:NSAttributedStringEnumerationReverse
+			   usingBlock:^(_Nullable id value, NSRange range, BOOL *stop) {
+			[reverseValues addObject:[NSString stringWithFormat:@"%@:%@", value, NSStringFromRange(range)]];
+			(void)stop;
+		}];
 		printf("FOUNDATION-ATTRIBUTEDSTRING DIAG leg=enumeration\n");
 		check("enumeration-tiles-the-range-and-reverses",
 		      [forward count] == 2 && covered == 6 &&
@@ -687,6 +694,11 @@ int main(void)
 		      [[values objectAtIndex:0] isEqual:@"(null):{0, 3}"] &&
 		      [[values objectAtIndex:1] hasPrefix:@"2:"],
 		      [NSString stringWithFormat:@"forward=%@ reverse=%@ values=%@", forward, reverse, values]);
+		check("attribute-enumeration-honours-reverse",
+		      [reverseValues count] == 2 &&
+		      [[reverseValues objectAtIndex:0] isEqual:[values objectAtIndex:1]] &&
+		      [[reverseValues objectAtIndex:1] isEqual:[values objectAtIndex:0]],
+		      [NSString stringWithFormat:@"reverse=%@ forward-order=%@", reverseValues, values]);
 	}
 
 	/* ---- THE RAISE, AND COPYING ----------------------------------------------------------------------- */

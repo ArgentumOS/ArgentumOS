@@ -1098,14 +1098,35 @@ static NSRange fn_url_token_range(NSString *text, NSUInteger index, BOOL *found)
 {
 	/* APPLE'S OVERVIEW SAYS THE BLOCK IS INVOKED FOR THE RANGES THE ATTRIBUTE COVERS; THE STRETCHES WHERE IT
 	 * IS ABSENT ARE REPORTED WITH nil, WHICH IS WHAT A CALLER MOST NEEDS AND IS RECORDED HERE AS THE CHOICE
-	 * (§11.6.1 D2) rather than left to be inferred from the probe. */
+	 * (§11.6.1 D2) rather than left to be inferred from the probe.
+	 *
+	 * AND `opts` IS HONOURED. This door TOOK the option and IGNORED it, while the sibling
+	 * -enumerateAttributesInRange:options:usingBlock: twelve lines up reads NSAttributedStringEnumerationReverse
+	 * — so a caller asking to walk BACKWARDS walked forwards, and NSAttributedString.h said otherwise. THE
+	 * REVERSE WALK CANNOT BE MADE BY MOVING `at.location` BACKWARDS: the clip below depends on where the
+	 * PREVIOUS step ended, so the segments are collected once, by that one copy of the rule, and then emitted
+	 * in the requested direction. The collection is bounded by the run count. The ONE visible consequence is
+	 * that a caller's `stop` takes effect when the segments are EMITTED rather than part-way through the walk,
+	 * because a reverse walk must know every segment before it can emit the first one — the note says so
+	 * rather than leaving it to be found. (LongestEffectiveRangeNotRequired is satisfied by construction: this
+	 * reports the LONGEST effective range, and that option only PERMITS a shorter one.) */
 	NSRange at = enumerationRange;
 	BOOL stop = NO;
+	NSRange *segments;
+	id *values;
+	NSUInteger count = 0, cap = 8, i;
 
-	if (block == NULL) {
+	if (block == NULL || enumerationRange.length == 0) {
 		return;
 	}
-	while (at.length > 0 && !stop) {
+	segments = (NSRange *)malloc(cap * sizeof(NSRange));
+	values = (id *)malloc(cap * sizeof(id));
+	if (segments == NULL || values == NULL) {
+		free(segments);
+		free(values);
+		return;
+	}
+	while (at.length > 0) {
 		NSRange effective = NSMakeRange(0, 0);
 		id value = [self attribute:attrName atIndex:at.location effectiveRange:&effective];
 
@@ -1119,10 +1140,40 @@ static NSRange fn_url_token_range(NSString *text, NSUInteger index, BOOL *found)
 		if (effective.location + effective.length > at.location + at.length) {
 			effective.length = at.location + at.length - effective.location;
 		}
-		block(value, effective, &stop);
+		if (count == cap) {
+			NSRange *biggerSegments = (NSRange *)malloc(cap * 2 * sizeof(NSRange));
+			id *biggerValues = (id *)malloc(cap * 2 * sizeof(id));
+
+			if (biggerSegments == NULL || biggerValues == NULL) {
+				free(biggerSegments);
+				free(biggerValues);
+				break;		/* emit what was collected */
+			}
+			memcpy(biggerSegments, segments, count * sizeof(NSRange));
+			memcpy(biggerValues, values, count * sizeof(id));
+			free(segments);
+			free(values);
+			segments = biggerSegments;
+			values = biggerValues;
+			cap *= 2;
+		}
+		segments[count] = effective;
+		values[count] = value;
+		count++;
 		at.location = effective.location + effective.length;
 		at.length = enumerationRange.location + enumerationRange.length - at.location;
 	}
+	if ((opts & NSAttributedStringEnumerationReverse) != 0) {
+		for (i = count; i > 0 && !stop; i--) {
+			block(values[i - 1], segments[i - 1], &stop);
+		}
+	} else {
+		for (i = 0; i < count && !stop; i++) {
+			block(values[i], segments[i], &stop);
+		}
+	}
+	free(segments);
+	free(values);
 }
 
 /* ---- COPYING ---------------------------------------------------------------------------------------- */

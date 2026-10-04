@@ -77,7 +77,11 @@ CHECKS = (
           "equality-is-by-value-not-by-identity",
           "delete-and-set-keep-text-and-runs-together",
           "a-nil-value-removes-and-removal-shows-in-the-runs",
-          "enumeration-tiles-the-range-and-reverses", "an-out-of-range-index-raises",
+          "enumeration-tiles-the-range-and-reverses",
+          # 2026-10-05 §63.246: the attribute enumerator took `opts` and ignored it - this check walks
+          # it BACKWARDS, which is the direction the option names and the header promised.
+          "attribute-enumeration-honours-reverse",
+          "an-out-of-range-index-raises",
           "a-copy-is-independent-and-an-immutable-copy-is-a-snapshot",
           # 2026-09-30: the "Calculating linguistic units" group (over FNTextBreaking), the deprecated URL
           # door, the three +loadFromHTMLWith* siblings, and the markdown baseURL: file door.
