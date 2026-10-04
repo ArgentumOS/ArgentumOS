@@ -130,15 +130,30 @@ int main(void) {
 	 * message, then the cast back to the C API. */
 	{
 		CFStringRef native = CFStringCreateWithCString(kCFAllocatorDefault, "native", kCFStringEncodingUTF8);
-		Class registered = objc_getClass("_NSCFString");
+		Class registered = objc_getClass("NSString");	/* the class the CF package declares */
 
-		check("a-cf-native-string-has-a-class",
-		      native != NULL && registered != NULL && *(unsigned long *)native == (unsigned long)registered,
-		      "a CF-native string's first word is not the registered class - the bridging registration did not take");
-		check("and-is-messageable-as-an-ns-string", native != NULL && [(id)native length] == 6,
-		      "[(id)cfStr length] did not answer 6 - a CF object cannot be messaged");
-		check("and-casts-back-to-cf", native != NULL && CFStringGetLength(native) == 6,
-		      "CFStringGetLength on the same pointer did not answer 6 - the cast back does not work");
+		int hasClass = (native != NULL && registered != NULL &&
+		                *(unsigned long *)native == (unsigned long)registered);
+
+		check("a-cf-native-string-has-a-class", hasClass,
+		      "a CF-native string's first word is not NSString - CF's string creation does not consult the "
+		      "bridging registration (CFString.c never sets _cfisa; the immutable funnel bypasses "
+		      "_CFRuntimeCreateInstance)");
+		if (hasClass) {
+			check("and-is-messageable-as-an-ns-string", [(id)native length] == 6,
+			      "[(id)cfStr length] did not answer 6 - a CF object cannot be messaged");
+			check("and-casts-back-to-cf", CFStringGetLength(native) == 6,
+			      "CFStringGetLength on the same pointer did not answer 6 - the cast back does not work");
+		} else {
+			/* A FAILED PRECONDITION MUST NOT TAKE THE PROCESS WITH IT: messaging an object that has no class
+			 * is a CRASH, not a check - and the crash hides the tally and every check after it, which is
+			 * exactly what happened on this block's first run. Both dependent checks are therefore REPORTED,
+			 * with the reason, rather than skipped: an unrun check that reads as absent is how a gate lies. */
+			check("and-is-messageable-as-an-ns-string", 0,
+			      "not run: the CF-native object has no class, so there is nothing to message");
+			check("and-casts-back-to-cf", 0,
+			      "not run: the CF-native object has no class, so there is nothing to cast");
+		}
 		if (native != NULL) {
 			CFRelease(native);
 		}
