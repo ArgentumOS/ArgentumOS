@@ -38,28 +38,18 @@
 extern unsigned long CFNXBridgeClassToType(Class cls, CFTypeID typeID);
 extern CFIndex _CFStringGetLength2(CFStringRef str);
 
-__attribute__((objc_root_class))
-@interface NSString
-{
-	Class isa;		/* the CF object's own first word: CF's header IS the object here */
-}
-- (unsigned long)length;
-@end
+#import <Foundation/NSString.h>
 
 @implementation NSString
 
-/* A LIBRARY CONSTRUCTOR, AND NOT +load -- WHICH WAS MEASURED NOT TO RUN. The registration must precede the
- * FIRST CF string this process creates, because it is what such an object's isa is set FROM; anything made
- * before it is unmessageable forever. +load looked like the right door and is not: with it, the first string
- * a program created came out with a zero isa while every later one had the class, which is exactly the
- * signature of a registration that happens LATE — and a probe that called CFNXBridgeClassToType by hand
- * mid-run made the class appear, proving the door worked and the load-time call never happened.
- *
- * A constructor runs during library initialisation, before any code of the program that links it, which is
- * the guarantee this needs. THE TRAP IT LEAVES BEHIND, worth writing down because it cost this project
- * several rounds: with +load never running, the ONLY registered class was the one a probe happened to
- * register, so the difference between a working string and a broken one tracked WHEN each was created —
- * and looked exactly like a difference between two creation PATHS. It was not. It was ordering. */
+/* THE ROOT CLASS ANSWERS +class ITSELF. A class inheriting from NSObject gets this for free; a root class
+ * does not, and the failure is quiet: `[NSString class]` returned NIL, the registration read that as "no
+ * class" and skipped, and the only visible symptom was a string whose first word was zero. */
++ (Class)class
+{
+	return self;
+}
+
 /* NOT static, AND NOT A CONSTRUCTOR: CF calls this BY NAME, weakly, from inside object creation and only
  * once its runtime is initialised. A constructor was tried first and MEASURED TOO EARLY -- at that point
  * [NSString class] is Nil and the registration silently did nothing. This is called at the moment CF needs
@@ -72,7 +62,7 @@ void _CFNXBridgeAllClasses(void)
 	 * '+class' not found". THIS CLASS IS A ROOT CLASS AND DOES NOT IMPLEMENT +class, so the message went
 	 * nowhere and the registration registered nothing, silently, because the door's own guard skips a Nil
 	 * class. Two characters of instrument ('Hnz') said all of that after a great deal of reasoning had not. */
-	CFNXBridgeClassToType(objc_getClass("NSString"), CFStringGetTypeID());
+	CFNXBridgeClassToType([NSString class], CFStringGetTypeID());
 }
 
 - (unsigned long)length
