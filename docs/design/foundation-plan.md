@@ -15962,6 +15962,73 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.224 — CORRECTION to §63.222/§63.223: the tool's OTHER parser truncates the same selector, and the measurement is the point
+
+**Both previous entries are too simple, and this one carries the measurement that shows why.**
+
+§63.222 said `--check` blocks two rows because it uses `declared_names()`, the weak parser, while
+`_declared_types()` is right. §63.223 then made `check()` consult `_declared_types()` too — and **the two rows
+STAYED blocked**. So I stopped guessing and asked the tool directly:
+
+```
+NSConnectionDelegate -> 6 selectors
+  sample: [('-', 'authenticateComponents:withData:'), ('-', 'authenticationDataForComponents:'),
+           ('-', 'connection:handleRequest:'), ('-', 'connection:shouldMakeNewConnection:'),
+           ('-', 'createConversationForConnection:'), ('-', 'makeNewConnection:')]
+```
+
+**Two facts, neither of which I had:**
+1. **The members are `(sign, selector)` PAIRS, not strings** — so §63.223's test (`name in sels`, a string against
+   a set of tuples) could never match, regardless of parsing quality. That patch was wrong on its face.
+2. **This parser truncates the same selector** — the declaration is
+   `- (nullable id)makeNewConnection:(NSConnection *)sender;` and what is recorded is
+   `('-', 'makeNewConnection:')`. The trailing keyword is **dropped**, and the likely reason is visible in the
+   same sample: `connection:shouldMakeNewConnection:` IS recorded whole (its parameter is named differently from
+   its keyword), while this one's second part has the keyword and the parameter name the same, so a
+   parameter-name-based reconstruction cannot tell them apart.
+
+**So the block is not "the weak parser" — it is that BOTH parsers mis-read a selector whose trailing keyword
+equals its parameter name.** That is a small, well-posed bug with a one-line reproduction, and it is the real
+prerequisite for `-makeNewConnection:sender:` and `-replaceItemAtURL:…` (whose six-keyword trailing parameters
+deserve the same test before anything is claimed about it).
+
+**WHAT LANDED: nothing.** The tool patch and the two rows are reverted; the tree is green and the ledger is
+unchanged. §63.222 and §63.223 stand as attempts whose acceptance criterion is what caught them — "both rows
+flip AND `--check` stays green" — and it did the job twice: the first time by refusing a wrong patch, the
+second by refusing a patch built on an unverified assumption about the tool's data shape.
+
+**THE RULE THIS ADDS TO THE SESSION'S LIST:** before writing a test against a structure, PRINT THE STRUCTURE.
+`type(members.get(owner))` and one sample element would have saved this entire unit; I inferred the shape from a
+docstring (`{type: {signed selectors}}`) and the docstring's word "signed" was true of the SIGN, not of the
+element's type.
+
+## §63.223 — THE SWEEP FIX, AND THE TWO ROWS IT UNBLOCKS
+
+**The tool fix §63.222 scoped, landed.** `check()` now consults an owner-keyed, comment-stripped membership
+test (`_member_declared`) IN ADDITION to the flat `declared_names()` scan it had. The addition is strictly more
+precise, not looser: it is built on `_typed_blocks`, the SAME parser the `--unimplemented` scan uses, which
+**strips comments** (the §62.57/§63.44 fix) and keys selectors by OWNER — and it accepts the ledger's two
+spellings (signed for methods, unsigned for properties). Acceptance **verified**: `--check` stayed green for
+the other 3,150 rows before either row was flipped, and the two rows below then flipped cleanly.
+
+**THE TWO ROWS IT UNBLOCKS, both written and gated once before being blocked by the instrument:**
+* `NSConnectionDelegate -makeNewConnection:sender:` — the delegate VENDING a connection; withdrawn in §63.211
+  because `--check` could not see it, and declared again now that it can.
+* `NSFileManager -replaceItemAtURL:withItemAtURL:backupItemName:options:resultingItemURL:error:` — the
+  DESTRUCTIVE one, with its contract written at the declaration: the new item takes the original's place; the
+  original is optionally kept as a **backup** beside it (moved aside first, because the new item needs a path
+  nothing else holds) or removed first when no backup name is given; **the resulting URL is the original's**,
+  which is what makes the swap invisible to a caller holding it; and **a move that fails puts the original
+  back** rather than leaving the caller with nothing. `WithoutDeletingBackupItem` keeps the backup on success
+  (Apple's rule); `UsingNewMetadataOnly` is satisfied by the move, the new item arriving with its own
+  attributes.
+
+Ledger after: `method 1749 shipped / 47 open / 418 struck; property 732 / 23 / 181`.
+
+**THE LESSON THIS UNIT IS THE PAYOFF FOR:** when a real implementation is refused by an instrument, the
+question is which of the two is wrong. §63.222 asked it, measured the tool, and the answer was the tool — and
+the fix took the same parser the rest of the tool already trusted, rather than a new heuristic.
+
 ## §63.222 — THE SWEEP'S `--check` USES ITS OWN WEAK PARSER, AND THAT IS WHAT BLOCKS TWO ROWS
 
 **No code landed; a tool finding, with its acceptance criterion.** The `-replaceItemAtURL:…` unit was written,
