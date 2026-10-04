@@ -726,3 +726,24 @@ CF's runtime — its isa is `_NSCFConstantString`, which is not the class regist
 CF_IS_OBJC is TRUE and every CF-side access goes through Objective-C: `CFStringGetLength` calls `-length`, and
 `-length` reads the struct's own `length` field rather than calling a twin, because there is no CF object
 here for a twin to read. That is the one place the routine differs from the string class beside it.
+
+
+**TWO DECISIONS BEFORE THE CLASS IS WRITTEN, BOTH FROM WHAT IS ALREADY IN THE TREE.**
+
+**1. `_NSCFConstantString` MUST NOT BE REGISTERED.** Everything else in the routine registers its class for
+its CF type, and this one must NOT: a constant string is not a CF object at all, and its whole usefulness
+depends on CF_IS_OBJC being TRUE for it, so CF dispatches to `-length` instead of reading the struct as a raw
+CFString. `CFNXBridgeClassToType(_NSCFConstantString, CFStringGetTypeID())` would flip exactly that comparison
+to false and send CF down its C path over a struct that is not a CFString — the one thing this class exists to
+avoid. It is reached by dispatch or not at all.
+
+**2. `CFSTR` AND `@"..."` NEED DIFFERENT CLASS NAMES, which is not obvious and is worth knowing before it
+costs a build.** clang bakes `_NSCFConstantString` into the `__CFConstantString` structs it emits for CFSTR —
+that name is fixed by the compiler's constant-CF-string support. But the Objective-C literal `@"..."` uses a
+DIFFERENT class, named by `-fconstant-string-class`, whose default is `NSConstantString` — so the ObjC half of
+the debt is not paid by this class under this name. Either a second class of that name, or the flag, and the
+choice belongs with the build.
+
+**3. AND IT NEEDS A HEADER, WHICH IS A STRUCTURAL FACT RATHER THAN A PREFERENCE.** This tree's `NSString` is
+declared INSIDE NSString.m, which was right while it had no subclasses. `_NSCFConstantString` is a subclass, so
+the interface has to move into an `NSString.h` for it to compile at all — the first header this library owns.
