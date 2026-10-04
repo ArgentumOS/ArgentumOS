@@ -90,6 +90,16 @@ int main(void) {
 	      gotCString && strcmp(cbuf, "Bridge") == 0,
 	      "CFStringGetCString did not answer through the bridge");
 
+	/* A THIRD KIND OF DOOR: CF MUTATING AN OBJECT IN PLACE. CFStringUppercase dispatches `_cfUppercase:` to
+	 * an NSMutableString, so the answer is not a return value but the object's own bytes afterwards - and a
+	 * mutableCopy of a literal is a Foundation object whose class is neither the tiny nor the constant one. */
+	NSMutableString *mutable = [@"bridge" mutableCopy];
+	CFStringUppercase((CFMutableStringRef)mutable, NULL);
+
+	check("a-cf-in-place-mutation-crosses-the-bridge",
+	      [mutable isEqual:@"BRIDGE"],
+	      "CFStringUppercase left the object unchanged through the bridge");
+
 	CFStringRef native = CFStringCreateWithCString(kCFAllocatorDefault, "Bridge", kCFStringEncodingUTF8);
 	check("a-cf-native-string-still-takes-cfs-own-path",
 	      native != NULL && CFStringGetLength(native) == 6,
