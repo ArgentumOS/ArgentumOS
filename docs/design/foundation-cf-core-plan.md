@@ -273,6 +273,18 @@ work"); the difference now is that the road is taken deliberately and from a wor
 a hypothesis. M2's gate as written — the Foundation probes passing against CF-backed strings — is a GATE
 ON M3, not on the stretch already landed.
 
+**AND THE SLICE'S MAP, TAKEN BEFORE ANY EDIT, BECAUSE IT SETTLES THE QUESTION OF SCALE.** The storage ivars
+(`_units`, `_length`, `_ownsUnits`, `_utf8`, `_utf8size`) are touched at **~30 sites across the two classes**
+- four constructors, the lazy UTF-8 materialisation, `-dealloc`, `-getCharacters:range:`,
+  `-lengthOfBytesUsingEncoding:`'s ASCII walk, and NSMutableString's own set/append doors INCLUDING its
+  copy-on-mutate (`if (!_ownsUnits)`, NSString.m:5001). The regimes are two, not one: `_ownsUnits == 1` for
+  everything this class allocated, and `== 0` for exactly the NoCopy doors above, which is what makes the
+  copy-on-mutate path necessary at all. **NO PROPER SUBSET OF THIS IS SAFE TO LAND**: re-pointing the
+  ordinary constructors while leaving the NoCopy regime would create the two-sources-of-truth state this
+  re-base exists to end, and half-swapping a storage that two ownership regimes share is how a class starts
+  reading foreign words. So the change is ONE edit over all ~30 sites, gated by `foundation_string`, and the
+  map above is what makes it mechanical rather than exploratory - the same reason this work uses one.
+
 **AND THE STORAGE SWAP MEETS ONE APPLE CONTRACT THAT REFINES THE PRINCIPLE (found by reading the class
 before writing the change, which is the only reason it is not a silent behaviour change).** `NSOwnedString`
 implements `-initWithCharactersNoCopy:length:freeWhenDone:`, and its own note calls it "APPLE'S OWNERSHIP
