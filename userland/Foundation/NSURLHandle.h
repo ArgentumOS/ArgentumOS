@@ -144,6 +144,16 @@ typedef enum {
 - (void)addClient:(id <NSURLHandleClient>)client;
 - (void)removeClient:(id <NSURLHandleClient>)client;
 
+
+/* §63.216: THE FIVE DOORS. This class already HAS the loader (`-fnLoadWithStatus:reason:`), the foreground door
+ * and a background load, so each of these is a wrapper: `-resourceData` loads ON DEMAND (Apple's own contract),
+ * `-loadInBackground` runs the loader the file already has on a thread, and the two SUBCLASS receipts notify the
+ * clients the protocol declares. `-expectedResourceDataSize` answers -1 for unknown, Apple's own sentinel. */
+- (nullable NSData *)resourceData;
+- (void)loadInBackground;
+- (long long)expectedResourceDataSize;
+- (void)didLoadBytes:(NSData *)newBytes loadComplete:(BOOL)complete;
+- (void)backgroundLoadDidFailWithReason:(nullable NSString *)reason;
 @end
 
 NS_ASSUME_NONNULL_END

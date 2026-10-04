@@ -321,4 +321,82 @@ static NSMutableDictionary *gCachedHandles = nil;
 	[super dealloc];
 }
 
+
+- (NSData *)resourceData
+{
+	/* ASKING FOR THE WHOLE RESOURCE IS WHAT STARTS A SYNCHRONOUS LOAD when nothing has arrived — Apple's own
+	 * contract for this door. */
+	if (_resourceData == nil && !_cancelled) {
+		(void)[self loadInForeground];
+	}
+	return _resourceData;
+}
+
+- (void)loadInBackground
+{
+	/* THE SAME LOADER AS THE FOREGROUND DOOR, ON A THREAD: the file already has fnBackgroundLoad, so there is
+	 * one loader here and not two. */
+	NSThread *thread = [[NSThread alloc] initWithTarget:self
+						    selector:@selector(fnBackgroundLoad)
+						      object:nil];
+
+	[thread setName:@"NSURLHandle"];
+	[thread start];
+	[thread release];
+}
+
+- (long long)expectedResourceDataSize
+{
+	/* -1 IS APPLE'S SENTINEL for "unknown", and the size comes from what the load recorded about the response. */
+	id value = [_properties objectForKey:@"Content-Length"];
+
+	return value != nil ? (long long)[value longLongValue] : -1;
+}
+
+- (void)didLoadBytes:(NSData *)newBytes loadComplete:(BOOL)complete
+{
+	/* A SUBCLASS HANDS BYTES IN HERE, and every receipt is what the client protocol is notified about. */
+	NSUInteger i;
+
+	if (newBytes != nil) {
+		if (_resourceData == nil) {
+			_resourceData = [[NSMutableData alloc] init];
+		}
+		[(NSMutableData *)_resourceData appendData:newBytes];
+		for (i = 0; i < [_clients count]; i++) {
+			id client = [_clients objectAtIndex:i];
+
+			if ([client respondsToSelector:@selector(URLHandle:resourceDataDidBecomeAvailable:)]) {
+				[client URLHandle:self resourceDataDidBecomeAvailable:newBytes];
+			}
+		}
+	}
+	if (complete) {
+		_status = NSURLHandleLoadSucceeded;
+		for (i = 0; i < [_clients count]; i++) {
+			id client = [_clients objectAtIndex:i];
+
+			if ([client respondsToSelector:@selector(URLHandleResourceDidFinishLoading:)]) {
+				[client URLHandleResourceDidFinishLoading:self];
+			}
+		}
+	}
+}
+
+- (void)backgroundLoadDidFailWithReason:(NSString *)reason
+{
+	/* THE FAILURE THE BACKGROUND LOAD REPORTS, recorded where -failureReason reads it and told to the clients. */
+	NSUInteger i;
+
+	[_failureReason release];
+	_failureReason = [reason copy];
+	_status = NSURLHandleLoadFailed;
+	for (i = 0; i < [_clients count]; i++) {
+		id client = [_clients objectAtIndex:i];
+
+		if ([client respondsToSelector:@selector(URLHandle:resourceDidFailLoadingWithReason:)]) {
+			[client URLHandle:self resourceDidFailLoadingWithReason:reason];
+		}
+	}
+}
 @end

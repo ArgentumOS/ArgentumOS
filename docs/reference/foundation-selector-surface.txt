@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1737	open	59	struck	418
+# method	shipped	1742	open	54	struck	418
 # property	shipped	731	open	24	struck	181
 
 
@@ -2719,24 +2719,24 @@ method	shipped	-downloadShouldUseCredentialStorage:	NSURLDownloadDelegate	Networ
 method	shipped	+URLHandleClassForURL:	NSURLHandle	Networking / Legacy / URL Handle / Managing subclasses	deprecated	objc
 method	shipped	-addClient:	NSURLHandle	Networking / Legacy / URL Handle / Managing clients	deprecated	objc
 method	shipped	-availableResourceData	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	objc
-method	open	-backgroundLoadDidFailWithReason:	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	objc
+method	shipped	-backgroundLoadDidFailWithReason:	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	objc
 method	shipped	-beginLoadInBackground	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	objc
 method	shipped	+cachedHandleForURL:	NSURLHandle	Networking / Legacy / URL Handle / Constructing NSURLHandles	deprecated	objc
 method	shipped	+canInitWithURL:	NSURLHandle	Networking / Legacy / URL Handle / Managing subclasses	deprecated	objc
 method	shipped	-cancelLoadInBackground	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	objc
-method	open	-didLoadBytes:loadComplete:	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	objc
+method	shipped	-didLoadBytes:loadComplete:	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	objc
 method	shipped	-endLoadInBackground	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	objc
-method	open	-expectedResourceDataSize	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	objc
+method	shipped	-expectedResourceDataSize	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	objc
 method	shipped	-failureReason	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	objc
 method	shipped	-flushCachedData	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	objc
 method	shipped	-initWithURL:cached:	NSURLHandle	Networking / Legacy / URL Handle / Constructing NSURLHandles	deprecated	objc
-method	open	-loadInBackground	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	objc
+method	shipped	-loadInBackground	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	objc
 method	shipped	-loadInForeground	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	objc
 method	shipped	-propertyForKey:	NSURLHandle	Networking / Legacy / URL Handle / Setting and getting resource properties	deprecated	objc
 method	shipped	-propertyForKeyIfAvailable:	NSURLHandle	Networking / Legacy / URL Handle / Setting and getting resource properties	deprecated	objc
 method	shipped	+registerURLHandleClass:	NSURLHandle	Networking / Legacy / URL Handle / Managing subclasses	deprecated	objc
 method	shipped	-removeClient:	NSURLHandle	Networking / Legacy / URL Handle / Managing clients	deprecated	objc
-method	open	-resourceData	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	objc
+method	shipped	-resourceData	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	objc
 method	shipped	-status	NSURLHandle	Networking / Legacy / URL Handle / Loading resource data	deprecated	objc
 method	shipped	-writeData:	NSURLHandle	Networking / Legacy / URL Handle / Writing resource data	deprecated	objc
 method	shipped	-writeProperty:forKey:	NSURLHandle	Networking / Legacy / URL Handle / Setting and getting resource properties	deprecated	objc
