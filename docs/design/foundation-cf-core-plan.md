@@ -273,6 +273,19 @@ work"); the difference now is that the road is taken deliberately and from a wor
 a hypothesis. M2's gate as written — the Foundation probes passing against CF-backed strings — is a GATE
 ON M3, not on the stretch already landed.
 
+**AND THE STORAGE SWAP MEETS ONE APPLE CONTRACT THAT REFINES THE PRINCIPLE (found by reading the class
+before writing the change, which is the only reason it is not a silent behaviour change).** `NSOwnedString`
+implements `-initWithCharactersNoCopy:length:freeWhenDone:`, and its own note calls it "APPLE'S OWNERSHIP
+CONTRACT": the receiver NEVER writes and NEVER frees a borrowed buffer, and frees it in `-dealloc` only when
+`freeWhenDone` is YES. **A CFString COPIES.** So a straight storage swap would change that contract two
+ways — an extra allocation where none was promised, and (with `freeWhenDone:YES`) a buffer the caller
+expected us to free that we no longer do, which is a leak at the caller. **Therefore the slice's definition
+is: the storage is a CFString EXCEPT for the two NoCopy doors, and that exception is STATED AT THE DOOR
+rather than hidden**, because an Apple ownership contract is a BEHAVIOUR this tree's Foundation follows
+(docs/design/foundation-plan.md's D-series) and "one storage" is a principle about implementation. Where a
+principle and a contract disagree, the contract wins and the principle is recorded as qualified — which is
+what this paragraph is for.
+
 **THE FIRST SLICE, AND WHY IT IS THE STORAGE RATHER THAN A METHOD.** The smallest end-to-end re-base is
 one concrete class's STORAGE: `NSOwnedString` (this tree's UTF-8-owning concrete NSString) holding a
 `CFStringRef` and answering its accessors through CFString's functions, with `foundation_string` — the
