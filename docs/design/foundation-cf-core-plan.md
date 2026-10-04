@@ -697,3 +697,32 @@ THE NEXT READ IS ONE GREP: `grep -n "__CFRuntimeClassTables" CFRuntime.c` for th
 fix is then either to register after that initialisation or to stop it clobbering what it does not own — and
 whichever it is, it is the last step of the free-casting goal, because everything else in the chain has now
 been measured rather than argued.
+
+
+### NEXT: `_NSCFConstantString`, AND IT IS ROUTINE RATHER THAN RESEARCH (2026-10)
+
+Free casting works for the string type (foundation_object 15/15). The per-type routine is now established —
+register a class for the type, give its doors the non-dispatching twins — and the next instance is the one
+that RETIRES TWO DEBTS ALREADY CARRIED, because the class of a constant CF string is what makes `CFSTR` and
+`@"..."` work as expressions rather than as link errors.
+
+**WHAT IT IS.** `CFSTR("x")` compiled with `-fconstant-cfstrings` is a `__CFConstantString` STRUCT:
+
+    struct __CFConstantString { void *isa; long flags; const uint8_t *ptr; long length; };
+
+and the isa in one is the class `_NSCFConstantString` — which is why the object-unit's first build failed with
+an undefined reference to a SWIFT symbol, `$s10Foundation19_NSCFConstantStringCN`: upstream's class is Swift's,
+and this tree had none.
+
+**THE LAYOUT DECIDES THE PARENTAGE, AND IT IS A SUBCLASS, NOT A ROOT.** This tree's `NSString` is a root
+class whose only field is the isa, so a subclass declaring exactly `long flags; const uint8_t *ptr; long
+length;` lays out as { isa; flags; ptr; length } — THE SAME BYTES clang emits. It must be a SUBCLASS because
+CFBase.h's CF_BRIDGED_TYPE(NSString) is what clang checks a toll-free cast against, and a subclass satisfies
+it while a second root class does not. (And no collision arises with NSObject's `_refcount`, because NSString
+is a root class and does not inherit it — worth checking before writing, not after.)
+
+**AND ITS DOORS READ ITS OWN STRUCT, BECAUSE CF DISPATCHES TO THEM.** A constant string is NOT a CFString in
+CF's runtime — its isa is `_NSCFConstantString`, which is not the class registered for CFStringGetTypeID(), so
+CF_IS_OBJC is TRUE and every CF-side access goes through Objective-C: `CFStringGetLength` calls `-length`, and
+`-length` reads the struct's own `length` field rather than calling a twin, because there is no CF object
+here for a twin to read. That is the one place the routine differs from the string class beside it.
