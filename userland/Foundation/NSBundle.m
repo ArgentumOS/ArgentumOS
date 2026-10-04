@@ -1046,4 +1046,32 @@ static NSArray *fn_urls_for_paths(NSArray *paths)
 	return [[[NSAttributedString alloc] initWithString:localized] autorelease];
 }
 
+
+- (double)preservationPriorityForTag:(NSUInteger)tag
+{
+	/* NO ENTRY ANSWERS 0.0, which is Apple's "no preference" — the loader's own assumption. */
+	id value = [_preservation objectForKey:[NSNumber numberWithUnsignedInteger:tag]];
+
+	return value != nil ? [value doubleValue] : 0.0;
+}
+
+- (void)setPreservationPriority:(double)priority forTags:(NSIndexSet *)tags
+{
+	/* THE RANGE IS APPLE'S OWN CONTRACT and it RAISES rather than clamping: a caller who passes 1.5 has a bug
+	 * the loader should not silently absorb. The values are stored; nothing consults them yet, because this tree
+	 * has no on-demand resource loader — the reading NSThread's qualityOfService records as well. */
+	NSUInteger tag;
+
+	if (priority < 0.0 || priority > 1.0) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"preservation priority %g is outside the documented 0.0-1.0", priority];
+	}
+	if (_preservation == nil) {
+		_preservation = [[NSMutableDictionary alloc] init];
+	}
+	for (tag = [tags firstIndex]; tag != NSNotFound; tag = [tags indexGreaterThanIndex:tag]) {
+		[_preservation setObject:[NSNumber numberWithDouble:priority]
+				  forKey:[NSNumber numberWithUnsignedInteger:tag]];
+	}
+}
 @end

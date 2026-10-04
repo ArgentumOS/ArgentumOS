@@ -68,6 +68,7 @@ extern NSString *const NSLoadedClasses;
  */
 @interface NSBundle : NSObject
 {
+	NSMutableDictionary *_preservation;	/* §63.212: tag -> priority, made on first use */
 	NSString *_path;		/* the bundle directory as it was given */
 	NSString *_layout;		/* the directory holding Info.plist: the bundle, or its Contents/ */
 	NSDictionary *_info;		/* the manifest, read once and kept */
@@ -267,6 +268,13 @@ extern NSString *const NSLoadedClasses;
 - (BOOL)loadAndReturnError:(NSError **)error;
 - (BOOL)preflightAndReturnError:(NSError **)error;
 
+
+/* §63.212: THE TAG-PRESERVATION PAIR. Apple's door tells a bundle's resource loader to keep the resources
+ * carrying these tags; the VALUES are validated here (a priority outside 0.0-1.0 raises, as Apple documents)
+ * and stored, and the reading is stated where they are stored: this tree has no on-demand resource loader yet,
+ * so nothing consults them — the same honest shape NSThread's qualityOfService uses. */
+- (double)preservationPriorityForTag:(NSUInteger)tag;
+- (void)setPreservationPriority:(double)priority forTags:(NSIndexSet *)tags;
 @end
 
 NS_ASSUME_NONNULL_END

@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1722	open	75	struck	417
+# method	shipped	1726	open	71	struck	417
 # property	shipped	731	open	26	struck	179
 
 
@@ -332,8 +332,8 @@ method	shipped	-pathsForResourcesOfType:inDirectory:forLocalization:	NSBundle	Ap
 method	shipped	+preferredLocalizationsFromArray:	NSBundle	App Support / Bundle Resources / Getting localization information	-	objc
 method	shipped	+preferredLocalizationsFromArray:forPreferences:	NSBundle	App Support / Bundle Resources / Getting localization information	-	objc
 method	shipped	-preflightAndReturnError:	NSBundle	App Support / Bundle Resources / Loading code from a bundle	-	objc
-method	open	-preservationPriorityForTag:	NSBundle	App Support / Bundle Resources / Managing preservation priority for on-demand resources	deprecated	objc
-method	open	-setPreservationPriority:forTags:	NSBundle	App Support / Bundle Resources / Managing preservation priority for on-demand resources	deprecated	objc
+method	shipped	-preservationPriorityForTag:	NSBundle	App Support / Bundle Resources / Managing preservation priority for on-demand resources	deprecated	objc
+method	shipped	-setPreservationPriority:forTags:	NSBundle	App Support / Bundle Resources / Managing preservation priority for on-demand resources	deprecated	objc
 method	shipped	-unload	NSBundle	App Support / Bundle Resources / Loading code from a bundle	-	objc
 property	shipped	allBundles	NSBundle	App Support / Bundle Resources / Getting standard bundle objects	-	objc
 property	open	allFrameworks	NSBundle	App Support / Bundle Resources / Getting standard bundle objects	-	objc
@@ -1883,11 +1883,11 @@ property	shipped	hasSpaceAvailable	NSOutputStream	Low-Level Utilities / Streams 
 method	shipped	+pipe	NSPipe	Low-Level Utilities / Tasks and Pipes / Creating an NSPipe Object	-	objc
 property	shipped	fileHandleForReading	NSPipe	Low-Level Utilities / Tasks and Pipes / Getting the File Handles for a Pipe	-	objc
 property	shipped	fileHandleForWriting	NSPipe	Low-Level Utilities / Tasks and Pipes / Getting the File Handles for a Pipe	-	objc
-method	open	-addConnection:toRunLoop:forMode:	NSPort	Low-Level Utilities / Sockets / Creating connections	deprecated	objc
+method	shipped	-addConnection:toRunLoop:forMode:	NSPort	Low-Level Utilities / Sockets / Creating connections	deprecated	objc
 method	shipped	-delegate	NSPort	Low-Level Utilities / Sockets / Working with the delegate	-	objc
 method	shipped	-invalidate	NSPort	Low-Level Utilities / Sockets / Validation	-	objc
 method	shipped	+port	NSPort	Low-Level Utilities / Sockets / Creating instances	-	objc
-method	open	-removeConnection:fromRunLoop:forMode:	NSPort	Low-Level Utilities / Sockets / Creating connections	deprecated	objc
+method	shipped	-removeConnection:fromRunLoop:forMode:	NSPort	Low-Level Utilities / Sockets / Creating connections	deprecated	objc
 method	shipped	-removeFromRunLoop:forMode:	NSPort	Low-Level Utilities / Sockets / Port monitoring	-	objc
 method	shipped	-scheduleInRunLoop:forMode:	NSPort	Low-Level Utilities / Sockets / Port monitoring	-	objc
 method	shipped	-sendBeforeDate:components:from:reserved:	NSPort	Low-Level Utilities / Sockets / Setting information	-	objc

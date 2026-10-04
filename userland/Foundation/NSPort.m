@@ -197,4 +197,14 @@ NSString *const NSPortDidBecomeInvalidNotification = @"NSPortDidBecomeInvalidNot
 	[super dealloc];
 }
 
+
+- (void)addConnection:(id)connection toRunLoop:(NSRunLoop *)runLoop forMode:(NSRunLoopMode)mode
+{
+	[[connection receivePort] scheduleInRunLoop:runLoop forMode:mode];
+}
+
+- (void)removeConnection:(id)connection fromRunLoop:(NSRunLoop *)runLoop forMode:(NSRunLoopMode)mode
+{
+	[[connection receivePort] removeFromRunLoop:runLoop forMode:mode];
+}
 @end

@@ -52,6 +52,7 @@
 
 #import <Foundation/NSObject.h>
 #import <Foundation/NSCoding.h>
+@class NSConnection;	/* §63.212: named by the connection doors; its own header is order-sensitive */
 #import <Foundation/NSRunLoop.h>
 
 @class NSDate;
@@ -143,6 +144,13 @@ extern NSString *const NSPortDidBecomeInvalidNotification;
 		  from:(nullable NSPort *)receivePort
 	      reserved:(NSUInteger)headerSpaceReserved;
 
+
+/* §63.212: THE CONNECTION FORMS. Adding a CONNECTION to a run loop is adding ITS PORT — the port's own run-loop
+ * door — so these forward rather than invent behaviour. The implementation takes `id` for the connection (the
+ * header's `NSConnection *` is the API): this file's headers are order-sensitive, so naming the real type in the
+ * .m would drag in NSConnection.h and its own late-inclusion assumptions. */
+- (void)addConnection:(NSConnection *)connection toRunLoop:(NSRunLoop *)runLoop forMode:(NSRunLoopMode)mode;
+- (void)removeConnection:(NSConnection *)connection fromRunLoop:(NSRunLoop *)runLoop forMode:(NSRunLoopMode)mode;
 @end
 
 NS_ASSUME_NONNULL_END
