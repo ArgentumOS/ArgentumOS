@@ -15962,6 +15962,59 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.219 — THE BATCH ERA: eight unattended batches, what they landed, and a correction they owed the plan
+
+**WHY THIS ENTRY EXISTS AT ALL, AND WHY IT IS LATE.** From §63.211 onward the units ran through
+`tools/foundation-unit.sh` in BATCHES of two to four units per turn, and each batch's record went into its
+COMMIT MESSAGE — which is where a reviewer reads it, but NOT where this campaign keeps its grounds. The plan is
+what future-me reads, so the batches are consolidated here, and one of them owes a correction.
+
+**WHAT THE EIGHT BATCHES LANDED (27 rows shipped, 4 declined, 2 grounded):**
+* §63.211–213 — the distributed-objects cluster: `NSConnectionDelegate`'s three contract methods (a protocol's
+  methods ARE its declaration), `NSPortNameServer +systemDefaultPortNameServer`, `NSPort`'s two connection forms
+  (a connection is added to a run loop by adding ITS PORT), `NSConnection +currentConversation` /
+  `-runInNewThread` (the conversation lives in the THREAD'S OWN DICTIONARY), `NSXMLParser -initWithStream:`
+  (read to the end, then parse) and `NSXMLElement`'s three (the attribute lookup scans the ORDER ARRAY THE
+  SERIALIZER WALKS, so the two cannot disagree).
+* §63.214 — `NSError`'s three FileProvider constructors (domain spelling is Apple's, the code VALUES are ours
+  by D2, and the item rides in the localized description rather than under an invented userInfo key) and
+  `NSFileWrapper`'s two (`-keyForFileWrapper:` by IDENTITY; the deprecated write door DELEGATES to the modern
+  writer). **Declined, on the tree's own record:** `NSString -propertyListFromStringsFileFormat` — `NSString.m`
+  says it was TRIED AND WITHDRAWN because a `.strings` body is brace-less and the old-style reader answers NIL.
+* §63.215 — two declines the headers name outright (`NSTask launchRequirementData`, `NSURLCredential identity`),
+  plus the audit below.
+* §63.216 — `NSURLHandle`'s five, each a wrapper over a loader the class already had (`-resourceData` loads on
+  demand; the background door runs THE SAME loader on a thread; the two receipts notify clients through the
+  protocol's optional call-backs).
+* §63.217 — `NSSocketPort`'s remote pair: THE MIRROR of the local initialisers, socket(2) then connect(2), which
+  is what the header's own description of that door already said.
+* §63.218 — the socket name server's three doors, whose class has no file of its own (it lives in
+  `NSPortNameServer.m`, declared in `NSSocketPortNameServer.h`). **The reading, stated once: this name server is
+  IN-PROCESS, so the port number has nothing to address.** And a regression no gate could see, caught by reading
+  the neighbour: my first variant called `[super registerPort:name:]`, bypassing the class's deliberate refusal
+  to store a socket port that cannot be sent to.
+
+**THE CORRECTION §63.215 OWES.** Its audit claimed — as a clean bill of health — that every `open` row was
+verified genuinely unimplemented. **It was an artifact:** the regex kept the leading sign
+(`sel.split(":")[0]` on `-foo:bar:` yields `-foo`), so every pattern looked for `-)…foo:` and matched nothing.
+Re-run FIXED, it produced SEVEN rows — and those were **prose matches**: the same name in a comment, or in a
+differently-named method (`-connectionForProxy` is not `-connection`). Two custom audits, two numbers that read
+like evidence, both wrong.
+
+**AND THE INSTRUMENTS THAT ANSWER THIS WERE ALREADY RUNNING, AND THEY AGREE:** `--unimplemented` → 0
+declarations without definitions; `--check` → every shipped selector declared by its owner, every open one
+absent. Together: no implemented-but-undeclared door, no declared-but-open row — the ledger is consistent in
+BOTH directions, and no hand-written scan was needed.
+
+**TWO GROUNDS RECORDED HERE so they are not re-derived:** `NSURLProtocol +canInitWithTask:` /
+`-initWithTask:cachedResponse:client:` name an `NSURLSessionTask`, and this tree has no session-task type;
+`NSMutableString -applyTransform:reverse:range:updatedRange:` needs ICU's transform engine.
+
+**THE SESSION'S RULE, NOW EARNED TWICE OVER:** when a question already has an instrument, run the instrument —
+and if I write a new script anyway, treat a result that CONFIRMS WHAT I HOPED as the one most likely to be an
+artifact. Mechanically: plan-document anchors must be short and distinctive, never a remembered sentence (three
+edits failed today on an anchor differing by a line break or a `**`).
+
 ## §63.210 — NSTask: the pre-10.6 spellings are the modern doors, and one check withdrawn for honesty
 
 Four rows shipped (`-launch`, `+launchedTaskWithLaunchPath:arguments:`, `launchPath`, `currentDirectoryPath`)
