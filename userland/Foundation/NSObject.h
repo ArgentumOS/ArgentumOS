@@ -21,6 +21,22 @@
  *     reasoned — the CFArray let it die). A CF container silently losing its contents is not a tolerable
  *     way to be "CF-integrated", so the ownership half has to be solved rather than documented.
  *
+ * AND WHERE THE ONE COUNT LIVES IS THE PART THE FIRST IMPLEMENTATION GOT WRONG, IN A WAY WORTH RECORDING
+ * BECAUSE IT IS THE RULE THIS LIBRARY'S OWN HEADER STATES. The first version of -retain read
+ * `return objc_retain(self);` on the theory that the runtime's counter and CF's would then be one. IT
+ * RECURSED TO A STACK OVERFLOW: in libobjc2, objc_retain on a class that implements -retain (an MRC class,
+ * which this is) is spelled `[obj retain]` — so -retain called objc_retain which called -retain. The probe
+ * showed it as a repeating triad of addresses on the stack, which is what unbounded recursion looks like
+ * from the outside.
+ *
+ * SO THE COUNT IS THIS CLASS'S OWN FIELD, and the runtime's entry points are the DOORWAY INTO IT rather
+ * than the thing it delegates to: the arm calls objc_retain, objc_retain messages -retain, and -retain
+ * increments _refcount. ONE HOP — and therefore ONE COUNT, which is what the design wanted, without the
+ * loop. The same holds for -release and objc_release.
+ *
+ * (The count is a plain field, not an atomic, because nothing in this library is threaded yet. When it is,
+ * this is the line that changes, and the note is here so it is found rather than rediscovered.)
+ *
  * AND THE SOLUTION IS THE ONE UPSTREAM'S OWN COMMENT DESCRIBES: CFRetain/CFRelease are MEANT to ask
  * CF_IS_OBJC first (see internalInclude/CFInternal.h's note about "a race between CFRetain / CFRelease
  * (which call CF_IS_OBJC) and _CFRuntimeBridgeClasses"). In upstream's Swift deployment mode that arm is
@@ -30,9 +46,10 @@
  *
  * SO THE DESIGN RULE FOR EVERY CLASS IN THIS LIBRARY IS:
  *
- *   1. The object's LIFETIME is the Objective-C runtime's. -retain and -release call objc_retain and
- *      objc_release, and so does CF's arm — there is exactly one retain count, so an object cannot be
- *      alive in one world and dead in the other. That failure mode is why this file exists at all.
+ *   1. The object's LIFETIME is ONE COUNT, held in this class, reachable from both worlds: CF's arm calls
+ *      objc_retain/objc_release, the runtime spells those as -retain/-release for a class like this one,
+ *      and the methods increment this class's own field. So an object cannot be alive in one world and dead
+ *      in the other. That failure mode is why this file exists at all.
  *   2. The object's IDENTITY is its Objective-C class, which is what makes CF_IS_OBJC true and sends CF's
  *      type-specific doors into this library's methods.
  *   3. Whatever the object's BEHAVIOUR looks like from the C side, CF's own type for it must be the type
@@ -95,6 +112,7 @@ __attribute__((objc_root_class))
 @interface NSObject
 {
 	Class isa;			/* THE FIRST WORD, as CF_IS_OBJC requires: CF compares it against its own table */
+	unsigned int _refcount;		/* THE ONE COUNT — see the note below on who may touch it */
 }
 
 /* LIFETIME — the runtime's counter, shared with CF (see the contract above). */

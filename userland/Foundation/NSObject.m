@@ -33,7 +33,13 @@
  * exactly the first word CF_IS_OBJC is going to compare. */
 + (id)alloc
 {
-	return class_createInstance(self, 0);
+	id obj = class_createInstance(self, 0);
+
+	/* class_createInstance ZEROES THE STORAGE, so the count is 1 only because this line says so. */
+	if (obj != nil) {
+		((NSObject *)obj)->_refcount = 1;
+	}
+	return obj;
 }
 
 - (id)init
@@ -41,16 +47,21 @@
 	return self;
 }
 
-/* THE ONE COUNTER (see the header). Both of these return/propagate the receiver, because that is what the
- * callers of the old library's door expect and what makes `obj = [[[X alloc] init] retain]` read normally. */
+/* THE ONE COUNTER, AND WHY THESE DO NOT CALL objc_retain/objc_release — the short version is that doing so
+ * IS AN INFINITE LOOP, and the long version is in the header: libobjc2 spells objc_retain for an MRC class
+ * as `[obj retain]`, so a -retain that called it would call itself. These ARE the implementation those
+ * entry points reach; the arm on the CF side is what makes that reachable from the C world. */
 - (id)retain
 {
-	return objc_retain(self);
+	_refcount++;
+	return self;
 }
 
 - (void)release
 {
-	objc_release(self);
+	if (--_refcount == 0) {
+		[self dealloc];
+	}
 }
 
 /* SUBCLASSES OVERRIDE THIS TO RELEASE WHAT THEY OWN, AND MUST CALL IT OR THE OBJECT LEAKS rather than
