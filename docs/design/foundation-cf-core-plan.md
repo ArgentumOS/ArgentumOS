@@ -852,3 +852,33 @@ measurement has now chosen which class each takes:
 The class to write is therefore NSConstantString, with the same four fields and the same doors as
 _NSCFConstantString beside it -- and the layout is no longer a guess: the flags the probe printed (0x7c8) are
 Apple's 8-bit constant-string value, which is the four-word struct this library now declares.
+
+
+**THE CFSTR'S ISA IS THE ADDRESS OF A VARIABLE IN CF's BSS, AND THAT IS THE WHOLE DEBT.** Measured by finding
+which loaded image owns the address the probe printed:
+
+    libobjc.so.4.6              nearest at or below 0x2bb3a0: 0x2fa98  __objc_id_type_info
+    libfoundation.so            nearest at or below 0x2bb3a0: 0x6c18   __objc_ivar_offset_NSString.isa
+    libcorefoundation.so.1.1.0  nearest at or below 0x2bb3a0: 0x2b4830 __CFCharToUniCharFunc
+
+IT IS IN COREFOUNDATION, in the unnamed region of its BSS beside __CFCharToUniCharFunc, and the only variable
+CFBase.h declares there is:
+
+    CF_EXPORT void *_CF_CONSTANT_STRING_SWIFT_CLASS[];
+
+So CFSTR's struct carries &_CF_CONSTANT_STRING_SWIFT_CLASS as its isa -- THE ADDRESS OF A VARIABLE, NOT A
+CLASS -- which is precisely why messaging it faults. In upstream's Swift deployment that symbol IS the class;
+in this tree it is a variable nothing points at a class.
+
+AND THE NAME'S SHAPE IS THE POINT: it is declared as an ARRAY, and the isa is its ADDRESS, so what the struct
+needs is not a value IN the variable but for the symbol to BE the class. That is an alias:
+
+    extern void *_CF_CONSTANT_STRING_SWIFT_CLASS __asm__(".OBJC_CLASS__NSConstantString");
+
+with the spelling of the class's own symbol read out of the binary, not guessed. And it corrects an earlier
+misreading: the symbol is NOT a macro (the macro lives inside CFString.h's Swift arm, which this build no
+longer takes) -- it is a real variable, and the isa points at it.
+
+The intermediate name is also worth keeping: clang emits a WEAK `.objc_null_constant_string` for a constant
+string whose class is unresolved, which is what let the fault be read as "the isa is not a class" rather than
+as a crash in the message send.
