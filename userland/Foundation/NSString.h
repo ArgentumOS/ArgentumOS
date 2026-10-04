@@ -864,11 +864,20 @@ typedef enum {
 
 @interface NSOwnedString : NSString
 {
-	unsigned short *_units;	/* NOT NUL-terminated: UTF-16 CODE UNITS */
-	size_t _length;		/* UNITS — the storage's own count */
+	/* THE STORAGE IS A CFSTRING (M3, the re-base): this class is CF-BACKED rather than CF-adjacent, and
+	 * every door below answers through CFString's own API. The MUTABILITY of that CFString carries what
+	 * `_ownsUnits` used to: the constructors that may be written to build a MUTABLE string, and the
+	 * no-copy door builds an IMMUTABLE adopted one - so `CFGetTypeID(_storage) ==
+	 * CFMutableStringGetTypeID()` IS the old "we allocated it, so writing is allowed" test, checked where
+	 * the write happens instead of tracked in a flag.
+	 *
+	 * THE TYPE IS ERASED TO void * AT THIS HEADER, DELIBERATELY: NSOwnedString is public, so naming
+	 * CFStringRef here would put <CoreFoundation/CFString.h> on EVERY consumer of Foundation, including the
+	 * ones that never touch CF. Erasing it keeps the dependency where it is real (the implementation) and
+	 * says so, rather than making it every caller's problem. */
+	void *_storage;		/* REALLY a CFStringRef — see the note above */
 	char *_utf8;		/* LAZY: the materialised UTF-8 form, owned, NUL-terminated */
 	size_t _utf8size;	/* its byte count, excluding the terminating NUL */
-	unsigned char _ownsUnits;	/* 0 only for -initWithCharactersNoCopy:…:freeWhenDone:NO */
 }
 + (nullable id)stringWithUTF8String:(const char * _Nullable)utf8;
 - (nullable id)initWithUTF8String:(const char * _Nullable)utf8;
