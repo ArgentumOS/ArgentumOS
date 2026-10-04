@@ -652,3 +652,26 @@ ON. The question is no longer about the class table at all; it is which object C
 returns. The next instrument is to print the ADDRESS at the assignment site and the address the probe holds,
 and compare them in the log: if they differ, the string being handed out was built by a path that has no
 marker - and finding that path is the fix.
+
+
+**AND THE ADDRESSES SETTLE WHERE THE DISCREPANCY IS NOT.** Printing the address whose isa was assigned, and
+the address the probe holds, in the same log:
+
+    isa 0x0000400000499b90          <- the ASCII string's object, as the creator saw it
+    note the address the probe holds = 0x400000499b90    <- THE SAME ADDRESS
+    note the first string's first word = 0x0             <- and its first word is zero
+    isa 0x0000000000404430          <- the non-ASCII (working) object: a LOW address
+
+ * THE WRITE AND THE READ ARE THE SAME ADDRESS, so the earlier "the measured object is not the one the
+   assignment ran on" reading is WRONG, and is withdrawn here. The offset is not the problem; the field is
+   not the problem; the object is not the problem.
+ * WHICH LEAVES EXACTLY ONE UNEXPLAINED QUANTITY: WHAT VALUE WAS WRITTEN. Every marker so far printed a
+   fixed string, which distinguished set-from-not-set but never the value.
+ * AND A FACT FALLS OUT UNASKED: the WORKING case's object lives at a LOW address (0x404430) while the
+   failing one is a heap address. Two different kinds of object, not one path with a bug — and the working
+   one is the kind a STATIC instance would have, which is worth knowing before the value is chased.
+
+THE INSTRUMENT THAT CLOSES IT is one line, and it reuses the hex printer: note the value of
+__CFISAForTypeID(typeID) at the assignment site, beside the object's address. Then the log says per creation
+both WHERE it wrote and WHAT it wrote — which separates "zero was assigned" (the registration was not in
+place for that call) from "a class was assigned and did not survive".
