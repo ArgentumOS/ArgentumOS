@@ -257,6 +257,31 @@ in the image, and a guest smoke test that creates/destroys a CFString and a CFAr
 libdispatch question with a build**, not a guess: either dispatch is vendored, or the CF paths that
 need it are compiled out and the gap recorded.
 
+### M4 — THE COLLECTIONS, RECONNOITRED BEFORE THE EDIT (and why NSArray goes first)
+
+**THE FAMILY'S SHAPE, TAKEN FROM THE TREE:** `NSArray` owns `_items`/`_capacity`/`_count`;
+`NSDictionary` owns `_buckets`/`_bucketCount`/`_count` plus a lazily built `_keys`; and **`NSSet`,
+`NSOrderedSet` and `NSCountedSet` own an `NSArray`** (`_members`, and `_counts` for the counted set).
+
+**THAT LAST ROW IS THE LEVERAGE: RE-BASING `NSArray` MAKES FOUR CLASSES CF-BACKED IN ONE EDIT.** A set that
+holds an array is CF-backed the moment the array is, so the first edit is `NSArray` -> `CFArray` and the
+family follows without being touched. The gate is `foundation_collection` (plus `foundation_clusters` for
+the cluster behaviour), the same way `foundation_string` gated the string slice.
+
+**AND `NSDictionary` IS THE ONE THAT ANSWERS THE QUESTION THIS MILESTONE CAME FROM.** Its storage is
+literally `_buckets` + `_bucketCount` + `_count` - the shape of a CFBasicHash - so a dictionary on
+`CFDictionary` is the object CF's `copyWithZone:` site expects when it casts the copy to `CFBasicHashRef`.
+Strings were that path's INPUT; a dictionary is its DESTINATION. The re-base's order therefore runs
+NSArray (maximum leverage) then NSDictionary (the answer), and the ~44 work-list selectors are answered by
+those two storage swaps rather than by writing methods.
+
+**THE ONE THING TO SETTLE IN NSArray'S EDIT, NAMED HERE BECAUSE IT IS THE SLICE'S REAL QUESTION:** this
+class retains its items BY HAND (`id __unsafe_unretained *_items; every slot is retained`), while
+`kCFTypeArrayCallBacks` makes CF retain and release them. Those must not both happen - double-retaining a
+bridged object is a leak, and neither is an option if CF's callbacks do not reach an object built by THIS
+library rather than by Swift's. The edit settles it by MEASURING (an array of Foundation-built objects that
+deallocates), not by assuming the bridge's retain/release path.
+
 ### M3 — OPENED BY USER DECISION (2026-10, `dec-c2fc20f0f8e67246` and this answer): ALL THE WAY
 
 **THE DECISION, AND WHAT IT RESOLVES.** Asked how to handle the one work-list item the compatibility
