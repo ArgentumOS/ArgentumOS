@@ -257,6 +257,57 @@ in the image, and a guest smoke test that creates/destroys a CFString and a CFAr
 libdispatch question with a build**, not a guess: either dispatch is vendored, or the CF paths that
 need it are compiled out and the gap recorded.
 
+### M2 — RESULT, first unit (landed 2026-10)
+
+**CF DISPATCHES INTO THIS TREE'S OBJECTIVE-C OBJECTS, AND ITS OWN OBJECTS STILL TAKE CF'S OWN PATH.**
+`tests/cases/corefoundation_bridge.py` passes 4/4: a `@"..."` literal and a `+stringWithUTF8String:` result
+are handed to CF as `CFStringRef`s and answered by *their own class's* code (`CFStringGetLength`,
+`CFStringGetCharacterAtIndex`), while a string CF created itself still runs CF's C implementation. M1's
+smoke gate is unregressed (6/6), and `libcorefoundation.so.1` still carries 7 NEEDED entries with no C++
+runtime in it.
+
+**WHAT IT TOOK, AND ONE FINDING THAT REFRAMES THE WHOLE BRIDGE.** The four dispatch macros upstream stubs
+out are now real (modification 5), written clean-room from `CF_SWIFT_FUNCDISPATCHV_CHECK`'s shape — the
+sibling upstream DOES ship — and from upstream's own comment on `__CFISAForTypeID`, which states that
+`CF_IS_OBJC` is an isa comparison. CF is compiled as **Objective-C** (the macros emit `[(id)obj selector]`,
+which C rejects outright), and the build separates *compiling* through the ObjC wrapper from *linking*
+through the C driver plus `-lobjc`, which keeps the C++ runtime out of this library's NEEDED set.
+
+**AND THE CRASH THAT COST THE MOST WAS NOT IN THE DISPATCH AT ALL.** For a long stretch every experiment
+pointed at the message send, because that is what the code *does*; the fault was one instruction earlier.
+A sound measurement — print a `static` marker's runtime address, subtract its link address to get the load
+base, disassemble at the offset — put it at `CFStringGetLength + 0x41: mov (%rax),%rax`: **the isa read,
+dereferencing the `str` argument.** The argument was fine; the *thing it pointed at* was not. A `@"..."`
+literal of fewer than nine characters is **packed into the pointer itself** by this tree's `NSTinyString`
+(the encoding: 7 bits per character from bit 57 down, a 4-bit length in bits 3-6, the tag in bits 0-2), and
+libobjc2 dispatches such a pointer through a small-object class registered at that tag. So CF was reading an
+isa out of a packed integer. **The fix is one predicate in OUR bridge header and one short-circuit:**
+`FNX_CF_IS_SMALL_OBJECT(obj)` is `(uintptr_t)obj & 7u`, **the runtime's own rule for what it dispatches**,
+not a number invented here; `CF_IS_OBJC` consults it first, and `||` means the dereference never happens.
+The probe is the standing guard that this test and Foundation's tag do not drift apart.
+
+**THE LESSON, RECORDED BECAUSE IT COST THE MOST TIME.** Two of this unit's "negatives" — a hand-rolled
+`objc_msgSend` with a runtime selector, and an A/B over the link driver — were **downstream of the fault
+and therefore meaningless as evidence**: both crashed at the same isa read before reaching what they were
+testing. Locating the faulting instruction first would have collapsed the whole stretch. The tree already
+has this lesson (`"measure at the writer, unbounded theories die"`); it is restated here where it was
+learned again.
+
+**BOUNDS, ALL MEASURED.** 12 of 220 dispatch sites needed a DECLARED signature — because casting a pointer
+to a struct or a floating type is illegal, unlike to any pointer or integer (`CFRange` x3, `CFStreamError`
+x2, `CFTimeInterval` x6, `CFAbsoluteTime` x1). Exactly ONE site wanted a class OBJECT rather than a
+receiver (`CFArray.c`'s `isKindOfClass:[NSMutableArray class]`), and it was the entire link-time
+CF-to-Foundation surface, now a runtime `objc_getClass` lookup. One unguarded `typedef struct __NSString__
+*NSString` in `CFURLAccess.c` collided with the class and is skipped in the ObjC build (mod 6).
+
+**WHAT THIS UNIT DOES NOT COVER, stated so it is not assumed.** Only the two CFString doors above are
+*exercised*; CFArray's dispatch path is compiled but unrun. `CFStringGetCString` is deliberately NOT called
+by the probe, because its site wants `-getCString:maxLength:encoding:` and a Foundation that does not
+answer that selector would crash the probe instead of reporting a check — **the list of selectors CF
+expects and Foundation does not yet answer is this milestone's own work list and is the next thing to
+produce.** No ledger row is closed, and the licence/provenance record is unchanged (M2 is still CF's
+internals, not Foundation's surface).
+
 **M2 — The bridge.** The class table, the isa handling, the two-path coherence, and constant
 strings. Gated by existing probes, not new ones: `foundation_string`'s 26 checks must pass against
 CF-backed strings.

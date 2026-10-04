@@ -62,6 +62,10 @@ GUEST="$R/.build/corefoundation-prefix"
 LOG="$R/.build"
 PATCH="$R/third_party/swift-corelibs-foundation-fnx.patch"
 CC="$R/tools/musl-clang64.sh"
+OBJCCC="$R/tools/musl-clang-objc64.sh"
+OBJDIR="$R/.build/cf-objc"
+OBJC="$R/.build/objc-prefix"
+BRIDGE_H="$R/third_party/swift-corelibs-foundation-fnx-bridge.h"
 DISPATCH="$R/.build/libdispatch-prefix"
 SONAME="libcorefoundation.so.1"
 
@@ -108,10 +112,33 @@ echo "linked $(ls -1 "$SHIM/_foundation_unicode" | wc -l) ICU headers"
 # shape the staging block gives the guest, so a probe that compiles here compiles there.
 ln -sfn "$CF/include" "$SHIM/CoreFoundation"
 
-echo "=== compiling 86 CF translation units for the GUEST ($CC) ==="
+# THE .m SYMLINK FARM, AND WHY IT IS SYMLINKS RATHER THAN `-x objective-c`. CF's dispatch sites are
+# spelled as Objective-C messages ([obj selector], CF_OBJC_FUNCDISPATCHV), which C mode rejects outright
+# (measured: "expected expression"), so the sources must be COMPILED AS OBJECTIVE-C. The obvious way is
+# -x objective-c, and the house ObjC wrapper FORBIDS it for a measured reason it documents: the wrapper
+# appends crt objects and archives AFTER "$@", so -x would apply to those too and clang would try to parse
+# libclang_rt.builtins-*.a as Objective-C source. The language therefore has to come from the file NAME,
+# and a symlink named Foo.m pointing at Foo.c is the smallest honest way to say that. CF's own headers
+# resolve through -I below, not through the file's directory, so the farm costs nothing else.
+echo "=== .m symlink farm: $(ls -1 "$CF"/*.c | wc -l) sources ==="
+rm -rf "$OBJDIR"
+mkdir -p "$OBJDIR"
+for src in "$CF"/*.c; do
+	ln -sf "$src" "$OBJDIR/$(basename "$src" .c).m"
+done
+
+echo "=== compiling 86 CF translation units for the GUEST, as OBJECTIVE-C ($OBJCCC) ==="
 rm -rf "$OBJ"
 mkdir -p "$OBJ"
 : > "$LOG/corefoundation-build.log"
+# -fno-exceptions -fno-objc-exceptions, AND THEY ARE NOT COSMETIC: in Objective-C mode clang enables
+# exception machinery by default, which made eight objects (CFBinaryPList, CFBundle_{InfoPlist,Locale,
+# Resources}, CFCalendar_Enumerate, CFDateFormatter, CFPlatform, CFUUID - the block-using ones) reference
+# _Unwind_Resume, and the link then needed libunwind for code that can never throw. CF is C with blocks
+# and uses neither C++ nor ObjC exceptions, so turning both off is the truth about it and keeps this
+# library's dependency set at ICU + dispatch + BlocksRuntime + libobjc (measured: nm -u shows the
+# reference gone, and readelf -d is the check on the NEEDED set).
+#
 # -fexceptions IS DELIBERATELY DROPPED, AND THE MEASUREMENT IS WHY: upstream passes it, and with it the
 # link gained a libunwind family (_Unwind_GetIP, _Unwind_Resume, _Unwind_SetIP, ...) that CoreFoundation
 # has no use for - it is C, and the references come from the unwinder path the flag turns on. The guest
@@ -123,14 +150,17 @@ mkdir -p "$OBJ"
 # (M0's spike needed them for a two-include hand compile; with the full include chain CFInternal.h
 # detects endianness itself, and passing them BOTH made its two branches both fire - measured:
 # 160 macro-redefinition warnings that this omission takes to 0).
-DEFS="-DDEPLOYMENT_RUNTIME_SWIFT=0 -DCF_BUILDING_CF -DHAVE_STRUCT_TIMESPEC -DHAVE_ISSETUGID=1 -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809L -D__musl__"
-OPTS="-fblocks -fconstant-cfstrings -fdollars-in-identifiers -fno-common -Wno-shorten-64-to-32 -Wno-deprecated-declarations -Wno-unreachable-code -Wno-conditional-uninitialized -Wno-unused-variable -Wno-unused-function -Wno-microsoft-enum-forward-reference -Wno-int-conversion -Wno-switch"
-INCS="-I$CF/include -I$CF/internalInclude -I$CF/BlockRuntime/include -I$DISP -I$SHIM -I$ICU/include"
+DEFS="-DDEPLOYMENT_RUNTIME_SWIFT=0 -DINCLUDE_OBJC=1 -DCF_BUILDING_CF -DHAVE_STRUCT_TIMESPEC -DHAVE_ISSETUGID=1 -D_GNU_SOURCE -D_POSIX_C_SOURCE=200809L -D__musl__"
+OPTS="-Wno-objc-root-class -fno-exceptions -fno-objc-exceptions -fblocks -fconstant-cfstrings -fdollars-in-identifiers -fno-common -Wno-shorten-64-to-32 -Wno-deprecated-declarations -Wno-unreachable-code -Wno-conditional-uninitialized -Wno-unused-variable -Wno-unused-function -Wno-microsoft-enum-forward-reference -Wno-int-conversion -Wno-switch"
+# -I"$CF" IS THERE FOR SIBLING-RESOLVED INCLUDES, AND IT IS NOT DECORATION: CFBasicHash.c includes
+# "CFBasicHashFindBucket.inc" from its own directory, and a symlink in the farm means the INCLUDING
+# file's directory is the farm, not the source. Measured: without this the build dies on that .inc.
+INCS="-I$CF/include -I$CF/internalInclude -I$CF/BlockRuntime/include -I$CF -I$DISP -I$SHIM -I$ICU/include"
 count=0
-for src in "$CF"/*.c; do
-	b=$(basename "$src" .c)
-	if ! "$CC" -fPIC -c -o "$OBJ/$b.o" "$src" $DEFS $INCS \
-		$OPTS -include "$CF/internalInclude/CoreFoundation_Prefix.h" >>"$LOG/corefoundation-build.log" 2>&1; then
+for src in "$OBJDIR"/*.m; do
+	b=$(basename "$src" .m)
+	if ! "$OBJCCC" -fPIC -c -o "$OBJ/$b.o" "$src" $DEFS $INCS \
+		$OPTS -include "$CF/internalInclude/CoreFoundation_Prefix.h" -include "$BRIDGE_H" >>"$LOG/corefoundation-build.log" 2>&1; then
 		# NAME THE FILE, because the library build otherwise stops at whichever object sorts first and a
 		# missing .o then reads as "the file is not in the list" - the trap this tree has paid for before.
 		echo "FAILED to compile: $b (see $LOG/corefoundation-build.log)" >&2
@@ -140,16 +170,27 @@ for src in "$CF"/*.c; do
 done
 echo "compiled $count objects"
 
+# THE SECOND -include IS THE BRIDGE'S DECLARATIONS, and it has to be a second one rather than a line in
+# the prefix: with the dispatch macros real, their call sites are EMITTED and name Foundation types
+# ((NSArray *), (NSUInteger), (NSRange *), NSMakeRange) that no CF header declares. Measured: without it
+# the first ObjC compile says "use of undeclared identifier 'NSArray'". The file is ours, declares classes
+# only by @class (no Foundation include, so no layering inversion), and defines NSMakeRange as a static
+# inline so nothing references a libfoundation symbol.
+#
+# AND THE SEAM IS A .m, WHICH IS NOT COSMETIC: the ObjC wrapper delegates to the C++ driver, and a C++
+# driver compiles a `.c` file AS C++ - where the bridge header's @class/@interface are not valid syntax
+# (measured: "expected unqualified-id", a C++ diagnostic, in the bridge header). The extension is the
+# only language signal the wrapper reads, so the extension is what has to say Objective-C.
 # THE SEAM IS COMPILED WITH THE SAME FLAGS AS UPSTREAM'S FILES, and it lives OUTSIDE the vendored subtree
 # on purpose (see the file header): our own file, so the C-only path is fixed by adding something of ours
 # rather than by a third and fourth patch to somebody else's source.
-SEAM="$R/third_party/swift-corelibs-foundation-fnx-seam.c"
+SEAM="$R/third_party/swift-corelibs-foundation-fnx-seam.m"
 if [ ! -f "$SEAM" ]; then
 	echo "missing $SEAM" >&2
 	exit 1
 fi
-if ! "$CC" -fPIC -c -o "$OBJ/fnx_seam.o" "$SEAM" $DEFS $INCS \
-	$OPTS -include "$CF/internalInclude/CoreFoundation_Prefix.h" >>"$LOG/corefoundation-build.log" 2>&1; then
+if ! "$OBJCCC" -fPIC -c -o "$OBJ/fnx_seam.o" "$SEAM" $DEFS $INCS \
+	$OPTS -include "$CF/internalInclude/CoreFoundation_Prefix.h" -include "$BRIDGE_H" >>"$LOG/corefoundation-build.log" 2>&1; then
 	echo "FAILED to compile the seam ($SEAM) - see $LOG/corefoundation-build.log" >&2
 	exit 1
 fi
@@ -165,9 +206,14 @@ mkdir -p "$GUEST/lib"
 : > "$LOG/corefoundation-link.log"
 # TRUNCATED, NOT APPENDED: an appended link log accumulates the PREVIOUS run's undefined symbols,
 # and a stale set reads exactly like a fresh one. It cost one wrong conclusion.
+# THE LINK USES THE C DRIVER PLUS -lobjc, NOT THE OBJC WRAPPER, AND THE MEASUREMENT IS WHY: the ObjC
+# wrapper DELEGATES to the C++ wrapper, so linking through it put libc++.so.1, libc++abi.so.1 and
+# libunwind.so.1 in this library's NEEDED set - a C library depending on the C++ runtime for no reason,
+# because no CF object references a C++ symbol. Compiling still needs the wrapper (ObjC syntax, the
+# runtime headers); LINKING needs only -lobjc. readelf -d is the check that this stays true.
 if ! "$CC" -shared -Wl,-soname,"$SONAME" -Wl,--no-undefined \
 	-o "$GUEST/lib/$SONAME.1.0" "$OBJ"/*.o \
-	-L"$ICU/lib" -licui18n -licuuc -licudata -lm \
+	-L"$ICU/lib" -licui18n -licuuc -licudata -lm -L"$OBJC/lib" -lobjc \
 	-L"$DISPATCH/lib" -ldispatch -lBlocksRuntime \
 	>>"$LOG/corefoundation-link.log" 2>&1; then
 	echo "LINK FAILED - see $LOG/corefoundation-link.log" >&2

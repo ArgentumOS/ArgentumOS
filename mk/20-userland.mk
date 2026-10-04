@@ -2085,6 +2085,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		echo "CoreFoundation prefix missing - run tools/corefoundation-build.sh first"; \
 		exit 1; \
 	fi
+	# THE OBJC WRAPPER AND NOT THE C ONE, BECAUSE libobjc2 ITSELF NEEDS THE C++ RUNTIME: this probe links
+	# libcorefoundation, whose NEEDED now includes libobjc.so.4.6, and readelf -d shows libobjc's own
+	# NEEDED bringing libc++/libc++abi in. Measured: with the C wrapper the link died on
+	# "libobjc.so.4.6: undefined reference to std::bad_array_new_length::bad_array_new_length()". The
+	# program is still C - this wrapper takes the language from the EXTENSION - so it is linked the way
+	# every other ObjC-linked probe in this tree is. CF's own NEEDED set stays free of the C++ runtime.
 	# ICU IS NOT NAMED ON THE LINK LINE, AND THAT IS MEASURED RATHER THAN TIDY: naming it made the
 	# linker validate the ICU libraries' OWN undefined symbols, and ICU is built with libc++ - so the
 	# probe died on __cxxabiv1::__class_type_info and std::__1::... from INSIDE libicui18n, which names
@@ -2094,10 +2100,28 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	# block parameters in their signatures (CFCalendarPriv.h's _CFCalendarEnumerateDates,
 	# ForSwiftFoundationOnly.h's enumerateKeysAndObjectsWithOptions), so every consumer of CF needs the
 	# flag - which is why upstream's own flag list carries it.
-	$(MUSL64_CC) userland/tests/corefoundation_smoke.c \
+	$(MUSL64_OBJC) userland/tests/corefoundation_smoke.c \
 		-I.build/cf-shim -I$(COREFOUNDATION_SRC)/include -I$(LIBDISPATCH_PREFIX)/include \
 	-fblocks \
 		-L$(COREFOUNDATION_PREFIX)/lib -lcorefoundation \
 		-L$(LIBDISPATCH_PREFIX)/lib -ldispatch -lBlocksRuntime \
 		-Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-Wl,-rpath-link,$(OBJC_PREFIX)/lib \
 		-o "$(ROOTFS64)/System/Shared/tests/corefoundation_smoke"
+	# corefoundation_bridge: M2's first acceptance (docs/design/foundation-cf-core-plan.md / D3).
+	# THE ONLY PROBE IN THIS TREE THAT LINKS BOTH LIBRARIES, and that is what it is for: it hands a string
+	# this tree's Foundation made to CoreFoundation and requires CF to run THAT CLASS's code and not its own
+	# C implementation. The smoke probe next door is deliberately C and Foundation-free; this one is the
+	# check the two halves of the bridge exist.
+	@if [ ! -d "$(COREFOUNDATION_PREFIX)/lib" ]; then \
+		echo "CoreFoundation prefix missing - run tools/corefoundation-build.sh first"; \
+		exit 1; \
+	fi
+	$(MUSL64_OBJC) userland/tests/corefoundation_bridge.m \
+		-Iuserland -I.build/cf-shim -I$(COREFOUNDATION_SRC)/include -I$(LIBDISPATCH_PREFIX)/include \
+		-L$(FNXLIB) -lfoundation \
+		-L$(COREFOUNDATION_PREFIX)/lib -lcorefoundation \
+		-L$(LIBDISPATCH_PREFIX)/lib -ldispatch -lBlocksRuntime \
+		-Wl,-rpath-link,$(FNXLIB) -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(OBJC_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/corefoundation_bridge"
