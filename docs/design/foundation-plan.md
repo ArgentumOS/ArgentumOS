@@ -15962,6 +15962,25 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.201 — NSFastEnumeration's four "properties" are struct FIELDS, and the instrument that said otherwise
+
+No code. Four property rows leave the work list as `declined`. Ledger after: **method 1698 shipped / 115 open / 401 struck; property 727 / 30 / 179**.
+
+`state`, `itemsPtr`, `mutationsPtr` and `extra` are the members of `NSFastEnumerationState` — a C struct in the
+protocol's own header — which Apple's documentation index files under NSFastEnumeration as though they were
+class properties. There is no class to implement them on: the loop's contract is that the caller owns the
+struct and passes its address, and the collection fills the fields. The protocol's one method,
+`-countByEnumeratingWithState:objects:count:`, already ships.
+
+**THE SMALL LESSON: MY CHECK SAID NO AND THE PRINTED STRUCT SAID YES.** I wrote a field-extraction regex over
+the struct and it returned only `state` and `extra`, because the two pointer fields are declared
+`id __unsafe_unretained _Nonnull * _Nullable itemsPtr;` and `unsigned long * _Nonnull mutationsPtr;` — forms my
+pattern did not describe — so the script concluded "not all four are fields" and declined nothing. The
+five-line `sed` in the same command had already printed the struct, and it plainly showed all four. When a
+custom instrument contradicts evidence already on screen, the instrument is the suspect.
+
+Acceptance: ledger-only change; `tools/foundation-sweep.py --check` consistent (no guest gate is affected).
+
 ## §63.200 — NSUserDefaults: the four deprecated doors SHIP, and a policy question the header was answering by itself
 
 Four rows: `-synchronize`, `-persistentDomainNames`, `-initWithUser:`, `+resetStandardUserDefaults`. Ledger

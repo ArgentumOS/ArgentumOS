@@ -34,7 +34,7 @@
 #
 # kind	status	name	owner	family	why	src
 # method	shipped	1698	open	115	struck	401
-# property	shipped	727	open	34	struck	175
+# property	shipped	727	open	30	struck	179
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -955,10 +955,10 @@ property	shipped	name	NSException	App Support / Exceptions / Querying an NSExcep
 property	shipped	reason	NSException	App Support / Exceptions / Querying an NSException Object	-	swift-page
 property	shipped	userInfo	NSException	App Support / Exceptions / Querying an NSException Object	-	swift-page
 method	shipped	-countByEnumeratingWithState:objects:count:	NSFastEnumeration	Fundamentals / Iteration / Enumeration	-	objc
-property	open	extra	NSFastEnumeration	Fundamentals / Iteration / Constants / Instance Properties	-	objc
-property	open	itemsPtr	NSFastEnumeration	Fundamentals / Iteration / Constants / Instance Properties	-	objc
-property	open	mutationsPtr	NSFastEnumeration	Fundamentals / Iteration / Constants / Instance Properties	-	objc
-property	open	state	NSFastEnumeration	Fundamentals / Iteration / Constants / Instance Properties	-	objc
+property	struck	extra	NSFastEnumeration	declined: a FIELD of NSFastEnumerationState, not a property of any class (§63.201)	-	objc
+property	struck	itemsPtr	NSFastEnumeration	declined: a FIELD of NSFastEnumerationState, not a property of any class (§63.201)	-	objc
+property	struck	mutationsPtr	NSFastEnumeration	declined: a FIELD of NSFastEnumerationState, not a property of any class (§63.201)	-	objc
+property	struck	state	NSFastEnumeration	declined: a FIELD of NSFastEnumerationState, not a property of any class (§63.201)	-	objc
 method	shipped	-acceptConnectionInBackgroundAndNotify	NSFileHandle	Files and Data Persistence / Managed file access / Reading asynchronously with notifications	-	objc
 method	shipped	-acceptConnectionInBackgroundAndNotifyForModes:	NSFileHandle	Files and Data Persistence / Managed file access / Reading asynchronously with notifications	-	objc
 method	shipped	-closeAndReturnError:	NSFileHandle	Files and Data Persistence / Managed file access / Operating on a file	-	objc
