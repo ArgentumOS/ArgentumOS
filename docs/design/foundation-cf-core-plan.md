@@ -631,3 +631,24 @@ dynamically created string would produce exactly this: a correct info word (it s
 **THE NEXT INSTRUMENT, one line:** a marker inside _CFRuntimeCreateInstance at :550 printing `typeID` and the
 value being assigned. That separates "the value differs" from "the value is set and then clobbered" — and if
 it is the latter, the marker moves to _CFRuntimeInitStaticInstance to catch the clobbering call.
+
+
+**AND THE MARKERS AT THE TWO ASSIGNMENT SITES SHARPEN IT FURTHER — plus one elimination.** Raw write(2) at
+`memory->_cfisa = __CFISAForTypeID(typeID)` (the dynamic creator) and at `memory->_cfisa = 0` (the
+static-instance initialiser), read by their interleaving with the probe's notes in a single-threaded guest:
+
+    CFRT-SET isa        x4 across the run, including the ASCII string's creation
+    CFRT-ZERO isa       NEVER
+    note the first string's first word = 0x0
+    note a NON-ASCII string's first word = 0x4000000054f8
+
+ * `_CFRuntimeInitStaticInstance` IS EXONERATED: the marker in it never fires, so the named clobbering suspect
+   is dead. That is the second mechanism eliminated by measurement rather than by argument.
+ * AND THE ASSIGNMENT RUNS for the ASCII string - the marker fires twice around its creation - yet the
+   pointer the probe holds measures ZERO, while the very next creation's object measures the class.
+
+So the value does not differ between the calls: THE OBJECT THAT IS MEASURED IS NOT THE ONE THE ASSIGNMENT RAN
+ON. The question is no longer about the class table at all; it is which object CFStringCreateWithCString
+returns. The next instrument is to print the ADDRESS at the assignment site and the address the probe holds,
+and compare them in the log: if they differ, the string being handed out was built by a path that has no
+marker - and finding that path is the fix.
