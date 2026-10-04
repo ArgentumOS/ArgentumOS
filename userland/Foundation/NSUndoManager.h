@@ -153,6 +153,13 @@ extern NSString *const NSUndoManagerWillUndoChangeNotification;
 - (void)enableUndoRegistration;
 @property (readonly) BOOL isUndoRegistrationEnabled;
 
+
+/* §63.202: THE FOUR TITLE DOORS. The action-name pair above already exists; these turn a name into a menu
+ * title, with the pattern as the stated contract (no localization tables ship here). */
+- (NSString *)undoMenuTitleForUndoActionName:(nullable NSString *)actionName;
+- (NSString *)redoMenuTitleForUndoActionName:(nullable NSString *)actionName;
+@property (readonly) NSString *undoMenuItemTitle;
+@property (readonly) NSString *redoMenuItemTitle;
 @end
 
 NS_ASSUME_NONNULL_END

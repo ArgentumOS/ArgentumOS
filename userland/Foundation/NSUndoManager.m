@@ -751,4 +751,33 @@ NSString *const NSUndoManagerWillUndoChangeNotification = @"NSUndoManagerWillUnd
 		[self canUndo] ? @"can undo" : @"nothing to undo"];
 }
 
+
+- (NSString *)undoMenuTitleForUndoActionName:(NSString *)actionName
+{
+	/* APPLE'S PATTERN IS LOCALIZED and this tree ships no localization tables, so the pattern IS the
+	 * contract and it is stated: "Undo", or "Undo <name>" when the group has one. An empty name gets the
+	 * bare verb, as Apple's own default does. */
+	if (actionName == nil || [actionName length] == 0) {
+		return @"Undo";
+	}
+	return [NSString stringWithFormat:@"Undo %@", actionName];
+}
+
+- (NSString *)redoMenuTitleForUndoActionName:(NSString *)actionName
+{
+	if (actionName == nil || [actionName length] == 0) {
+		return @"Redo";
+	}
+	return [NSString stringWithFormat:@"Redo %@", actionName];
+}
+
+- (NSString *)undoMenuItemTitle
+{
+	return [self undoMenuTitleForUndoActionName:[self undoActionName]];
+}
+
+- (NSString *)redoMenuItemTitle
+{
+	return [self redoMenuTitleForUndoActionName:[self redoActionName]];
+}
 @end

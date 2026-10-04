@@ -15962,6 +15962,47 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.202 — NSUndoManager's four title doors, two rows left open on purpose, and NSURLCredential's ground
+
+Four rows shipped: `-undoMenuTitleForUndoActionName:`, `-redoMenuTitleForUndoActionName:`,
+`undoMenuItemTitle`, `redoMenuItemTitle`. Ledger after: **method 1700 shipped / 113 open / 401 struck; property 729 / 28 / 179**.
+
+**THE TITLE PATTERN IS THE STATED CONTRACT.** Apple's doors are localized and this tree ships no localization
+tables, so "Undo" / "Undo <name>" / "Redo <name>" IS the promise, written where it is implemented; an empty
+or nil action name falls back to the bare verb, as Apple's own default does. `-undoMenuItemTitle` and its redo
+twin read the action-name pair that already existed, so they follow the stack: after `-undo`, the redo title
+names the same action.
+
+**TWO ROWS IN THIS FAMILY STAY OPEN, WITH THE GROUND:** `groupsByEvent` and `runLoopModes` describe AUTOMATIC
+per-run-loop grouping, and this tree groups explicitly (`-beginUndoGrouping`/`-endUndoGrouping` own
+`_groupingLevel`). A property returning a BOOL nothing consults is the stub the house rule forbids, and wiring
+it is a decision about the run loop's undo integration rather than a getter. The ground is written into the
+header so the next attempt starts from it.
+
+**NSURLCredential's SIX ROWS ARE OPEN ON A SUBSTRATE GROUND, AND THE HEADER ALREADY STATES IT:** the identity
+and trust kinds are "refused by name … because each names a `SecIdentityRef`, a `SecTrustRef` or a certificate
+chain, and this system has no certificate stack to give any of them a meaning" — pointing at the keychain plan
+(§48.1). Note the shape: four of those six only HOLD an opaque value and could be written today, but nothing in
+this tree can ever construct one, so they would be unreachable doors; they wait with the rest of that half.
+
+**AND THE UNIT'S REAL LESSON, BECAUSE IT FAILED FIRST.** The first attempt declared the four in the header and
+did NOT implement them, and `foundation-sweep --unimplemented` (`mk/00-base.mk:411`) named all four exactly:
+`declared selectors with no implementation anywhere in the library: … NEW, and this mode fails on them: 4`. The
+cause was the trap this session has now hit three times: my `.m` guard asked whether
+`"undoMenuTitleForUndoActionName:"` appeared in the file, and the file's own PROSE mentions it, so the edit
+silently no-opped while the header's edit — guarded by a name its prose does NOT contain — went through. The
+retry keyed both edits on the exact declaration text, VERIFIED each in the same round, and ran `--unimplemented`
+before the guest gate. That is the recipe for this class of edit: key on the text the patch adds, verify in the
+same round, and let `--unimplemented` be the reader.
+
+**A RUNBOOK FACT WORTH KEEPING:** `NSUndoManager.m` holds six helper classes (`FnUndoAction`,
+`FnUndoInvocation`, `FnUndoBlock`, `FnUndoProxy`, `FnUndoGroup`, the manager) so it has many `@end`s — the
+class's own is at line 754. This file is the sharpest instance yet of "which `@end`", the trap that cost
+§63.198 and §63.199 a round each: print the block structure before editing, never guess.
+
+Acceptance: `make testimg` green (status-checked); `make test TESTS=foundation_core` → `TESTS-OK 1/1 case(s),
+6/6 check(s)` with both new checks ok; `tools/foundation-sweep.py --check` and `--unimplemented` both clean.
+
 ## §63.201 — NSFastEnumeration's four "properties" are struct FIELDS, and the instrument that said otherwise
 
 No code. Four property rows leave the work list as `declined`. Ledger after: **method 1698 shipped / 115 open / 401 struck; property 727 / 30 / 179**.

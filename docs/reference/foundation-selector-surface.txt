@@ -33,8 +33,8 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1698	open	115	struck	401
-# property	shipped	727	open	30	struck	179
+# method	shipped	1700	open	113	struck	401
+# property	shipped	729	open	28	struck	179
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -2833,7 +2833,7 @@ method	shipped	-endUndoGrouping	NSUndoManager	App Support / Undo / Creating undo
 method	shipped	-prepareWithInvocationTarget:	NSUndoManager	App Support / Undo / Registering undo operations	-	objc
 method	shipped	-redo	NSUndoManager	App Support / Undo / Performing undo and redo	-	objc
 method	shipped	-redoActionUserInfoValueForKey:	NSUndoManager	App Support / Undo / Working with user info	-	objc
-method	open	-redoMenuTitleForUndoActionName:	NSUndoManager	App Support / Undo / Getting and localizing the menu item title	-	objc
+method	shipped	-redoMenuTitleForUndoActionName:	NSUndoManager	App Support / Undo / Getting and localizing the menu item title	-	objc
 method	shipped	-registerUndoWithTarget:handler:	NSUndoManager	App Support / Undo / Registering undo operations	-	objc
 method	shipped	-registerUndoWithTarget:selector:object:	NSUndoManager	App Support / Undo / Registering undo operations	-	objc
 method	shipped	-removeAllActions	NSUndoManager	App Support / Undo / Clearing undo operations	-	objc
@@ -2843,7 +2843,7 @@ method	shipped	-setActionName:	NSUndoManager	App Support / Undo / Managing the a
 method	shipped	-setActionUserInfoValue:forKey:	NSUndoManager	App Support / Undo / Working with user info	-	objc
 method	shipped	-undo	NSUndoManager	App Support / Undo / Performing undo and redo	-	objc
 method	shipped	-undoActionUserInfoValueForKey:	NSUndoManager	App Support / Undo / Working with user info	-	objc
-method	open	-undoMenuTitleForUndoActionName:	NSUndoManager	App Support / Undo / Getting and localizing the menu item title	-	objc
+method	shipped	-undoMenuTitleForUndoActionName:	NSUndoManager	App Support / Undo / Getting and localizing the menu item title	-	objc
 method	shipped	-undoNestedGroup	NSUndoManager	App Support / Undo / Performing undo and redo	-	objc
 property	shipped	canRedo	NSUndoManager	App Support / Undo / Checking undo ability	-	objc
 property	shipped	canUndo	NSUndoManager	App Support / Undo / Checking undo ability	-	objc
@@ -2853,13 +2853,13 @@ property	shipped	levelsOfUndo	NSUndoManager	App Support / Undo / Managing undo a
 property	shipped	redoActionIsDiscardable	NSUndoManager	App Support / Undo / Using discardable undo and redo actions	-	objc
 property	shipped	redoActionName	NSUndoManager	App Support / Undo / Managing the action name	-	objc
 property	shipped	redoCount	NSUndoManager	App Support / Undo / Managing undo and redo stack depth	-	objc
-property	open	redoMenuItemTitle	NSUndoManager	App Support / Undo / Getting and localizing the menu item title	-	objc
+property	shipped	redoMenuItemTitle	NSUndoManager	App Support / Undo / Getting and localizing the menu item title	-	objc
 property	shipped	redoing	NSUndoManager	App Support / Undo / Checking whether undo or redo is in process	-	objc
 property	open	runLoopModes	NSUndoManager	App Support / Undo / Working with run loops	-	objc
 property	shipped	undoActionIsDiscardable	NSUndoManager	App Support / Undo / Using discardable undo and redo actions	-	objc
 property	shipped	undoActionName	NSUndoManager	App Support / Undo / Managing the action name	-	objc
 property	shipped	undoCount	NSUndoManager	App Support / Undo / Managing undo and redo stack depth	-	objc
-property	open	undoMenuItemTitle	NSUndoManager	App Support / Undo / Getting and localizing the menu item title	-	objc
+property	shipped	undoMenuItemTitle	NSUndoManager	App Support / Undo / Getting and localizing the menu item title	-	objc
 property	shipped	undoRegistrationEnabled	NSUndoManager	App Support / Undo / Enabling and disabling undo	-	objc
 property	shipped	undoing	NSUndoManager	App Support / Undo / Checking whether undo or redo is in process	-	objc
 method	struck	-initWithCoder:	NSUniqueIDSpecifier	App Support / Object Specifiers / Instance Methods	declined	objc

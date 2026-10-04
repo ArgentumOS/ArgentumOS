@@ -1487,6 +1487,38 @@ int main(void)
 		}
 	}
 
+	{
+		/* §63.202: THE TITLE DOORS. The action-name pair already existed; these turn it into the menu title,
+		 * and the PATTERN is the stated contract because this tree ships no localization tables. */
+		NSUndoManager *manager = [[NSUndoManager alloc] init];
+
+		[manager beginUndoGrouping];
+		[manager registerUndoWithTarget:manager selector:@selector(removeAllActions) object:nil];
+		[manager setActionName:@"Typing"];
+		[manager endUndoGrouping];
+		{
+			NSString *named = [manager undoMenuItemTitle];
+			NSString *bare = [manager undoMenuTitleForUndoActionName:nil];
+			NSString *empty = [manager undoMenuTitleForUndoActionName:@""];
+			NSString *redo = [manager redoMenuTitleForUndoActionName:@"Typing"];
+
+			check("undo-menu-titles-use-the-action-name",
+			      [named isEqual:@"Undo Typing"] && [bare isEqual:@"Undo"] && [empty isEqual:@"Undo"] &&
+			      [redo isEqual:@"Redo Typing"],
+			      [[NSString stringWithFormat:@"named=%@ bare=%@ empty=%@ redo=%@", named, bare, empty,
+				redo] UTF8String]);
+		}
+		/* AND AFTER AN UNDO THE REDO TITLE NAMES THE SAME ACTION. */
+		[manager undo];
+		{
+			NSString *redoTitle = [manager redoMenuItemTitle];
+
+			check("undo-redo-menu-title-follows-the-stack", [redoTitle isEqual:@"Redo Typing"],
+			      [[NSString stringWithFormat:@"redo=%@ canRedo=%d", redoTitle, [manager canRedo]] UTF8String]);
+		}
+	}
+
+
 	printf("FOUNDATION-CORE RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness
