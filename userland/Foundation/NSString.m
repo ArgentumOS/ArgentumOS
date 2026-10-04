@@ -133,24 +133,17 @@ void _CFNXBridgeAllClasses(void)
 	 *   CFRuntime.c:1956  CF already compares an object's isa against that pointer ("is this a constant string")
 	 *   CFInternal.h:546  CF's own CFSTR macro builds its isa as &__CFConstantStringClassReference
 	 *
-	 * THE ARRAY IS DELIBERATE: the isa IS ITS ADDRESS, so a message send reads the class out of the array's
-	 * FIRST WORD -- which is why it is declared as an array of ints, a fake object big enough to be read as
-	 * one. Pointing the pointer at the array satisfies CF's own test; putting the class in the first word
-	 * makes the message send work. Neither line is invented: each is the counterpart of a line CF already has.
+	 * NOTE: an earlier version of this comment claimed the class lived in the array's FIRST WORD. That was
+	 * wrong and it is recorded here only so the wrong idea is not re-derived -- writes into that array changed
+	 * nothing. What matters is the ADDRESS of the symbol, which the alias in NSCFConstantString.m makes equal
+	 * to the class. The array's contents are irrelevant.
 	 */
 	{
 		extern void *__CFConstantStringClassReferencePtr;
-		extern int __CFConstantStringClassReference[];
 
-		/* THE POINTER IS THE CLASS, because with the alias below an object's isa IS the class -- and CF's
-		 * own test (CFRuntime.c:1956) compares exactly `obj->isa == __CFConstantStringClassReferencePtr`. */
+		/* THE POINTER IS THE CLASS, because with that alias an object's isa IS the class -- and CF's own
+		 * test (CFRuntime.c:1956) compares exactly `obj->isa == __CFConstantStringClassReferencePtr`. */
 		__CFConstantStringClassReferencePtr = objc_getClass("NSConstantString");
-
-		/* AND A REAL USE OF THE SYMBOL, BECAUSE .set ALONE EMITTED NOTHING. The measured history says it:
-		 * the first attempt referenced this symbol but had no .set; the second had the .set but referenced
-		 * nothing; the one alias that ever worked had BOTH. A volatile read cannot be optimised away, and it
-		 * reads -- never writes -- because below the symbol IS the class, and a write would corrupt it. */
-		(void)*(volatile int *)__CFConstantStringClassReference;
 	}
 }
 
@@ -168,18 +161,9 @@ void _CFNXBridgeAllClasses(void)
 @end
 
 /*
- * AND THE SYMBOL ITSELF IS AN ALIAS TO THE CLASS — THE LAST LINE OF THE CFSTR DEBT.
- *
- * The isa clang puts in every constant-string struct is `&__CFConstantStringClassReference`, and a message
- * send reads that isa FIELD and treats it as a Class. So the address must BE the class, not hold one — which
- * is the same .set this library already uses for _CF_CONSTANT_STRING_SWIFT_CLASS, where it was MEASURED to
- * take: that symbol and ._OBJC_CLASS_NSConstantString sat at the same address.
- *
- * CoreFoundation defines that symbol itself and cannot alias it, because CF cannot name a class this library
- * owns without depending on it. So CF's own definition is now WEAK and this STRONG one wins — the same
- * weak-owner/strong-provider arrangement this tree already relies on for _CFNXBridgeAllClasses.
+ * THE ALIAS FOR CFConstantStringClassReference IS NOT HERE, AND THAT IS MEASURED RATHER THAN TIDY. An
+ * assembler .set resolves only inside its own assembly unit, so a block in THIS file aliasing
+ * ._OBJC_CLASS_NSConstantString -- a symbol this translation unit does not define -- emits NOTHING, with or
+ * without a C-level reference to it. The working block lives in NSCFConstantString.m, the file that owns the
+ * class. Putting it back here would silently restore the bug this file's history already paid for twice.
  */
-__asm__(
-    ".globl __CFConstantStringClassReference\n"
-    ".set   __CFConstantStringClassReference, ._OBJC_CLASS_NSConstantString\n"
-);
