@@ -531,3 +531,72 @@ either fix ours or **record a measured deviation** in the standing-policy style.
 - No changes to the ledger's ObjC surface, and no claim that CF closes work-list rows.
 - No Swift: the C subtree only, built by clang, so the toolchain doctrine is untouched.
 - Nothing outside the bridged set of classes.
+
+
+---
+
+## FREE CASTING: what the goal requires, measured (2026-10, after the first unit passed 12/12)
+
+**THE GOAL, STATED BY THE USER:** "to be able to cast freely between CF* and NS* types." Not convert.
+Cast. `(CFStringRef)nsStr` and `(NSString *)cfStr` must be the same pointer, each side usable without a
+translation step and without an asymmetry.
+
+**WHAT ALREADY HOLDS.** An object of this library IS an Objective-C object and CF's type-SPECIFIC doors
+dispatch into it (CF_IS_OBJC is an ISA comparison; our classes pass it), and since the ownership arm, CF's
+type-AGNOSTIC doors retain and release it too. `foundation_object` is 12/12, including the two checks the old
+library could not pass.
+
+**WHAT DOES NOT HOLD, and it is the half the goal is about.** A CF-NATIVE object cannot be cast to an
+NS type at all: its isa is `__CFISAForTypeID(typeID)`, which is **0** in this build because the class table
+is empty, so it is not messageable. The emptiness is what makes our ISA test work today, and it is also what
+makes casting one-directional.
+
+**UPSTREAM'S CODE WAS BUILT FOR THIS GOAL, AND SAYS SO.** Every public door dispatches and then falls back
+to the C implementation, and a NON-DISPATCHING TWIN sits beside it labelled for the class that stands for
+the type:
+
+    CFIndex CFStringGetLength(CFStringRef str) {
+        CF_SWIFT_FUNCDISPATCHV(_kCFRuntimeIDCFString, CFIndex, (CFSwiftRef)str, NSString.length);
+        CF_OBJC_FUNCDISPATCHV(_kCFRuntimeIDCFString, CFIndex, (NSString *)str, length);
+        __CFAssertIsString(str);
+        return __CFStrLength(str);
+    }
+    /* This one is for NSCFString; it does not ObjC dispatch or assertion check */
+    CFIndex _CFStringGetLength2(CFStringRef str) { ... }
+
+MEASURED: **30** such twins exist, and the comments name the class — "for NSCFString". So the per-type work
+is a routine, not a research project: register a class for the type, and give its methods the twins to call.
+
+**THE PER-TYPE ROUTINE, and the one thing that must happen WITH the registration rather than after it.**
+
+1. **A registration door.** `_SetCFRuntimeObjcClass(class, typeID)` exists as a CF_INLINE in CFInternal.h and
+   `_CFRuntimeBridgeClasses`, which upstream's own comment names, is NOT in this source -- so the door is ours
+   to add, as a modification, taking a Class rather than a name because our caller has the class.
+2. **Registering changes CF_IS_OBJC's answer, and that is the hazard.** Once a class is registered for a
+   type, `__CFISAForTypeID(typeID)` returns it, so `_cfisa == __CFISAForTypeID(typeID)` and CF_IS_OBJC becomes
+   FALSE for objects of that type -- which is correct (CF's C path is the right path for a CF-shaped object)
+   and which ALSO means the ownership arm fires on them, because its test is merely `_cfisa != 0`. CFRetain on
+   a CF-native string would then call objc_retain on an object whose class has no -retain, and CF's own
+   containers -- which call CFRetain internally -- would corrupt it. **THE ARM MUST BE REFINED IN THE SAME
+   CHANGE: it fires for an object whose isa is NOT a CF-registered class.** That needs a class->type map
+   filled at registration (or a bounded scan of the class table), and it is the sharpest hazard this design
+   has, because nothing about it looks wrong until a CF array is asked to hold a CF string.
+3. **The classes are root classes, for now.** A CF-native object's memory is CF's layout (a CF header, then
+   the type's fields), so a class whose instance layout is NSObject's -- an isa plus our _refcount at offset 8
+   -- cannot be the class of a CF object: offset 8 is CF's `_cfinfoa`, and our -retain would write into CF's
+   flags. Upstream reconciles this by making the CF classes inherit from a Foundation base (`__NSCFType`) whose
+   FIRST FIELDS ARE CF'S HEADER, which is where the hierarchy has to go. For the experiment, root classes are
+   enough and the hierarchy can follow: the CAST does not need inheritance, only the layout agreement does.
+4. **-retain/-release on a CF-shaped class must not be ours.** Our count lives in an ivar; a CF object's count
+   lives in CF's info word. A bridged class therefore delegates those two doors to CF -- and the delegation is
+   safe exactly after step 2's refinement, because CFRetain on a registered type takes the C path rather than
+   returning to us.
+
+**THE EXPERIMENT, which demonstrates the goal in one probe:** register a class for CFStringGetTypeID() whose
+-length calls _CFStringGetLength2; create a CF-NATIVE string with CFStringCreateWithCString; MESSAGE it --
+`[(NSString *)cfStr length]`; and cast it back -- CFStringGetLength on the result. If that passes, casting is
+free in both directions, and the remaining work is the routine above applied per type.
+
+**AND IT UNIFIES THE DEBTS ALREADY CARRIED:** `_NSCFConstantString` is `_NSCFString` with the constant layout,
+and it is what makes `CFSTR` and `@"..."` work; the `CFSTR` debt the object unit recorded is the same piece of
+work as the first bridged class.
