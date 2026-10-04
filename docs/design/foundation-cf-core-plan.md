@@ -600,3 +600,34 @@ free in both directions, and the remaining work is the routine above applied per
 **AND IT UNIFIES THE DEBTS ALREADY CARRIED:** `_NSCFConstantString` is `_NSCFString` with the constant layout,
 and it is what makes `CFSTR` and `@"..."` work; the `CFSTR` debt the object unit recorded is the same piece of
 work as the first bridged class.
+
+
+### FREE CASTING: the ASCII/non-ASCII split, measured to the function (2026-10)
+
+**THE MEASUREMENT, WITH THE INSTRUMENT THIS TREE RECORDS FOR LIBRARY-INTERNAL QUESTIONS** (raw `write(2)` on
+fd 1 — printf from CF produces nothing; the probes' notes cannot see inside CF). Two temporary markers, one at
+the end of the all-ASCII branch of __CFStringCreateImmutableFunnel3 and one at its
+_CFRuntimeCreateInstance call site, and the guest printed, for BOTH strings:
+
+    CFSTR-PATH after-ascii-block
+    CFSTR-PATH create-instance
+
+**SO THE "DIFFERENT PATH" HYPOTHESIS IS DEAD**, and it was the one the previous turn's prediction appeared to
+support: an all-ASCII string does NOT bypass the general creator.
+
+**WHAT THE SPLIT THEREFORE IS.** Same function, same type id (CFStringGetTypeID() is 7 and the object's info
+word carries id 7), same process — and the ASCII object's first word is 0 while the non-ASCII object's is the
+registered class. That is impossible for the assignment at CFRuntime.c:550 alone, so the difference lies in
+one of two places INSIDE that function:
+
+ * the VALUE differs between the two calls — __CFISAForTypeID(7) answering the class once and 0 the next; or
+ * the value is written and then CLOBBERED.
+
+**AND THERE IS A NAMED SUSPECT FOR THE SECOND:** CFRuntime.c:593 is `memory->_cfisa = 0;`, the file's only
+other assignment to that field, and it belongs to _CFRuntimeInitStaticInstance — a function whose entire body
+exists to initialise a STATIC instance with no class. Something in the string machinery calling it for a
+dynamically created string would produce exactly this: a correct info word (it sets that too) and a zero isa.
+
+**THE NEXT INSTRUMENT, one line:** a marker inside _CFRuntimeCreateInstance at :550 printing `typeID` and the
+value being assigned. That separates "the value differs" from "the value is set and then clobbered" — and if
+it is the latter, the marker moves to _CFRuntimeInitStaticInstance to catch the clobbering call.
