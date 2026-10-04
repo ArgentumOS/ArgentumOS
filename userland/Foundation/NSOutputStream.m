@@ -41,6 +41,10 @@ static int fn_out_writable(int fd)
 	return poll(&p, 1, 0) > 0;
 }
 
+@interface NSOutputStream (FNSocketDescriptor)
+- (instancetype)fnInitWithSocketDescriptor:(int)fd;
+@end
+
 @implementation NSOutputStream
 
 + (nullable instancetype)outputStreamToMemory
@@ -311,4 +315,15 @@ static int fn_out_writable(int fd)
 	return [super setProperty:property forKey:key];
 }
 
+
+- (instancetype)fnInitWithSocketDescriptor:(int)fd
+{
+	/* §63.232: TAKES OWNERSHIP OF `fd` — -dealloc closes it, which is exactly why a caller that wants two
+	 * streams over ONE socket duplicates the descriptor first. */
+	self = [super init];
+	if (self != nil) {
+		_fd = fd;
+	}
+	return self;
+}
 @end

@@ -72,3 +72,11 @@ NS_ASSUME_NONNULL_BEGIN
 NS_ASSUME_NONNULL_END
 
 #endif /* FOUNDATION_NSINPUTSTREAM_H */
+
+/* §63.232: THE SOCKET-DESCRIPTOR INITIALIZER. It is declared here rather than in the .m because NSStream's pair
+ * makers — a DIFFERENT translation unit — are its only callers; the category name says what it is, and it is not
+ * part of Apple's surface. IT TAKES OWNERSHIP OF `fd`: -dealloc closes it, so a caller wanting two streams over
+ * one socket duplicates the descriptor first. */
+@interface NSInputStream (FNSocketDescriptor)
+- (nullable instancetype)fnInitWithSocketDescriptor:(int)fd;
+@end

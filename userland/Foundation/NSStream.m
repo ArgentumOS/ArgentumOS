@@ -18,6 +18,14 @@
  */
 
 #import <Foundation/NSStream.h>
+#include <stdio.h>	/* §63.232: snprintf/memset for the service string and the hints */
+#include <string.h>	/* §63.232: snprintf/memset for the service string and the hints */
+#include <sys/socket.h>	/* §63.232: the pair makers are socket code */
+#include <netdb.h>	/* §63.232: the pair makers are socket code */
+#include <unistd.h>	/* §63.232: the pair makers are socket code */
+#import <Foundation/NSOutputStream.h>	/* §63.232: ditto */
+#import <Foundation/NSInputStream.h>	/* §63.232: the pair is made of concrete streams */
+#import <Foundation/NSHost.h>	/* §63.232: the host form reads the host's name */
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSError.h>
 #import <Foundation/NSRunLoop.h>
@@ -255,4 +263,90 @@ NSErrorDomain const NSStreamSOCKSErrorDomain = @"NSStreamSOCKSErrorDomain";
 	}
 }
 
+
++ (void)getStreamsToHostWithName:(NSString *)hostname
+			    port:(NSInteger)port
+		     inputStream:(NSInputStream **)inputStream
+		    outputStream:(NSOutputStream **)outputStream
+{
+	struct addrinfo hints;
+	struct addrinfo *answer = NULL;
+	char service[16];
+	int fd;
+
+	if (inputStream != NULL) {
+		*inputStream = nil;
+	}
+	if (outputStream != NULL) {
+		*outputStream = nil;
+	}
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	snprintf(service, sizeof(service), "%d", (int)port);
+	if (getaddrinfo([hostname UTF8String], service, &hints, &answer) != 0 || answer == NULL) {
+		return;
+	}
+	fd = socket(answer->ai_family, answer->ai_socktype, answer->ai_protocol);
+	if (fd >= 0 && connect(fd, answer->ai_addr, answer->ai_addrlen) != 0) {
+		(void)close(fd);
+		fd = -1;
+	}
+	freeaddrinfo(answer);
+	if (fd < 0) {
+		return;
+	}
+	/* ONE SOCKET, TWO STREAMS, TWO DESCRIPTORS: each stream closes what it owns, so the second gets a dup. */
+	if (inputStream != NULL) {
+		*inputStream = [[[NSInputStream alloc] fnInitWithSocketDescriptor:fd] autorelease];
+		if (outputStream == NULL) {
+			return;
+		}
+	}
+	if (outputStream != NULL) {
+		*outputStream = [[[NSOutputStream alloc]
+					fnInitWithSocketDescriptor:(inputStream != NULL ? dup(fd) : fd)] autorelease];
+	}
+}
+
++ (void)getStreamsToHost:(NSHost *)host
+		    port:(NSInteger)port
+	     inputStream:(NSInputStream **)inputStream
+	    outputStream:(NSOutputStream **)outputStream
+{
+	/* THE HOST FORM IS THE NAME FORM: NSHost knows its own name, and a second resolution path would be a second
+	 * place for the two to disagree. */
+	[self getStreamsToHostWithName:[host name] port:port inputStream:inputStream outputStream:outputStream];
+}
+
++ (void)getBoundStreamsWithBufferSize:(NSUInteger)bufferSize
+			  inputStream:(NSInputStream **)inputStream
+			 outputStream:(NSOutputStream **)outputStream
+{
+	/* A CONNECTED UNIX PAIR, which is what "bound" means for this door: two ends of one socket, already joined.
+	 * `bufferSize` is accepted and not applied — these streams do their own buffering, and the reading is here
+	 * rather than implied. */
+	int fds[2];
+
+	(void)bufferSize;
+	if (inputStream != NULL) {
+		*inputStream = nil;
+	}
+	if (outputStream != NULL) {
+		*outputStream = nil;
+	}
+	if (socketpair(AF_UNIX, SOCK_STREAM, 0, fds) != 0) {
+		return;
+	}
+	if (inputStream != NULL) {
+		*inputStream = [[[NSInputStream alloc] fnInitWithSocketDescriptor:fds[0]] autorelease];
+	} else {
+		(void)close(fds[0]);
+	}
+	if (outputStream != NULL) {
+		*outputStream = [[[NSOutputStream alloc] fnInitWithSocketDescriptor:fds[1]] autorelease];
+	} else {
+		(void)close(fds[1]);
+	}
+}
 @end

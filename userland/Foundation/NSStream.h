@@ -132,6 +132,10 @@ extern NSErrorDomain const NSStreamSOCKSErrorDomain;
 - (void)stream:(NSStream *)aStream handleEvent:(NSStreamEvent)eventCode;
 @end
 
+@class NSInputStream;	/* §63.232: named by the pair makers; each is declared in its own header */
+@class NSOutputStream;
+@class NSHost;
+
 @interface NSStream : NSObject
 {
 	NSStreamStatus _status;
@@ -169,6 +173,22 @@ extern NSErrorDomain const NSStreamSOCKSErrorDomain;
 - (NSStreamStatus)streamStatus;
 - (nullable NSError *)streamError;
 
+
+/* §63.232: THE THREE PAIR MAKERS. The two host forms CONNECT a TCP socket; the bound form makes a CONNECTED
+ * UNIX pair. Each stream takes its own descriptor — the host forms dup(2) the socket so both ends own one and
+ * neither closes the other's — and `bufferSize` is accepted with the reading that these streams do their own
+ * buffering, which is the one argument this door cannot use. */
++ (void)getStreamsToHost:(NSHost *)host
+		    port:(NSInteger)port
+	     inputStream:(NSInputStream * _Nullable * _Nullable)inputStream
+	    outputStream:(NSOutputStream * _Nullable * _Nullable)outputStream;
++ (void)getStreamsToHostWithName:(NSString *)hostname
+			    port:(NSInteger)port
+		     inputStream:(NSInputStream * _Nullable * _Nullable)inputStream
+		    outputStream:(NSOutputStream * _Nullable * _Nullable)outputStream;
++ (void)getBoundStreamsWithBufferSize:(NSUInteger)bufferSize
+			  inputStream:(NSInputStream * _Nullable * _Nullable)inputStream
+			 outputStream:(NSOutputStream * _Nullable * _Nullable)outputStream;
 @end
 
 /* THE SUBSTREAM HOOKS. Private in the sense that Apple declares no such thing and no caller should use them:

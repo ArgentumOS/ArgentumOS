@@ -56,6 +56,10 @@ static NSError *fn_stream_error(int err)
 			       userInfo:nil];
 }
 
+@interface NSInputStream (FNSocketDescriptor)
+- (instancetype)fnInitWithSocketDescriptor:(int)fd;
+@end
+
 @implementation NSInputStream
 
 + (nullable instancetype)inputStreamWithData:(NSData *)data
@@ -321,4 +325,15 @@ static NSError *fn_stream_error(int err)
 	return [super setProperty:property forKey:key];
 }
 
+
+- (instancetype)fnInitWithSocketDescriptor:(int)fd
+{
+	/* §63.232: TAKES OWNERSHIP OF `fd` — -dealloc closes it, which is exactly why a caller that wants two
+	 * streams over ONE socket duplicates the descriptor first. */
+	self = [super init];
+	if (self != nil) {
+		_fd = fd;
+	}
+	return self;
+}
 @end
