@@ -15962,6 +15962,65 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.237 — RESUME POINT (end of session, 2026-10-04): what is landed, what is blocked, and the first move
+
+**THE TREE IS GREEN AND CLEAN.** `make testimg` passes, `--check` reports the ledger consistent, `--unimplemented`
+reports 0 NEW, and the working tree has no modifications (only the submodules and the untracked `reasonix.toml`,
+which has been kept out of every commit). Ledger: **method 1758 shipped / 38 open / 418 struck; property 740 / 15 /
+181** — this campaign took the open methods from **141 to 38** and the open properties from **45 to 15**.
+
+**WHAT LANDED THIS SESSION** (§63.195–§63.236, every unit gate-green with its plan entry): NSThread's ten doors,
+NSXMLNode's URI/options/name-parts/entity work, NSDate's SR triple, NSPropertyListSerialization's four legacy
+doors, NSIndexPath's five DECLINED (UIKit-side), NSUserDefaults' four deprecated doors (user decision
+`dec-1a00739ebd0bdc05`), NSFastEnumeration's four DECLINED (struct fields), NSUndoManager's title doors, NSRunLoop's
+three, the NSProxy pair, NSAutoreleasePool's legacy trio, the DO cluster, NSXMLParser's stream door, NSXMLElement's
+three, NSError's FileProvider three, NSFileWrapper's two, NSURLHandle's five, NSSocketPort's remote pair, the
+socket name server's three, NSFileManager's replacement and relationship doors, NSBundle's frameworks/receipt, the
+two `CalendarFormat:` doors (§63.197's ground OVERTURNED), NSStream's three pair makers, NSXMLNode's canonical
+form, NSInvocation's IMP door, and §63.235's eight-row property/delegate batch.
+
+**THE FOUR THINGS A FRESH SESSION SHOULD KNOW FIRST:**
+1. **`tools/foundation-unit.sh` is the loop** (committed, §63.206): `tools/foundation-unit.sh -c <msgfile>
+   <probe>[,<probe>…]` runs `--unimplemented`, `--check`, the families regeneration, `make testimg` and the guest
+   gates, and commits ONLY if all are green. Probes are **COMMA-separated**. A unit costs ~70s and one round.
+2. **The two sweep modes read OPPOSITE directions** (§63.204): `--unimplemented` = declarations with no
+   definition; `--check` = definitions the owner does not declare. Run both, as a pair.
+3. **The traps that cost the most, in one line each:** guard every patch with a LINE-ANCHORED test (prose satisfies
+   a bare substring — four separate units were lost to this); print a file's `@implementation`/`@interface`/`@end`
+   structure BEFORE editing it; annotate return AND pointer explicitly when a declaration lands outside a
+   `NS_ASSUME_NONNULL` region (§63.214, §63.233); MRC work belongs in `foundation_core_support.m` as a
+   `foundation_mrr_*` function the ARC probe merely CALLS (§63.206); route guest diagnostics through the CHECK
+   LINE, because a `printf` from a support unit does not reach the captured output (§63.205).
+4. **A ground naming a dependency must say whether it is ABSENT or merely UNUSED** (§63.230): "needs ICU" was
+   wrong — ICU is here (`ICUPREFIX`) — and that mis-grounding hid an implementable row.
+
+**BLOCKED, WITH THE EXACT FINDING:**
+* **§63.236's three rows** (NSString `-variantFittingPresentationWidth:`, NSDictionary
+  `-descriptionInStringsFileFormat`, NSFilePresenter `-primaryPresentedItemURL`) built and compiled, but
+  `foundation_collection` came back **8/12** and the case-level failing line was not extracted. **FIRST MOVE:
+  re-apply those three and read `.build/tests/foundation_collection` for the `FAIL foundation_collection/<check>`
+  line.** The rows are reverted; nothing is in flight.
+* **`NSCopying -copyWithZone:` / `NSMutableCopying -mutableCopyWithZone:`** — declared on their protocols, then
+  reverted: the annotation the declaration form wants CONFLICTS with how the classes already declare the same
+  doors. The declaration must match the tree's annotation first.
+* **Two rows are implemented, declared and gate-green but the ledger still lists them `open`**
+  (`NSConnectionDelegate -makeNewConnection:sender:`, `NSFileManager -replaceItemAtURL:…` with its rollback),
+  because the ledger carries Apple's DOCUMENTATION spelling. The tool thread is CLOSED (§63.231) — five attempts,
+  no patch — and the failure direction is the SAFE one (the ledger understates progress).
+* `-applyTransform:reverse:range:updatedRange:` is implementable (ICU is here) but needs ICU wired into
+  `NSString.m`'s build — a unit of its own, since only five files link it today.
+
+**THE REST (≈35 open rows), by what blocks them:** ~8 need a class this tree does not have (NSImage for
+`-imageForResource:`/`-contextHelpForKey:`/`NSFileWrapper.icon`, the pasteboard pair, an `NSRandomSource`);
+~7 are language/toolchain (XSLT ×3, XPath, XQuery ×2, `-validateAndReturnError:` — whose boundary is that the
+parser-side DTD half is not built); ~6 have no substrate (certificate stack ×3, `NSURLSession*` ×3); ~5 are
+grounded by the tree's own record (`-getCFRunLoop`, `+fileManagerWithAuthorization:`, `-operatingSystem`,
+`groupsByEvent`/`runLoopModes`); ~2 are the instrument-blocked pair above; and ~7 are genuine doors, of which
+`NSDictionary -descriptionInStringsFileFormat` and the copying-protocol pair are the nearest.
+
+**AND THE STANDING CONSTRAINTS:** CF stays parked at M1–M6 (`ba66bd01`); `reasonix.toml` must stay untracked; other
+agents share this repo, so HEAD can move underneath a session — read the state before trusting a stale fact.
+
 ## §63.234 — NSInvocation's IMP door, as a surgical refactor of the walk it already had
 
 One row shipped: `-invokeUsingIMP:`. Ledger after:
