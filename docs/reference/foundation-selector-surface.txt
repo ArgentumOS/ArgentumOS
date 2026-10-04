@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1742	open	54	struck	418
+# method	shipped	1744	open	52	struck	418
 # property	shipped	731	open	24	struck	181
 
 
@@ -2185,8 +2185,8 @@ property	shipped	description	NSSet	Fundamentals / Basic Collections / Describing
 method	struck	-setReceiversSpecifier:	NSSetCommand	App Support / Script Commands / Working with specifiers	declined	objc
 property	struck	keySpecifier	NSSetCommand	App Support / Script Commands / Working with specifiers	declined	objc
 method	shipped	-init	NSSocketPort	Low-Level Utilities / Sockets / Creating Instances	-	objc
-method	open	-initRemoteWithProtocolFamily:socketType:protocol:address:	NSSocketPort	Low-Level Utilities / Sockets / Creating Instances	-	objc
-method	open	-initRemoteWithTCPPort:host:	NSSocketPort	Low-Level Utilities / Sockets / Creating Instances	-	objc
+method	shipped	-initRemoteWithProtocolFamily:socketType:protocol:address:	NSSocketPort	Low-Level Utilities / Sockets / Creating Instances	-	objc
+method	shipped	-initRemoteWithTCPPort:host:	NSSocketPort	Low-Level Utilities / Sockets / Creating Instances	-	objc
 method	shipped	-initWithProtocolFamily:socketType:protocol:address:	NSSocketPort	Low-Level Utilities / Sockets / Creating Instances	-	objc
 method	shipped	-initWithProtocolFamily:socketType:protocol:socket:	NSSocketPort	Low-Level Utilities / Sockets / Creating Instances	-	objc
 method	shipped	-initWithTCPPort:	NSSocketPort	Low-Level Utilities / Sockets / Creating Instances	-	objc

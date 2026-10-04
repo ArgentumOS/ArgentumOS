@@ -613,4 +613,52 @@ static NSData *fn_port_frame(uint32_t msgid, NSArray *components)
 	[super dealloc];
 }
 
+
+- (instancetype)initRemoteWithProtocolFamily:(int)family
+				  socketType:(int)type
+				    protocol:(int)protocol
+				     address:(NSData *)address
+{
+	/* THE MIRROR OF THE LOCAL INITIALISER: socket(2), then CONNECT(2) to the address rather than bind(2), which
+	 * is what the header's own description of this door says. */
+	self = [super init];
+	if (self == nil) {
+		return nil;
+	}
+	if (![self fnMakeSocket:family type:type protocol:protocol]) {
+		[self release];
+		return nil;
+	}
+	if (connect(_socket, (const struct sockaddr *)[address bytes], (socklen_t)[address length]) != 0) {
+		[self release];
+		return nil;
+	}
+	_address = [fn_sockaddr_data(_socket, NO) retain];
+	return self;
+}
+
+- (instancetype)initRemoteWithTCPPort:(unsigned short)port host:(NSString *)hostName
+{
+	/* RESOLVE, THEN DELEGATE: the first getaddrinfo answer becomes the address the remote initialiser connects
+	 * to, so there is one connect path and not two. */
+	struct addrinfo hints;
+	struct addrinfo *answer = NULL;
+	char service[16];
+	NSData *address;
+	int family, type, protocol;
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	snprintf(service, sizeof(service), "%u", (unsigned)port);
+	if (getaddrinfo([hostName UTF8String], service, &hints, &answer) != 0 || answer == NULL) {
+		return nil;
+	}
+	address = [NSData dataWithBytes:answer->ai_addr length:(NSUInteger)answer->ai_addrlen];
+	family = answer->ai_family;
+	type = answer->ai_socktype;
+	protocol = answer->ai_protocol;
+	freeaddrinfo(answer);
+	return [self initRemoteWithProtocolFamily:family socketType:type protocol:protocol address:address];
+}
 @end

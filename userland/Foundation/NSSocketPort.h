@@ -118,6 +118,15 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSSocketNativeHandle)socket;
 - (int)socketType;
 
+
+/* §63.217: THE REMOTE PAIR — the MIRROR of the local initialisers, socket(2) then CONNECT(2) to the address
+ * instead of bind(2). The header already described the address form in those words. */
+- (nullable instancetype)initRemoteWithProtocolFamily:(int)family
+					   socketType:(int)type
+					     protocol:(int)protocol
+					      address:(NSData *)address;
+- (nullable instancetype)initRemoteWithTCPPort:(unsigned short)port
+					 host:(nullable NSString *)hostName;
 @end
 
 NS_ASSUME_NONNULL_END
