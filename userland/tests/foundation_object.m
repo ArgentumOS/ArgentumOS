@@ -168,6 +168,22 @@ int main(void) {
 				note_value("the object's info word", info);
 				note_value("   and its type-id field", (info >> 8) & 0xFFFFFF);
 			}
+			/* A PREDICTION, WHICH IS WHY THIS IS A CHECK AND NOT ONE MORE NOTE. The story the chain tells is
+			 * that the ALL-ASCII fast path returns a string without going through _CFRuntimeCreateInstance,
+			 * while the general path calls it (CFString.c:1566, inside the funnel 1292-1618) and that
+			 * function DOES set _cfisa (CFRuntime.c:550, unguarded, the file's only definition). A NON-ASCII
+			 * string cannot take the ASCII shortcut. So it should come out WITH a class. If it does, the
+			 * diagnosis is confirmed and the fix is to make the fast path do what the general path does; if
+			 * it does not, every link above this reopen. */
+			{
+				CFStringRef unicode = CFStringCreateWithCString(kCFAllocatorDefault, "n\xc3\xa4tive",
+				                                                kCFStringEncodingUTF8);
+
+				note_value("a NON-ASCII string's first word", unicode ? *(unsigned long *)unicode : 0);
+				if (unicode != NULL) {
+					CFRelease(unicode);
+				}
+			}
 			if (after) {
 				CFRelease(after);
 			}
