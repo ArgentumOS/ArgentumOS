@@ -15962,6 +15962,36 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.208 — A LEDGER REPAIR AND A DECISION SWEEP: 24 rows in one bite
+
+No library code. Fifteen rows' CATEGORY fields were restored and ten rows were struck `declined` with their
+grounds. Ledger after: **method 1712 shipped / 86 open / 416 struck; property 729 / 28 / 179**.
+
+**FIRST, A MISTAKE OF MINE, REPAIRED AND WORTH THE PARAGRAPH.** The ledger's row layout is
+`kind · status · name · owner · CATEGORY · note · language`, and my earlier declines (§63.199, §63.201,
+§63.207) wrote the REASON into field 4 — the CATEGORY — leaving it holding prose and the note field untouched.
+The healthy struck rows show the real convention: the note field holds the bare word **`declined`** and **the
+GROUND lives in the plan**, which is where this campaign has been writing them all along. All fifteen categories
+are restored from the pre-decline ledger (`049484b8`) and the reasons are now in the plan entries where they
+belong; `grep` for prose in the category column returns zero.
+
+**THEN THE SWEEP: TEN ROWS WHOSE REFUSALS THE HEADERS ALREADY RECORD.**
+* `NSBundle`'s **six nib doors** and `-loadAppleScriptObjectiveCScripts` — A NIB IS APPKIT'S ARCHIVE, and this
+  tree's interface format is the Weaver/UIKit-side document (`userland/argentum/interface.cpp`), which is why the
+  audit already excludes UIKit's `NSIndexPath` additions on the same ground. There is no AppleScript here at all.
+* `NSLocale -localizedStringForVariantCode:` — the header records that ICU's variant display table answers EMPTY
+  through this route, so the door would have nothing to return.
+* `NSProxy -allowsWeakReference` / `-retainWeakReference` — **marked UNAVAILABLE in the modern SDK**: Apple
+  removed them with the collector, which is a §11-style absence rather than owed work. §63.204 graded them and
+  this unit finally executes the grading.
+
+**AND THE ANSWER TO "can we take bigger bites?": 24 rows in three rounds.** The library bites are limited by how
+much needs READING (each door needs its anchor and its reason); ledger bites are limited only by how carefully
+each decision is justified — so the two scale differently, and this unit is the second kind.
+
+Acceptance: ledger-only change; `make testimg` unaffected; `tools/foundation-sweep.py --check` and
+`--unimplemented` both clean (the pair, run together).
+
 ## §63.207 — TWELVE ROWS IN ONE BITE: NSCalendar's next-date family ships, the archivers' class-name
 translation is declined
 

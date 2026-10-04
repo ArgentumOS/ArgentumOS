@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1712	open	95	struck	407
+# method	shipped	1712	open	86	struck	416
 # property	shipped	729	open	28	struck	179
 
 
@@ -136,8 +136,8 @@ property	struck	richTextSource	NSAppleScript	App Support / Script Execution / In
 property	struck	source	NSAppleScript	App Support / Script Execution / Getting Information About a Script	declined	objc
 method	shipped	+archiveRootObject:toFile:	NSArchiver	Files and Data Persistence / Deprecated / Archiving data	deprecated	objc
 method	shipped	+archivedDataWithRootObject:	NSArchiver	Files and Data Persistence / Deprecated / Archiving data	deprecated	objc
-method	struck	-classNameEncodedForTrueClassName:	NSArchiver	declined: class-name translation is a RECORDED REFUSAL in both archivers (NSArchiver.h, WHAT IS ABSENT: one that says yes while the other says no would be an accident)	deprecated	objc
-method	struck	-encodeClassName:intoClassName:	NSArchiver	declined: class-name translation is a RECORDED REFUSAL in both archivers (NSArchiver.h, WHAT IS ABSENT: one that says yes while the other says no would be an accident)	deprecated	objc
+method	struck	-classNameEncodedForTrueClassName:	NSArchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	declined	objc
+method	struck	-encodeClassName:intoClassName:	NSArchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	declined	objc
 method	shipped	-encodeConditionalObject:	NSArchiver	Files and Data Persistence / Deprecated / Archiving data	deprecated	objc
 method	shipped	-encodeRootObject:	NSArchiver	Files and Data Persistence / Deprecated / Archiving data	deprecated	objc
 method	shipped	-initForWritingWithMutableData:	NSArchiver	Files and Data Persistence / Deprecated / Initializing an NSArchiver	deprecated	objc
@@ -309,12 +309,12 @@ method	shipped	-initWithPath:	NSBundle	App Support / Bundle Resources / Creating
 method	shipped	-initWithURL:	NSBundle	App Support / Bundle Resources / Instance Methods	-	objc
 method	shipped	-load	NSBundle	App Support / Bundle Resources / Loading code from a bundle	-	objc
 method	shipped	-loadAndReturnError:	NSBundle	App Support / Bundle Resources / Loading code from a bundle	-	objc
-method	open	-loadAppleScriptObjectiveCScripts	NSBundle	App Support / Bundle Resources / Instance Methods	-	objc
-method	open	+loadNibFile:externalNameTable:withZone:	NSBundle	App Support / Bundle Resources / Loading nib files	deprecated	objc
-method	open	-loadNibFile:externalNameTable:withZone:	NSBundle	App Support / Bundle Resources / Loading nib files	deprecated	objc
-method	open	+loadNibNamed:owner:	NSBundle	App Support / Bundle Resources / Loading nib files	deprecated	objc
-method	open	-loadNibNamed:owner:options:	NSBundle	App Support / Bundle Resources / Loading nib files	deprecated	objc
-method	open	-loadNibNamed:owner:topLevelObjects:	NSBundle	App Support / Bundle Resources / Loading nib files	-	objc
+method	struck	-loadAppleScriptObjectiveCScripts	NSBundle	App Support / Bundle Resources / Instance Methods	declined	objc
+method	struck	+loadNibFile:externalNameTable:withZone:	NSBundle	App Support / Bundle Resources / Loading nib files	declined	objc
+method	struck	-loadNibFile:externalNameTable:withZone:	NSBundle	App Support / Bundle Resources / Loading nib files	declined	objc
+method	struck	+loadNibNamed:owner:	NSBundle	App Support / Bundle Resources / Loading nib files	declined	objc
+method	struck	-loadNibNamed:owner:options:	NSBundle	App Support / Bundle Resources / Loading nib files	declined	objc
+method	struck	-loadNibNamed:owner:topLevelObjects:	NSBundle	App Support / Bundle Resources / Loading nib files	declined	objc
 method	shipped	-localizedAttributedStringForKey:value:table:	NSBundle	App Support / Bundle Resources / Instance Methods	-	objc
 method	shipped	-localizedStringForKey:value:table:	NSBundle	App Support / Bundle Resources / Fetching localized strings	-	objc
 method	shipped	-localizedStringForKey:value:table:localizations:	NSBundle	App Support / Bundle Resources / Instance Methods	-	objc
@@ -955,10 +955,10 @@ property	shipped	name	NSException	App Support / Exceptions / Querying an NSExcep
 property	shipped	reason	NSException	App Support / Exceptions / Querying an NSException Object	-	swift-page
 property	shipped	userInfo	NSException	App Support / Exceptions / Querying an NSException Object	-	swift-page
 method	shipped	-countByEnumeratingWithState:objects:count:	NSFastEnumeration	Fundamentals / Iteration / Enumeration	-	objc
-property	struck	extra	NSFastEnumeration	declined: a FIELD of NSFastEnumerationState, not a property of any class (§63.201)	-	objc
-property	struck	itemsPtr	NSFastEnumeration	declined: a FIELD of NSFastEnumerationState, not a property of any class (§63.201)	-	objc
-property	struck	mutationsPtr	NSFastEnumeration	declined: a FIELD of NSFastEnumerationState, not a property of any class (§63.201)	-	objc
-property	struck	state	NSFastEnumeration	declined: a FIELD of NSFastEnumerationState, not a property of any class (§63.201)	-	objc
+property	struck	extra	NSFastEnumeration	Fundamentals / Iteration / Constants / Instance Properties	declined	objc
+property	struck	itemsPtr	NSFastEnumeration	Fundamentals / Iteration / Constants / Instance Properties	declined	objc
+property	struck	mutationsPtr	NSFastEnumeration	Fundamentals / Iteration / Constants / Instance Properties	declined	objc
+property	struck	state	NSFastEnumeration	Fundamentals / Iteration / Constants / Instance Properties	declined	objc
 method	shipped	-acceptConnectionInBackgroundAndNotify	NSFileHandle	Files and Data Persistence / Managed file access / Reading asynchronously with notifications	-	objc
 method	shipped	-acceptConnectionInBackgroundAndNotifyForModes:	NSFileHandle	Files and Data Persistence / Managed file access / Reading asynchronously with notifications	-	objc
 method	shipped	-closeAndReturnError:	NSFileHandle	Files and Data Persistence / Managed file access / Operating on a file	-	objc
@@ -1214,16 +1214,16 @@ method	shipped	-getIndexes:range:	NSIndexPath	Fundamentals / Indexes / Working w
 method	shipped	-indexAtPosition:	NSIndexPath	Fundamentals / Indexes / Working with Indexes	-	objc
 method	shipped	-indexPathByAddingIndex:	NSIndexPath	Fundamentals / Indexes / Adding and Removing Nodes	-	objc
 method	shipped	-indexPathByRemovingLastIndex	NSIndexPath	Fundamentals / Indexes / Adding and Removing Nodes	-	objc
-method	struck	+indexPathForItem:inSection:	NSIndexPath	declined: UIKit-side addition, not Foundation (the audit's exclusion, §63.199)	-	objc
-method	struck	+indexPathForRow:inSection:	NSIndexPath	declined: UIKit-side addition, not Foundation (the audit's exclusion, §63.199)	-	objc
+method	struck	+indexPathForItem:inSection:	NSIndexPath	Fundamentals / Indexes / Using Special Node Names	declined	objc
+method	struck	+indexPathForRow:inSection:	NSIndexPath	Fundamentals / Indexes / Using Special Node Names	declined	objc
 method	shipped	+indexPathWithIndex:	NSIndexPath	Fundamentals / Indexes / Creating and Initializing Index Paths	-	objc
 method	shipped	+indexPathWithIndexes:length:	NSIndexPath	Fundamentals / Indexes / Creating and Initializing Index Paths	-	objc
 method	shipped	-initWithIndex:	NSIndexPath	Fundamentals / Indexes / Creating and Initializing Index Paths	-	objc
 method	shipped	-initWithIndexes:length:	NSIndexPath	Fundamentals / Indexes / Creating and Initializing Index Paths	-	objc
-property	struck	item	NSIndexPath	declined: UIKit-side addition, not Foundation (the audit's exclusion, §63.199)	-	objc
+property	struck	item	NSIndexPath	Fundamentals / Indexes / Using Special Node Names	declined	objc
 property	shipped	length	NSIndexPath	Fundamentals / Indexes / Counting Nodes	-	objc
-property	struck	row	NSIndexPath	declined: UIKit-side addition, not Foundation (the audit's exclusion, §63.199)	-	objc
-property	struck	section	NSIndexPath	declined: UIKit-side addition, not Foundation (the audit's exclusion, §63.199)	-	objc
+property	struck	row	NSIndexPath	Fundamentals / Indexes / Using Special Node Names	declined	objc
+property	struck	section	NSIndexPath	Fundamentals / Indexes / Using Special Node Names	declined	objc
 method	shipped	-containsIndex:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
 method	shipped	-containsIndexes:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
 method	shipped	-containsIndexesInRange:	NSIndexSet	Fundamentals / Indexes / Querying Index Sets	-	objc
@@ -1365,7 +1365,7 @@ method	shipped	-localizedStringForCurrencyCode:	NSLocale	Fundamentals / Localiza
 method	shipped	-localizedStringForLanguageCode:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
 method	shipped	-localizedStringForLocaleIdentifier:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
 method	shipped	-localizedStringForScriptCode:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
-method	open	-localizedStringForVariantCode:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	-	objc
+method	struck	-localizedStringForVariantCode:	NSLocale	Fundamentals / Localization / Getting Display Information About a Locale	declined	objc
 method	shipped	-objectForKey:	NSLocale	Fundamentals / Localization / Accessing Locale Information by Key	-	objc
 method	shipped	+windowsLocaleCodeFromLocaleIdentifier:	NSLocale	Fundamentals / Localization / Converting Between Identifiers	-	objc
 property	shipped	ISOCountryCodes	NSLocale	Fundamentals / Localization / Getting Known Identifiers and Codes	-	objc
@@ -1978,14 +1978,14 @@ property	shipped	protocol	NSProtocolChecker	Low-Level Utilities / Legacy / Legac
 property	shipped	target	NSProtocolChecker	Low-Level Utilities / Legacy / Legacy / Getting information	deprecated	objc
 method	shipped	+alloc	NSProxy	Low-Level Utilities / Remote Objects / Creating Instances	-	objc
 method	shipped	+allocWithZone:	NSProxy	Low-Level Utilities / Remote Objects / Creating Instances	-	objc
-method	open	-allowsWeakReference	NSProxy	Low-Level Utilities / Remote Objects / Instance Methods	-	objc
+method	struck	-allowsWeakReference	NSProxy	Low-Level Utilities / Remote Objects / Instance Methods	declined	objc
 method	shipped	+class	NSProxy	Low-Level Utilities / Remote Objects / Describing a Proxy Class or Object	-	objc
 method	shipped	-dealloc	NSProxy	Low-Level Utilities / Remote Objects / Deallocating Instances	-	objc
 method	shipped	-finalize	NSProxy	Low-Level Utilities / Remote Objects / Finalizing an Object	-	objc
 method	shipped	-forwardInvocation:	NSProxy	Low-Level Utilities / Remote Objects / Handling Unimplemented Methods	-	objc
 method	shipped	-methodSignatureForSelector:	NSProxy	Low-Level Utilities / Remote Objects / Handling Unimplemented Methods	-	objc
 method	shipped	+respondsToSelector:	NSProxy	Low-Level Utilities / Remote Objects / Introspecting a Proxy Class	-	objc
-method	open	-retainWeakReference	NSProxy	Low-Level Utilities / Remote Objects / Instance Methods	-	objc
+method	struck	-retainWeakReference	NSProxy	Low-Level Utilities / Remote Objects / Instance Methods	declined	objc
 property	shipped	debugDescription	NSProxy	Low-Level Utilities / Remote Objects / Describing a Proxy Class or Object	-	objc
 property	shipped	description	NSProxy	Low-Level Utilities / Remote Objects / Describing a Proxy Class or Object	-	objc
 property	struck	saveOptions	NSQuitCommand	App Support / Script Commands / Accessing options	declined	objc
@@ -2814,10 +2814,10 @@ property	shipped	URL	NSURLResponse	Networking / Requests and responses / Getting
 property	shipped	expectedContentLength	NSURLResponse	Networking / Requests and responses / Getting the response properties	-	objc
 property	shipped	suggestedFilename	NSURLResponse	Networking / Requests and responses / Getting the response properties	-	objc
 property	shipped	textEncodingName	NSURLResponse	Networking / Requests and responses / Getting the response properties	-	objc
-method	struck	+classNameDecodedForArchiveClassName:	NSUnarchiver	declined: class-name translation is a RECORDED REFUSAL in both archivers (NSArchiver.h, WHAT IS ABSENT: one that says yes while the other says no would be an accident)	deprecated	swift-page
-method	struck	-classNameDecodedForArchiveClassName:	NSUnarchiver	declined: class-name translation is a RECORDED REFUSAL in both archivers (NSArchiver.h, WHAT IS ABSENT: one that says yes while the other says no would be an accident)	deprecated	swift-page
-method	struck	+decodeClassName:asClassName:	NSUnarchiver	declined: class-name translation is a RECORDED REFUSAL in both archivers (NSArchiver.h, WHAT IS ABSENT: one that says yes while the other says no would be an accident)	deprecated	swift-page
-method	struck	-decodeClassName:asClassName:	NSUnarchiver	declined: class-name translation is a RECORDED REFUSAL in both archivers (NSArchiver.h, WHAT IS ABSENT: one that says yes while the other says no would be an accident)	deprecated	swift-page
+method	struck	+classNameDecodedForArchiveClassName:	NSUnarchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	declined	swift-page
+method	struck	-classNameDecodedForArchiveClassName:	NSUnarchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	declined	swift-page
+method	struck	+decodeClassName:asClassName:	NSUnarchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	declined	swift-page
+method	struck	-decodeClassName:asClassName:	NSUnarchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	declined	swift-page
 method	shipped	-initForReadingWithData:	NSUnarchiver	Files and Data Persistence / Deprecated / Initializing an NSUnarchiver	deprecated	objc
 method	struck	-objectZone	NSUnarchiver	Files and Data Persistence / Deprecated / Managing an NSUnarchiver	32-bit-only	objc
 method	shipped	-replaceObject:withObject:	NSUnarchiver	Files and Data Persistence / Deprecated / Substituting classes or objects	deprecated	objc
