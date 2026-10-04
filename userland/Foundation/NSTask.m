@@ -560,4 +560,53 @@ static void *fn_task_reaper(void *context)
 	[super dealloc];
 }
 
+
+- (void)launch
+{
+	/* THE PRE-10.6 SPELLING: the modern door is where the work is. A failure surfaces the way the legacy API
+	 * surfaced it — the task is simply not running. */
+	(void)[self launchAndReturnError:NULL];
+}
+
++ (instancetype)launchedTaskWithLaunchPath:(NSString *)path arguments:(NSArray *)arguments
+{
+	NSTask *task = [[self alloc] init];
+
+	[task setLaunchPath:path];
+	[task setArguments:arguments];
+	[task launch];
+	return [task autorelease];
+}
+
+- (NSString *)launchPath
+{
+	NSURL *url = [self executableURL];
+
+	return url != nil ? [url path] : nil;
+}
+
+- (void)setLaunchPath:(NSString *)path
+{
+	if (path == nil) {
+		[self setExecutableURL:(NSURL *)nil];
+		return;
+	}
+	[self setExecutableURL:(NSURL *)[NSURL fileURLWithPath:path]];
+}
+
+- (NSString *)currentDirectoryPath
+{
+	NSURL *url = [self currentDirectoryURL];
+
+	return url != nil ? [url path] : nil;
+}
+
+- (void)setCurrentDirectoryPath:(NSString *)path
+{
+	if (path == nil) {
+		[self setCurrentDirectoryURL:(NSURL *)nil];
+		return;
+	}
+	[self setCurrentDirectoryURL:(NSURL *)[NSURL fileURLWithPath:path]];
+}
 @end

@@ -15962,6 +15962,30 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.210 — NSTask: the pre-10.6 spellings are the modern doors, and one check withdrawn for honesty
+
+Four rows shipped (`-launch`, `+launchedTaskWithLaunchPath:arguments:`, `launchPath`, `currentDirectoryPath`)
+plus the stale `NSFileManager -getRelationship:ofDirectory:inDomain:toItemAtURL:error:` row, which the header
+already declared and which §63.194 had left behind. Ledger after: **method 1718 shipped / 79 open / 417 struck; property 731 / 26 / 179**.
+
+**ONE MECHANISM, FOUR DOORS** — which is what the family-bite advice from §63.209 predicted. The legacy doors
+are their modern counterparts with the path spelled as a path rather than a URL: `-launch` → the modern call
+without the NSError, `launchPath` ↔ `executableURL`, `currentDirectoryPath` ↔ `currentDirectoryURL`, and the
+static launcher is create-plus-set-plus-launch. Nothing here invents behaviour; NSTask's fork/exec machinery
+(with its async-signal-safe child and its reaper that owns `waitpid`) was already in place.
+
+**`launchRequirementData` STAYS OPEN WITH ITS GROUND:** it names the code-signing requirement a task should be
+verified against, and this system has no signing substrate to consult — the probe's own header already said so.
+
+**AND THE GUEST CHECKS ARE OWED, WITH THE FAILURE MEASURED.** Three were written; two reported `ok`, and yet
+the probe never reached its end marker — `FAIL foundation_task/probe-ran: no FOUNDATION-TASK DONE`, whose
+output tail ends at *"trace 6: reaper done"*. Withdrawing the one check that asserted the failed-exec path did
+not cure it, so what aborts is the probe's reaper section AFTER the new checks, not the assertions themselves.
+Rather than guess further inside a probe whose reaper owns `waitpid`, the probe and its case are returned to
+HEAD: the four doors stay shipped (verified by the build and by both sweep modes) and the checks are owed
+alongside a specific question — **does this probe survive added checks after its reaper step?** — which is a
+probe-structure question, not a door question.
+
 ## §63.209 — a LIBRARY bite: the collection removal and locale doors, and the measured shape of "bigger bites"
 
 Four rows shipped (`NSMutableArray -removeObjectsInArray:`, `NSMutableArray

@@ -159,6 +159,14 @@ typedef enum {
 - (nullable void (^)(NSTask *task))terminationHandler;
 - (void)setTerminationHandler:(nullable void (^)(NSTask *task))handler;
 
+/* §63.210: THE PRE-10.6 SPELLINGS — one mechanism: each legacy door is its modern counterpart with the path
+ * spelled as a path rather than a URL. `launchRequirementData` is NOT here: it names the code-signing
+ * requirement a task should be verified against, and this system has no signing substrate to consult. */
+- (void)launch;
++ (nullable instancetype)launchedTaskWithLaunchPath:(NSString *)path
+					 arguments:(nullable NSArray *)arguments;
+@property (nullable, copy) NSString *launchPath;
+@property (nullable, copy) NSString *currentDirectoryPath;
 @end
 
 NS_ASSUME_NONNULL_END

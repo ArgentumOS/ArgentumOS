@@ -33,8 +33,8 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1716	open	81	struck	417
-# property	shipped	729	open	28	struck	179
+# method	shipped	1718	open	79	struck	417
+# property	shipped	731	open	26	struck	179
 
 
 method	shipped	-appendTransform:	NSAffineTransform	Fundamentals / Geometry / Accumulating Transformations	-	objc
@@ -2439,20 +2439,20 @@ property	shipped	stringByStandardizingPath	NSString	Fundamentals / Strings / Wor
 property	shipped	uppercaseString	NSString	Fundamentals / Strings / Changing Case	-	objc
 method	shipped	-init	NSTask	Low-Level Utilities / Scripts and External Tasks / Creating and initializing a process	-	objc
 method	shipped	-interrupt	NSTask	Low-Level Utilities / Scripts and External Tasks / Running and stopping	-	objc
-method	open	-launch	NSTask	Low-Level Utilities / Scripts and External Tasks / Deprecated	deprecated	objc
+method	shipped	-launch	NSTask	Low-Level Utilities / Scripts and External Tasks / Deprecated	deprecated	objc
 method	shipped	-launchAndReturnError:	NSTask	Low-Level Utilities / Scripts and External Tasks / Running and stopping	-	objc
 method	shipped	+launchedTaskWithExecutableURL:arguments:error:terminationHandler:	NSTask	Low-Level Utilities / Scripts and External Tasks / Creating and initializing a process	-	objc
-method	open	+launchedTaskWithLaunchPath:arguments:	NSTask	Low-Level Utilities / Scripts and External Tasks / Deprecated	deprecated	objc
+method	shipped	+launchedTaskWithLaunchPath:arguments:	NSTask	Low-Level Utilities / Scripts and External Tasks / Deprecated	deprecated	objc
 method	shipped	-resume	NSTask	Low-Level Utilities / Scripts and External Tasks / Running and stopping	-	objc
 method	shipped	-suspend	NSTask	Low-Level Utilities / Scripts and External Tasks / Running and stopping	-	objc
 method	shipped	-terminate	NSTask	Low-Level Utilities / Scripts and External Tasks / Running and stopping	-	objc
 method	shipped	-waitUntilExit	NSTask	Low-Level Utilities / Scripts and External Tasks / Running and stopping	-	objc
 property	shipped	arguments	NSTask	Low-Level Utilities / Scripts and External Tasks / Configuring a process	-	objc
-property	open	currentDirectoryPath	NSTask	Low-Level Utilities / Scripts and External Tasks / Deprecated	deprecated	objc
+property	shipped	currentDirectoryPath	NSTask	Low-Level Utilities / Scripts and External Tasks / Deprecated	deprecated	objc
 property	shipped	currentDirectoryURL	NSTask	Low-Level Utilities / Scripts and External Tasks / Configuring a process	-	objc
 property	shipped	environment	NSTask	Low-Level Utilities / Scripts and External Tasks / Configuring a process	-	objc
 property	shipped	executableURL	NSTask	Low-Level Utilities / Scripts and External Tasks / Configuring a process	-	objc
-property	open	launchPath	NSTask	Low-Level Utilities / Scripts and External Tasks / Deprecated	deprecated	objc
+property	shipped	launchPath	NSTask	Low-Level Utilities / Scripts and External Tasks / Deprecated	deprecated	objc
 property	open	launchRequirementData	NSTask	Low-Level Utilities / Scripts and External Tasks / Instance Properties	-	objc
 property	shipped	processIdentifier	NSTask	Low-Level Utilities / Scripts and External Tasks / Returning information	-	objc
 property	shipped	qualityOfService	NSTask	Low-Level Utilities / Scripts and External Tasks / Configuring a process	-	objc
