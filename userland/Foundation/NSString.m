@@ -60,8 +60,11 @@ __attribute__((objc_root_class))
  * several rounds: with +load never running, the ONLY registered class was the one a probe happened to
  * register, so the difference between a working string and a broken one tracked WHEN each was created —
  * and looked exactly like a difference between two creation PATHS. It was not. It was ordering. */
-__attribute__((constructor))
-static void fnx_register_nsstring_as_cfstring(void)
+/* NOT static, AND NOT A CONSTRUCTOR: CF calls this BY NAME, weakly, from inside object creation and only
+ * once its runtime is initialised. A constructor was tried first and MEASURED TOO EARLY -- at that point
+ * [NSString class] is Nil and the registration silently did nothing. This is called at the moment CF needs
+ * the answer, which is the only moment guaranteed to be late enough and early enough at once. */
+void _CFNXBridgeAllClasses(void)
 {
 	CFNXBridgeClassToType([NSString class], CFStringGetTypeID());
 }

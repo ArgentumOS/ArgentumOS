@@ -434,7 +434,39 @@ CF_INLINE CFRuntimeBase *_cf_aligned_calloc(size_t align, CFIndex size, const ch
     return memory;
 }
 
+/* FNX LOCAL MODIFICATION 11 (Apache-2.0 §4(b)): THE CLASSES MUST EXIST BEFORE AN ISA IS COMPUTED.
+ *
+ * Measured, not reasoned: a library constructor in this tree's Foundation ran, asked for [NSString class],
+ * got NIL, and its guard silently registered nothing -- so the FIRST string a process created had no class
+ * while every later one had the class a later registration gave it. The answer was 'nz', two characters of
+ * instrument, after a great deal of reasoning had failed.
+ *
+ * SO CF ASKS, AND ASKS WHEN IT IS READY TO BE ANSWERED. Weakly, so this package keeps NO dependency on
+ * Foundation (modification 7's property); from INSIDE creation, so the answer cannot arrive after an isa has
+ * been computed; and only once __CFInitialized is set, because before that the runtime is still being built
+ * and a Foundation class cannot be asked for -- WHICH IS THE MISTAKE THIS CARRIES FORWARD: the first version
+ * of the ask fired at the top of creation unconditionally and the guest died before its first check.
+ *
+ * THE GATE COSTS NOTHING BECAUSE CF ALREADY TRACKS IT: __CFInitialized is set at the end of __CFInitialize.
+ */
+#if !DEPLOYMENT_RUNTIME_SWIFT
+extern Boolean __CFInitialized;
+extern void _CFNXBridgeAllClasses(void) __attribute__((weak));
+static Boolean _fnxClassesBridged = false;
+static CF_INLINE void _fnxBridgeClassesIfPresent(void) {
+    if (!_fnxClassesBridged && __CFInitialized && _CFNXBridgeAllClasses != NULL) {
+        _CFNXBridgeAllClasses();
+        _fnxClassesBridged = true;
+    }
+}
+#endif
+
 CFTypeRef _CFRuntimeCreateInstance(CFAllocatorRef allocator, CFTypeID typeID, CFIndex extraBytes, unsigned char *category) {
+#if !DEPLOYMENT_RUNTIME_SWIFT
+    /* Before the isa is computed, and only once the runtime can answer. */
+    _fnxBridgeClassesIfPresent();
+#endif
+
 #if DEPLOYMENT_RUNTIME_SWIFT
     // Under the Swift runtime, all CFTypeRefs are _NSCFTypes or a toll-free bridged type
     
