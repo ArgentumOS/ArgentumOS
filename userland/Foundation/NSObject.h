@@ -58,6 +58,30 @@
 extern "C" {
 #endif
 
+/*
+ * THE RULE FOR EVERY EQUIVALENT PAIR, WHICH THIS FILE ALREADY OBEYS AND THE NEXT CLASSES INHERIT: an
+ * Objective-C method whose behaviour is a CoreFoundation function's should CALL that function — ON ITS
+ * STORAGE, NEVER ON ITSELF. The distinction is not pedantry, it is the difference between one behaviour
+ * and a hang: CF's doors are implemented by DISPATCHING BACK to the class (CF_IS_OBJC is an ISA
+ * comparison, and this library's classes pass it by construction). So -hash calling CFHash(self) is an
+ * infinite loop through the same door, while -hash over a CFDictionaryRef the object owns is CF's real C
+ * path. DELEGATION MUST SAY WHAT IT DELEGATES ON.
+ *
+ *   * WHERE THE STORAGE IS A CF OBJECT, every storage-level door delegates and there is ONE implementation
+ *     of the behaviour. That is the point of the design: with two implementations the two worlds can
+ *     disagree, and with one they cannot. This file is the example — -retain and -release ARE
+ *     objc_retain/objc_release, which is what CF's ownership arm calls.
+ *   * WHERE THE CONTRACTS DIFFER, delegation is not available and the difference is STATED, not silently
+ *     reimplemented. The old library's -getCharacters:range: zero-fills past the end while CF's requires
+ *     an in-bounds range: a real divergence, and the standing policy is that a deviation is tolerated only
+ *     as far as it is necessary and must be documented.
+ *   * WHERE THE PAIR IS NOT SYMMETRIC, delegate the OPERATION and own the SHAPE. CF's uppercase is the
+ *     in-place CFStringUppercase with no immutable-returning twin, so -uppercaseString runs CF's operation
+ *     over a copy the method made.
+ *   * AND THE COMPATIBILITY SURFACE CANNOT DELEGATE AT ALL: the doors CF itself implements by dispatching
+ *     to us (-getCString:maxLength:encoding:, -length, -characterAtIndex: …) ARE the CF side of the pair.
+ */
+
 /* THE TWO NAMES THIS HEADER CANNOT AVOID, and both are forward rather than owned: NSUInteger is the
  * library's own integer spelling (it moves to its own header the moment a second class needs it, and only
  * then), and NSString is named because -description returns one — here that is CoreFoundation's string
