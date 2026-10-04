@@ -36,9 +36,7 @@ FOUNDATION_CFLAGS  = -DDEPLOYMENT_RUNTIME_SWIFT=0 -fPIC -fblocks -fconstant-cfst
 # Foundation cannot alias it from C because .set only emits a symbol the translation unit references.
 # --defsym is the linker's own alias and needs nobody to reference it first. Measured before: the same trick
 # for _CF_CONSTANT_STRING_SWIFT_CLASS produced a DYNAMIC symbol at the class's address.
-FOUNDATION_DEFSYM = -Wl,--defsym,__CFConstantStringClassReference=._OBJC_CLASS_NSConstantString
-
-FOUNDATION_CF_LIBS = $(FOUNDATION_DEFSYM) -L$(COREFOUNDATION_PREFIX)/lib -lcorefoundation \
+FOUNDATION_CF_LIBS = -L$(COREFOUNDATION_PREFIX)/lib -lcorefoundation \
                      -L$(LIBDISPATCH_PREFIX)/lib -ldispatch -lBlocksRuntime \
                      -L$(OBJC_PREFIX)/lib -lobjc \
                      -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib \

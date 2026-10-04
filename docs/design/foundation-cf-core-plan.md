@@ -1077,3 +1077,27 @@ common factor in the ONE alias that ever worked is now visible in the measured h
 So the third experiment is to put the alias where the symbol is owned -- in CoreFoundation itself -- aimed at a
 WEAK target symbol that this library provides, since CF cannot name Foundation's class directly. That is the
 only untried combination, and both of its halves are named.
+
+
+**THE CFSTR DEBT IS CLOSED. 18/18, and the last red checks in Foundation are green.** Measured:
+
+    00000000000061d0 D __CFConstantStringClassReference
+    00000000000061d0 D _CF_CONSTANT_STRING_SWIFT_CLASS
+    00000000000061d0 D ._OBJC_CLASS_NSConstantString      ALL THREE AT THE CLASS'S ADDRESS
+
+    a-cfstr-literal-is-an-object ok      and-is-messageable ok
+    and-casts-to-cfstringref ok          and-is-messageable-as-an-ns-string ok
+    RESULT ok=18 fail=0                  TESTS-OK 1/1 case(s), 6/6 check(s)
+
+AND THE WINNING MECHANISM WAS THE THIRD EXPERIMENT, COMBINING BOTH HALVES A PREVIOUS ATTEMPT HAD ALONE: a .set
+alias AND a real, unelidable use of the symbol in the same translation unit. The measured history named it
+before the attempt did -- use without .set emitted nothing, .set without a use emitted nothing, and the one
+alias that ever worked had both. The use must READ, never write: below the alias the symbol IS the class, so a
+write would corrupt it, and (volatile) stops the optimiser removing a read whose value is unused.
+
+AND THE --defsym FLAG CAME OUT AGAIN, for a reason only a full link could show: alone it created no symbol
+(measured, twice), and once the symbol did exist it became a HARD ERROR where the class's own symbol is not
+resolvable -- 'unresolvable symbol ._OBJC_CLASS_NSConstantString referenced in expression' -- and a failed
+--defsym ABORTS RESOLUTION OF EVERYTHING ELSE AT THAT LINK, which is why the probe's own relocation to
+__CFConstantStringClassReference also read as unresolvable. Removing the flag fixed both symptoms at once: one
+cause, two errors, and the second looked like an independent failure.

@@ -145,6 +145,12 @@ void _CFNXBridgeAllClasses(void)
 		/* THE POINTER IS THE CLASS, because with the alias below an object's isa IS the class -- and CF's
 		 * own test (CFRuntime.c:1956) compares exactly `obj->isa == __CFConstantStringClassReferencePtr`. */
 		__CFConstantStringClassReferencePtr = objc_getClass("NSConstantString");
+
+		/* AND A REAL USE OF THE SYMBOL, BECAUSE .set ALONE EMITTED NOTHING. The measured history says it:
+		 * the first attempt referenced this symbol but had no .set; the second had the .set but referenced
+		 * nothing; the one alias that ever worked had BOTH. A volatile read cannot be optimised away, and it
+		 * reads -- never writes -- because below the symbol IS the class, and a write would corrupt it. */
+		(void)*(volatile int *)__CFConstantStringClassReference;
 	}
 }
 
