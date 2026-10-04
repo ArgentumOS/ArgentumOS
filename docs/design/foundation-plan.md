@@ -15962,6 +15962,39 @@ to say "the plan's family table is stale against the ledger", exactly what the n
 **0 NEW** → `--work-list` **0 open symbols**. The probe and suite numbers of §62.107/§62.108 stand unchanged
 (probe `foundation_markdown` 29/29 host, guest 6/6 in 12s, host suite 54 probes no failure, library zero warnings).
 
+## §63.205 — NSProxy: the two deprecated doors ship, the two unavailable ones keep their citation
+
+Two rows shipped: `+allocWithZone:`, `-finalize`. Ledger after: **method 1705 shipped / 108 open / 401 struck; property 729 / 28 / 179**.
+
+**THE GRADING §63.204 RECORDED IS NOW CARRIED OUT.** Per `dec-1a00739ebd0bdc05` (a deprecated API is owed
+work), the two doors the header had listed as absent because deprecation are implemented, and the header's note
+is rewritten to say so — the same edit §63.200 made for NSUserDefaults:
+* `+allocWithZone:` takes a zone this runtime has none of (there is no `NSZone` here), so it is `+alloc` with
+  the reading stated where it is implemented.
+* `-finalize` belongs to the collector, which does not exist here either: it is defined for compatibility —
+  source that implements it compiles and links — and is never invoked, because nothing collects. The body is
+  empty for a reason a reader can check, not out of haste.
+
+**AND `-allowsWeakReference`/`-retainWeakReference` STAY OPEN, WITH THE HEADER'S OWN CITATION** — *marked
+UNAVAILABLE in the modern SDK*. Unavailable is not deprecated: Apple removed those doors with the collector, so
+they are a §11-style absence rather than work.
+
+**BOTH SWEEP MODES RUN AS A PAIR THIS TIME, AND THEY AGREE:** `--unimplemented` → `NEW … 0` (declarations all
+have definitions) and `--check` → *selector ledger consistent* (every shipped selector is declared by its owner
+and every open one is absent). That pairing is the fix for §63.204's instrument trap, and every edit in this
+unit used a **line-anchored** guard (`(?m)^\+ \(instancetype\)allocWithZone:`) rather than a bare substring —
+which matters here because the header's own note spells both names in prose, and a substring test is satisfied
+by a comment.
+
+**THE GUEST CHECK FOR THESE TWO IS OWED, WITH THE REASON.** I wrote one and could not place it: `FnMrrProxy` (the
+proxy subclass the checks need) lives in `foundation_core_support.m`, which is a SUPPORT unit with no case of
+its own and no `check` helper of that file's shape, so a check inserted there would never run — and the probe
+that does have a case (`foundation_core.m`) needs its own `NSProxy` subclass declared at file scope first. That
+is a five-line addition to a probe I have not otherwise touched, and it is owed rather than faked.
+
+Acceptance: `make testimg` green (status-checked); `tools/foundation-sweep.py --check` and `--unimplemented`
+both clean (the pair, run together); no guest gate is affected by these two doors yet — see the paragraph above.
+
 ## §63.204 — NSProxy's four rows are graded, not uniform — and two sweep modes read OPPOSITE directions
 
 No code landed; the tree is green and this records what the next attempt must know. Ledger unchanged:

@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1703	open	110	struck	401
+# method	shipped	1705	open	108	struck	401
 # property	shipped	729	open	28	struck	179
 
 
@@ -1977,11 +1977,11 @@ method	shipped	+protocolCheckerWithTarget:protocol:	NSProtocolChecker	Low-Level 
 property	shipped	protocol	NSProtocolChecker	Low-Level Utilities / Legacy / Legacy / Getting information	deprecated	objc
 property	shipped	target	NSProtocolChecker	Low-Level Utilities / Legacy / Legacy / Getting information	deprecated	objc
 method	shipped	+alloc	NSProxy	Low-Level Utilities / Remote Objects / Creating Instances	-	objc
-method	open	+allocWithZone:	NSProxy	Low-Level Utilities / Remote Objects / Creating Instances	-	objc
+method	shipped	+allocWithZone:	NSProxy	Low-Level Utilities / Remote Objects / Creating Instances	-	objc
 method	open	-allowsWeakReference	NSProxy	Low-Level Utilities / Remote Objects / Instance Methods	-	objc
 method	shipped	+class	NSProxy	Low-Level Utilities / Remote Objects / Describing a Proxy Class or Object	-	objc
 method	shipped	-dealloc	NSProxy	Low-Level Utilities / Remote Objects / Deallocating Instances	-	objc
-method	open	-finalize	NSProxy	Low-Level Utilities / Remote Objects / Finalizing an Object	-	objc
+method	shipped	-finalize	NSProxy	Low-Level Utilities / Remote Objects / Finalizing an Object	-	objc
 method	shipped	-forwardInvocation:	NSProxy	Low-Level Utilities / Remote Objects / Handling Unimplemented Methods	-	objc
 method	shipped	-methodSignatureForSelector:	NSProxy	Low-Level Utilities / Remote Objects / Handling Unimplemented Methods	-	objc
 method	shipped	+respondsToSelector:	NSProxy	Low-Level Utilities / Remote Objects / Introspecting a Proxy Class	-	objc

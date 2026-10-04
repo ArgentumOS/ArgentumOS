@@ -230,4 +230,18 @@ static id fn_perform_selector(id proxy, SEL aSelector, id *arguments, NSUInteger
 	return [self description];
 }
 
+
++ (instancetype)allocWithZone:(void *)zone
+{
+	/* NO ZONES EXIST ON THIS RUNTIME: Apple's door is kept so source that calls it links, and it answers the
+	 * same object +alloc would. */
+	(void)zone;
+	return [self alloc];
+}
+
+- (void)finalize
+{
+	/* THE COLLECTOR THAT CALLS THIS DOES NOT EXIST HERE. Defined for compatibility — a subclass implementing
+	 * -finalize compiles and links — and never invoked, because nothing collects. */
+}
 @end
