@@ -257,6 +257,31 @@ in the image, and a guest smoke test that creates/destroys a CFString and a CFAr
 libdispatch question with a build**, not a guess: either dispatch is vendored, or the CF paths that
 need it are compiled out and the gap recorded.
 
+### M3 — OPENED BY USER DECISION (2026-10, `dec-c2fc20f0f8e67246` and this answer): ALL THE WAY
+
+**THE DECISION, AND WHAT IT RESOLVES.** Asked how to handle the one work-list item the compatibility
+surface cannot satisfy by writing a method — `copyWithZone:`, whose result CF casts to a `CFBasicHashRef`
+and therefore requires the bridged object to be CF-SHAPED — the answer was **all the way**: no CF-side
+bypass of the ObjC path; the classes BECOME CF-shaped. That settles the question and, with it, what the
+compatibility surface is *for*: its ~44 remaining selectors stop being a Foundation-side method list and
+become the re-base's own work, because a CF-backed class answers them by construction rather than by
+imitation.
+
+**SO M2's REMAINING WORK AND M3 ARE ONE ROAD, WHICH IS WORTH SAYING PLAINLY.** §2 of this plan already
+predicted the shape ("~29% of Foundation whose value would become CF's behaviour stops being original
+work"); the difference now is that the road is taken deliberately and from a working bridge rather than as
+a hypothesis. M2's gate as written — the Foundation probes passing against CF-backed strings — is a GATE
+ON M3, not on the stretch already landed.
+
+**THE FIRST SLICE, AND WHY IT IS THE STORAGE RATHER THAN A METHOD.** The smallest end-to-end re-base is
+one concrete class's STORAGE: `NSOwnedString` (this tree's UTF-8-owning concrete NSString) holding a
+`CFStringRef` and answering its accessors through CFString's functions, with `foundation_string` — the
+suite that already covers the cluster's contract — as the gate. A METHOD at a time would leave two sources
+of truth alive at once, which is exactly what the re-base is meant to end; the storage is the thing that
+makes the class CF-backed rather than CF-adjacent. The converters §4 names as this milestone's payoff
+(`-dataUsingEncoding:` blocked on CF's repertoire tables) come from the same move, since a CFString's
+storage is what carries them.
+
 ### M2 — RESULT, first unit (landed 2026-10)
 
 **CF DISPATCHES INTO THIS TREE'S OBJECTIVE-C OBJECTS, AND ITS OWN OBJECTS STILL TAKE CF'S OWN PATH.**
