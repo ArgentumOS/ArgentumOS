@@ -1056,3 +1056,24 @@ own uses of it are address-only (the comparison at CFRuntime.c:1956 and the macr
 but they are *references* at CF's own link time, so removing the definition means those references must be
 resolved from somewhere -- which is precisely the arrangement to test next, with both halves named and neither
 guessed.
+
+
+**CF'S DEFINITION CANNOT BE REMOVED — measured, and the tree is back green.** Removing it and making the
+declaration undefined-weak broke CF's own link:
+
+    undefined reference to `__CFConstantStringClassReference'
+
+because CF's constant-string macro expands in CF's own translation units, and a weak DECLARATION in C does not
+make those undefined-weak REFERENCES. So CF must keep a definition of its own. Reverted; CF rebuilds with zero
+errors and the symbol is `V` (weak) again.
+
+AND THAT CLOSES THE SEARCH SPACE, because it rules out one of the two remaining shapes and points at the other:
+CF cannot stop defining it, and an alias from ANOTHER library does not export (two attempts measured). The
+common factor in the ONE alias that ever worked is now visible in the measured history:
+
+    _CF_CONSTANT_STRING_SWIFT_CLASS   .set written in the library that OWNS the symbol   -> worked, dynamic
+    __CFConstantStringClassReference  .set / --defsym in a library that merely REFERENCES -> exported nothing
+
+So the third experiment is to put the alias where the symbol is owned -- in CoreFoundation itself -- aimed at a
+WEAK target symbol that this library provides, since CF cannot name Foundation's class directly. That is the
+only untried combination, and both of its halves are named.
