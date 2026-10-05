@@ -28061,3 +28061,26 @@ guest at 167/167. Still unclaimed in it: locale-basics, locale-turkic-*, locale-
 locale-direction-follows-the-script, locale-windows-locale-code-round-trips,
 locale-localized-string-names-a-language, the eight composed-sequence-* checks, option-set-members-are-distinct-bits,
 transforms-and-keys-are-their-own-names and locale-keys-are-their-own-names.
+
+**§63.247g — THE CENSUS UNDER-REPORTS COVERAGE, AND NSURL IS THE PROOF (2026-10-04). CURRENT STATE:
+asserted 217, named 473, uncovered 1,805 distinct.** Four families now guest-verified — collections 72/72,
+values 31/31, strings 167/167, **URL 44/44** — with 387 claims placed (77+33+200+77).
+
+**THE FINDING, AND IT MATTERS MORE THAN THE NUMBER.** `foundation_url`'s 44 checks assert a wide NSURL surface
+and call every door with a MESSAGE SEND THAT NAMES NOTHING. The census therefore filed NSURL as **75 of its 81
+shipped rows UNTOUCHED** — and declaring what those checks already prove moved **31 rows out of the work list in
+one commit**, the largest single move of this campaign, with NO new test written.
+
+**SO "UNTOUCHED" IN THIS INSTRUMENT MEANS NO PROBE *NAMES* THE SELECTOR, NOT THAT NO PROBE EXERCISES IT.** That
+is the safe direction for the instrument to err in (§63.247c), and it has a consequence the next units should
+use: every large owner still on the uncovered list is a candidate for the same treatment, and the SIZE of its
+uncovered count is not evidence that its behaviour is unasserted. The ones worth trying next, in descending
+uncovered count: **NSFileManager (73), NSCoder (71), NSNumberFormatter (67), NSCalendar (63), NSBundle (60),
+NSXMLNode (39), NSUserDefaults (35)** — each with a probe of its own (foundation_filemanager has 39 checks,
+foundation_calendar more). The move is mechanical: install `covers()`, read the checks, claim what they prove,
+filter against the ledger.
+
+**AND ONE SPELLING LESSON THE FILTER CAUGHT:** NSURL's `-isFileURL` is a claim that can NEVER count, because the
+ledger carries the row under the PROPERTY's name (`fileURL`) — Apple declares it as
+`@property (readonly, getter=isFileURL) BOOL fileURL`. Three more were inert for the usual reason (NSObject's
+`-description`, `-hash`, `-isEqual:`). The tool's inert advisory is what made both visible.
