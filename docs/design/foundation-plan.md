@@ -28156,3 +28156,22 @@ a message that over-claimed what landed; this corrects the correction's own desc
    (this tree's NSGeometry typedefs make the CG and NS spellings the same type). So a door that the ledger and
    the headers both put OUT is implemented and tested. Whether to declare + un-strike, or to stop implementing,
    is a decision for the ledger's owner - not a thing to settle inside a coverage pass.
+
+**§63.247k — THE PROPERTY SPELLINGS, TWO OF THEM, AND A PROCESS FIX FOR THE COUNT (2026-10-04). CURRENT
+STATE: asserted 447, named 635, uncovered 1,415 distinct.**
+
+**THE IDENTIFIER RULE THE LAST TWO PASSES TAUGHT, and it applies to every property-heavy class:** the ledger
+records a property, so the row's NAME is the property's name — not either of the accessors.
+ * a SETTER's check (`-setLocale:`) proves the row `locale`, `numberStyle`, `groupingSize`;
+ * a BOOLEAN GETTER's check (`-isLoaded`) proves the row `loaded`.
+A resolver that tries the setter, then the property, then the `is` form was needed twice: the number formatter
+pass dropped 47 setter claims before the rule was applied (asserted 395 -> 406 on the re-insertion alone), and
+the bundle pass dropped `isLoaded`.
+
+**AND A PROCESS FIX, because the count in a commit message has now been wrong three times - §63.247a's 18-vs-19
+(summed by hand), §63.247e's 131-vs-141 (measured at the wrong moment), and 345be816's 446-vs-447 (quoted from
+the PREVIOUS command's output, one line above the fresh one).** All three were avoidable the same way:
+**GENERATE THE MESSAGE'S NUMBERS FROM THE RUN THAT PRECEDES THE COMMIT, IN THE SAME COMMAND** - the
+`foundation-cov --check` line is printed by the very command that commits, so the number to quote is on screen
+at that moment and nowhere else. The rule is mechanical enough to be a rule: a number in a message comes from
+the same shell command as the commit, never from an earlier one.
