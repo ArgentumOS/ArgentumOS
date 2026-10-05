@@ -1,20 +1,33 @@
 # Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
 # SPDX-License-Identifier: MIT
-"""NSArray, whose storage IS a CFArray.
+"""The Foundation's collections — F3's acceptance.
 
-An ordered collection is where "an NS object IS a CF object" is easiest to fake: a class keeping its own item
-vector and building a CFArray on demand satisfies every signature while the two worlds hold different
-objects. So the two checks that carry this case are the ones that fail on a copy:
+docs/design/foundation-plan.md §5 (F3). The probe is
+`/System/Shared/tests/foundation_collection`, built from two translation units.
 
-  * `and-CFs-own-C-door-sees-this-object-as-a-CFArray` — CFArrayGetCount, CF's own code, over an object this
-    library built. That is the cast, and it is the library's whole claim;
-  * `the-array-holds-its-items-with-CFs-own-callbacks` and `and-the-array-is-what-ends-it` — an item whose
-    caller reference is dropped must survive, and must die when the ARRAY is released. Ownership by CF rather
-    than by hand.
-
-The remaining checks are the doors, each compared against an independently known answer rather than against
-the class's own other door: a door that agrees with itself is not evidence. `-indexOfObject:` is checked
-against kCFNotFound too, because that sentinel is CF's and this tree defines no NSNotFound.
+  * `array-basic`     — count/index/first/last/contains, out of range is nil;
+  * `array-equality`  — content equality, and that ORDER matters;
+  * `array-mutable`   — add/insert/remove, and `-copy` as a snapshot;
+  * `array-enumerate` — `for (id x in array)` visits every element in order,
+                        which is clang's fast-enumeration lowering over the
+                        protocol whose name, selectors and state layout are ABI;
+  * `dict-basic`      — set/get, overwrite without growing the count, missing key
+                        is nil;
+  * `dict-key-copy`   — the key decision, measured both ways: a key is COPIED, so
+                        mutating the caller's object after insert still finds the
+                        value AND the original's retain count is unchanged;
+  * `dict-equality`   — the same pairs built in a different ORDER are equal and
+                        hash alike (which is why the dictionary's hash is a sum);
+  * `dict-enumerate`  — `for (id k in dict)` yields every key once, and a nested
+                        collection is held by reference;
+  * `ownership`       — an array element is retained on insert, released on
+                        removal (measured with the runtime's retain count);
+  * `indexpath-basics` — the ordered path: construction, -indexAtPosition:,
+                        -length, both derived forms, -compare:, equality/hash, our
+                        -description, and the RANGE REFUSALS as exceptions;
+  * `indexpath-api-complete` — the audited Cocoa inventory for NSIndexPath, both
+                        directions (the toolkit's row/section/item accessors and the
+                        coding protocols are asserted ABSENT).
 """
 
 import re
@@ -23,45 +36,22 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_collection"
 CHECKS = (
-    "an-object-can-be-allocated-to-put-in",
-    "an-array-can-be-made-from-a-vector",
-    "the-class-declares-the-nsobject-protocol-itself",
-    "retainCount-answers-CFs-count-and-not-the-element-count",
-    "and-count-reports-what-was-put-in",
-    "objectAtIndex-returns-the-object-that-went-in",
-    "the-subscript-door-agrees-with-objectAtIndex",
-    "and-an-index-past-the-end-raises",
-    "firstObject-and-lastObject-are-the-two-ends",
-    "containsObject-finds-a-member",
-    "and-does-not-claim-a-stranger",
-    "indexOfObject-answers-the-position",
-    "and-answers-NSNotFound-for-a-stranger",
-    "and-that-sentinel-is-not-CFs-minus-one",
-    "an-empty-array-has-no-first-and-no-last-object",
-    "indexOfObject-inRange-finds-inside-the-range",
-    "and-misses-outside-it",
-    "indexOfObjectIdenticalTo-finds-the-same-pointer",
-    "and-answers-NSNotFound-for-an-object-it-never-held",
-    "getObjects-range-fills-from-the-range-given",
-    "arrayByAddingObject-grows-by-one-with-that-object",
-    "arrayByAddingObjectsFromArray-appends-the-other-array",
-    "subarrayWithRange-takes-the-elements-in-the-range",
-    "isEqualToArray-says-yes-for-the-same-items",
-    "and-no-for-a-different-element",
-    "firstObjectCommonWithArray-answers-the-first-shared-element",
-    "and-nil-when-nothing-is-shared",
-    "makeObjectsPerformSelector-reaches-every-element",
-    "and-withObject-passes-the-same-object-to-each",
-    "the-array-holds-its-items-with-CFs-own-callbacks",
-    "and-the-array-is-what-ends-it",
-    "and-CFs-own-C-door-sees-this-object-as-a-CFArray",
-)
+    "shared-key-set-pair",
+          "array-basic", "array-equality", "array-mutable", "array-enumerate", "dict-basic", "dict-key-copy", "dict-equality", "dict-enumerate", "ownership", "number-key", "cocoa-spellings", "array-api-complete", "array-varargs", "array-join", "array-subarray", "array-sort", "array-search", "array-getobjects", "array-bulk", "array-copy-and-grow", "array-identity", "array-perform-and-common", "dict-api-complete", "dict-strings-file-format", "dict-constructors", "dict-views", "dict-bulk", "dict-getobjects", "array-blocks", "dict-blocks", "indexset-api-complete", "indexpath-basics", "indexpath-refusals", "indexpath-api-complete", "enumerator-api-complete", "plist-serialization", "mutation-handler-direct", "fast-enum-mutation-raises", "array-plist-file", "array-plist-url", "array-plist-wrong-root", "dictionary-plist-file", "dictionary-plist-url", "dictionary-plist-wrong-root", "indexpath-nscoding-round-trip", "indexset-range-queries", "indexset-buffer-form", "indexset-enumerate-ranges", "indexset-test-and-collect", "indexset-mutable-groups", "set-construction", "set-perform-and-enumerate",
+          "set-test-doors-and-locale-description", "array-first-match-search", "array-nscoding-doors", "dict-nscoding-doors", "dict-constructors-2", "dict-options-blocks", "dict-url-error", "dict-file-attributes",
+          # §63.45: the eighteen NSArray rows this unit closes - the options forms of the enumeration and
+          # test doors, the locale description pair, the pathname filter, the shuffle, the sort-hint pair,
+          # the array-wide KVO trio and the error-carrying file doors.
+          "array-enumerate-with-options", "array-indexes-options-forms", "array-description-with-locale",
+          "array-paths-matching-extensions", "array-shuffled-is-a-permutation", "array-sorted-hint",
+          "array-kvo-registration-doors", "array-file-doors-with-error", "collection-remove-objects-in-array", "collection-remove-objects-from-indices", "dictionary-description-with-locale")
 
 
 class Case(BaseCase):
-    title = "Foundation collections: an NSArray whose storage is a CFArray"
+    title = "the Foundation's collections: arrays, dictionaries, fast enumeration"
     tier = "fast"
-    # It runs a probe and reads its output, so the same guest can answer another case afterwards.
+    # Its filesystem reads are read-only FIXTURES in the image; the host-clean list is a different
+    # question (a HOST build has no /System), so it can share a guest like the rest.
     shared_session = True
     timeout = 300
 
@@ -82,21 +72,34 @@ class Case(BaseCase):
             if line.startswith("FOUNDATION-COLLECTION "):
                 self.note(line)
 
-        self.check("probe-ran", "FOUNDATION-COLLECTION DONE" in out,
-                   "the probe did not reach its end marker; output tail: " + out[-300:])
-        failed = [l.strip() for l in out.splitlines() if " FAIL " in l]
-        self.check("no-fail-lines", not failed, "; ".join(failed[:3]))
+        done = "FOUNDATION-COLLECTION DONE" in out
+        self.check("probe-ran", done,
+                   "the probe reached its end marker" if done
+                   else "no FOUNDATION-COLLECTION DONE; output tail: "
+                        + out.strip()[-400:])
+        if not done:
+            return
 
-        ok = fail = -1
-        result = [l for l in out.splitlines() if "RESULT ok=" in l]
-        if result:
-            m = re.search(r"ok=(-?\d+) fail=(-?\d+)", result[-1])
-            if m:
-                ok, fail = int(m.group(1)), int(m.group(2))
-        self.check("result-line", ok >= 0, "the probe printed no RESULT line")
-        self.check("every-check-passed", ok == len(CHECKS) and fail == 0,
-                   "the probe reported ok=%d fail=%d against %d checks" % (ok, fail, len(CHECKS)))
+        missing = [c for c in CHECKS
+                   if not re.search(r"^FOUNDATION-COLLECTION %s ok$" % re.escape(c),
+                                    out, re.M)]
+        self.check("every-check-passed", not missing,
+                   ("all %d checks reported ok" % len(CHECKS)) if not missing
+                   else "%d of %d ok; missing: %s"
+                        % (len(CHECKS) - len(missing), len(CHECKS),
+                           ", ".join(missing)))
 
-        status = [l for l in out.splitlines() if "FOUNDATION-COLLECTION-STATUS=" in l]
-        self.check("exit-status", bool(status) and status[-1].rstrip().endswith("STATUS=0"),
-                   "the probe exited non-zero: " + (status[-1].strip() if status else "no status line"))
+        fails = [l for l in out.splitlines()
+                 if l.endswith("FAIL") or " FAIL " in l]
+        self.check("no-fail-lines", not fails,
+                   "no check reported FAIL" if not fails else "; ".join(fails))
+
+        tally = re.search(r"FOUNDATION-COLLECTION RESULT ok=(\d+) fail=(\d+)", out)
+        self.check("result-line",
+                   bool(tally) and tally.group(1) == str(len(CHECKS))
+                   and tally.group(2) == "0",
+                   "the probe's own tally: %s"
+                   % (tally.group(0) if tally else "missing"))
+
+        self.check("exit-status", "FOUNDATION-COLLECTION-STATUS=0" in out,
+                   "the probe exited 0 (a non-zero status means a failed check)")

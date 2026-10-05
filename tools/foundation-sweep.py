@@ -2581,62 +2581,6 @@ def check_all(strict=False):
     return 1 if (rc_symbols or rc_selectors) else 0
 
 
-BRIDGE_CALL_RE = re.compile(r"_FNXBridgeClass\(\s*\[\s*([A-Za-z_][A-Za-z0-9_]*)\s+class\s*\]")
-TOLL_FREE_REL = "docs/reference/toll-free-bridged-types.txt"
-
-
-def bridged():
-    """THE SCOPE CHECK (user decision D9, 2026-10-04): "We will only toll-free bridge what Apple does."
-
-    APPLE'S TABLE 1, transcribed at docs/reference/toll-free-bridged-types.txt, is the whole of what a bridge
-    in this tree may reach. This mode holds the tree against it, and ONLY ONE DIRECTION IS A FAILURE:
-
-      * OVER-REACH FAILS. A class this library REGISTERS with a CF type must be in the table. Registration is
-        the instrument because `_FNXBridgeClass(` is the single place a class becomes CF-backed -- it is also
-        what the type lookup answers from -- so "did we bridge only what Apple does" is a grep rather than a
-        judgement, and a new bridged class cannot arrive without appearing here.
-      * AN UNBRIDGED ROW IS PROGRESS, so it is printed as the campaign's work list and never fails this mode.
-        The list shrinking IS the campaign; there is no threshold to fail on.
-    """
-    table = {}
-    rows = 0
-    with open(os.path.join(ROOT, TOLL_FREE_REL), encoding="utf-8") as fh:
-        for line in fh:
-            if line.startswith("#") or "\t" not in line:
-                continue
-            parts = line.rstrip("\n").split("\t")
-            if len(parts) == 3 and parts[0].startswith("CF"):
-                table[parts[1]] = parts[0]
-                rows += 1
-
-    registered = []
-    roots = os.path.join(ROOT, "userland", "Foundation")
-    for dirpath, _dirs, names in os.walk(roots):
-        for name in sorted(names):
-            if not name.endswith(".m"):
-                continue
-            full = os.path.join(dirpath, name)
-            with open(full, encoding="utf-8", errors="replace") as fh:
-                for lineno, line in enumerate(fh, 1):
-                    for match in BRIDGE_CALL_RE.finditer(line):
-                        registered.append((match.group(1), os.path.relpath(full, ROOT), lineno))
-
-    over = [r for r in registered if r[0] not in table]
-    done = sorted({r[0] for r in registered})
-    todo = sorted(set(table) - set(done))
-
-    print("toll-free bridging scope (D9): only what Apple's Table 1 lists — %s" % TOLL_FREE_REL)
-    print("  the table:                  %d CF types -> %d NS classes" % (rows, len(table)))
-    print("  registered by this library: %d  (%s)" % (len(done), ", ".join(done) if done else "none"))
-    print("  rows still unbridged:       %d  (the work list; not a failure)" % len(todo))
-    for cls in todo:
-        print("     %-26s %s" % (cls, table[cls]))
-    print("  OVER-REACH — a class Apple does NOT bridge — this mode fails on them: %d" % len(over))
-    for cls, where, lineno in over:
-        print("     %-26s %s:%d is not a toll-free bridged type" % (cls, where, lineno))
-    return 1 if over else 0
-
-
 def main(argv):
     mode = argv[1] if len(argv) > 1 else "--check"
     if mode == "--refresh":
@@ -2659,8 +2603,6 @@ def main(argv):
         return rc
     if mode == "--work-list":
         return work_list(argv[2] if len(argv) > 2 else None)
-    if mode == "--bridged":
-        return bridged()
     print(__doc__)
     return 2
 

@@ -340,1537 +340,1534 @@ FN_FOUNDATION_ROOT  = NSProxy.m
 FN_FOUNDATION_OBJS  = $(addprefix .build/foundation-,$(FN_FOUNDATION_SRCS:.m=.o)) .build/foundation-ninvoke-asm.o
 
 define FN_FOUNDATION_rule
-# FNX-ARCHIVED: .build/foundation-$(1 (the three families moved to archive/ by the CF-Foundation experiment)
-# .build/foundation-$(1:.m=.o): $(FOUNDATION_SRC)/$(1)
-# 	$$(MUSL64_OBJC) -c $$(FOUNDATION_CFLAGS) \
-# 		$(if $(filter $(1),$(FN_FOUNDATION_ROOT)),-Wno-objc-root-class) \
-# 		$(if $(filter $(1),$(FN_FOUNDATION_NOARC)),-fno-objc-arc) \
-# 		$(if $(filter $(1),$(FN_FOUNDATION_ICU)),-I$(ICUPREFIX)/include) \
-# 		$(if $(filter $(1),$(FN_FOUNDATION_X11)),-I$(X11PREFIX)/include) \
-# 		$(if $(filter $(1),$(FN_FOUNDATION_CURL)),-I$(CURL_PREFIX)/include) \
-# 		$(if $(filter $(1),$(FN_FOUNDATION_SSL)),-I$(LIBRESSL_PREFIX)/include) \
-# 		-Iuserland $$< -o $$@
+.build/foundation-$(1:.m=.o): $(FOUNDATION_SRC)/$(1)
+	$$(MUSL64_OBJC) -c $$(FOUNDATION_CFLAGS) \
+		$(if $(filter $(1),$(FN_FOUNDATION_ROOT)),-Wno-objc-root-class) \
+		$(if $(filter $(1),$(FN_FOUNDATION_NOARC)),-fno-objc-arc) \
+		$(if $(filter $(1),$(FN_FOUNDATION_ICU)),-I$(ICUPREFIX)/include) \
+		$(if $(filter $(1),$(FN_FOUNDATION_X11)),-I$(X11PREFIX)/include) \
+		$(if $(filter $(1),$(FN_FOUNDATION_CURL)),-I$(CURL_PREFIX)/include) \
+		$(if $(filter $(1),$(FN_FOUNDATION_SSL)),-I$(LIBRESSL_PREFIX)/include) \
+		-Iuserland $$< -o $$@
 endef
 $(foreach f,$(FN_FOUNDATION_SRCS),$(eval $(call FN_FOUNDATION_rule,$(f))))
 .build/foundation-ninvoke-asm.o: $(FOUNDATION_SRC)/NSInvocation_amd64.S
 	$(MUSL64_CC) -c -fPIC $< -o $@
-# FNX-ARCHIVED: $(FOUNDATION_LIB) (the three families moved to archive/ by the CF-Foundation experiment)
-# $(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP) $(FN_FOUNDATION_OBJS)
-# 	@mkdir -p $(FNXLIB)
-# 	$(MUSL64_CC) -c -fPIC -Iinclude userland/plist.c -o .build/plist.o
-# 	# F7: the calendar family. NSCalendar.m and NSTimeZone.m are ARC; the
-# 	# components bag owns nothing but its fields.
-# 	#
-# 	# F13.7a: NSTimeZone.m NOW INCLUDES ICU (<unicode/ucal.h>, <unicode/uenum.h>), because the class
-# 	# reads the zone database instead of refusing it — so the ICU prefix is on ITS include path.
-# 	# NSCalendar.m and NSDateComponents.m do not include ICU: their arithmetic stays on libc's
-# 	# struct tm and they reach the database only through NSTimeZone.
-# 	# F13.7b: NSCalendar.m NOW INCLUDES ICU (<unicode/ucal.h>), because the class reads every
-# 	# calendar out of it instead of refusing the ones whose tables it lacked. So the ICU prefix is
-# 	# on ITS include path too; the link needed nothing new (F13.6 already made libfoundation need
-# 	# libicui18n/libicuuc/libicudata).
-# 	# F8: the URL value type.
-# 	# F9: the key-value coding family — a category on NSObject, so nothing here
-# 	# owns its storage; the lookup goes through the runtime's ivar table.
-# 	# F10: the sorting family. NSSortDescriptor.m resolves its key through KVC and
-# 	# calls a comparison selector through its OWN return type (a scalar, not `id`).
-# 	# F11a: the predicate object model — an abstract base, two private leaves, the tree
-# 	# node, and the two collection filters. The block leaf is why this file stores a block.
-# 	#
-# 	# ⚠⚠ TWO ENTRIES OF THIS LIST'S RATIONALE LEFT WITH THE PREDICATE FAMILY (§63.161): NSPredicate.m was
-# 	# here for ICU's <unicode/ucol.h> (the `[d]` collation) and for musl's <regex.h> (MATCHES, which is
-# 	# inside libc, so it never added a link), and NSPredicateFormat.m was the format grammar — a category on
-# 	# NSPredicate, which is why the parser lived beside the object model. BOTH FILES ARE GONE: the family is
-# 	# macOS 10.4. THE RULE they were examples of is unchanged, and the link still needs nothing new: F13.6
-# 	# already made libfoundation need libicui18n/libicuuc/libicudata.
-# 	# F12: the compression binding. NSDataCodec.m is the ONLY file that includes <zlib.h>, so the X11
-# 	# prefix is on ITS include path — and on the LINK line below, because libfoundation now needs
-# 	# libz.so.1. That library is already staged into the guest for the X11 stack, so this adds a
-# 	# dependency and no new artifact (docs/design/foundation-plan.md, F12).
-# 	# F13.6: the value-to-text family. NSFormatter.m is the abstract base and needs nothing extra;
-# 	# NSDateFormatter.m is the file that includes <unicode/udat.h> and <unicode/udatpg.h>, so the
-# 	# ICU prefix is on ITS include path — and on the LINK line below, because libfoundation now
-# 	# needs libicui18n/libicuuc/libicudata. Those libraries and their data package are already
-# 	# staged into the guest (docs/design/foundation-plan.md §10, F13), so this adds a dependency
-# 	# and no new artifact — the same shape as F12's libz.
-# 	# F13.7c: the number formatter. It includes <unicode/unum.h>, so the ICU prefix is on ITS
-# 	# include path; the LINK needs nothing new, because F13.6 already made libfoundation need
-# 	# libicui18n/libicuuc/libicudata.
-# 	# F13.7e: the shared calendar-keyword bridge (NSCalendar.m/.h). It is its OWN translation unit
-# 	# because TWO classes call it — NSCalendar and NSDateFormatter — and it includes only
-# 	# <Foundation/...> headers, so it needs no ICU include path of its own.
-# 	# F13.8: the unordered collection. It includes <Foundation/...> headers only — no ICU, no zlib —
-# 	# because a set is RULES rather than data, which is why it was a gap in the plan's refusal table
-# 	# rather than an entry in it.
-# 	# W2h: the 128-bit identifier. <Foundation/...> headers only — the entropy comes from
-# 	# getentropy, so no ICU include path is needed.
-# 	# W2h: the autorelease pool boundary. It needs the RUNTIME's pool primitives, from
-# 	# W2h: JSON. Foundation headers plus string.h and math.h; no ICU, no zlib.
-# 	# W2h: the undo manager's core. Foundation headers plus the runtime, for the selector send.
-# 	# W2h: the second root class. It needs the runtime's own allocation and disposal.
-# 	# -Wno-protocol IS DELIBERATE AND NOT NOISE: a proxy FORWARDS -isKindOfClass: and -isMemberOfClass:
-# 	# rather than implementing them - that is Apple's documented behaviour and the reason -isProxy
-# 	# exists - so the compiler correctly observes that this class does not satisfy the whole NSObject
-# 	# protocol itself. The same shape, and the same justification, as the probe rules' 
-# 	# -Wno-incomplete-implementation beside them.
-# 	# <objc/objc-arc.h>, which is already on the include path.
-# 	# W2h: the affine transform. <Foundation/...> headers and libm, for sin/cos.
-# 	# W2h: the value transformer. <Foundation/...> headers plus the runtime, for NSClassFromString.
-# 	# W2h: a span of time. <Foundation/...> headers only - it is dates and arithmetic, no ICU.
-# 	# F13.8c: the box for everything that is not an object, and the object that stands for nothing.
-# 	# Same shape as the set: <Foundation/...> headers only, no ICU and no zlib.
-# 	# F13.8d: the counted set. A SUBCLASS of NSMutableSet, so its initialisers have to reach the
-# 	# counts — see the file's header for why the array form may not go through the superclass's.
-# 	# F13.8e: the ordered set and its mutable half, in ONE translation unit (they share no
-# 	# superclass relation, so there is no NSMutableSet-style reason to split them).
-# 	# F13.9: the observer registry. <Foundation/...> headers only, like the collections.
-# 	# F13.10: the expression tree. It reads collections and key paths, so it includes the NSSet
-# 	# header; no ICU and no zlib.
-# 	# F13.11: the expression-shaped comparison. It shares the comparison rule with the grammar's
-# 	# leaf through FNCompareValues, so this file states no rule of its own.
-# 	# F13.12: the coder family. NSKeyedArchiver.m includes the plist serialisation and the runtime
-# 	# (it looks a class up BY NAME), so it is the one foundation source with those two dependencies.
-# 	# F13.13: the process service. It reads /proc and the C library's environ, so it is the one
-# 	# source here that includes <unistd.h> and <stdio.h>.
-# 	# F13.14: the file system service. It is the one source here that walks directories and calls
-# 	# open/read/write itself, because a recursive copy has no syscall to lean on.
-# 	# F13.15: the structured URL and RFC 3986 §5.2's resolution. NSURL.h is the bridge NSURL's
-# 	# relative door reaches the algorithm through.
-# 	# F13.16: regular expressions, on the engine musl already ships inside libc. It includes
-# 	# <regex.h> and nothing else new.
-# 	# F13.17: the locking classes and NSThread, over the pthreads musl already ships. These are the
-# 	# only two sources here that include <pthread.h>.
-# 	# F13.18: NSTimer and NSRunLoop in one unit, because they are one design — a timer names a date
-# 	# and the loop is what waits for dates. Its wait is select(2), not nanosleep(2): F13.17 measured
-# 	# that this kernel returns from nanosleep early.
-# 	# F13.19: the operation and the queue that schedules it. The second source here that uses the
-# 	# thread family — NSThread for the workers, NSCondition for the drain.
-# 	# F13.20: the progress tree. It includes <pthread.h> for its per-thread current stack, and
-# 	# nothing else new.
-# 	# W7 slice 2c: THE BRIDGE MAKES THE LIBRARY DEPEND ON LIBCURL, and libcurl on LibreSSL.
-# 	# The order is the dependency order (-lcurl -lssl -lcrypto), as curl_smoke records, and no RPATH
-# 	# is needed: the guest loader resolves libcurl.so.4 out of /System/Libraries, where slice 2b stages
-# 	# it. Precedent rather than a new kind of dependency: the library already needs libz (one codec)
-# 	# and ICU (F13.6). And the comment sits ABOVE the command, not inside it, because a line inside a
-# 	# backslash-continued recipe is part of that command: a '#' there does not comment out a makefile
-# 	# line, it comments out the rest of the SHELL command — measured here as a link that silently lost
-# 	# every flag after it.
-# 	# FOUNDATION DEPENDS ON COREFOUNDATION AS OF THE M2 COMPATIBILITY SURFACE (FNCoreFoundationBridge.m),
-# 	# which imports <CoreFoundation/CFString.h> to name CF's encodings rather than copying them. The
-# 	# direction is one-way and clean because CF no longer references any Foundation symbol. The gate is
-# 	# the staging blocks' gate: a missing prefix should name its own fix.
-# 	@if [ ! -d "$(COREFOUNDATION_PREFIX)/lib" ]; then \
-# 		echo "CoreFoundation prefix missing - run corefoundation/build.sh first"; \
-# 		exit 1; \
-# 	fi
-# 	$(MUSL64_OBJC) -shared -Wl,-soname,libfoundation.so.1 \
-# 		$(FN_FOUNDATION_OBJS) \
-# 		.build/plist.o -L$(X11PREFIX)/lib -lz -L$(ICUPREFIX)/lib -licui18n -licuuc -licudata \
-# 		-L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-L$(COREFOUNDATION_PREFIX)/lib -lcorefoundation -o $@
-# 	ln -sf libfoundation.so.1 $(FNXLIB)/libfoundation.so
-# FNX-ARCHIVED: userland64 (the three families moved to archive/ by the CF-Foundation experiment)
-# userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(OBJC_STAMP) foundation-gate $(FOUNDATION_LIB) $(CG_LIB) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
-# 	rm -rf $(ROOTFS64)
-# 	@mkdir -p $(ROOTFS64)
-# 	# third-party X11 + toolchain tests live under System/Shared
-# 	@mkdir -p "$(ROOTFS64)/System/Shared/X11/bin" "$(ROOTFS64)/System/Shared/tests"
-# 	# --- the FSH skeleton (spaced names verbatim, Q7). No root /tmp: the
-# 	# FSH maps /tmp to /System/Temporary Files (staged below); fshlint
-# 	# bans the /tmp string in System/Tools; fs_repair_tmpdir() recreates
-# 	# /System/Temporary Files at mount if a kill-replay left it non-dir. ---
-# 	# Application Support: behaviour material (scripts, app data) per the
-# 	# config policy carve-out - the same domain key and scope tree as
-# 	# Configuration/, a different payload kind (config-design.md §0).
-# 	@mkdir -p "$(ROOTFS64)/System/Application Support" \
-# 		"$(ROOTFS64)/Shared/Application Support" \
-# 		"$(ROOTFS64)/System/User Template/Application Support" \
-# 	@mkdir -p "$(ROOTFS64)/Applications" "$(ROOTFS64)/Volumes"
-# 	@mkdir -p "$(ROOTFS64)/Shared/Configuration" "$(ROOTFS64)/Shared/Libraries" \
-# 		"$(ROOTFS64)/Shared/Fonts" "$(ROOTFS64)/Shared/Images" \
-# 		"$(ROOTFS64)/Shared/Sounds" "$(ROOTFS64)/Shared/Videos" \
-# 		"$(ROOTFS64)/Shared/Documentation" "$(ROOTFS64)/Shared/Themes"
-# 	@mkdir -p "$(ROOTFS64)/System/Tools" "$(ROOTFS64)/System/Libraries" \
-# 		"$(ROOTFS64)/System/Configuration" "$(ROOTFS64)/System/Devices" \
-# 		"$(ROOTFS64)/System/Devices/pts" "$(ROOTFS64)/System/Processes" \
-# 		"$(ROOTFS64)/System/ESP" "$(ROOTFS64)/System/Documentation/HTML/FNX" \
-# 		"$(ROOTFS64)/System/Documentation/PDF/FNX" \
-# 		"$(ROOTFS64)/System/Source Code" "$(ROOTFS64)/System/Shared/Fonts" \
-# 		"$(ROOTFS64)/System/Shared/Images/Icons" \
-# 		"$(ROOTFS64)/System/Shared/Images/Wallpaper" \
-# 		"$(ROOTFS64)/System/Shared/Sounds" "$(ROOTFS64)/System/Shared/Videos" \
-# 		"$(ROOTFS64)/System/Shared/X11/xkb" \
-# 		"$(ROOTFS64)/System/Temporary Files" \
-# 		"$(ROOTFS64)/System/Variable Data/X11/xkb/compiled" \
-# 		"$(ROOTFS64)/System/User Template/Configuration" \
-# 		"$(ROOTFS64)/System/User Template/Applications" \
-# 		"$(ROOTFS64)/System/User Template/Documents" \
-# 		"$(ROOTFS64)/System/User Template/Desktop" \
-# 		"$(ROOTFS64)/System/User Template/Music" \
-# 		"$(ROOTFS64)/System/User Template/Pictures" \
-# 		"$(ROOTFS64)/System/User Template/Videos" \
-# 		"$(ROOTFS64)/System/User Template/Shared/Libraries" \
-# 		"$(ROOTFS64)/System/User Template/Shared/Fonts" \
-# 		"$(ROOTFS64)/System/User Template/Shared/Images" \
-# 		"$(ROOTFS64)/System/User Template/Shared/Sounds" \
-# 		"$(ROOTFS64)/System/User Template/Shared/Videos" \
-# 		"$(ROOTFS64)/System/User Template/Shared/Documentation" \
-# 		"$(ROOTFS64)/System/User Template/Temporary Files" \
-# 		"$(ROOTFS64)/System/User Template/Variable Data"
-# 	# --- tools (executables) ---
-# 	# toybox is built + installed by mktoybox.sh (fresh config + the
-# 	# libconfig link); userland64 only flattens the staged applet dirs.
-# 	@for d in bin sbin usr/bin usr/sbin; do \
-# 		if [ -d "$(TOYBOX64_STAGE)/$$d" ]; then \
-# 			cp -a $(TOYBOX64_STAGE)/$$d/. "$(ROOTFS64)/System/Tools/"; \
-# 		fi; \
-# 	done
-# 	# toybox install links applets with PREFIX-relative targets that break
-# 	# once bin/sbin/usr/bin are flattened into one Tools dir: point every
-# 	# symlink at the toybox binary sitting next to it.
-# 	@cd "$(ROOTFS64)/System/Tools" && for l in *; do \
-# 		if [ -L "$$l" ]; then ln -sfn toybox "$$l"; fi; \
-# 	done
-# 	# suid root: the kernel honors S_ISUID at exec, and toybox drops to
-# 	# the real uid for every applet except the account tools
-# 	# (TOYFLAG_STAYROOT/ROOTONLY) — that is what lets non-root `su`
-# 	# authenticate and switch users (M4).
-# 	@chmod 4755 "$(ROOTFS64)/System/Tools/toybox"
-# 	@chmod 0755 "$(ROOTFS64)/System/Tools/config" \
-# 		"$(ROOTFS64)/System/Tools/init" 2>/dev/null || true
-# 	# init reads the machine configuration THROUGH LIBCONFIG (P3c-b): one reader
-# 	# for the domains it needs, and the reason a domain written as a plist can no
-# 	# longer strand the boot mounts. -lconfig is the staged shared library, like
-# 	# every other userland tool's.
-# 	$(MUSL64_CC) -Iuserland -L$(FNXLIB) userland/tools/init.c -lconfig \
-# 		-o "$(ROOTFS64)/System/Tools/init"
-# 	$(MUSL64_CXX) userland/tests/cpp_smoke.cpp -o "$(ROOTFS64)/System/Shared/tests/cpp_smoke"
-# 	# objc_smoke: the Objective-C runtime (docs/design/objc-toolchain-plan.md
-# 	# P2/P3). TWO translation units on purpose: the class is implemented in
-# 	# objc_smoke_support.m and its CATEGORY in objc_smoke.m, because cross-TU
-# 	# class registration is the case that was misdiagnosed during P1 - it stays
-# 	# in the acceptance now. The support unit is MRR (a root class cannot be
-# 	# ARC), the other is ARC; they link into one binary.
-# 	# -Wno-objc-root-class: SmokeObject IS a root class, deliberately.
-# 	$(MUSL64_OBJC) -c -Wno-objc-root-class -Iuserland/tests \
-# 		userland/tests/objc_smoke_support.m -o .build/objc-smoke-support.o
-# 	$(MUSL64_OBJC) -c -Wno-objc-root-class -fobjc-arc -Iuserland/tests \
-# 		userland/tests/objc_smoke.m -o .build/objc-smoke-main.o
-# 	$(MUSL64_OBJC) .build/objc-smoke-support.o .build/objc-smoke-main.o \
-# 		-o "$(ROOTFS64)/System/Shared/tests/objc_smoke"
-# 	# sterlingc K1, the guest half (docs/design/sterling-plan.md §4). The four
-# 	# host legs (make sterlingc-check) prove the emitted TEXT - the golden diff,
-# 	# the corpus, the rejects, and that it compiles. None of them RUNS anything,
-# 	# and "do not plan past K1 until it passes" is about the chain, so the
-# 	# emitted class is linked with a hand-written driver here and executed on a
-# 	# guest boot:
-# 	#
-# 	#     MyClass.ag -> sterlingc -> MyClass.h/.m -> clang -> libobjc2 -> Foundation
-# 	#
-# 	# The compiler itself runs on the HOST (it is a host tool; the guest only
-# 	# runs what it produced), so this rule invokes it - and `--build` is first
-# 	# because a stale .build/sterlingc would silently emit yesterday's output.
-# 	#
-# 	# THE INCLUDE BRIDGE IS LOAD-BEARING. §2 emits `#import <Foundation/Foundation.h>`,
-# 	# Cocoa's capitalisation, and this tree's directory is `userland/Foundation`.
-# 	# On a case-sensitive filesystem that import cannot resolve without a bridge
-# 	# - the same one tools/sterlingc-compile.sh builds for the host, and clang's
-# 	# -Wnonportable-include-path warning is how you can tell it is what resolved
-# 	# it. The bridge is built beside the emitted headers so the generated include
-# 	# search is self-contained and cannot be satisfied by a stale one elsewhere.
-# 	tools/sterlingc.sh --build
-# 	rm -rf .build/sterlingc/guest
-# 	mkdir -p .build/sterlingc/guest/include
-# 	ln -sfn "$(CURDIR)/userland/Foundation" .build/sterlingc/guest/include/Foundation
-# 	.build/sterlingc/sterlingc -o .build/sterlingc/guest
-# 	$(MUSL64_OBJC) -c -fobjc-arc \
-# 		-I.build/sterlingc/guest -I.build/sterlingc/guest/include -Iuserland \
-# 		userland/tests/sterlingc_k1.m -o .build/sterlingc-k1-main.o
-# 	$(MUSL64_OBJC) -c -fobjc-arc \
-# 		-I.build/sterlingc/guest -I.build/sterlingc/guest/include -Iuserland \
-# 		.build/sterlingc/guest/MyClass.m -o .build/sterlingc-k1-myclass.o
-# 	$(MUSL64_OBJC) .build/sterlingc-k1-main.o .build/sterlingc-k1-myclass.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/sterlingc_k1"
-# 	# foundation_core: F0 acceptance (docs/design/foundation-plan.md). Two units
-# 	# AND two ownership regimes: the subclass and the MRR lifetime exercises in
-# 	# the support unit, the checks in the ARC unit. The ARC flag is EXPLICIT -
-# 	# the wrapper never adds it - and without it clang emits no release at all and
-# 	# the pool check fails (measured).
-# 	# THE FORWARDING FIXTURES DECLARE METHODS THEY MUST NOT IMPLEMENT: FastForwarder's -marker and
-# 	# SlowForwarder's -value/-setValue: are the CLAIM this probe tests (the runtime has to forward
-# 	# them to the backing object), so -Wincomplete-implementation is not noise here — it is the
-# 	# compiler correctly observing that the design is incomplete ON PURPOSE. The same shape, and the
-# 	# same justification, as NSString's abstract primitives in FOUNDATION_CFLAGS above.
-# 	$(MUSL64_OBJC) -c -Wno-objc-root-class -Wno-incomplete-implementation -fno-objc-arc \
-# 		-Iuserland -Iuserland/tests \
-# 		userland/tests/foundation_core_support.m -o .build/probe-foundation_core_support.o
-# 	$(MUSL64_OBJC) -c -Wno-objc-root-class -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_core.m -o .build/probe-foundation_core.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_core_support.o .build/probe-foundation_core.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_core"
-# 	# foundation_string: F1 acceptance (docs/design/foundation-plan.md). Two
-# 	# units again, and the support unit is where the OTHER constant-string
-# 	# cases live (a 4-character literal is a TAGGED pointer, a 20-character one
-# 	# is an object - both paths have to work).
-# 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_string_support.m -o .build/probe-foundation_string_support.o
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_string.m -o .build/probe-foundation_string.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_string_support.o .build/probe-foundation_string.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_string"
-# 	# foundation_value: F2 acceptance. The support unit imports ONLY the
-# 	# umbrella header, so a complete <Foundation/Foundation.h> is part of the
-# 	# acceptance too.
-# 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_value_support.m -o .build/probe-foundation_value_support.o
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_value.m -o .build/probe-foundation_value.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_value_support.o .build/probe-foundation_value.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_value"
-# 	# foundation_clusters: M0 of docs/design/foundation-clusters-plan.md — the MECHANISM a class cluster
-# 	# needs, proved on a cluster the probe defines ITSELF, so that no shipped class changes behaviour in
-# 	# this unit. One unit, ARC, and the probe's own classes do the work.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_clusters.m -o .build/probe-foundation_clusters.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_clusters.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_clusters"
-# 	# foundation_collection: F3 acceptance. The support unit builds a NESTED
-# 	# collection, which is the cheapest check that collections are ordinary
-# 	# objects; the main unit exercises clang's for-in lowering.
-# 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_collection_support.m -o .build/probe-foundation_collection_support.o
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_collection.m -o .build/probe-foundation_collection.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_collection_support.o .build/probe-foundation_collection.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_collection"
-# 	# foundation_error: F4 acceptance. The support unit builds values from
-# 	# another unit; the main unit exercises @try/@catch, so the runtime's throw
-# 	# path is part of the check.
-# 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_error_support.m -o .build/probe-foundation_error_support.o
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_error.m -o .build/probe-foundation_error.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_error_support.o .build/probe-foundation_error.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_error"
-# 	# foundation_calendar: F7 acceptance. The same two-unit shape, and the support
-# 	# unit imports ONLY the umbrella — which is how the three new headers are
-# 	# proved to have reached <Foundation/Foundation.h>.
-# 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_calendar_support.m -o .build/probe-foundation_calendar_support.o
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_calendar.m -o .build/probe-foundation_calendar.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_calendar_support.o .build/probe-foundation_calendar.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_calendar"
-# 	# foundation_url: F8 acceptance. Two units again, and the support unit imports
-# 	# ONLY the umbrella — so this is also the proof that NSURL reached
-# 	# <Foundation/Foundation.h>.
-# 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_url_support.m -o .build/probe-foundation_url_support.o
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_url.m -o .build/probe-foundation_url.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_url_support.o .build/probe-foundation_url.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_url"
-# 	# foundation_kvc: F9 acceptance. Two units again — and here the split is the
-# 	# CLAIM under test: the support unit defines the OBJECTS and imports only the
-# 	# umbrella, so a lookup that crossed translation units by name can only be the
-# 	# runtime's.
-# 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_kvc_support.m -o .build/probe-foundation_kvc_support.o
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_kvc.m -o .build/probe-foundation_kvc.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_kvc_support.o .build/probe-foundation_kvc.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_kvc"
-# 	# foundation_sort: F10 acceptance. Two units, and the split carries the claim again:
-# 	# the support unit builds the OBJECTS and a descriptor from its own side, so a sort
-# 	# whose key was resolved by name can only have gone through KVC.
-# 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_sort_support.m -o .build/probe-foundation_sort_support.o
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_sort.m -o .build/probe-foundation_sort.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_sort_support.o .build/probe-foundation_sort.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_sort"
-# 	# foundation_codecs: F12 acceptance. Two units, and the SUPPORT unit builds the BYTES — so the
-# 	# codec is exercised on data it did not create.
-# 	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_codecs_support.m -o .build/probe-foundation_codecs_support.o
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_codecs.m -o .build/probe-foundation_codecs.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_codecs_support.o .build/probe-foundation_codecs.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_codecs"
-# 	# icu_smoke: F13's acceptance for the ICU bring-up (docs/design/foundation-plan.md §10). The
-# 	# SOURCE is C, because ICU is a C library and this exercises the DATA path rather than the
-# 	# object layer — but the LINK goes through the C++ driver: ICU's libraries are C++ underneath
-# 	# (libicui18n NEEDs libc++.so.1), and musl-clang++64.sh self-bootstraps the C++ runtime's
-# 	# link pieces (-L.build/llvm-cxx/lib -lc++ -lc++abi -lunwind), which the C driver does not add.
-# 	# Measured: with $(MUSL64_CC) the link fails on __cxa_* and std::__1::mutex from libicui18n.
-# 	# Every check asks for an answer that comes from libicudata — three locales' number
-# 	# formatting, a locale's own date pattern, the German vs Swedish collation rules, and the
-# 	# time-zone id set — so a pass cannot come from constants in the probe.
-# 	$(MUSL64_CXX) -I$(ICUPREFIX)/include userland/tests/icu_smoke.c \
-# 		-L$(ICUPREFIX)/lib -licui18n -licuuc -licudata \
-# 		-o "$(ROOTFS64)/System/Shared/tests/icu_smoke"
-# 	# foundation_dateformatter: F13.6 acceptance - the first un-refused DATA family, exercised
-# 	# through FOUNDATION's own API rather than ICU's directly. ONE unit, deliberately: the other
-# 	# Foundation probes are two-unit because their claim is a cross-translation-unit boundary,
-# 	# while this family's claim is data, so the probe includes only <Foundation/Foundation.h>
-# 	# (which also proves the umbrella exports the new headers). It links the Foundation library,
-# 	# which is where ICU is now bound.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_dateformatter.m -o .build/probe-foundation_dateformatter.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_dateformatter.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_dateformatter"
-# 	# foundation_set: F13.8 acceptance - the first family the boundary never justified. ONE unit (the
-# 	# claim is VALUE SEMANTICS, not a cross-TU boundary), only <Foundation/Foundation.h>, linking the
-# 	# Foundation library.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_set.m -o .build/probe-foundation_set.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_set.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_set"
-# 	# foundation_nsvalue: F13.8c acceptance. ONE unit, only <Foundation/Foundation.h>. Named nsvalue
-# 	# and NOT value, because foundation_value is F2/F8's probe for NSNumber/NSData/NSDate.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_nsvalue.m -o .build/probe-foundation_nsvalue.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_nsvalue.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_nsvalue"
-# 	# foundation_orderedset: F13.8e acceptance. ONE unit, only <Foundation/Foundation.h>. A separate
-# 	# probe from foundation_set because NSOrderedSet is NOT an NSSet subclass: order is its value.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_orderedset.m -o .build/probe-foundation_orderedset.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_orderedset.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_orderedset"
-# 	# foundation_formatters: W11 acceptance. ONE unit, only <Foundation/Foundation.h> (which also
-# 	# proves the umbrella exports all six new formatter headers). The claim is DATA coming back
-# 	# through Foundation's own API — CLDR list/interval/relative patterns and the ISO 8601 grammar —
-# 	# plus NSByteCountFormatter's arithmetic, which is the ONE thing in this family that is ours.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_formatters.m -o .build/probe-foundation_formatters.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_formatters.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_formatters"
-# 	# foundation_kvo: F13.9 acceptance. ONE unit, only <Foundation/Foundation.h>.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_kvo.m -o .build/probe-foundation_kvo.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_kvo.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_kvo"
-# 	# foundation_coder: F13.12 acceptance. ONE unit, only <Foundation/Foundation.h>.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_coder.m -o .build/probe-foundation_coder.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_coder.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -lcoregraphics -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_coder"
-# 	# foundation_pointers: W13a acceptance. ONE unit, only <Foundation/Foundation.h>.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_pointers.m -o .build/probe-foundation_pointers.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_pointers.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_pointers"
-# 	# foundation_processinfo: F13.13 acceptance. ONE unit, only <Foundation/Foundation.h> plus
-# 	# <unistd.h> for the getpid cross-check.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_processinfo.m -o .build/probe-foundation_processinfo.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_processinfo.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_processinfo"
-# 	# foundation_filemanager: F13.14 acceptance. ONE unit, only <Foundation/Foundation.h> plus
-# 	# <unistd.h> for the symlink(2) its link check makes.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_filemanager.m -o .build/probe-foundation_filemanager.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_filemanager.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_filemanager"
-# 	# foundation_bundle: the NSBundle definition. ONE unit, only <Foundation/Foundation.h> plus <fcntl.h> and
-# 	# <sys/stat.h> for the FIXTURE IT BUILDS ITSELF - a Contents/ bundle, a flat one and a plain directory -
-# 	# so no test-only manifest format exists in the image and there is no fixture ordering to get wrong.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_bundle.m -o .build/probe-foundation_bundle.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_bundle.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_bundle"
-# 	# THE PAYLOAD: a shared library the probe copies INTO its fixture bundle as that bundle's executable, so
-# 	# -load's positive path (dlopen a real shared object, then objc_getClass the NSPrincipalClass) is asserted
-# 	# rather than assumed. It is a plugin, not a program, so it is built -shared with the same Foundation it will
-# 	# be loaded beside.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -fPIC -Iuserland \
-# 		userland/tests/foundation_bundle_payload.m -o .build/probe-foundation_bundle_payload.o
-# 	$(MUSL64_OBJC) -shared .build/probe-foundation_bundle_payload.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_bundle_payload.so"
-# 	# foundation_textchecking: §62.18's acceptance - NSTextCheckingResult as the GENERAL class (every factory,
-# 	# every payload, the ranges, the shift and its refusal, the identity rules) plus the vocabulary §62.19 landed
-# 	# with it, and the named-group translation seen through the class that produces a match. ONE unit, only
-# 	# <Foundation/Foundation.h>.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_textchecking.m -o .build/probe-foundation_textchecking.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_textchecking.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_textchecking"
-# 	# foundation_datadetector: §62.19's acceptance - the three detectors that have data here, the TWO that are
-# 	# refused by name (Address and TransitInformation, ground (i) in the §11.6 register), and the one rule that
-# 	# decides what happens when two detectors claim the same span.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_datadetector.m -o .build/probe-foundation_datadetector.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_datadetector.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_datadetector"
-# 	# foundation_scanner: §62.20's acceptance - NSScanner, the last open name in the Pattern Matching family. ONE
-# 	# unit, only <Foundation/Foundation.h>.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_scanner.m -o .build/probe-foundation_scanner.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_scanner.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_scanner"
-# 	# foundation_orthography: §62.21's acceptance - NSOrthography, which exists because §62.18's orthography door
-# 	# needed a class to carry. ONE unit, only <Foundation/Foundation.h>.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_orthography.m -o .build/probe-foundation_orthography.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_orthography.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_orthography"
-# 	# foundation_operation_leaves: §62.22's acceptance - the two CONCRETE operations (NSBlockOperation and
-# 	# NSInvocationOperation). ONE unit, only <Foundation/Foundation.h>.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_operation_leaves.m -o .build/probe-foundation_operation_leaves.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_operation_leaves.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_operation_leaves"
-# 	# ONE unit, only <Foundation/Foundation.h>. IT WRITES ITS OWN FILE FIXTURE into the temporary directory, so its
-# 	# foundation_directoryenumerator: W8 slice 1 acceptance (foundation-plan.md §60). ONE unit, only
-# 	# <Foundation/Foundation.h> plus <unistd.h> for the symlink(2) its fixture makes.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_directoryenumerator.m -o .build/probe-foundation_directoryenumerator.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_directoryenumerator.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_directoryenumerator"
-# 	# foundation_filemanagerdelegate: W8 slice 2 acceptance (foundation-plan.md §60). ONE unit, only
-# 	# <Foundation/Foundation.h> plus <unistd.h> for the symlink(2) and link(2) its fixture makes.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_filemanagerdelegate.m -o .build/probe-foundation_filemanagerdelegate.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_filemanagerdelegate.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_filemanagerdelegate"
-# 	# foundation_filewrapper: W8 slice 4 acceptance (foundation-plan.md §60). ONE unit, only
-# 	# <Foundation/Foundation.h> plus the POSIX calls its fixture makes.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_filewrapper.m -o .build/probe-foundation_filewrapper.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_filewrapper.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_filewrapper"
-# 	# foundation_url_ownership: W8p slice 6h (foundation-plan.md §60). NSURL's part ownership, with a
-# 	# deliberate reuse pile so an UNOWNED part is visibly wrong and an over-released one crashes.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_url_ownership.m -o .build/probe-foundation_url_ownership.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_url_ownership.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_url_ownership"
-# 	# foundation_attributedstring: W10 slice 1's acceptance (foundation-plan.md §61). ONE unit, only
-# 	# <Foundation/Foundation.h> - the run store and its coalescing contract, with the inventory both ways.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_attributedstring.m -o .build/probe-foundation_attributedstring.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_attributedstring.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_attributedstring"
-# 	# foundation_notificationqueue: §62.61. ONE unit, only <Foundation/Foundation.h> - the three posting styles,
-# 	# coalescing, and the run-loop seam they are defined by.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_notificationqueue.m -o .build/probe-foundation_notificationqueue.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_notificationqueue.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_notificationqueue"
-# 	# foundation_host: §62.63. ONE unit, only <Foundation/Foundation.h> - the host as a name-service answer.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_host.m -o .build/probe-foundation_host.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_host.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_host"
-# 	# foundation_backgroundactivity: §62.66. ONE unit, only <Foundation/Foundation.h> - the activity and its engine.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_backgroundactivity.m -o .build/probe-foundation_backgroundactivity.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_backgroundactivity.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_backgroundactivity"
-# 	# foundation_calendardate: §62.67. ONE unit, only <Foundation/Foundation.h> - the date with a format and a zone.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_calendardate.m -o .build/probe-foundation_calendardate.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_calendardate.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_calendardate"
-# 	# foundation_distributednotification: §62.80. ONE unit - the center and its suspension engine.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_distributednotification.m -o .build/probe-foundation_distributednotification.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_distributednotification.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_distributednotification"
-# 	# foundation_substratekeys: W8p slice 6g (foundation-plan.md §60). The MEASUREMENT INSTRUMENT for the
-# 	# eighteen keys that need a substrate fact: it prints what the file system does.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_substratekeys.m -o .build/probe-foundation_substratekeys.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_substratekeys.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_substratekeys"
-# 	# foundation_keymasses: W8p slice 6f acceptance (foundation-plan.md §60). ONE unit, only
-# 	# <Foundation/Foundation.h> - it asks about the machine it is on.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_keymasses.m -o .build/probe-foundation_keymasses.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_keymasses.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_keymasses"
-# 	# foundation_mountedvolumes: W8p slice 6e acceptance (foundation-plan.md §60). ONE unit, only
-# 	# <Foundation/Foundation.h> - this system publishes its mounts in /proc/mounts.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_mountedvolumes.m -o .build/probe-foundation_mountedvolumes.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_mountedvolumes.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_mountedvolumes"
-# 	# foundation_urlresourcevalues: W8 slice 6a acceptance (foundation-plan.md §60). ONE unit, only
-# 	# <Foundation/Foundation.h> plus the POSIX calls its fixture makes.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_urlresourcevalues.m -o .build/probe-foundation_urlresourcevalues.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_urlresourcevalues.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlresourcevalues"
-# 	# foundation_xmldtdparse: XML slice XML-e acceptance (foundation-plan.md §60). ONE unit, only
-# 	# <Foundation/Foundation.h> - a subset is a string, and the file that is never opened is named.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_xmldtdparse.m -o .build/probe-foundation_xmldtdparse.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_xmldtdparse.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_xmldtdparse"
-# 	# foundation_xmldtd: XML slice XML-d acceptance (foundation-plan.md §60). ONE unit, only
-# 	# <Foundation/Foundation.h> plus the POSIX calls its file fixture makes.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_xmldtd.m -o .build/probe-foundation_xmldtd.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_xmldtd.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_xmldtd"
-# 	# foundation_xmldocument: XML slice XML-c acceptance (foundation-plan.md §60). ONE unit, only
-# 	# <Foundation/Foundation.h> plus the POSIX calls its file fixture makes.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_xmldocument.m -o .build/probe-foundation_xmldocument.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_xmldocument.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_xmldocument"
-# 	# foundation_xmltree: XML slice XML-b acceptance (foundation-plan.md §60). ONE unit, only
-# 	# <Foundation/Foundation.h> - a tree is built by hand, so there is no fixture.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_xmltree.m -o .build/probe-foundation_xmltree.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_xmltree.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_xmltree"
-# 	# foundation_xmlparser: W8 slice XML-a acceptance (foundation-plan.md §60). ONE unit, only
-# 	# <Foundation/Foundation.h> plus the POSIX calls its file fixture makes.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_xmlparser.m -o .build/probe-foundation_xmlparser.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_xmlparser.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_xmlparser"
-# 	# foundation_fileproviderservice: W8 slice 9 acceptance (foundation-plan.md §60). ONE unit, only
-# 	# <Foundation/Foundation.h> - no fixture and no tree.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_fileproviderservice.m -o .build/probe-foundation_fileproviderservice.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_fileproviderservice.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_fileproviderservice"
-# 	# foundation_fileversion: W8 slice 8a acceptance (foundation-plan.md §60). ONE unit, only
-# 	# <Foundation/Foundation.h> plus the POSIX calls its fixture makes.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_fileversion.m -o .build/probe-foundation_fileversion.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_fileversion.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_fileversion"
-# 	# foundation_filepresenter: W8 slice 7c acceptance (foundation-plan.md §60). ONE unit, only
-# 	# <Foundation/Foundation.h> plus the POSIX calls its fixture and its deferred presenter need.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_filepresenter.m -o .build/probe-foundation_filepresenter.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_filepresenter.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_filepresenter"
-# 	# foundation_filecoordinator: W8 slice 7b acceptance (foundation-plan.md §60). ONE unit, only
-# 	# <Foundation/Foundation.h> plus the POSIX calls its fixture makes.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_filecoordinator.m -o .build/probe-foundation_filecoordinator.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_filecoordinator.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_filecoordinator"
-# 	# foundation_filesecurity: W8 slice 5 acceptance (foundation-plan.md §60). ONE unit, only
-# 	# <Foundation/Foundation.h> - and it asserts the ABSENCE of the bridged accessors, so the D13
-# 	# boundary is machine-checked rather than merely written down.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_filesecurity.m -o .build/probe-foundation_filesecurity.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_filesecurity.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_filesecurity"
-# 	# foundation_decimalnumber: W3b acceptance. ONE unit, only <Foundation/Foundation.h>.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_decimalnumber.m -o .build/probe-foundation_decimalnumber.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_decimalnumber.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_decimalnumber"
-# 	# foundation_decimal: W3 acceptance. ONE unit, only <Foundation/Foundation.h>.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_decimal.m -o .build/probe-foundation_decimal.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_decimal.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_decimal"
-# 	# foundation_notification: W4 acceptance. ONE unit, only <Foundation/Foundation.h> - which makes
-# 	# it the check that the umbrella carries the family too.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_notification.m -o .build/probe-foundation_notification.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_notification.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_notification"
-# 	# foundation_regex: F13.16 acceptance. ONE unit, only <Foundation/Foundation.h>.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_regex.m -o .build/probe-foundation_regex.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_regex.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_regex"
-# 	# foundation_thread: F13.17 acceptance. ONE unit, only <Foundation/Foundation.h> plus
-# 	# <sys/time.h> for the elapsed-time measurements.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_thread.m -o .build/probe-foundation_thread.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_thread.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_thread"
-# 	# foundation_runloop: F13.18 acceptance. ONE unit, only <Foundation/Foundation.h>.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_runloop.m -o .build/probe-foundation_runloop.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_runloop.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_runloop"
-# 	# foundation_operation: F13.19 acceptance. ONE unit, only <Foundation/Foundation.h>.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_operation.m -o .build/probe-foundation_operation.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_operation.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_operation"
-# 	# foundation_numberformatter: F13.7c acceptance - the second un-refused DATA family, and the
-# 	# same shape as the date one: ONE unit (the claim is data), only <Foundation/Foundation.h>, and
-# 	# it links the Foundation library, where ICU is bound.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_numberformatter.m -o .build/probe-foundation_numberformatter.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_numberformatter.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_numberformatter"
-# 	# foundation_defaults: W5 acceptance. ONE unit, only <Foundation/Foundation.h> plus
-# 	# <pwd.h>/<unistd.h>/<stdlib.h> for the scratch root and the user name. IT IS LAUNCHED WITH
-# 	# `-ProbeArgument from-argv` by its case (tests/cases/foundation_defaults.py): the argument domain is
-# 	# the one part of the search list that is a fact about the LAUNCHING process, so a check that could not
-# 	# see the launcher's arguments would be asserting nothing.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_defaults.m -o .build/probe-foundation_defaults.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_defaults.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_defaults"
-# 	# foundation_port: W6b acceptance. ONE unit, only <Foundation/Foundation.h> plus the socket headers -
-# 	# a port IS a socket and the probe asks the KERNEL what it bound (getsockname/accept/fcntl), so this
-# 	# one needs <sys/socket.h> and friends where the other Foundation probes need <unistd.h>.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_port.m -o .build/probe-foundation_port.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_port.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_port"
-# 	# foundation_filehandle: W6c acceptance. ONE unit, only <Foundation/Foundation.h> plus the POSIX
-# 	# headers - a file handle wraps a DESCRIPTOR and the probe asks the kernel what became of it (fcntl(2)
-# 	# for the two ownership rules, a zero-byte read for end of file).
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_filehandle.m -o .build/probe-foundation_filehandle.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_filehandle.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_filehandle"
-# 	# foundation_task: W6d acceptance. ONE unit - and the child it launches is ITSELF (argv[0] is the
-# 	# staged path), so the child's exit code, output and death signal are the probe's own choices.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_task.m -o .build/probe-foundation_task.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_task.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_task"
-# 	# foundation_stream: W6's streams half, the NSStream HEAD's acceptance. ONE unit, and it builds a
-# 	# SUBSTREAM - the head's value contract (ours, under D2) and its run-loop seam are what a substream
-# 	# inherits, so both are asserted through a real descriptor and a real delegate.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_stream.m -o .build/probe-foundation_stream.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_stream.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_stream"
-# 	# foundation_urlrequest: W7 slice 1's acceptance - the REQUEST/RESPONSE VALUE TYPES. ONE unit, only
-# 	# <Foundation/Foundation.h>, and no socket anywhere: a request is a DESCRIPTION of an exchange and a
-# 	# response is its answer's metadata, so the probe is a value probe (an inventory, the mutability
-# 	# boundary, and RFC 9110's own status phrases).
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_urlrequest.m -o .build/probe-foundation_urlrequest.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_urlrequest.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlrequest"
-# 	# foundation_urlconnection: §62.25's acceptance - the DEPRECATED family that §62.24's policy put back
-# 	# on the work list. A FACADE over the session, so the checks are: a real transfer (through file://,
-# 	# which needs no server), the order of the delegate calls, and the redirect translation asked
-# 	# directly through the runtime because a 3xx needs a server this probe deliberately avoids.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_urlconnection.m -o .build/probe-foundation_urlconnection.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_urlconnection.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlconnection"
-# 	# foundation_urldownload: §62.82's acceptance - the LEGACY download OBJECT (NSURLDownload + its
-# 	# delegate protocol), the last rows of `Networking / Legacy / URL Download`. ONE unit, and it links
-# 	# libcurl because it performs REAL downloads - through file://. The probe registers NOTHING: since §62.83
-# 	# the LIBRARY registers its own transport at load, so these transfers are also that registration's gate.
-# 	# The three destination arrangements are each exercised: set before the bytes, answered by the
-# 	# delegate inside the decision door, and answered by nobody (the stated temporary-directory
-# 	# fallback, reported through the created-destination door).
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_urldownload.m -o .build/probe-foundation_urldownload.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_urldownload.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urldownload"
-# 	# foundation_spellserver: §62.85's acceptance - THE SERVER SIDE of a spell-checking service, and the last
-# 	# rows of `Fundamentals / Spelling and Grammar`. ONE unit, and it links nothing but Foundation: the engine is
-# 	# DEFERRED (docs/design/spelling-plan.md §3), so what is exercised is the API a service implements, its
-# 	# delegate protocol, the three grammar keys, and the dispatch seam that reaches all seven optional doors.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_spellserver.m -o .build/probe-foundation_spellserver.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_spellserver.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_spellserver"
-# 	# foundation_archiver: §62.86's acceptance - THE CLASSIC SEQUENTIAL PAIR, which closes
-# 	# `Files and Data Persistence / Deprecated`. ONE unit, Foundation only: the wire is this library's own
-# 	# (Apple's classic `typedstream` is unpublished), so what is exercised is the contract — round-trip,
-# 	# order-and-type, shared and cyclic references, substitution on both sides — plus every refusal.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_archiver.m -o .build/probe-foundation_archiver.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_archiver.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_archiver"
-# 	# foundation_ubiquitousstore: §62.87's acceptance - the iCloud key/value store, closing
-# 	# `Files and Data Persistence / iCloud key and value storage`. ONE unit, Foundation only: the LOCAL half is
-# 	# real (typed doors, the property-list rule, Apple's three limits) and the remote half is absent, so what is
-# 	# asserted about it is the honest answer -synchronize gives and the change notice driven through the seam.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_ubiquitousstore.m -o .build/probe-foundation_ubiquitousstore.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_ubiquitousstore.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_ubiquitousstore"
-# 	# foundation_useractivity: §62.89's acceptance - the activity object and its delegate, closing
-# 	# `App Support / Activity Sharing`. ONE unit, Foundation only: the activity's own state is real and the
-# 	# second device is absent, so the two continuity doors are driven through the seam and report the error
-# 	# code this library already declares.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_useractivity.m -o .build/probe-foundation_useractivity.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_useractivity.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_useractivity"
-# 	# foundation_distantobjectrequest: §62.91's acceptance - the interception that lets a connection's
-# 	# delegate answer a request itself, closing the port family's last owed pieces. ONE unit, Foundation only:
-# 	# a published name, a proxy told its protocol, and a delegate that answers with a value or an exception.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_distantobjectrequest.m -o .build/probe-foundation_distantobjectrequest.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_distantobjectrequest.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_distantobjectrequest"
-# 	# foundation_json: §62.93's acceptance - the JSON reading options Apple publishes and this library
-# 	# refused (`json5Allowed`, `topLevelDictionaryAssumed`) plus the deprecated `allowFragments`
-# 	# spelling, AND the two grammars they depend on finally differing: the strict path is RFC 8259's
-# 	# now (it used to accept a missing comma, a trailing comma and "+1", which made JSON5's rules
-# 	# unobservable). ONE unit, Foundation only.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_json.m -o .build/probe-foundation_json.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_json.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_json"
-# 	# foundation_jsonwrite: §62.94's acceptance - the two JSON WRITING options, which close the JSON
-# 	# family. ONE unit, Foundation only, and both options turned out smaller than the note that had
-# 	# deferred them: the writer has ALWAYS escaped `/` (Apple's default), so withoutEscapingSlashes
-# 	# only turns that off, and writingFragmentsAllowed is the second question the writing door asks
-# 	# rather than a change to +isValidJSONObject:.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_jsonwrite.m -o .build/probe-foundation_jsonwrite.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_jsonwrite.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_jsonwrite"
-# 	# foundation_tableoptions: §62.95's acceptance - the ten names Apple declares beside NSMapTable/NSHashTable
-# 	# (five and four, plus NSPointerFunctionsZeroingWeakMemory), which close the pointer-collections family.
-# 	# Each is a macro aliasing THIS library's NSPointerFunctions option, so the probe asserts the aliases AND
-# 	# the behaviour they select: CopyIn through a mutable key with its control, identity via an equal-but-distinct
-# 	# key with its control, and the four map-table convenience constructors.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_tableoptions.m -o .build/probe-foundation_tableoptions.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_tableoptions.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_tableoptions"
-# 	# foundation_transformers: §62.96's acceptance - the five value-transformer names Apple registers
-# 	# (NSIsNil, NSIsNotNil, NSNegateBoolean, NSKeyedUnarchiveFromData, NSUnarchiveFromData), which close the
-# 	# value-transformer family. They are REGISTERED at load rather than named after their classes, because
-# 	# +valueTransformerNames is a documented door and the class-name fallback would leave it empty.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_transformers.m -o .build/probe-foundation_transformers.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_transformers.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_transformers"
-# 	# foundation_dataoptions: §62.97's acceptance - NSData's three deprecated READING spellings and one WRITING
-# 	# one (NSMappedRead, NSDataReadingMapped, NSUncachedRead, NSAtomicWrite) plus the four compression error
-# 	# codes, which close the binary-data family. The codes are wired to the codec's error path, so a failed
-# 	# compression answers 5376 and a failed decompression 5377 instead of the undeclared "code 1".
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_dataoptions.m -o .build/probe-foundation_dataoptions.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_dataoptions.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_dataoptions"
-# 	# foundation_constants: §62.103's acceptance - the long tail of small constants (the calendar sentinels, the
-# 	# OpenStep reserved base, the string ceiling, the bookmark option and its type, the XML entity kind, the
-# 	# resource keys, the archive/progress/file-protection/stream/undo keys) plus the two THREAD notifications,
-# 	# which ship with real producers and are checked by making them happen.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_constants.m -o .build/probe-foundation_constants.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_constants.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_constants"
-# 	# foundation_urlprotocol: W7 slice 2a's acceptance - THE SEAM AND THE CACHED VALUE. ONE unit, only
-# 	# <Foundation/Foundation.h>, and NO transport anywhere: what is asserted is the plug-in point (the
-# 	# base's documented defaults, the registration order, the request-property table's identity rule) and
-# 	# the cached answer's value contract. The probe DEFINES its own NSURLProtocol subclass, which is the
-# 	# only way to exercise override points that exist to be overridden.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_urlprotocol.m -o .build/probe-foundation_urlprotocol.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_urlprotocol.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlprotocol"
-# 	# foundation_urlprotocol_curl: W7 slice 2c's FIRST HALF - THE BRIDGE. ONE unit, only
-# 	# <Foundation/Foundation.h>, and no session anywhere: FNCURLURLProtocol is an ordinary
-# 	# NSURLProtocol subclass, so it can be started by hand with a client and watched, which is why
-# 	# the bridge is testable BEFORE the session that will normally drive it. It fetches a file:// URL
-# 	# (deterministic, needs no server) and a missing one (the failure path), and the library it links
-# 	# now carries libcurl itself.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_urlprotocol_curl.m -o .build/probe-foundation_urlprotocol_curl.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_urlprotocol_curl.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlprotocol_curl"
-# 	# foundation_urlcache: the cache and its policy (W7 slice 5)
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		userland/tests/foundation_urlcache.m -o .build/probe-foundation_urlcache.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_urlcache.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlcache"
-# 	# foundation_connectionauth: §62.41's acceptance - THE COMPOSITION, ALONE IN ONE PROBE. A connection, a 401, and
-# 	# a stream body: the challenge must reach the CONNECTION's delegate, the transport's own 401 re-issue must ask
-# 	# for a FRESH body, and the re-issued request must carry both the credential and the body. It is its own probe
-# 	# because foundation_authloop's four legs share one listener, which made the join unattributable.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_connectionauth.m -o .build/probe-foundation_connectionauth.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_connectionauth.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-# 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-# 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_connectionauth"
-# 	# foundation_linguistictagger: §62.42's acceptance - THE LARGEST FAMILY ON §62.24'S WORK LIST, one deprecated
-# 	# class and fifty-one vocabulary names. The vocabulary is pinned IN FULL (every constant exists, is non-empty
-# 	# and is distinct within its scheme), the two determinable schemes are exercised over real text, and the
-# 	# refusals (the morphological schemes, the language scheme, JoinNames) are checked to DO NOTHING.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_linguistictagger.m -o .build/probe-foundation_linguistictagger.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_linguistictagger.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-# 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-# 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_linguistictagger"
-# 	# foundation_legacymaptable: §62.44's acceptance - NSMapTable's LEGACY C API (the pre-10.5 functions and
-# 	# call-back STRUCTS Apple deprecated when NSPointerFunctions arrived). The check it exists for is that a
-# 	# call-back is HANDED ITS TABLE, because the obvious bridge onto the engine's function pointers cannot be
-# 	# done (they take no table) and a subclass that hands `self` to every call-back is the design that can.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_legacymaptable.m -o .build/probe-foundation_legacymaptable.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_legacymaptable.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-# 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-# 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_legacymaptable"
-# 	# foundation_legacyhashtable: §62.45's acceptance - NSHashTable's LEGACY C API, the same design as the map
-# 	# table's and sharing its scan: the hash table's legacy mode stores each element as the inner table's KEY. The
-# 	# probe checks the same HAND (a call-back is handed its table) and that the set relations are ANSWERED rather
-# 	# than inherited from storage a legacy table does not use.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_legacyhashtable.m -o .build/probe-foundation_legacyhashtable.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_legacyhashtable.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-# 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-# 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_legacyhashtable"
-# 	# foundation_calendar_legacy: §62.46's acceptance - the pre-10.9 calendar unit names, the wrap option and the
-# 	# undefined sentinel. The property is not that the names exist but that THEY MEAN THE SAME THING, so the probe
-# 	# compares legacy spellings against modern ones THROUGH THE CALENDAR and prints the fields it saw.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_calendar_legacy.m -o .build/probe-foundation_calendar_legacy.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_calendar_legacy.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-# 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-# 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_calendar_legacy"
-# 	# foundation_urlhandle: §62.47's acceptance - NSURLHandle, its client protocol and the eleven property keys.
-# 	# The check is the MEANING: the class files a real response under Apple's keys and calls a client in order, so a
-# 	# vocabulary that nothing fills would fail rather than compile. Its transport is an in-process NSURLProtocol.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_urlhandle.m -o .build/probe-foundation_urlhandle.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_urlhandle.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-# 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-# 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlhandle"
-# 	# foundation_enumerate_substrings: §62.48's acceptance - the door that consumes NSStringEnumerationOptions via
-# 	# FNTextBreaking. The options were already "shipped" while the method was declared nowhere, so this probe checks
-# 	# THE UNITS AND THE STATED BOUNDARIES with ABSOLUTE expectations, not two spellings of the same walk.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_enumerate_substrings.m -o .build/probe-foundation_enumerate_substrings.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_enumerate_substrings.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-# 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-# 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_enumerate_substrings"
-# 	# foundation_calendar_identifiers: §62.49's acceptance - the eleven pre-10.9 calendar identifier names. The
-# 	# property is IDENTITY rather than equality (a second string would do the job by accident), plus a CONTROL:
-# 	# the Buddhist and Gregorian calendars must disagree about one date, or every name has collapsed into one.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_calendar_identifiers.m -o .build/probe-foundation_calendar_identifiers.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_calendar_identifiers.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-# 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-# 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_calendar_identifiers"
-# 	# foundation_quantity_formatters: §62.50's acceptance - the formatter trio. Every value is ABSOLUTE (measured
-# 	# against the unit's definition), and the NATURAL-UNIT CHOOSER is measured in both directions because one stuck
-# 	# at an end of the table would satisfy half the checks and look right.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_quantity_formatters.m -o .build/probe-foundation_quantity_formatters.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_quantity_formatters.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-# 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-# 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_quantity_formatters"
-# 	# foundation_byteorder: §62.51's acceptance - the byte-order conversions. They are a REVERSAL of the bytes, so
-# 	# the probe proves them four ways (known values per width, round trips for the whole family, the host's own
-# 	# order printed, and the cross directions) plus a CONTROL that a 32-bit implementation cannot pass.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_byteorder.m -o .build/probe-foundation_byteorder.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_byteorder.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-# 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-# 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_byteorder"
-# 	# foundation_free_misc: §62.52's acceptance - the free functions in NSObjCRuntime.h/NSGeometry.h this library
-# 	# lacked. Absolute relations (a page size IS a power of two, touching is NOT intersecting), the stack doors
-# 	# asked for levels they cannot honour (NULL, not a bad read), and NSLog measured BY REDIRECTING fd 2.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_free_misc.m -o .build/probe-foundation_free_misc.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_free_misc.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-# 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-# 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_free_misc"
-# 	# foundation_machport: §62.53's acceptance - NSMachPort and the message transport. THE PROBE WRITES THE FRAME
-# 	# ITSELF in network byte order rather than round-tripping the library's own bytes (a tautology that would pass
-# 	# for any frame), and checks the three stated boundaries: the from-number doors refuse, a non-data component is
-# 	# refused at the send door, and an unbelievable frame length invalidates the port.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_machport.m -o .build/probe-foundation_machport.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_machport.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-# 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-# 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_machport"
-# 	# foundation_portnames: §62.54's acceptance - the naming half of the port family. Almost every check is a
-# 	# DELIVERY rather than a lookup (a name that resolves to something nothing can reach would pass every lookup
-# 	# check there is), plus the stated rules: a second registration replaces, a host is answerable only when it is
-# 	# this machine, an invalidated port forgets its own name, and a socket port cannot be published here at all.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_portnames.m -o .build/probe-foundation_portnames.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_portnames.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-# 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-# 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_portnames"
-# 	# foundation_protocolchecker: §62.55's acceptance - the proxy that answers only for its protocol. Every refusal
-# 	# is measured TWICE (the call is refused AND the target's own counter shows the method never ran), and the two
-# 	# optional-door checks separate "asked the protocol" from "asked the target".
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_protocolchecker.m -o .build/probe-foundation_protocolchecker.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_protocolchecker.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-# 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-# 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_protocolchecker"
-# 	# foundation_distributedlock: §62.55's acceptance - the lock that is a file. Every check works through TWO
-# 	# objects on one path, because a lock is only a lock if somebody ELSE is refused.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_distributedlock.m -o .build/probe-foundation_distributedlock.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_distributedlock.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-# 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-# 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_distributedlock"
-# 	# foundation_dobjects: §62.56's acceptance - distributed objects on this library's transport and name server.
-# 	# Nearly every check is a ROUND TRIP whose answer only the service can compute, and the boundary is measured
-# 	# from BOTH sides: a scalar result is refused by the service (the client raises with its message) and a scalar
-# 	# argument is refused by the proxy, which the service's own counter confirms nothing was called.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		-Werror=nullable-to-nonnull-conversion \
-# 		userland/tests/foundation_dobjects.m -o .build/probe-foundation_dobjects.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_dobjects.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-# 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-# 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_dobjects"
-# 	# foundation_urlerror: the URL error names, their values, and the shape of the family (§56). No transport
-# 	# and no server: two of its checks read a REAL task's error and the rest are the codes themselves.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		userland/tests/foundation_urlerror.m -o .build/probe-foundation_urlerror.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_urlerror.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlerror"
-# 	# foundation_wsframe: RFC 6455's BYTE LAYER (§59 slice 2) - the frame codec, as pure functions. It links the
-# 	# library's internal FNWebSocketFraming (not public API, and exported like every other symbol in this .so).
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		userland/tests/foundation_wsframe.m -o .build/probe-foundation_wsframe.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_wsframe.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_wsframe"
-# 	# foundation_wsassemble: the framing's STATE HALF (§59 slice 2b) - frames in, messages out, including the
-# 	# interleaved control frame of §5.4 that §59 left as a measurement. It links both internal units.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		userland/tests/foundation_wsassemble.m -o .build/probe-foundation_wsassemble.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_wsassemble.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_wsassemble"
-# 	# foundation_wshandshake: RFC 6455's OPENING HANDSHAKE (§59 slice 3a) - the request and the reply, with the
-# 	# accept digest tested against the RFC's own worked example. No socket, which is why it is a layer.
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		userland/tests/foundation_wshandshake.m -o .build/probe-foundation_wshandshake.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_wshandshake.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_wshandshake"
-# 	# foundation_credentialstorage: the store keyed by protection space (W7 slice 4)
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		userland/tests/foundation_credentialstorage.m -o .build/probe-foundation_credentialstorage.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_credentialstorage.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_credentialstorage"
-# 	# foundation_authenticationchallenge: the challenge's mechanics (W7 slice 4)
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		userland/tests/foundation_authenticationchallenge.m -o .build/probe-foundation_authenticationchallenge.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_authenticationchallenge.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_authenticationchallenge"
-# 	# foundation_urlcredential: the credential as a value (W7 slice 4)
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		userland/tests/foundation_urlcredential.m -o .build/probe-foundation_urlcredential.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_urlcredential.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlcredential"
-# 	# foundation_urlprotectionspace: the realm as a value (W7 slice 4)
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		userland/tests/foundation_urlprotectionspace.m -o .build/probe-foundation_urlprotectionspace.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_urlprotectionspace.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlprotectionspace"
-# 	# foundation_httpcookiestorage: the store and its two matching rules (W7 slice 3)
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		userland/tests/foundation_httpcookiestorage.m -o .build/probe-foundation_httpcookiestorage.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_httpcookiestorage.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-# 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-# 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_httpcookiestorage"
-# 	# foundation_httpcookie: the cookie as a value (W7 slice 3)
-# 	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
-# 		userland/tests/foundation_httpcookie.m -o .build/probe-foundation_httpcookie.o
-# 	$(MUSL64_OBJC) .build/probe-foundation_httpcookie.o \
-# 		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
-# 		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
-# 		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/foundation_httpcookie"
-# 	# curl_smoke: W7 slice 2b's acceptance - LIBCURL ON THE GUEST. NOT a Foundation probe: this is a
-# 	# third-party library's landing, so the program that judges it has no Foundation in it (the
-# 	# kernel_pipe_dup2 reasoning). It compiles against the VENDORED libcurl out of .build/curl-prefix
-# 	# and needs NO RPATH: the guest loader resolves libcurl.so.4 out of /System/Libraries, which is
-# 	# where the staging block above puts it.
-# 	# -lcurl -lssl -lcrypto IN THAT ORDER: libcurl NEEDs LibreSSL's entry points now that it is bound to
-# 	# it (L2), so leaving them out fails the link with "undefined reference to X509_check_issued" — the
-# 	# same shape as the libtls link line below.
-# 	$(MUSL64_CC) -I$(CURL_PREFIX)/include userland/tests/curl_smoke.c \
-# 		-L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
-# 		-o "$(ROOTFS64)/System/Shared/tests/curl_smoke"
-# 	# kernel_threaded_exec: THE KERNEL BUG'S REPRODUCER (§45 of the Foundation plan), not a Foundation
-# 	# probe - it is plain C with NO Foundation in it, because the point is that the library is absent from
-# 	# the failing program. Mode 1's children are /System/Tools/true; mode 2's are the Foundation probe.
-# 	$(MUSL64_CC) -O2 userland/tests/kernel_threaded_exec.c \
-# 		-o "$(ROOTFS64)/System/Shared/tests/kernel_threaded_exec"
-# 	# kernel_pipe_dup2: the MINIMAL reproducer for the pipe/fork/dup2 wedge (§45) - plain POSIX, so a hang
-# 	# here is a kernel defect in a file nobody can argue with.
-# 	$(MUSL64_CC) -O2 userland/tests/kernel_pipe_dup2.c \
-# 		-o "$(ROOTFS64)/System/Shared/tests/kernel_pipe_dup2"
-# 	# kernel_loopback_tcp: CAN THIS KERNEL'S LOOPBACK CARRY A PAYLOAD? - plain C with NO Foundation,
-# 	# NO SSL and no third-party library, because the question came from a stalled TLS handshake and
-# 	# the answer must not be able to be about the TLS library (docs/design/libressl-plan.md L1).
-# 	$(MUSL64_CC) -O2 userland/tests/kernel_loopback_tcp.c \
-# 		-o "$(ROOTFS64)/System/Shared/tests/kernel_loopback_tcp"
-# 	# kernel_pty_read: ARE A PTY'S TWO READ PATHS WOKEN? - plain C with no Foundation. The MASTER reads
-# 	# through pty_read and the SLAVE through tty_read (two different fsops), and tty_read's VMIN/VTIME arms
-# 	# are reachable ONLY from a tty the probe owns - which is exactly why a pty is used here and the console
-# 	# is not. It is a BEHAVIOUR test first: two §58.1 cures went in unverifiable because nothing could reach
-# 	# them (docs/design/foundation-plan.md §58.1b).
-# 	$(MUSL64_CC) -O2 userland/tests/kernel_pty_read.c \
-# 		-o "$(ROOTFS64)/System/Shared/tests/kernel_pty_read"
-# 	# (The toolkit probes — layout_solve, view_layout, stack_view, scroll_view,
-# 	# collection_view, tab_view, split_view, grid_view, kvc_basic,
-# 	# notification_basic, cell_basic, viewcontroller_basic, window_draw,
-# 	# control_click, text_stack — and the Widget Zoo were removed with the
-# 	# toolkit, 2026-09-17: docs/design/argentum-uikit-plan.md, DEFERRED.)
-# 	# font_twice: TEMPORARY DIAGNOSTIC - asks the guest's own FreeType whether
-# 	# it can open one font file twice (the toolkit keeps a face per size, so a
-# 	# second size is a second FT_New_Face). No toolkit, no fontconfig.
-# 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-# 		-I$(X11PREFIX)/include/freetype2 -L$(X11PREFIX)/lib \
-# 		userland/tests/font_twice.cpp -lfreetype \
-# 		-o "$(ROOTFS64)/System/Shared/tests/font_twice"
-# 	# plist_test: the C plist CORE's acceptance (include/plist.h + userland/plist.c)
-# 	# — the shared core libconfig will consume from C. Compiled from the same
-# 	# source the library builds, rather than linked out of libfoundation: it is a C
-# 	# probe of a C core, so there is one implementation either way and no Objective-C
-# 	# runtime in the path.
-# 	$(MUSL64_CC) -Iinclude userland/tests/plist_test.c userland/plist.c -lm \
-# 		-o "$(ROOTFS64)/System/Shared/tests/plist_test"
-# 	# config_plist_test: P3b's acceptance (docs/design/plist-config-plan.md) — a
-# 	# .conf reads the SAME in both spellings. It copies each shipped file into a
-# 	# scratch tree, forces a rewrite (the writer emits plists now), and compares
-# 	# every key, every value and the prose, both ways. Linked from the same
-# 	# sources the library builds, like plist_test: one implementation either way.
-# 	$(MUSL64_CC) -Iinclude -Iuserland userland/tests/config_plist_test.c \
-# 		userland/libconfig.c userland/libconfig_plist.c userland/plist.c \
-# 		-o "$(ROOTFS64)/System/Shared/tests/config_plist_test"
-# 	# x_move: raw-Xlib window mover — attributes a window-move wedge
-# 	# between the server (Xfb) and any client, with no toolkit involved.
-# 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-# 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-# 		userland/tests/x_move.cpp -lX11 \
-# 		-o "$(ROOTFS64)/System/Shared/tests/x_move"
-# 	# x_keys: raw-Xlib key reader — proves a typed key reaches the guest's X
-# 	# server with no toolkit in the path (the keyboard's x_move).
-# 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-# 		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
-# 		userland/tests/x_keys.cpp -lX11 \
-# 		-o "$(ROOTFS64)/System/Shared/tests/x_keys"
-# 	# oom_probe: S4.3d (eats memory until a page cannot be faulted in,
-# 	# to prove the fault path reports it and sends SIGBUS)
-# 	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
-# 		userland/tests/oom_probe.cpp \
-# 		-L$(X11PREFIX)/lib -L$(FNXLIB) -lconfig -lX11 \
-# 		-o "$(ROOTFS64)/System/Shared/tests/oom_probe"
-# 	# xclick: generic synthetic-click injector for the S2.4 gates
-# 	$(MUSL64_CC) -I$(X11PREFIX)/include userland/tests/xclick.c \
-# 		-L$(X11PREFIX)/lib -lX11 \
-# 		-o "$(ROOTFS64)/System/Shared/tests/xclick"
-# 	# xshm_m0: MIT-SHM M0 acceptance — Xlib client (the UIKit transport)
-# 	# paints a window via a SysV segment + XShmPutImage (libXext); logs
-# 	# SHMM0-DONE for the gate.
-# 	$(MUSL64_CC) -I$(X11PREFIX)/include userland/tests/xshm_m0.c \
-# 		-L$(X11PREFIX)/lib -lXext -lX11 \
-# 		-o "$(ROOTFS64)/System/Shared/tests/xshm_m0"
-# 	# xshm_geo: the Xfb short-window SHM measurement (S4.2a open item).
-# 	# XShmPutImage into a matrix of geometries - including the toolkit's
-# 	# real one (window 1920x30 with a 25%-larger backing) - reads each
-# 	# window back with XGetImage and prints a verdict per geometry; run
-# 	# from the console shell with DISPLAY=:0 and read the SHMGEO lines.
-# 	$(MUSL64_CC) -I$(X11PREFIX)/include userland/tests/xshm_geo.c \
-# 		-L$(X11PREFIX)/lib -lXext -lX11 \
-# 		-o "$(ROOTFS64)/System/Shared/tests/xshm_geo"
-# 	# xwinprobe: the shadow-vs-screen probe (XGetImage over a screen rect,
-# 	# twice) — written for the menubar strip that never repaints; useful
-# 	# for any "the draw landed but the screen never changed" question.
-# 	$(MUSL64_CC) -I$(X11PREFIX)/include userland/tests/xwinprobe.c \
-# 		-L$(X11PREFIX)/lib -lX11 \
-# 		-o "$(ROOTFS64)/System/Shared/tests/xwinprobe"
-# 	# xcomp_probe: de-risking a compositing Kestrel — does Xfb's Composite
-# 	# redirect + hand out a usable pixmap, and what does a screen-sized
-# 	# frame cost. Linked against the xcb bindings deliberately: the Xlib
-# 	# wrappers (libXcomposite/libXdamage/libXrender) are not built here.
-# 	$(MUSL64_CC) -I$(X11PREFIX)/include \
-# 		-I$(X11PREFIX)/include/pixman-1 \
-# 		userland/tests/xcomp_probe.c \
-# 		-L$(X11PREFIX)/lib -lX11 -lX11-xcb -lxcb -lxcb-composite \
-# 		-lpixman-1 -lXrender \
-# 		-o "$(ROOTFS64)/System/Shared/tests/xcomp_probe"
-# 	# xbtn: X11 mouse-leg regression client (window + pointer poll +
-# 	# button print) — the S0.6 mouse gate drives QEMU monitor mouse at
-# 	# it and expects "XBTN: button 1 press/release".
-# 	$(MUSL64_CC) -I$(X11PREFIX)/include -I$(X11PREFIX)/include/X11 \
-# 		-L$(X11PREFIX)/lib \
-# 		userland/tests/xbtn.c -lX11 -o "$(ROOTFS64)/System/Shared/tests/xbtn"
-# 	$(MUSL64_CC) userland/tools/acl.c -o "$(ROOTFS64)/System/Tools/acl"
-# 	$(MUSL64_CC) -Iinclude -Iuserland userland/tools/config.c -L$(CURDIR)/$(FNXLIB) \
-# 		-lconfig -o "$(ROOTFS64)/System/Tools/config"
-# 	$(MUSL64_CC) -Iinclude tools/shm_leak_test.c -o "$(ROOTFS64)/System/Tools/shm_leak_test"
-# 	$(MUSL64_CC) -Iinclude tools/shm_cap_test.c -o "$(ROOTFS64)/System/Tools/shm_cap_test"
-# 	$(MUSL64_CC) tools/config_m3_test.c -o "$(ROOTFS64)/System/Tools/config_m3_test"
-# 	$(MUSL64_CC) userland/tools/pty_test.c -o "$(ROOTFS64)/System/Tools/pty_test"
-# 	# Probes the test harness drives (tests/cases/*): the security battery from
-# 	# the audit rounds, the AGFS metadata/stream probes and the mmap probe.
-# 	# They are committed sources; nothing built them into the image before.
-# 	$(MUSL64_CC) -Iinclude tools/sec_test.c -o "$(ROOTFS64)/System/Shared/tests/sec_test"
-# 	$(MUSL64_CC) userland/tests/test_mmap.c -o "$(ROOTFS64)/System/Shared/tests/test_mmap"
-# 	$(MUSL64_CC) userland/tests/agfsattr.c -o "$(ROOTFS64)/System/Shared/tests/agfsattr"
-# 	$(MUSL64_CC) userland/tests/agfsdir.c -o "$(ROOTFS64)/System/Shared/tests/agfsdir"
-# 	$(MUSL64_CC) userland/tests/agfsxattr.c -o "$(ROOTFS64)/System/Shared/tests/agfsxattr"
-# 	$(MUSL64_CC) userland/tools/agfsquery.c -o "$(ROOTFS64)/System/Tools/agfsquery"
-# 	$(MUSL64_CC) userland/tools/agfsqtest.c -o "$(ROOTFS64)/System/Tools/agfsqtest"
-# 	$(MUSL64_CC) userland/tools/tone.c -o "$(ROOTFS64)/System/Tools/tone" -lm
-# 	$(MUSL64_CC) userland/tools/fbdump.c -o "$(ROOTFS64)/System/Tools/fbdump"
-# 	cp $(DASH64_BIN) "$(ROOTFS64)/System/Tools/sh"
-# 	# --- the static recovery set (docs/shared-libraries-plan.md §2.4/§3):
-# 	# insurance when /System/Libraries is corrupt or missing. The kernel
-# 	# boots these (RECOVERY_PROGRAM) instead of init on a 'recovery'
-# 	# param or a failed NEEDED-closure probe. Static dash + static
-# 	# toybox; the /System/Recovery/bin applet links mirror the dynamic
-# 	# /System/Tools set so repair commands resolve to the static toybox.
-# 	cp $(DASH64_RECOVERY) "$(ROOTFS64)/System/Tools/recovery-sh"
-# 	cp $(TOYBOX64_RECOVERY) "$(ROOTFS64)/System/Tools/recovery-toybox"
-# 	@chmod 0755 "$(ROOTFS64)/System/Tools/recovery-sh" \
-# 		"$(ROOTFS64)/System/Tools/recovery-toybox"
-# 	@mkdir -p "$(ROOTFS64)/System/Recovery/bin"
-# 	@for l in $(CURDIR)/$(ROOTFS64)/System/Tools/*; do \
-# 		if [ -L "$$l" ] && [ "$$(readlink "$$l")" = toybox ]; then \
-# 			ln -sfn /System/Tools/recovery-toybox \
-# 				"$(ROOTFS64)/System/Recovery/bin/$$(basename "$$l")"; \
-# 		fi; \
-# 	done
-# 	# third-party X11 lives under System/Shared/X11 (outside the
-# 	# zero-allow System/Tools lint scope); System/Tools stays first-party
-# 	# + ported toybox only.
-# 	@mkdir -p "$(ROOTFS64)/System/Shared/X11/bin" "$(ROOTFS64)/System/Shared/tests"
-# 	cp $(XFB_BIN) "$(ROOTFS64)/System/Shared/X11/bin/Xfb"
-# 	cp .build/x11-prefix/bin/xkbcomp "$(ROOTFS64)/System/Shared/X11/bin/xkbcomp"
-# 	# xkb data for the runtime XKB compile (Xfb's libxkbfile default is
-# 	# System/Shared/X11/xkb). Host xkeyboard-config is the established
-# 	# source (bundled data mismatches the server's xkbcomp).
-# 	@if [ -d /usr/share/X11/xkb/rules ]; then \
-# 		cp -r /usr/share/X11/xkb/. "$(ROOTFS64)/System/Shared/X11/xkb/"; \
-# 	else \
-# 		echo "WARNING: /usr/share/X11/xkb missing - Xfb keyboard init will fail"; \
-# 	fi
-# 	@cp userland/tests/test_toybox.sh "$(ROOTFS64)/System/Shared/tests/test_toybox.sh" 2>/dev/null || \
-# 		{ mkdir -p "$(ROOTFS64)/System/Shared/tests" && \
-# 		  cp userland/tests/test_toybox.sh "$(ROOTFS64)/System/Shared/tests/test_toybox.sh"; }
-# 	@chmod +x "$(ROOTFS64)/System/Tools/sh" "$(ROOTFS64)/System/Tools/init"
-# 	@mkdir -p "$(ROOTFS64)/System/Shared/scripts/dhcp" && \
-# 		cp userland/scripts/dhcp_script.sh "$(ROOTFS64)/System/Shared/scripts/dhcp/default.script" 2>/dev/null || true
-# 	# --- machine configuration (System/Configuration; Q9 accounts) ---
-# 	# Identity, name resolution and machine identity are record domains
-# 	# shipped in System scope (docs/system-config-files-plan.md M2/M5).
-# 	# No legacy colon/line files exist (passwd, group, shells, hosts).
-# 	@cp userland/configuration/system.passwd.conf "$(ROOTFS64)/System/Configuration/system.passwd.conf"
-# 	@cp userland/configuration/system.group.conf "$(ROOTFS64)/System/Configuration/system.group.conf"
-# 	@cp userland/configuration/system.shells.conf "$(ROOTFS64)/System/Configuration/system.shells.conf"
-# 	@cp userland/configuration/system.hosts.conf "$(ROOTFS64)/System/Configuration/system.hosts.conf"
-# 	@cp userland/configuration/system.network.conf "$(ROOTFS64)/System/Configuration/system.network.conf"
-# 	@cp userland/configuration/system.mounts.conf "$(ROOTFS64)/System/Configuration/system.mounts.conf"
-# 	# --- FSH fonts (text stack): OS fonts in /System/Shared/Fonts; the
-# 	# fontconfig config is the libconfig domain system.fonts.conf (M0,
-# 	# docs/design/fontconfig-config-plan.md) - no XML fonts.conf ships.
-# 	# --- the interim cursor theme (userland/cursors): an Xcursor theme is
-# 	# <dir>/<theme>/cursors/<name>, which is the layout libXcursor searches
-# 	# under XCURSOR_PATH. Kestrel points XCURSOR_PATH at this and defines
-# 	# the cursor on the root window.
-# 	# Idempotent ON PURPOSE: `cp -a src dst` copies src INTO dst when dst
-# 	# is already a directory, so a second make run nested a whole duplicate
-# 	# theme at cursors/cursors/ (~11.7MB, 146 entries) and pushed the tree
-# 	# past the 64MB image. Clear the destination first.
-# 	@mkdir -p "$(ROOTFS64)/System/Shared/Icons/default"
-# 	@rm -rf "$(ROOTFS64)/System/Shared/Icons/default/cursors"
-# 	@cp -a userland/cursors \
-# 		"$(ROOTFS64)/System/Shared/Icons/default/cursors"
-# 	@mkdir -p "$(ROOTFS64)/System/Shared/Fonts"
-# 	@cp userland/fonts/DejaVuSans.ttf userland/fonts/DejaVuSans-Bold.ttf \
-# 		"$(ROOTFS64)/System/Shared/Fonts/"
-# 	@cp userland/configuration/system.fonts.conf \
-# 		"$(ROOTFS64)/System/Configuration/system.fonts.conf"
-# 	# --- shared libc (docs/shared-libraries-plan.md): stage the dynamic
-# 	# linker + libc for the dynamic userland. The interpreter is a
-# 	# hardlink of libc.so (same inode), matching musl's own install, so
-# 	# the loader recognizes libc as itself.
-# 	@cp $(MUSL64_PREFIX)/lib/libc.so "$(ROOTFS64)/System/Libraries/libc.so"
-# 	@ln -f "$(ROOTFS64)/System/Libraries/libc.so" "$(ROOTFS64)/System/Libraries/ld-musl-x86_64.so.1"
-# 	# --- shared X stack (docs/shared-libraries-plan.md §6, M2): the
-# 	# versioned .so files of the X11 dependency prefix. musl's loader
-# 	# resolves each NEEDED soname (libX11.so.6, libxcb.so.1, ...) as an
-# 	# exact filename against the baked /System/Libraries search path; the
-# 	# glob carries the soname symlink + the versioned real file (the bare
-# 	# dev symlink libX11.so is link-time only and skipped). Only the libs
-# 	# today's consumers NEED are staged. libX11-xcb + libxcb-composite are
-# 	# now staged because something DOES link them: xcomp_probe, which
-# 	# de-risks a compositing Kestrel. libXrender is vendored too (the
-# 	# RENDER client the compositor blends through); libXcomposite and
-# 	# libXdamage are still not - the xcb bindings cover Composite.
-# 	@if [ ! -d "$(X11PREFIX)/lib" ]; then \
-# 		echo "X11 prefix missing - run tools/x11-shared-build.sh first"; \
-# 		exit 1; \
-# 	fi
-# 	@for l in libX11.so libxcb.so libXau.so libXdmcp.so libxkbfile.so \
-# 		libpixman-1.so libXfont2.so libfontenc.so libz.so libXext.so \
-# 		libX11-xcb.so libxcb-composite.so libXrender.so \
-# 		libXcursor.so libXfixes.so libXcomposite.so; do \
-# 		cp -a $(X11PREFIX)/lib/$${l}.* "$(ROOTFS64)/System/Libraries/"; \
-# 	done
-# 	# --- ICU4C (docs/design/foundation-plan.md §10, slice F13): the DATA backend
-# 	# the Foundation's data-driven families bind - the formatters, the time-zone
-# 	# names and DST rules, the non-Gregorian calendars, collation and the [d]
-# 	# fold. Three libraries plus their sonames: the common library, the i18n
-# 	# library, and the DATA PACKAGE, which --with-data-packaging=library makes a
-# 	# real shared library (the Debian arrangement). That is why the guest needs no
-# 	# data path and no ICU_DATA: musl's loader resolves libicudata.so.76 as an
-# 	# ordinary NEEDED entry, exactly like libz. ICU's own NEEDED closure is the
-# 	# C++ stack (libc++/libc++abi/libunwind/libc), staged above.
-# 	@if [ ! -d "$(ICUPREFIX)/lib" ]; then \
-# 		echo "ICU prefix missing - run tools/icu-build.sh first"; \
-# 		exit 1; \
-# 	fi
-# 	@for l in libicuuc.so libicui18n.so libicudata.so; do \
-# 		cp -a $(ICUPREFIX)/lib/$${l}.* "$(ROOTFS64)/System/Libraries/"; \
-# 	done
-# 	# FNX's own shared libconfig (first-party, .build/fnxlib): the
-# 	# config tool, toybox account tools and Xfb's configargs all NEEDED it.
-# 	@cp $(FNXLIB_CONFIG) "$(ROOTFS64)/System/Libraries/libconfig.so.1"
-# 	# The Objective-C runtime (docs/design/objc-toolchain-plan.md P3): same
-# 	# rule as libconfig and the C++ stack - the versioned file, whose SONAME
-# 	# ("libobjc.so.4.6") the guest loader resolves. Upstream tries to suppress
-# 	# the soname with a malformed set_property() call, so it has one.
-# 	@cp $(OBJC_PREFIX)/lib/libobjc.so.4.6 "$(ROOTFS64)/System/Libraries/libobjc.so.4.6"
-# 	# The Foundation (docs/design/foundation-plan.md F0): the same staging rule.
-# 	@cp $(FOUNDATION_LIB) "$(ROOTFS64)/System/Libraries/libfoundation.so.1"
-# 	# Its PUBLIC HEADERS, which is what makes an on-guest Objective-C rebuild
-# 	# possible - the gap docs/design/self-hosting-packages.md §6 records for the
-# 	# runtime. Lower-case directory on purpose: <Foundation/...>, never Apple's.
-# 	# THE GUEST'S OWN COPY IS `Headers/Foundation` NOW: with the library's directory renamed, the
-# 	# import spelling `<Foundation/...>` must name the STAGED tree too, or a guest build would be
-# 	# told our own headers do not exist (user's cleanup, 2026-09-20).
-# 	@mkdir -p "$(ROOTFS64)/System/Shared/Headers/Foundation"
-# 	@cp $(FOUNDATION_SRC)/*.h "$(ROOTFS64)/System/Shared/Headers/Foundation/"
+$(FOUNDATION_LIB): $(FOUNDATION_SRCS) $(FOUNDATION_HDRS) $(OBJC_STAMP) $(FN_FOUNDATION_OBJS)
+	@mkdir -p $(FNXLIB)
+	$(MUSL64_CC) -c -fPIC -Iinclude userland/plist.c -o .build/plist.o
+	# F7: the calendar family. NSCalendar.m and NSTimeZone.m are ARC; the
+	# components bag owns nothing but its fields.
+	#
+	# F13.7a: NSTimeZone.m NOW INCLUDES ICU (<unicode/ucal.h>, <unicode/uenum.h>), because the class
+	# reads the zone database instead of refusing it — so the ICU prefix is on ITS include path.
+	# NSCalendar.m and NSDateComponents.m do not include ICU: their arithmetic stays on libc's
+	# struct tm and they reach the database only through NSTimeZone.
+	# F13.7b: NSCalendar.m NOW INCLUDES ICU (<unicode/ucal.h>), because the class reads every
+	# calendar out of it instead of refusing the ones whose tables it lacked. So the ICU prefix is
+	# on ITS include path too; the link needed nothing new (F13.6 already made libfoundation need
+	# libicui18n/libicuuc/libicudata).
+	# F8: the URL value type.
+	# F9: the key-value coding family — a category on NSObject, so nothing here
+	# owns its storage; the lookup goes through the runtime's ivar table.
+	# F10: the sorting family. NSSortDescriptor.m resolves its key through KVC and
+	# calls a comparison selector through its OWN return type (a scalar, not `id`).
+	# F11a: the predicate object model — an abstract base, two private leaves, the tree
+	# node, and the two collection filters. The block leaf is why this file stores a block.
+	#
+	# ⚠⚠ TWO ENTRIES OF THIS LIST'S RATIONALE LEFT WITH THE PREDICATE FAMILY (§63.161): NSPredicate.m was
+	# here for ICU's <unicode/ucol.h> (the `[d]` collation) and for musl's <regex.h> (MATCHES, which is
+	# inside libc, so it never added a link), and NSPredicateFormat.m was the format grammar — a category on
+	# NSPredicate, which is why the parser lived beside the object model. BOTH FILES ARE GONE: the family is
+	# macOS 10.4. THE RULE they were examples of is unchanged, and the link still needs nothing new: F13.6
+	# already made libfoundation need libicui18n/libicuuc/libicudata.
+	# F12: the compression binding. NSDataCodec.m is the ONLY file that includes <zlib.h>, so the X11
+	# prefix is on ITS include path — and on the LINK line below, because libfoundation now needs
+	# libz.so.1. That library is already staged into the guest for the X11 stack, so this adds a
+	# dependency and no new artifact (docs/design/foundation-plan.md, F12).
+	# F13.6: the value-to-text family. NSFormatter.m is the abstract base and needs nothing extra;
+	# NSDateFormatter.m is the file that includes <unicode/udat.h> and <unicode/udatpg.h>, so the
+	# ICU prefix is on ITS include path — and on the LINK line below, because libfoundation now
+	# needs libicui18n/libicuuc/libicudata. Those libraries and their data package are already
+	# staged into the guest (docs/design/foundation-plan.md §10, F13), so this adds a dependency
+	# and no new artifact — the same shape as F12's libz.
+	# F13.7c: the number formatter. It includes <unicode/unum.h>, so the ICU prefix is on ITS
+	# include path; the LINK needs nothing new, because F13.6 already made libfoundation need
+	# libicui18n/libicuuc/libicudata.
+	# F13.7e: the shared calendar-keyword bridge (NSCalendar.m/.h). It is its OWN translation unit
+	# because TWO classes call it — NSCalendar and NSDateFormatter — and it includes only
+	# <Foundation/...> headers, so it needs no ICU include path of its own.
+	# F13.8: the unordered collection. It includes <Foundation/...> headers only — no ICU, no zlib —
+	# because a set is RULES rather than data, which is why it was a gap in the plan's refusal table
+	# rather than an entry in it.
+	# W2h: the 128-bit identifier. <Foundation/...> headers only — the entropy comes from
+	# getentropy, so no ICU include path is needed.
+	# W2h: the autorelease pool boundary. It needs the RUNTIME's pool primitives, from
+	# W2h: JSON. Foundation headers plus string.h and math.h; no ICU, no zlib.
+	# W2h: the undo manager's core. Foundation headers plus the runtime, for the selector send.
+	# W2h: the second root class. It needs the runtime's own allocation and disposal.
+	# -Wno-protocol IS DELIBERATE AND NOT NOISE: a proxy FORWARDS -isKindOfClass: and -isMemberOfClass:
+	# rather than implementing them - that is Apple's documented behaviour and the reason -isProxy
+	# exists - so the compiler correctly observes that this class does not satisfy the whole NSObject
+	# protocol itself. The same shape, and the same justification, as the probe rules' 
+	# -Wno-incomplete-implementation beside them.
+	# <objc/objc-arc.h>, which is already on the include path.
+	# W2h: the affine transform. <Foundation/...> headers and libm, for sin/cos.
+	# W2h: the value transformer. <Foundation/...> headers plus the runtime, for NSClassFromString.
+	# W2h: a span of time. <Foundation/...> headers only - it is dates and arithmetic, no ICU.
+	# F13.8c: the box for everything that is not an object, and the object that stands for nothing.
+	# Same shape as the set: <Foundation/...> headers only, no ICU and no zlib.
+	# F13.8d: the counted set. A SUBCLASS of NSMutableSet, so its initialisers have to reach the
+	# counts — see the file's header for why the array form may not go through the superclass's.
+	# F13.8e: the ordered set and its mutable half, in ONE translation unit (they share no
+	# superclass relation, so there is no NSMutableSet-style reason to split them).
+	# F13.9: the observer registry. <Foundation/...> headers only, like the collections.
+	# F13.10: the expression tree. It reads collections and key paths, so it includes the NSSet
+	# header; no ICU and no zlib.
+	# F13.11: the expression-shaped comparison. It shares the comparison rule with the grammar's
+	# leaf through FNCompareValues, so this file states no rule of its own.
+	# F13.12: the coder family. NSKeyedArchiver.m includes the plist serialisation and the runtime
+	# (it looks a class up BY NAME), so it is the one foundation source with those two dependencies.
+	# F13.13: the process service. It reads /proc and the C library's environ, so it is the one
+	# source here that includes <unistd.h> and <stdio.h>.
+	# F13.14: the file system service. It is the one source here that walks directories and calls
+	# open/read/write itself, because a recursive copy has no syscall to lean on.
+	# F13.15: the structured URL and RFC 3986 §5.2's resolution. NSURL.h is the bridge NSURL's
+	# relative door reaches the algorithm through.
+	# F13.16: regular expressions, on the engine musl already ships inside libc. It includes
+	# <regex.h> and nothing else new.
+	# F13.17: the locking classes and NSThread, over the pthreads musl already ships. These are the
+	# only two sources here that include <pthread.h>.
+	# F13.18: NSTimer and NSRunLoop in one unit, because they are one design — a timer names a date
+	# and the loop is what waits for dates. Its wait is select(2), not nanosleep(2): F13.17 measured
+	# that this kernel returns from nanosleep early.
+	# F13.19: the operation and the queue that schedules it. The second source here that uses the
+	# thread family — NSThread for the workers, NSCondition for the drain.
+	# F13.20: the progress tree. It includes <pthread.h> for its per-thread current stack, and
+	# nothing else new.
+	# W7 slice 2c: THE BRIDGE MAKES THE LIBRARY DEPEND ON LIBCURL, and libcurl on LibreSSL.
+	# The order is the dependency order (-lcurl -lssl -lcrypto), as curl_smoke records, and no RPATH
+	# is needed: the guest loader resolves libcurl.so.4 out of /System/Libraries, where slice 2b stages
+	# it. Precedent rather than a new kind of dependency: the library already needs libz (one codec)
+	# and ICU (F13.6). And the comment sits ABOVE the command, not inside it, because a line inside a
+	# backslash-continued recipe is part of that command: a '#' there does not comment out a makefile
+	# line, it comments out the rest of the SHELL command — measured here as a link that silently lost
+	# every flag after it.
+	# FOUNDATION DEPENDS ON COREFOUNDATION AS OF THE M2 COMPATIBILITY SURFACE (FNCoreFoundationBridge.m),
+	# which imports <CoreFoundation/CFString.h> to name CF's encodings rather than copying them. The
+	# direction is one-way and clean because CF no longer references any Foundation symbol. The gate is
+	# the staging blocks' gate: a missing prefix should name its own fix.
+	@if [ ! -d "$(COREFOUNDATION_PREFIX)/lib" ]; then \
+		echo "CoreFoundation prefix missing - run tools/corefoundation-build.sh first"; \
+		exit 1; \
+	fi
+	$(MUSL64_OBJC) -shared -Wl,-soname,libfoundation.so.1 \
+		$(FN_FOUNDATION_OBJS) \
+		.build/plist.o -L$(X11PREFIX)/lib -lz -L$(ICUPREFIX)/lib -licui18n -licuuc -licudata \
+		-L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-L$(COREFOUNDATION_PREFIX)/lib -lcorefoundation -o $@
+	ln -sf libfoundation.so.1 $(FNXLIB)/libfoundation.so
+userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_CXX_STAMP) $(OBJC_STAMP) foundation-gate $(FOUNDATION_LIB) $(CG_LIB) $(LVGL64) $(XFB_BIN) $(FNXLIB_CONFIG) $(DASH64_RECOVERY) $(TOYBOX64_RECOVERY)
+	rm -rf $(ROOTFS64)
+	@mkdir -p $(ROOTFS64)
+	# third-party X11 + toolchain tests live under System/Shared
+	@mkdir -p "$(ROOTFS64)/System/Shared/X11/bin" "$(ROOTFS64)/System/Shared/tests"
+	# --- the FSH skeleton (spaced names verbatim, Q7). No root /tmp: the
+	# FSH maps /tmp to /System/Temporary Files (staged below); fshlint
+	# bans the /tmp string in System/Tools; fs_repair_tmpdir() recreates
+	# /System/Temporary Files at mount if a kill-replay left it non-dir. ---
+	# Application Support: behaviour material (scripts, app data) per the
+	# config policy carve-out - the same domain key and scope tree as
+	# Configuration/, a different payload kind (config-design.md §0).
+	@mkdir -p "$(ROOTFS64)/System/Application Support" \
+		"$(ROOTFS64)/Shared/Application Support" \
+		"$(ROOTFS64)/System/User Template/Application Support" \
+	@mkdir -p "$(ROOTFS64)/Applications" "$(ROOTFS64)/Volumes"
+	@mkdir -p "$(ROOTFS64)/Shared/Configuration" "$(ROOTFS64)/Shared/Libraries" \
+		"$(ROOTFS64)/Shared/Fonts" "$(ROOTFS64)/Shared/Images" \
+		"$(ROOTFS64)/Shared/Sounds" "$(ROOTFS64)/Shared/Videos" \
+		"$(ROOTFS64)/Shared/Documentation" "$(ROOTFS64)/Shared/Themes"
+	@mkdir -p "$(ROOTFS64)/System/Tools" "$(ROOTFS64)/System/Libraries" \
+		"$(ROOTFS64)/System/Configuration" "$(ROOTFS64)/System/Devices" \
+		"$(ROOTFS64)/System/Devices/pts" "$(ROOTFS64)/System/Processes" \
+		"$(ROOTFS64)/System/ESP" "$(ROOTFS64)/System/Documentation/HTML/FNX" \
+		"$(ROOTFS64)/System/Documentation/PDF/FNX" \
+		"$(ROOTFS64)/System/Source Code" "$(ROOTFS64)/System/Shared/Fonts" \
+		"$(ROOTFS64)/System/Shared/Images/Icons" \
+		"$(ROOTFS64)/System/Shared/Images/Wallpaper" \
+		"$(ROOTFS64)/System/Shared/Sounds" "$(ROOTFS64)/System/Shared/Videos" \
+		"$(ROOTFS64)/System/Shared/X11/xkb" \
+		"$(ROOTFS64)/System/Temporary Files" \
+		"$(ROOTFS64)/System/Variable Data/X11/xkb/compiled" \
+		"$(ROOTFS64)/System/User Template/Configuration" \
+		"$(ROOTFS64)/System/User Template/Applications" \
+		"$(ROOTFS64)/System/User Template/Documents" \
+		"$(ROOTFS64)/System/User Template/Desktop" \
+		"$(ROOTFS64)/System/User Template/Music" \
+		"$(ROOTFS64)/System/User Template/Pictures" \
+		"$(ROOTFS64)/System/User Template/Videos" \
+		"$(ROOTFS64)/System/User Template/Shared/Libraries" \
+		"$(ROOTFS64)/System/User Template/Shared/Fonts" \
+		"$(ROOTFS64)/System/User Template/Shared/Images" \
+		"$(ROOTFS64)/System/User Template/Shared/Sounds" \
+		"$(ROOTFS64)/System/User Template/Shared/Videos" \
+		"$(ROOTFS64)/System/User Template/Shared/Documentation" \
+		"$(ROOTFS64)/System/User Template/Temporary Files" \
+		"$(ROOTFS64)/System/User Template/Variable Data"
+	# --- tools (executables) ---
+	# toybox is built + installed by mktoybox.sh (fresh config + the
+	# libconfig link); userland64 only flattens the staged applet dirs.
+	@for d in bin sbin usr/bin usr/sbin; do \
+		if [ -d "$(TOYBOX64_STAGE)/$$d" ]; then \
+			cp -a $(TOYBOX64_STAGE)/$$d/. "$(ROOTFS64)/System/Tools/"; \
+		fi; \
+	done
+	# toybox install links applets with PREFIX-relative targets that break
+	# once bin/sbin/usr/bin are flattened into one Tools dir: point every
+	# symlink at the toybox binary sitting next to it.
+	@cd "$(ROOTFS64)/System/Tools" && for l in *; do \
+		if [ -L "$$l" ]; then ln -sfn toybox "$$l"; fi; \
+	done
+	# suid root: the kernel honors S_ISUID at exec, and toybox drops to
+	# the real uid for every applet except the account tools
+	# (TOYFLAG_STAYROOT/ROOTONLY) — that is what lets non-root `su`
+	# authenticate and switch users (M4).
+	@chmod 4755 "$(ROOTFS64)/System/Tools/toybox"
+	@chmod 0755 "$(ROOTFS64)/System/Tools/config" \
+		"$(ROOTFS64)/System/Tools/init" 2>/dev/null || true
+	# init reads the machine configuration THROUGH LIBCONFIG (P3c-b): one reader
+	# for the domains it needs, and the reason a domain written as a plist can no
+	# longer strand the boot mounts. -lconfig is the staged shared library, like
+	# every other userland tool's.
+	$(MUSL64_CC) -Iuserland -L$(FNXLIB) userland/tools/init.c -lconfig \
+		-o "$(ROOTFS64)/System/Tools/init"
+	$(MUSL64_CXX) userland/tests/cpp_smoke.cpp -o "$(ROOTFS64)/System/Shared/tests/cpp_smoke"
+	# objc_smoke: the Objective-C runtime (docs/design/objc-toolchain-plan.md
+	# P2/P3). TWO translation units on purpose: the class is implemented in
+	# objc_smoke_support.m and its CATEGORY in objc_smoke.m, because cross-TU
+	# class registration is the case that was misdiagnosed during P1 - it stays
+	# in the acceptance now. The support unit is MRR (a root class cannot be
+	# ARC), the other is ARC; they link into one binary.
+	# -Wno-objc-root-class: SmokeObject IS a root class, deliberately.
+	$(MUSL64_OBJC) -c -Wno-objc-root-class -Iuserland/tests \
+		userland/tests/objc_smoke_support.m -o .build/objc-smoke-support.o
+	$(MUSL64_OBJC) -c -Wno-objc-root-class -fobjc-arc -Iuserland/tests \
+		userland/tests/objc_smoke.m -o .build/objc-smoke-main.o
+	$(MUSL64_OBJC) .build/objc-smoke-support.o .build/objc-smoke-main.o \
+		-o "$(ROOTFS64)/System/Shared/tests/objc_smoke"
+	# sterlingc K1, the guest half (docs/design/sterling-plan.md §4). The four
+	# host legs (make sterlingc-check) prove the emitted TEXT - the golden diff,
+	# the corpus, the rejects, and that it compiles. None of them RUNS anything,
+	# and "do not plan past K1 until it passes" is about the chain, so the
+	# emitted class is linked with a hand-written driver here and executed on a
+	# guest boot:
+	#
+	#     MyClass.ag -> sterlingc -> MyClass.h/.m -> clang -> libobjc2 -> Foundation
+	#
+	# The compiler itself runs on the HOST (it is a host tool; the guest only
+	# runs what it produced), so this rule invokes it - and `--build` is first
+	# because a stale .build/sterlingc would silently emit yesterday's output.
+	#
+	# THE INCLUDE BRIDGE IS LOAD-BEARING. §2 emits `#import <Foundation/Foundation.h>`,
+	# Cocoa's capitalisation, and this tree's directory is `userland/Foundation`.
+	# On a case-sensitive filesystem that import cannot resolve without a bridge
+	# - the same one tools/sterlingc-compile.sh builds for the host, and clang's
+	# -Wnonportable-include-path warning is how you can tell it is what resolved
+	# it. The bridge is built beside the emitted headers so the generated include
+	# search is self-contained and cannot be satisfied by a stale one elsewhere.
+	tools/sterlingc.sh --build
+	rm -rf .build/sterlingc/guest
+	mkdir -p .build/sterlingc/guest/include
+	ln -sfn "$(CURDIR)/userland/Foundation" .build/sterlingc/guest/include/Foundation
+	.build/sterlingc/sterlingc -o .build/sterlingc/guest
+	$(MUSL64_OBJC) -c -fobjc-arc \
+		-I.build/sterlingc/guest -I.build/sterlingc/guest/include -Iuserland \
+		userland/tests/sterlingc_k1.m -o .build/sterlingc-k1-main.o
+	$(MUSL64_OBJC) -c -fobjc-arc \
+		-I.build/sterlingc/guest -I.build/sterlingc/guest/include -Iuserland \
+		.build/sterlingc/guest/MyClass.m -o .build/sterlingc-k1-myclass.o
+	$(MUSL64_OBJC) .build/sterlingc-k1-main.o .build/sterlingc-k1-myclass.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/sterlingc_k1"
+	# foundation_core: F0 acceptance (docs/design/foundation-plan.md). Two units
+	# AND two ownership regimes: the subclass and the MRR lifetime exercises in
+	# the support unit, the checks in the ARC unit. The ARC flag is EXPLICIT -
+	# the wrapper never adds it - and without it clang emits no release at all and
+	# the pool check fails (measured).
+	# THE FORWARDING FIXTURES DECLARE METHODS THEY MUST NOT IMPLEMENT: FastForwarder's -marker and
+	# SlowForwarder's -value/-setValue: are the CLAIM this probe tests (the runtime has to forward
+	# them to the backing object), so -Wincomplete-implementation is not noise here — it is the
+	# compiler correctly observing that the design is incomplete ON PURPOSE. The same shape, and the
+	# same justification, as NSString's abstract primitives in FOUNDATION_CFLAGS above.
+	$(MUSL64_OBJC) -c -Wno-objc-root-class -Wno-incomplete-implementation -fno-objc-arc \
+		-Iuserland -Iuserland/tests \
+		userland/tests/foundation_core_support.m -o .build/probe-foundation_core_support.o
+	$(MUSL64_OBJC) -c -Wno-objc-root-class -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_core.m -o .build/probe-foundation_core.o
+	$(MUSL64_OBJC) .build/probe-foundation_core_support.o .build/probe-foundation_core.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_core"
+	# foundation_string: F1 acceptance (docs/design/foundation-plan.md). Two
+	# units again, and the support unit is where the OTHER constant-string
+	# cases live (a 4-character literal is a TAGGED pointer, a 20-character one
+	# is an object - both paths have to work).
+	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_string_support.m -o .build/probe-foundation_string_support.o
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_string.m -o .build/probe-foundation_string.o
+	$(MUSL64_OBJC) .build/probe-foundation_string_support.o .build/probe-foundation_string.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_string"
+	# foundation_value: F2 acceptance. The support unit imports ONLY the
+	# umbrella header, so a complete <Foundation/Foundation.h> is part of the
+	# acceptance too.
+	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_value_support.m -o .build/probe-foundation_value_support.o
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_value.m -o .build/probe-foundation_value.o
+	$(MUSL64_OBJC) .build/probe-foundation_value_support.o .build/probe-foundation_value.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_value"
+	# foundation_clusters: M0 of docs/design/foundation-clusters-plan.md — the MECHANISM a class cluster
+	# needs, proved on a cluster the probe defines ITSELF, so that no shipped class changes behaviour in
+	# this unit. One unit, ARC, and the probe's own classes do the work.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_clusters.m -o .build/probe-foundation_clusters.o
+	$(MUSL64_OBJC) .build/probe-foundation_clusters.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_clusters"
+	# foundation_collection: F3 acceptance. The support unit builds a NESTED
+	# collection, which is the cheapest check that collections are ordinary
+	# objects; the main unit exercises clang's for-in lowering.
+	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_collection_support.m -o .build/probe-foundation_collection_support.o
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_collection.m -o .build/probe-foundation_collection.o
+	$(MUSL64_OBJC) .build/probe-foundation_collection_support.o .build/probe-foundation_collection.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_collection"
+	# foundation_error: F4 acceptance. The support unit builds values from
+	# another unit; the main unit exercises @try/@catch, so the runtime's throw
+	# path is part of the check.
+	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_error_support.m -o .build/probe-foundation_error_support.o
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_error.m -o .build/probe-foundation_error.o
+	$(MUSL64_OBJC) .build/probe-foundation_error_support.o .build/probe-foundation_error.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_error"
+	# foundation_calendar: F7 acceptance. The same two-unit shape, and the support
+	# unit imports ONLY the umbrella — which is how the three new headers are
+	# proved to have reached <Foundation/Foundation.h>.
+	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_calendar_support.m -o .build/probe-foundation_calendar_support.o
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_calendar.m -o .build/probe-foundation_calendar.o
+	$(MUSL64_OBJC) .build/probe-foundation_calendar_support.o .build/probe-foundation_calendar.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_calendar"
+	# foundation_url: F8 acceptance. Two units again, and the support unit imports
+	# ONLY the umbrella — so this is also the proof that NSURL reached
+	# <Foundation/Foundation.h>.
+	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_url_support.m -o .build/probe-foundation_url_support.o
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_url.m -o .build/probe-foundation_url.o
+	$(MUSL64_OBJC) .build/probe-foundation_url_support.o .build/probe-foundation_url.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_url"
+	# foundation_kvc: F9 acceptance. Two units again — and here the split is the
+	# CLAIM under test: the support unit defines the OBJECTS and imports only the
+	# umbrella, so a lookup that crossed translation units by name can only be the
+	# runtime's.
+	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_kvc_support.m -o .build/probe-foundation_kvc_support.o
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_kvc.m -o .build/probe-foundation_kvc.o
+	$(MUSL64_OBJC) .build/probe-foundation_kvc_support.o .build/probe-foundation_kvc.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_kvc"
+	# foundation_sort: F10 acceptance. Two units, and the split carries the claim again:
+	# the support unit builds the OBJECTS and a descriptor from its own side, so a sort
+	# whose key was resolved by name can only have gone through KVC.
+	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_sort_support.m -o .build/probe-foundation_sort_support.o
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_sort.m -o .build/probe-foundation_sort.o
+	$(MUSL64_OBJC) .build/probe-foundation_sort_support.o .build/probe-foundation_sort.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_sort"
+	# foundation_codecs: F12 acceptance. Two units, and the SUPPORT unit builds the BYTES — so the
+	# codec is exercised on data it did not create.
+	$(MUSL64_OBJC) -c -fno-objc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_codecs_support.m -o .build/probe-foundation_codecs_support.o
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_codecs.m -o .build/probe-foundation_codecs.o
+	$(MUSL64_OBJC) .build/probe-foundation_codecs_support.o .build/probe-foundation_codecs.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_codecs"
+	# icu_smoke: F13's acceptance for the ICU bring-up (docs/design/foundation-plan.md §10). The
+	# SOURCE is C, because ICU is a C library and this exercises the DATA path rather than the
+	# object layer — but the LINK goes through the C++ driver: ICU's libraries are C++ underneath
+	# (libicui18n NEEDs libc++.so.1), and musl-clang++64.sh self-bootstraps the C++ runtime's
+	# link pieces (-L.build/llvm-cxx/lib -lc++ -lc++abi -lunwind), which the C driver does not add.
+	# Measured: with $(MUSL64_CC) the link fails on __cxa_* and std::__1::mutex from libicui18n.
+	# Every check asks for an answer that comes from libicudata — three locales' number
+	# formatting, a locale's own date pattern, the German vs Swedish collation rules, and the
+	# time-zone id set — so a pass cannot come from constants in the probe.
+	$(MUSL64_CXX) -I$(ICUPREFIX)/include userland/tests/icu_smoke.c \
+		-L$(ICUPREFIX)/lib -licui18n -licuuc -licudata \
+		-o "$(ROOTFS64)/System/Shared/tests/icu_smoke"
+	# foundation_dateformatter: F13.6 acceptance - the first un-refused DATA family, exercised
+	# through FOUNDATION's own API rather than ICU's directly. ONE unit, deliberately: the other
+	# Foundation probes are two-unit because their claim is a cross-translation-unit boundary,
+	# while this family's claim is data, so the probe includes only <Foundation/Foundation.h>
+	# (which also proves the umbrella exports the new headers). It links the Foundation library,
+	# which is where ICU is now bound.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_dateformatter.m -o .build/probe-foundation_dateformatter.o
+	$(MUSL64_OBJC) .build/probe-foundation_dateformatter.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_dateformatter"
+	# foundation_set: F13.8 acceptance - the first family the boundary never justified. ONE unit (the
+	# claim is VALUE SEMANTICS, not a cross-TU boundary), only <Foundation/Foundation.h>, linking the
+	# Foundation library.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_set.m -o .build/probe-foundation_set.o
+	$(MUSL64_OBJC) .build/probe-foundation_set.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_set"
+	# foundation_nsvalue: F13.8c acceptance. ONE unit, only <Foundation/Foundation.h>. Named nsvalue
+	# and NOT value, because foundation_value is F2/F8's probe for NSNumber/NSData/NSDate.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_nsvalue.m -o .build/probe-foundation_nsvalue.o
+	$(MUSL64_OBJC) .build/probe-foundation_nsvalue.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_nsvalue"
+	# foundation_orderedset: F13.8e acceptance. ONE unit, only <Foundation/Foundation.h>. A separate
+	# probe from foundation_set because NSOrderedSet is NOT an NSSet subclass: order is its value.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_orderedset.m -o .build/probe-foundation_orderedset.o
+	$(MUSL64_OBJC) .build/probe-foundation_orderedset.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_orderedset"
+	# foundation_formatters: W11 acceptance. ONE unit, only <Foundation/Foundation.h> (which also
+	# proves the umbrella exports all six new formatter headers). The claim is DATA coming back
+	# through Foundation's own API — CLDR list/interval/relative patterns and the ISO 8601 grammar —
+	# plus NSByteCountFormatter's arithmetic, which is the ONE thing in this family that is ours.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_formatters.m -o .build/probe-foundation_formatters.o
+	$(MUSL64_OBJC) .build/probe-foundation_formatters.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_formatters"
+	# foundation_kvo: F13.9 acceptance. ONE unit, only <Foundation/Foundation.h>.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_kvo.m -o .build/probe-foundation_kvo.o
+	$(MUSL64_OBJC) .build/probe-foundation_kvo.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_kvo"
+	# foundation_coder: F13.12 acceptance. ONE unit, only <Foundation/Foundation.h>.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_coder.m -o .build/probe-foundation_coder.o
+	$(MUSL64_OBJC) .build/probe-foundation_coder.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -lcoregraphics -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_coder"
+	# foundation_pointers: W13a acceptance. ONE unit, only <Foundation/Foundation.h>.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_pointers.m -o .build/probe-foundation_pointers.o
+	$(MUSL64_OBJC) .build/probe-foundation_pointers.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_pointers"
+	# foundation_processinfo: F13.13 acceptance. ONE unit, only <Foundation/Foundation.h> plus
+	# <unistd.h> for the getpid cross-check.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_processinfo.m -o .build/probe-foundation_processinfo.o
+	$(MUSL64_OBJC) .build/probe-foundation_processinfo.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_processinfo"
+	# foundation_filemanager: F13.14 acceptance. ONE unit, only <Foundation/Foundation.h> plus
+	# <unistd.h> for the symlink(2) its link check makes.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_filemanager.m -o .build/probe-foundation_filemanager.o
+	$(MUSL64_OBJC) .build/probe-foundation_filemanager.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_filemanager"
+	# foundation_bundle: the NSBundle definition. ONE unit, only <Foundation/Foundation.h> plus <fcntl.h> and
+	# <sys/stat.h> for the FIXTURE IT BUILDS ITSELF - a Contents/ bundle, a flat one and a plain directory -
+	# so no test-only manifest format exists in the image and there is no fixture ordering to get wrong.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_bundle.m -o .build/probe-foundation_bundle.o
+	$(MUSL64_OBJC) .build/probe-foundation_bundle.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_bundle"
+	# THE PAYLOAD: a shared library the probe copies INTO its fixture bundle as that bundle's executable, so
+	# -load's positive path (dlopen a real shared object, then objc_getClass the NSPrincipalClass) is asserted
+	# rather than assumed. It is a plugin, not a program, so it is built -shared with the same Foundation it will
+	# be loaded beside.
+	$(MUSL64_OBJC) -c -fobjc-arc -fPIC -Iuserland \
+		userland/tests/foundation_bundle_payload.m -o .build/probe-foundation_bundle_payload.o
+	$(MUSL64_OBJC) -shared .build/probe-foundation_bundle_payload.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_bundle_payload.so"
+	# foundation_textchecking: §62.18's acceptance - NSTextCheckingResult as the GENERAL class (every factory,
+	# every payload, the ranges, the shift and its refusal, the identity rules) plus the vocabulary §62.19 landed
+	# with it, and the named-group translation seen through the class that produces a match. ONE unit, only
+	# <Foundation/Foundation.h>.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_textchecking.m -o .build/probe-foundation_textchecking.o
+	$(MUSL64_OBJC) .build/probe-foundation_textchecking.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_textchecking"
+	# foundation_datadetector: §62.19's acceptance - the three detectors that have data here, the TWO that are
+	# refused by name (Address and TransitInformation, ground (i) in the §11.6 register), and the one rule that
+	# decides what happens when two detectors claim the same span.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_datadetector.m -o .build/probe-foundation_datadetector.o
+	$(MUSL64_OBJC) .build/probe-foundation_datadetector.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_datadetector"
+	# foundation_scanner: §62.20's acceptance - NSScanner, the last open name in the Pattern Matching family. ONE
+	# unit, only <Foundation/Foundation.h>.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_scanner.m -o .build/probe-foundation_scanner.o
+	$(MUSL64_OBJC) .build/probe-foundation_scanner.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_scanner"
+	# foundation_orthography: §62.21's acceptance - NSOrthography, which exists because §62.18's orthography door
+	# needed a class to carry. ONE unit, only <Foundation/Foundation.h>.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_orthography.m -o .build/probe-foundation_orthography.o
+	$(MUSL64_OBJC) .build/probe-foundation_orthography.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_orthography"
+	# foundation_operation_leaves: §62.22's acceptance - the two CONCRETE operations (NSBlockOperation and
+	# NSInvocationOperation). ONE unit, only <Foundation/Foundation.h>.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_operation_leaves.m -o .build/probe-foundation_operation_leaves.o
+	$(MUSL64_OBJC) .build/probe-foundation_operation_leaves.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_operation_leaves"
+	# ONE unit, only <Foundation/Foundation.h>. IT WRITES ITS OWN FILE FIXTURE into the temporary directory, so its
+	# foundation_directoryenumerator: W8 slice 1 acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> plus <unistd.h> for the symlink(2) its fixture makes.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_directoryenumerator.m -o .build/probe-foundation_directoryenumerator.o
+	$(MUSL64_OBJC) .build/probe-foundation_directoryenumerator.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_directoryenumerator"
+	# foundation_filemanagerdelegate: W8 slice 2 acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> plus <unistd.h> for the symlink(2) and link(2) its fixture makes.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_filemanagerdelegate.m -o .build/probe-foundation_filemanagerdelegate.o
+	$(MUSL64_OBJC) .build/probe-foundation_filemanagerdelegate.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_filemanagerdelegate"
+	# foundation_filewrapper: W8 slice 4 acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> plus the POSIX calls its fixture makes.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_filewrapper.m -o .build/probe-foundation_filewrapper.o
+	$(MUSL64_OBJC) .build/probe-foundation_filewrapper.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_filewrapper"
+	# foundation_url_ownership: W8p slice 6h (foundation-plan.md §60). NSURL's part ownership, with a
+	# deliberate reuse pile so an UNOWNED part is visibly wrong and an over-released one crashes.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_url_ownership.m -o .build/probe-foundation_url_ownership.o
+	$(MUSL64_OBJC) .build/probe-foundation_url_ownership.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_url_ownership"
+	# foundation_attributedstring: W10 slice 1's acceptance (foundation-plan.md §61). ONE unit, only
+	# <Foundation/Foundation.h> - the run store and its coalescing contract, with the inventory both ways.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_attributedstring.m -o .build/probe-foundation_attributedstring.o
+	$(MUSL64_OBJC) .build/probe-foundation_attributedstring.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_attributedstring"
+	# foundation_notificationqueue: §62.61. ONE unit, only <Foundation/Foundation.h> - the three posting styles,
+	# coalescing, and the run-loop seam they are defined by.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_notificationqueue.m -o .build/probe-foundation_notificationqueue.o
+	$(MUSL64_OBJC) .build/probe-foundation_notificationqueue.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_notificationqueue"
+	# foundation_host: §62.63. ONE unit, only <Foundation/Foundation.h> - the host as a name-service answer.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_host.m -o .build/probe-foundation_host.o
+	$(MUSL64_OBJC) .build/probe-foundation_host.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_host"
+	# foundation_backgroundactivity: §62.66. ONE unit, only <Foundation/Foundation.h> - the activity and its engine.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_backgroundactivity.m -o .build/probe-foundation_backgroundactivity.o
+	$(MUSL64_OBJC) .build/probe-foundation_backgroundactivity.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_backgroundactivity"
+	# foundation_calendardate: §62.67. ONE unit, only <Foundation/Foundation.h> - the date with a format and a zone.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_calendardate.m -o .build/probe-foundation_calendardate.o
+	$(MUSL64_OBJC) .build/probe-foundation_calendardate.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_calendardate"
+	# foundation_distributednotification: §62.80. ONE unit - the center and its suspension engine.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_distributednotification.m -o .build/probe-foundation_distributednotification.o
+	$(MUSL64_OBJC) .build/probe-foundation_distributednotification.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_distributednotification"
+	# foundation_substratekeys: W8p slice 6g (foundation-plan.md §60). The MEASUREMENT INSTRUMENT for the
+	# eighteen keys that need a substrate fact: it prints what the file system does.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_substratekeys.m -o .build/probe-foundation_substratekeys.o
+	$(MUSL64_OBJC) .build/probe-foundation_substratekeys.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_substratekeys"
+	# foundation_keymasses: W8p slice 6f acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> - it asks about the machine it is on.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_keymasses.m -o .build/probe-foundation_keymasses.o
+	$(MUSL64_OBJC) .build/probe-foundation_keymasses.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_keymasses"
+	# foundation_mountedvolumes: W8p slice 6e acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> - this system publishes its mounts in /proc/mounts.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_mountedvolumes.m -o .build/probe-foundation_mountedvolumes.o
+	$(MUSL64_OBJC) .build/probe-foundation_mountedvolumes.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_mountedvolumes"
+	# foundation_urlresourcevalues: W8 slice 6a acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> plus the POSIX calls its fixture makes.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_urlresourcevalues.m -o .build/probe-foundation_urlresourcevalues.o
+	$(MUSL64_OBJC) .build/probe-foundation_urlresourcevalues.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlresourcevalues"
+	# foundation_xmldtdparse: XML slice XML-e acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> - a subset is a string, and the file that is never opened is named.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_xmldtdparse.m -o .build/probe-foundation_xmldtdparse.o
+	$(MUSL64_OBJC) .build/probe-foundation_xmldtdparse.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_xmldtdparse"
+	# foundation_xmldtd: XML slice XML-d acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> plus the POSIX calls its file fixture makes.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_xmldtd.m -o .build/probe-foundation_xmldtd.o
+	$(MUSL64_OBJC) .build/probe-foundation_xmldtd.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_xmldtd"
+	# foundation_xmldocument: XML slice XML-c acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> plus the POSIX calls its file fixture makes.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_xmldocument.m -o .build/probe-foundation_xmldocument.o
+	$(MUSL64_OBJC) .build/probe-foundation_xmldocument.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_xmldocument"
+	# foundation_xmltree: XML slice XML-b acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> - a tree is built by hand, so there is no fixture.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_xmltree.m -o .build/probe-foundation_xmltree.o
+	$(MUSL64_OBJC) .build/probe-foundation_xmltree.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_xmltree"
+	# foundation_xmlparser: W8 slice XML-a acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> plus the POSIX calls its file fixture makes.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_xmlparser.m -o .build/probe-foundation_xmlparser.o
+	$(MUSL64_OBJC) .build/probe-foundation_xmlparser.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_xmlparser"
+	# foundation_fileproviderservice: W8 slice 9 acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> - no fixture and no tree.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_fileproviderservice.m -o .build/probe-foundation_fileproviderservice.o
+	$(MUSL64_OBJC) .build/probe-foundation_fileproviderservice.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_fileproviderservice"
+	# foundation_fileversion: W8 slice 8a acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> plus the POSIX calls its fixture makes.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_fileversion.m -o .build/probe-foundation_fileversion.o
+	$(MUSL64_OBJC) .build/probe-foundation_fileversion.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_fileversion"
+	# foundation_filepresenter: W8 slice 7c acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> plus the POSIX calls its fixture and its deferred presenter need.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_filepresenter.m -o .build/probe-foundation_filepresenter.o
+	$(MUSL64_OBJC) .build/probe-foundation_filepresenter.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_filepresenter"
+	# foundation_filecoordinator: W8 slice 7b acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> plus the POSIX calls its fixture makes.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_filecoordinator.m -o .build/probe-foundation_filecoordinator.o
+	$(MUSL64_OBJC) .build/probe-foundation_filecoordinator.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_filecoordinator"
+	# foundation_filesecurity: W8 slice 5 acceptance (foundation-plan.md §60). ONE unit, only
+	# <Foundation/Foundation.h> - and it asserts the ABSENCE of the bridged accessors, so the D13
+	# boundary is machine-checked rather than merely written down.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_filesecurity.m -o .build/probe-foundation_filesecurity.o
+	$(MUSL64_OBJC) .build/probe-foundation_filesecurity.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_filesecurity"
+	# foundation_decimalnumber: W3b acceptance. ONE unit, only <Foundation/Foundation.h>.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_decimalnumber.m -o .build/probe-foundation_decimalnumber.o
+	$(MUSL64_OBJC) .build/probe-foundation_decimalnumber.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_decimalnumber"
+	# foundation_decimal: W3 acceptance. ONE unit, only <Foundation/Foundation.h>.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_decimal.m -o .build/probe-foundation_decimal.o
+	$(MUSL64_OBJC) .build/probe-foundation_decimal.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_decimal"
+	# foundation_notification: W4 acceptance. ONE unit, only <Foundation/Foundation.h> - which makes
+	# it the check that the umbrella carries the family too.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_notification.m -o .build/probe-foundation_notification.o
+	$(MUSL64_OBJC) .build/probe-foundation_notification.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_notification"
+	# foundation_regex: F13.16 acceptance. ONE unit, only <Foundation/Foundation.h>.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_regex.m -o .build/probe-foundation_regex.o
+	$(MUSL64_OBJC) .build/probe-foundation_regex.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_regex"
+	# foundation_thread: F13.17 acceptance. ONE unit, only <Foundation/Foundation.h> plus
+	# <sys/time.h> for the elapsed-time measurements.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_thread.m -o .build/probe-foundation_thread.o
+	$(MUSL64_OBJC) .build/probe-foundation_thread.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_thread"
+	# foundation_runloop: F13.18 acceptance. ONE unit, only <Foundation/Foundation.h>.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_runloop.m -o .build/probe-foundation_runloop.o
+	$(MUSL64_OBJC) .build/probe-foundation_runloop.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_runloop"
+	# foundation_operation: F13.19 acceptance. ONE unit, only <Foundation/Foundation.h>.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_operation.m -o .build/probe-foundation_operation.o
+	$(MUSL64_OBJC) .build/probe-foundation_operation.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_operation"
+	# foundation_numberformatter: F13.7c acceptance - the second un-refused DATA family, and the
+	# same shape as the date one: ONE unit (the claim is data), only <Foundation/Foundation.h>, and
+	# it links the Foundation library, where ICU is bound.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_numberformatter.m -o .build/probe-foundation_numberformatter.o
+	$(MUSL64_OBJC) .build/probe-foundation_numberformatter.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_numberformatter"
+	# foundation_defaults: W5 acceptance. ONE unit, only <Foundation/Foundation.h> plus
+	# <pwd.h>/<unistd.h>/<stdlib.h> for the scratch root and the user name. IT IS LAUNCHED WITH
+	# `-ProbeArgument from-argv` by its case (tests/cases/foundation_defaults.py): the argument domain is
+	# the one part of the search list that is a fact about the LAUNCHING process, so a check that could not
+	# see the launcher's arguments would be asserting nothing.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_defaults.m -o .build/probe-foundation_defaults.o
+	$(MUSL64_OBJC) .build/probe-foundation_defaults.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_defaults"
+	# foundation_port: W6b acceptance. ONE unit, only <Foundation/Foundation.h> plus the socket headers -
+	# a port IS a socket and the probe asks the KERNEL what it bound (getsockname/accept/fcntl), so this
+	# one needs <sys/socket.h> and friends where the other Foundation probes need <unistd.h>.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_port.m -o .build/probe-foundation_port.o
+	$(MUSL64_OBJC) .build/probe-foundation_port.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_port"
+	# foundation_filehandle: W6c acceptance. ONE unit, only <Foundation/Foundation.h> plus the POSIX
+	# headers - a file handle wraps a DESCRIPTOR and the probe asks the kernel what became of it (fcntl(2)
+	# for the two ownership rules, a zero-byte read for end of file).
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_filehandle.m -o .build/probe-foundation_filehandle.o
+	$(MUSL64_OBJC) .build/probe-foundation_filehandle.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_filehandle"
+	# foundation_task: W6d acceptance. ONE unit - and the child it launches is ITSELF (argv[0] is the
+	# staged path), so the child's exit code, output and death signal are the probe's own choices.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_task.m -o .build/probe-foundation_task.o
+	$(MUSL64_OBJC) .build/probe-foundation_task.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_task"
+	# foundation_stream: W6's streams half, the NSStream HEAD's acceptance. ONE unit, and it builds a
+	# SUBSTREAM - the head's value contract (ours, under D2) and its run-loop seam are what a substream
+	# inherits, so both are asserted through a real descriptor and a real delegate.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_stream.m -o .build/probe-foundation_stream.o
+	$(MUSL64_OBJC) .build/probe-foundation_stream.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_stream"
+	# foundation_urlrequest: W7 slice 1's acceptance - the REQUEST/RESPONSE VALUE TYPES. ONE unit, only
+	# <Foundation/Foundation.h>, and no socket anywhere: a request is a DESCRIPTION of an exchange and a
+	# response is its answer's metadata, so the probe is a value probe (an inventory, the mutability
+	# boundary, and RFC 9110's own status phrases).
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_urlrequest.m -o .build/probe-foundation_urlrequest.o
+	$(MUSL64_OBJC) .build/probe-foundation_urlrequest.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlrequest"
+	# foundation_urlconnection: §62.25's acceptance - the DEPRECATED family that §62.24's policy put back
+	# on the work list. A FACADE over the session, so the checks are: a real transfer (through file://,
+	# which needs no server), the order of the delegate calls, and the redirect translation asked
+	# directly through the runtime because a 3xx needs a server this probe deliberately avoids.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_urlconnection.m -o .build/probe-foundation_urlconnection.o
+	$(MUSL64_OBJC) .build/probe-foundation_urlconnection.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlconnection"
+	# foundation_urldownload: §62.82's acceptance - the LEGACY download OBJECT (NSURLDownload + its
+	# delegate protocol), the last rows of `Networking / Legacy / URL Download`. ONE unit, and it links
+	# libcurl because it performs REAL downloads - through file://. The probe registers NOTHING: since §62.83
+	# the LIBRARY registers its own transport at load, so these transfers are also that registration's gate.
+	# The three destination arrangements are each exercised: set before the bytes, answered by the
+	# delegate inside the decision door, and answered by nobody (the stated temporary-directory
+	# fallback, reported through the created-destination door).
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_urldownload.m -o .build/probe-foundation_urldownload.o
+	$(MUSL64_OBJC) .build/probe-foundation_urldownload.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_urldownload"
+	# foundation_spellserver: §62.85's acceptance - THE SERVER SIDE of a spell-checking service, and the last
+	# rows of `Fundamentals / Spelling and Grammar`. ONE unit, and it links nothing but Foundation: the engine is
+	# DEFERRED (docs/design/spelling-plan.md §3), so what is exercised is the API a service implements, its
+	# delegate protocol, the three grammar keys, and the dispatch seam that reaches all seven optional doors.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_spellserver.m -o .build/probe-foundation_spellserver.o
+	$(MUSL64_OBJC) .build/probe-foundation_spellserver.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_spellserver"
+	# foundation_archiver: §62.86's acceptance - THE CLASSIC SEQUENTIAL PAIR, which closes
+	# `Files and Data Persistence / Deprecated`. ONE unit, Foundation only: the wire is this library's own
+	# (Apple's classic `typedstream` is unpublished), so what is exercised is the contract — round-trip,
+	# order-and-type, shared and cyclic references, substitution on both sides — plus every refusal.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_archiver.m -o .build/probe-foundation_archiver.o
+	$(MUSL64_OBJC) .build/probe-foundation_archiver.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_archiver"
+	# foundation_ubiquitousstore: §62.87's acceptance - the iCloud key/value store, closing
+	# `Files and Data Persistence / iCloud key and value storage`. ONE unit, Foundation only: the LOCAL half is
+	# real (typed doors, the property-list rule, Apple's three limits) and the remote half is absent, so what is
+	# asserted about it is the honest answer -synchronize gives and the change notice driven through the seam.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_ubiquitousstore.m -o .build/probe-foundation_ubiquitousstore.o
+	$(MUSL64_OBJC) .build/probe-foundation_ubiquitousstore.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_ubiquitousstore"
+	# foundation_useractivity: §62.89's acceptance - the activity object and its delegate, closing
+	# `App Support / Activity Sharing`. ONE unit, Foundation only: the activity's own state is real and the
+	# second device is absent, so the two continuity doors are driven through the seam and report the error
+	# code this library already declares.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_useractivity.m -o .build/probe-foundation_useractivity.o
+	$(MUSL64_OBJC) .build/probe-foundation_useractivity.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_useractivity"
+	# foundation_distantobjectrequest: §62.91's acceptance - the interception that lets a connection's
+	# delegate answer a request itself, closing the port family's last owed pieces. ONE unit, Foundation only:
+	# a published name, a proxy told its protocol, and a delegate that answers with a value or an exception.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_distantobjectrequest.m -o .build/probe-foundation_distantobjectrequest.o
+	$(MUSL64_OBJC) .build/probe-foundation_distantobjectrequest.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_distantobjectrequest"
+	# foundation_json: §62.93's acceptance - the JSON reading options Apple publishes and this library
+	# refused (`json5Allowed`, `topLevelDictionaryAssumed`) plus the deprecated `allowFragments`
+	# spelling, AND the two grammars they depend on finally differing: the strict path is RFC 8259's
+	# now (it used to accept a missing comma, a trailing comma and "+1", which made JSON5's rules
+	# unobservable). ONE unit, Foundation only.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_json.m -o .build/probe-foundation_json.o
+	$(MUSL64_OBJC) .build/probe-foundation_json.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_json"
+	# foundation_jsonwrite: §62.94's acceptance - the two JSON WRITING options, which close the JSON
+	# family. ONE unit, Foundation only, and both options turned out smaller than the note that had
+	# deferred them: the writer has ALWAYS escaped `/` (Apple's default), so withoutEscapingSlashes
+	# only turns that off, and writingFragmentsAllowed is the second question the writing door asks
+	# rather than a change to +isValidJSONObject:.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_jsonwrite.m -o .build/probe-foundation_jsonwrite.o
+	$(MUSL64_OBJC) .build/probe-foundation_jsonwrite.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_jsonwrite"
+	# foundation_tableoptions: §62.95's acceptance - the ten names Apple declares beside NSMapTable/NSHashTable
+	# (five and four, plus NSPointerFunctionsZeroingWeakMemory), which close the pointer-collections family.
+	# Each is a macro aliasing THIS library's NSPointerFunctions option, so the probe asserts the aliases AND
+	# the behaviour they select: CopyIn through a mutable key with its control, identity via an equal-but-distinct
+	# key with its control, and the four map-table convenience constructors.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_tableoptions.m -o .build/probe-foundation_tableoptions.o
+	$(MUSL64_OBJC) .build/probe-foundation_tableoptions.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_tableoptions"
+	# foundation_transformers: §62.96's acceptance - the five value-transformer names Apple registers
+	# (NSIsNil, NSIsNotNil, NSNegateBoolean, NSKeyedUnarchiveFromData, NSUnarchiveFromData), which close the
+	# value-transformer family. They are REGISTERED at load rather than named after their classes, because
+	# +valueTransformerNames is a documented door and the class-name fallback would leave it empty.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_transformers.m -o .build/probe-foundation_transformers.o
+	$(MUSL64_OBJC) .build/probe-foundation_transformers.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_transformers"
+	# foundation_dataoptions: §62.97's acceptance - NSData's three deprecated READING spellings and one WRITING
+	# one (NSMappedRead, NSDataReadingMapped, NSUncachedRead, NSAtomicWrite) plus the four compression error
+	# codes, which close the binary-data family. The codes are wired to the codec's error path, so a failed
+	# compression answers 5376 and a failed decompression 5377 instead of the undeclared "code 1".
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_dataoptions.m -o .build/probe-foundation_dataoptions.o
+	$(MUSL64_OBJC) .build/probe-foundation_dataoptions.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_dataoptions"
+	# foundation_constants: §62.103's acceptance - the long tail of small constants (the calendar sentinels, the
+	# OpenStep reserved base, the string ceiling, the bookmark option and its type, the XML entity kind, the
+	# resource keys, the archive/progress/file-protection/stream/undo keys) plus the two THREAD notifications,
+	# which ship with real producers and are checked by making them happen.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_constants.m -o .build/probe-foundation_constants.o
+	$(MUSL64_OBJC) .build/probe-foundation_constants.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_constants"
+	# foundation_urlprotocol: W7 slice 2a's acceptance - THE SEAM AND THE CACHED VALUE. ONE unit, only
+	# <Foundation/Foundation.h>, and NO transport anywhere: what is asserted is the plug-in point (the
+	# base's documented defaults, the registration order, the request-property table's identity rule) and
+	# the cached answer's value contract. The probe DEFINES its own NSURLProtocol subclass, which is the
+	# only way to exercise override points that exist to be overridden.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_urlprotocol.m -o .build/probe-foundation_urlprotocol.o
+	$(MUSL64_OBJC) .build/probe-foundation_urlprotocol.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlprotocol"
+	# foundation_urlprotocol_curl: W7 slice 2c's FIRST HALF - THE BRIDGE. ONE unit, only
+	# <Foundation/Foundation.h>, and no session anywhere: FNCURLURLProtocol is an ordinary
+	# NSURLProtocol subclass, so it can be started by hand with a client and watched, which is why
+	# the bridge is testable BEFORE the session that will normally drive it. It fetches a file:// URL
+	# (deterministic, needs no server) and a missing one (the failure path), and the library it links
+	# now carries libcurl itself.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_urlprotocol_curl.m -o .build/probe-foundation_urlprotocol_curl.o
+	$(MUSL64_OBJC) .build/probe-foundation_urlprotocol_curl.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib -Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto -L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlprotocol_curl"
+	# foundation_urlcache: the cache and its policy (W7 slice 5)
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_urlcache.m -o .build/probe-foundation_urlcache.o
+	$(MUSL64_OBJC) .build/probe-foundation_urlcache.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlcache"
+	# foundation_connectionauth: §62.41's acceptance - THE COMPOSITION, ALONE IN ONE PROBE. A connection, a 401, and
+	# a stream body: the challenge must reach the CONNECTION's delegate, the transport's own 401 re-issue must ask
+	# for a FRESH body, and the re-issued request must carry both the credential and the body. It is its own probe
+	# because foundation_authloop's four legs share one listener, which made the join unattributable.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_connectionauth.m -o .build/probe-foundation_connectionauth.o
+	$(MUSL64_OBJC) .build/probe-foundation_connectionauth.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_connectionauth"
+	# foundation_linguistictagger: §62.42's acceptance - THE LARGEST FAMILY ON §62.24'S WORK LIST, one deprecated
+	# class and fifty-one vocabulary names. The vocabulary is pinned IN FULL (every constant exists, is non-empty
+	# and is distinct within its scheme), the two determinable schemes are exercised over real text, and the
+	# refusals (the morphological schemes, the language scheme, JoinNames) are checked to DO NOTHING.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_linguistictagger.m -o .build/probe-foundation_linguistictagger.o
+	$(MUSL64_OBJC) .build/probe-foundation_linguistictagger.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_linguistictagger"
+	# foundation_legacymaptable: §62.44's acceptance - NSMapTable's LEGACY C API (the pre-10.5 functions and
+	# call-back STRUCTS Apple deprecated when NSPointerFunctions arrived). The check it exists for is that a
+	# call-back is HANDED ITS TABLE, because the obvious bridge onto the engine's function pointers cannot be
+	# done (they take no table) and a subclass that hands `self` to every call-back is the design that can.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_legacymaptable.m -o .build/probe-foundation_legacymaptable.o
+	$(MUSL64_OBJC) .build/probe-foundation_legacymaptable.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_legacymaptable"
+	# foundation_legacyhashtable: §62.45's acceptance - NSHashTable's LEGACY C API, the same design as the map
+	# table's and sharing its scan: the hash table's legacy mode stores each element as the inner table's KEY. The
+	# probe checks the same HAND (a call-back is handed its table) and that the set relations are ANSWERED rather
+	# than inherited from storage a legacy table does not use.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_legacyhashtable.m -o .build/probe-foundation_legacyhashtable.o
+	$(MUSL64_OBJC) .build/probe-foundation_legacyhashtable.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_legacyhashtable"
+	# foundation_calendar_legacy: §62.46's acceptance - the pre-10.9 calendar unit names, the wrap option and the
+	# undefined sentinel. The property is not that the names exist but that THEY MEAN THE SAME THING, so the probe
+	# compares legacy spellings against modern ones THROUGH THE CALENDAR and prints the fields it saw.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_calendar_legacy.m -o .build/probe-foundation_calendar_legacy.o
+	$(MUSL64_OBJC) .build/probe-foundation_calendar_legacy.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_calendar_legacy"
+	# foundation_urlhandle: §62.47's acceptance - NSURLHandle, its client protocol and the eleven property keys.
+	# The check is the MEANING: the class files a real response under Apple's keys and calls a client in order, so a
+	# vocabulary that nothing fills would fail rather than compile. Its transport is an in-process NSURLProtocol.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_urlhandle.m -o .build/probe-foundation_urlhandle.o
+	$(MUSL64_OBJC) .build/probe-foundation_urlhandle.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlhandle"
+	# foundation_enumerate_substrings: §62.48's acceptance - the door that consumes NSStringEnumerationOptions via
+	# FNTextBreaking. The options were already "shipped" while the method was declared nowhere, so this probe checks
+	# THE UNITS AND THE STATED BOUNDARIES with ABSOLUTE expectations, not two spellings of the same walk.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_enumerate_substrings.m -o .build/probe-foundation_enumerate_substrings.o
+	$(MUSL64_OBJC) .build/probe-foundation_enumerate_substrings.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_enumerate_substrings"
+	# foundation_calendar_identifiers: §62.49's acceptance - the eleven pre-10.9 calendar identifier names. The
+	# property is IDENTITY rather than equality (a second string would do the job by accident), plus a CONTROL:
+	# the Buddhist and Gregorian calendars must disagree about one date, or every name has collapsed into one.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_calendar_identifiers.m -o .build/probe-foundation_calendar_identifiers.o
+	$(MUSL64_OBJC) .build/probe-foundation_calendar_identifiers.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_calendar_identifiers"
+	# foundation_quantity_formatters: §62.50's acceptance - the formatter trio. Every value is ABSOLUTE (measured
+	# against the unit's definition), and the NATURAL-UNIT CHOOSER is measured in both directions because one stuck
+	# at an end of the table would satisfy half the checks and look right.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_quantity_formatters.m -o .build/probe-foundation_quantity_formatters.o
+	$(MUSL64_OBJC) .build/probe-foundation_quantity_formatters.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_quantity_formatters"
+	# foundation_byteorder: §62.51's acceptance - the byte-order conversions. They are a REVERSAL of the bytes, so
+	# the probe proves them four ways (known values per width, round trips for the whole family, the host's own
+	# order printed, and the cross directions) plus a CONTROL that a 32-bit implementation cannot pass.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_byteorder.m -o .build/probe-foundation_byteorder.o
+	$(MUSL64_OBJC) .build/probe-foundation_byteorder.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_byteorder"
+	# foundation_free_misc: §62.52's acceptance - the free functions in NSObjCRuntime.h/NSGeometry.h this library
+	# lacked. Absolute relations (a page size IS a power of two, touching is NOT intersecting), the stack doors
+	# asked for levels they cannot honour (NULL, not a bad read), and NSLog measured BY REDIRECTING fd 2.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_free_misc.m -o .build/probe-foundation_free_misc.o
+	$(MUSL64_OBJC) .build/probe-foundation_free_misc.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_free_misc"
+	# foundation_machport: §62.53's acceptance - NSMachPort and the message transport. THE PROBE WRITES THE FRAME
+	# ITSELF in network byte order rather than round-tripping the library's own bytes (a tautology that would pass
+	# for any frame), and checks the three stated boundaries: the from-number doors refuse, a non-data component is
+	# refused at the send door, and an unbelievable frame length invalidates the port.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_machport.m -o .build/probe-foundation_machport.o
+	$(MUSL64_OBJC) .build/probe-foundation_machport.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_machport"
+	# foundation_portnames: §62.54's acceptance - the naming half of the port family. Almost every check is a
+	# DELIVERY rather than a lookup (a name that resolves to something nothing can reach would pass every lookup
+	# check there is), plus the stated rules: a second registration replaces, a host is answerable only when it is
+	# this machine, an invalidated port forgets its own name, and a socket port cannot be published here at all.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_portnames.m -o .build/probe-foundation_portnames.o
+	$(MUSL64_OBJC) .build/probe-foundation_portnames.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_portnames"
+	# foundation_protocolchecker: §62.55's acceptance - the proxy that answers only for its protocol. Every refusal
+	# is measured TWICE (the call is refused AND the target's own counter shows the method never ran), and the two
+	# optional-door checks separate "asked the protocol" from "asked the target".
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_protocolchecker.m -o .build/probe-foundation_protocolchecker.o
+	$(MUSL64_OBJC) .build/probe-foundation_protocolchecker.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_protocolchecker"
+	# foundation_distributedlock: §62.55's acceptance - the lock that is a file. Every check works through TWO
+	# objects on one path, because a lock is only a lock if somebody ELSE is refused.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_distributedlock.m -o .build/probe-foundation_distributedlock.o
+	$(MUSL64_OBJC) .build/probe-foundation_distributedlock.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_distributedlock"
+	# foundation_dobjects: §62.56's acceptance - distributed objects on this library's transport and name server.
+	# Nearly every check is a ROUND TRIP whose answer only the service can compute, and the boundary is measured
+	# from BOTH sides: a scalar result is refused by the service (the client raises with its message) and a scalar
+	# argument is refused by the proxy, which the service's own counter confirms nothing was called.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		-Werror=nullable-to-nonnull-conversion \
+		userland/tests/foundation_dobjects.m -o .build/probe-foundation_dobjects.o
+	$(MUSL64_OBJC) .build/probe-foundation_dobjects.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_dobjects"
+	# foundation_urlerror: the URL error names, their values, and the shape of the family (§56). No transport
+	# and no server: two of its checks read a REAL task's error and the rest are the codes themselves.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_urlerror.m -o .build/probe-foundation_urlerror.o
+	$(MUSL64_OBJC) .build/probe-foundation_urlerror.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlerror"
+	# foundation_wsframe: RFC 6455's BYTE LAYER (§59 slice 2) - the frame codec, as pure functions. It links the
+	# library's internal FNWebSocketFraming (not public API, and exported like every other symbol in this .so).
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_wsframe.m -o .build/probe-foundation_wsframe.o
+	$(MUSL64_OBJC) .build/probe-foundation_wsframe.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_wsframe"
+	# foundation_wsassemble: the framing's STATE HALF (§59 slice 2b) - frames in, messages out, including the
+	# interleaved control frame of §5.4 that §59 left as a measurement. It links both internal units.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_wsassemble.m -o .build/probe-foundation_wsassemble.o
+	$(MUSL64_OBJC) .build/probe-foundation_wsassemble.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_wsassemble"
+	# foundation_wshandshake: RFC 6455's OPENING HANDSHAKE (§59 slice 3a) - the request and the reply, with the
+	# accept digest tested against the RFC's own worked example. No socket, which is why it is a layer.
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_wshandshake.m -o .build/probe-foundation_wshandshake.o
+	$(MUSL64_OBJC) .build/probe-foundation_wshandshake.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_wshandshake"
+	# foundation_credentialstorage: the store keyed by protection space (W7 slice 4)
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_credentialstorage.m -o .build/probe-foundation_credentialstorage.o
+	$(MUSL64_OBJC) .build/probe-foundation_credentialstorage.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_credentialstorage"
+	# foundation_authenticationchallenge: the challenge's mechanics (W7 slice 4)
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_authenticationchallenge.m -o .build/probe-foundation_authenticationchallenge.o
+	$(MUSL64_OBJC) .build/probe-foundation_authenticationchallenge.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_authenticationchallenge"
+	# foundation_urlcredential: the credential as a value (W7 slice 4)
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_urlcredential.m -o .build/probe-foundation_urlcredential.o
+	$(MUSL64_OBJC) .build/probe-foundation_urlcredential.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlcredential"
+	# foundation_urlprotectionspace: the realm as a value (W7 slice 4)
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_urlprotectionspace.m -o .build/probe-foundation_urlprotectionspace.o
+	$(MUSL64_OBJC) .build/probe-foundation_urlprotectionspace.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_urlprotectionspace"
+	# foundation_httpcookiestorage: the store and its two matching rules (W7 slice 3)
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_httpcookiestorage.m -o .build/probe-foundation_httpcookiestorage.o
+	$(MUSL64_OBJC) .build/probe-foundation_httpcookiestorage.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_httpcookiestorage"
+	# foundation_httpcookie: the cookie as a value (W7 slice 3)
+	$(MUSL64_OBJC) -c -fobjc-arc -Iuserland -Iuserland/tests \
+		userland/tests/foundation_httpcookie.m -o .build/probe-foundation_httpcookie.o
+	$(MUSL64_OBJC) .build/probe-foundation_httpcookie.o \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib -Wl,-rpath-link,$(CURL_PREFIX)/lib \
+		-Wl,-rpath-link,$(LIBRESSL_PREFIX)/lib -L$(CURL_PREFIX)/lib -lcurl \
+		-L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/foundation_httpcookie"
+	# curl_smoke: W7 slice 2b's acceptance - LIBCURL ON THE GUEST. NOT a Foundation probe: this is a
+	# third-party library's landing, so the program that judges it has no Foundation in it (the
+	# kernel_pipe_dup2 reasoning). It compiles against the VENDORED libcurl out of .build/curl-prefix
+	# and needs NO RPATH: the guest loader resolves libcurl.so.4 out of /System/Libraries, which is
+	# where the staging block above puts it.
+	# -lcurl -lssl -lcrypto IN THAT ORDER: libcurl NEEDs LibreSSL's entry points now that it is bound to
+	# it (L2), so leaving them out fails the link with "undefined reference to X509_check_issued" — the
+	# same shape as the libtls link line below.
+	$(MUSL64_CC) -I$(CURL_PREFIX)/include userland/tests/curl_smoke.c \
+		-L$(CURL_PREFIX)/lib -lcurl -L$(LIBRESSL_PREFIX)/lib -lssl -lcrypto \
+		-o "$(ROOTFS64)/System/Shared/tests/curl_smoke"
+	# kernel_threaded_exec: THE KERNEL BUG'S REPRODUCER (§45 of the Foundation plan), not a Foundation
+	# probe - it is plain C with NO Foundation in it, because the point is that the library is absent from
+	# the failing program. Mode 1's children are /System/Tools/true; mode 2's are the Foundation probe.
+	$(MUSL64_CC) -O2 userland/tests/kernel_threaded_exec.c \
+		-o "$(ROOTFS64)/System/Shared/tests/kernel_threaded_exec"
+	# kernel_pipe_dup2: the MINIMAL reproducer for the pipe/fork/dup2 wedge (§45) - plain POSIX, so a hang
+	# here is a kernel defect in a file nobody can argue with.
+	$(MUSL64_CC) -O2 userland/tests/kernel_pipe_dup2.c \
+		-o "$(ROOTFS64)/System/Shared/tests/kernel_pipe_dup2"
+	# kernel_loopback_tcp: CAN THIS KERNEL'S LOOPBACK CARRY A PAYLOAD? - plain C with NO Foundation,
+	# NO SSL and no third-party library, because the question came from a stalled TLS handshake and
+	# the answer must not be able to be about the TLS library (docs/design/libressl-plan.md L1).
+	$(MUSL64_CC) -O2 userland/tests/kernel_loopback_tcp.c \
+		-o "$(ROOTFS64)/System/Shared/tests/kernel_loopback_tcp"
+	# kernel_pty_read: ARE A PTY'S TWO READ PATHS WOKEN? - plain C with no Foundation. The MASTER reads
+	# through pty_read and the SLAVE through tty_read (two different fsops), and tty_read's VMIN/VTIME arms
+	# are reachable ONLY from a tty the probe owns - which is exactly why a pty is used here and the console
+	# is not. It is a BEHAVIOUR test first: two §58.1 cures went in unverifiable because nothing could reach
+	# them (docs/design/foundation-plan.md §58.1b).
+	$(MUSL64_CC) -O2 userland/tests/kernel_pty_read.c \
+		-o "$(ROOTFS64)/System/Shared/tests/kernel_pty_read"
+	# (The toolkit probes — layout_solve, view_layout, stack_view, scroll_view,
+	# collection_view, tab_view, split_view, grid_view, kvc_basic,
+	# notification_basic, cell_basic, viewcontroller_basic, window_draw,
+	# control_click, text_stack — and the Widget Zoo were removed with the
+	# toolkit, 2026-09-17: docs/design/argentum-uikit-plan.md, DEFERRED.)
+	# font_twice: TEMPORARY DIAGNOSTIC - asks the guest's own FreeType whether
+	# it can open one font file twice (the toolkit keeps a face per size, so a
+	# second size is a second FT_New_Face). No toolkit, no fontconfig.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-I$(X11PREFIX)/include/freetype2 -L$(X11PREFIX)/lib \
+		userland/tests/font_twice.cpp -lfreetype \
+		-o "$(ROOTFS64)/System/Shared/tests/font_twice"
+	# plist_test: the C plist CORE's acceptance (include/plist.h + userland/plist.c)
+	# — the shared core libconfig will consume from C. Compiled from the same
+	# source the library builds, rather than linked out of libfoundation: it is a C
+	# probe of a C core, so there is one implementation either way and no Objective-C
+	# runtime in the path.
+	$(MUSL64_CC) -Iinclude userland/tests/plist_test.c userland/plist.c -lm \
+		-o "$(ROOTFS64)/System/Shared/tests/plist_test"
+	# config_plist_test: P3b's acceptance (docs/design/plist-config-plan.md) — a
+	# .conf reads the SAME in both spellings. It copies each shipped file into a
+	# scratch tree, forces a rewrite (the writer emits plists now), and compares
+	# every key, every value and the prose, both ways. Linked from the same
+	# sources the library builds, like plist_test: one implementation either way.
+	$(MUSL64_CC) -Iinclude -Iuserland userland/tests/config_plist_test.c \
+		userland/libconfig.c userland/libconfig_plist.c userland/plist.c \
+		-o "$(ROOTFS64)/System/Shared/tests/config_plist_test"
+	# x_move: raw-Xlib window mover — attributes a window-move wedge
+	# between the server (Xfb) and any client, with no toolkit involved.
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/x_move.cpp -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/x_move"
+	# x_keys: raw-Xlib key reader — proves a typed key reaches the guest's X
+	# server with no toolkit in the path (the keyboard's x_move).
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		-L$(CURDIR)/$(FNXLIB) -L$(X11PREFIX)/lib \
+		userland/tests/x_keys.cpp -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/x_keys"
+	# oom_probe: S4.3d (eats memory until a page cannot be faulted in,
+	# to prove the fault path reports it and sends SIGBUS)
+	$(MUSL64_CXX) -Iuserland -I$(X11PREFIX)/include \
+		userland/tests/oom_probe.cpp \
+		-L$(X11PREFIX)/lib -L$(FNXLIB) -lconfig -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/oom_probe"
+	# xclick: generic synthetic-click injector for the S2.4 gates
+	$(MUSL64_CC) -I$(X11PREFIX)/include userland/tests/xclick.c \
+		-L$(X11PREFIX)/lib -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/xclick"
+	# xshm_m0: MIT-SHM M0 acceptance — Xlib client (the UIKit transport)
+	# paints a window via a SysV segment + XShmPutImage (libXext); logs
+	# SHMM0-DONE for the gate.
+	$(MUSL64_CC) -I$(X11PREFIX)/include userland/tests/xshm_m0.c \
+		-L$(X11PREFIX)/lib -lXext -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/xshm_m0"
+	# xshm_geo: the Xfb short-window SHM measurement (S4.2a open item).
+	# XShmPutImage into a matrix of geometries - including the toolkit's
+	# real one (window 1920x30 with a 25%-larger backing) - reads each
+	# window back with XGetImage and prints a verdict per geometry; run
+	# from the console shell with DISPLAY=:0 and read the SHMGEO lines.
+	$(MUSL64_CC) -I$(X11PREFIX)/include userland/tests/xshm_geo.c \
+		-L$(X11PREFIX)/lib -lXext -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/xshm_geo"
+	# xwinprobe: the shadow-vs-screen probe (XGetImage over a screen rect,
+	# twice) — written for the menubar strip that never repaints; useful
+	# for any "the draw landed but the screen never changed" question.
+	$(MUSL64_CC) -I$(X11PREFIX)/include userland/tests/xwinprobe.c \
+		-L$(X11PREFIX)/lib -lX11 \
+		-o "$(ROOTFS64)/System/Shared/tests/xwinprobe"
+	# xcomp_probe: de-risking a compositing Kestrel — does Xfb's Composite
+	# redirect + hand out a usable pixmap, and what does a screen-sized
+	# frame cost. Linked against the xcb bindings deliberately: the Xlib
+	# wrappers (libXcomposite/libXdamage/libXrender) are not built here.
+	$(MUSL64_CC) -I$(X11PREFIX)/include \
+		-I$(X11PREFIX)/include/pixman-1 \
+		userland/tests/xcomp_probe.c \
+		-L$(X11PREFIX)/lib -lX11 -lX11-xcb -lxcb -lxcb-composite \
+		-lpixman-1 -lXrender \
+		-o "$(ROOTFS64)/System/Shared/tests/xcomp_probe"
+	# xbtn: X11 mouse-leg regression client (window + pointer poll +
+	# button print) — the S0.6 mouse gate drives QEMU monitor mouse at
+	# it and expects "XBTN: button 1 press/release".
+	$(MUSL64_CC) -I$(X11PREFIX)/include -I$(X11PREFIX)/include/X11 \
+		-L$(X11PREFIX)/lib \
+		userland/tests/xbtn.c -lX11 -o "$(ROOTFS64)/System/Shared/tests/xbtn"
+	$(MUSL64_CC) userland/tools/acl.c -o "$(ROOTFS64)/System/Tools/acl"
+	$(MUSL64_CC) -Iinclude -Iuserland userland/tools/config.c -L$(CURDIR)/$(FNXLIB) \
+		-lconfig -o "$(ROOTFS64)/System/Tools/config"
+	$(MUSL64_CC) -Iinclude tools/shm_leak_test.c -o "$(ROOTFS64)/System/Tools/shm_leak_test"
+	$(MUSL64_CC) -Iinclude tools/shm_cap_test.c -o "$(ROOTFS64)/System/Tools/shm_cap_test"
+	$(MUSL64_CC) tools/config_m3_test.c -o "$(ROOTFS64)/System/Tools/config_m3_test"
+	$(MUSL64_CC) userland/tools/pty_test.c -o "$(ROOTFS64)/System/Tools/pty_test"
+	# Probes the test harness drives (tests/cases/*): the security battery from
+	# the audit rounds, the AGFS metadata/stream probes and the mmap probe.
+	# They are committed sources; nothing built them into the image before.
+	$(MUSL64_CC) -Iinclude tools/sec_test.c -o "$(ROOTFS64)/System/Shared/tests/sec_test"
+	$(MUSL64_CC) userland/tests/test_mmap.c -o "$(ROOTFS64)/System/Shared/tests/test_mmap"
+	$(MUSL64_CC) userland/tests/agfsattr.c -o "$(ROOTFS64)/System/Shared/tests/agfsattr"
+	$(MUSL64_CC) userland/tests/agfsdir.c -o "$(ROOTFS64)/System/Shared/tests/agfsdir"
+	$(MUSL64_CC) userland/tests/agfsxattr.c -o "$(ROOTFS64)/System/Shared/tests/agfsxattr"
+	$(MUSL64_CC) userland/tools/agfsquery.c -o "$(ROOTFS64)/System/Tools/agfsquery"
+	$(MUSL64_CC) userland/tools/agfsqtest.c -o "$(ROOTFS64)/System/Tools/agfsqtest"
+	$(MUSL64_CC) userland/tools/tone.c -o "$(ROOTFS64)/System/Tools/tone" -lm
+	$(MUSL64_CC) userland/tools/fbdump.c -o "$(ROOTFS64)/System/Tools/fbdump"
+	cp $(DASH64_BIN) "$(ROOTFS64)/System/Tools/sh"
+	# --- the static recovery set (docs/shared-libraries-plan.md §2.4/§3):
+	# insurance when /System/Libraries is corrupt or missing. The kernel
+	# boots these (RECOVERY_PROGRAM) instead of init on a 'recovery'
+	# param or a failed NEEDED-closure probe. Static dash + static
+	# toybox; the /System/Recovery/bin applet links mirror the dynamic
+	# /System/Tools set so repair commands resolve to the static toybox.
+	cp $(DASH64_RECOVERY) "$(ROOTFS64)/System/Tools/recovery-sh"
+	cp $(TOYBOX64_RECOVERY) "$(ROOTFS64)/System/Tools/recovery-toybox"
+	@chmod 0755 "$(ROOTFS64)/System/Tools/recovery-sh" \
+		"$(ROOTFS64)/System/Tools/recovery-toybox"
+	@mkdir -p "$(ROOTFS64)/System/Recovery/bin"
+	@for l in $(CURDIR)/$(ROOTFS64)/System/Tools/*; do \
+		if [ -L "$$l" ] && [ "$$(readlink "$$l")" = toybox ]; then \
+			ln -sfn /System/Tools/recovery-toybox \
+				"$(ROOTFS64)/System/Recovery/bin/$$(basename "$$l")"; \
+		fi; \
+	done
+	# third-party X11 lives under System/Shared/X11 (outside the
+	# zero-allow System/Tools lint scope); System/Tools stays first-party
+	# + ported toybox only.
+	@mkdir -p "$(ROOTFS64)/System/Shared/X11/bin" "$(ROOTFS64)/System/Shared/tests"
+	cp $(XFB_BIN) "$(ROOTFS64)/System/Shared/X11/bin/Xfb"
+	cp .build/x11-prefix/bin/xkbcomp "$(ROOTFS64)/System/Shared/X11/bin/xkbcomp"
+	# xkb data for the runtime XKB compile (Xfb's libxkbfile default is
+	# System/Shared/X11/xkb). Host xkeyboard-config is the established
+	# source (bundled data mismatches the server's xkbcomp).
+	@if [ -d /usr/share/X11/xkb/rules ]; then \
+		cp -r /usr/share/X11/xkb/. "$(ROOTFS64)/System/Shared/X11/xkb/"; \
+	else \
+		echo "WARNING: /usr/share/X11/xkb missing - Xfb keyboard init will fail"; \
+	fi
+	@cp userland/tests/test_toybox.sh "$(ROOTFS64)/System/Shared/tests/test_toybox.sh" 2>/dev/null || \
+		{ mkdir -p "$(ROOTFS64)/System/Shared/tests" && \
+		  cp userland/tests/test_toybox.sh "$(ROOTFS64)/System/Shared/tests/test_toybox.sh"; }
+	@chmod +x "$(ROOTFS64)/System/Tools/sh" "$(ROOTFS64)/System/Tools/init"
+	@mkdir -p "$(ROOTFS64)/System/Shared/scripts/dhcp" && \
+		cp userland/scripts/dhcp_script.sh "$(ROOTFS64)/System/Shared/scripts/dhcp/default.script" 2>/dev/null || true
+	# --- machine configuration (System/Configuration; Q9 accounts) ---
+	# Identity, name resolution and machine identity are record domains
+	# shipped in System scope (docs/system-config-files-plan.md M2/M5).
+	# No legacy colon/line files exist (passwd, group, shells, hosts).
+	@cp userland/configuration/system.passwd.conf "$(ROOTFS64)/System/Configuration/system.passwd.conf"
+	@cp userland/configuration/system.group.conf "$(ROOTFS64)/System/Configuration/system.group.conf"
+	@cp userland/configuration/system.shells.conf "$(ROOTFS64)/System/Configuration/system.shells.conf"
+	@cp userland/configuration/system.hosts.conf "$(ROOTFS64)/System/Configuration/system.hosts.conf"
+	@cp userland/configuration/system.network.conf "$(ROOTFS64)/System/Configuration/system.network.conf"
+	@cp userland/configuration/system.mounts.conf "$(ROOTFS64)/System/Configuration/system.mounts.conf"
+	# --- FSH fonts (text stack): OS fonts in /System/Shared/Fonts; the
+	# fontconfig config is the libconfig domain system.fonts.conf (M0,
+	# docs/design/fontconfig-config-plan.md) - no XML fonts.conf ships.
+	# --- the interim cursor theme (userland/cursors): an Xcursor theme is
+	# <dir>/<theme>/cursors/<name>, which is the layout libXcursor searches
+	# under XCURSOR_PATH. Kestrel points XCURSOR_PATH at this and defines
+	# the cursor on the root window.
+	# Idempotent ON PURPOSE: `cp -a src dst` copies src INTO dst when dst
+	# is already a directory, so a second make run nested a whole duplicate
+	# theme at cursors/cursors/ (~11.7MB, 146 entries) and pushed the tree
+	# past the 64MB image. Clear the destination first.
+	@mkdir -p "$(ROOTFS64)/System/Shared/Icons/default"
+	@rm -rf "$(ROOTFS64)/System/Shared/Icons/default/cursors"
+	@cp -a userland/cursors \
+		"$(ROOTFS64)/System/Shared/Icons/default/cursors"
+	@mkdir -p "$(ROOTFS64)/System/Shared/Fonts"
+	@cp userland/fonts/DejaVuSans.ttf userland/fonts/DejaVuSans-Bold.ttf \
+		"$(ROOTFS64)/System/Shared/Fonts/"
+	@cp userland/configuration/system.fonts.conf \
+		"$(ROOTFS64)/System/Configuration/system.fonts.conf"
+	# --- shared libc (docs/shared-libraries-plan.md): stage the dynamic
+	# linker + libc for the dynamic userland. The interpreter is a
+	# hardlink of libc.so (same inode), matching musl's own install, so
+	# the loader recognizes libc as itself.
+	@cp $(MUSL64_PREFIX)/lib/libc.so "$(ROOTFS64)/System/Libraries/libc.so"
+	@ln -f "$(ROOTFS64)/System/Libraries/libc.so" "$(ROOTFS64)/System/Libraries/ld-musl-x86_64.so.1"
+	# --- shared X stack (docs/shared-libraries-plan.md §6, M2): the
+	# versioned .so files of the X11 dependency prefix. musl's loader
+	# resolves each NEEDED soname (libX11.so.6, libxcb.so.1, ...) as an
+	# exact filename against the baked /System/Libraries search path; the
+	# glob carries the soname symlink + the versioned real file (the bare
+	# dev symlink libX11.so is link-time only and skipped). Only the libs
+	# today's consumers NEED are staged. libX11-xcb + libxcb-composite are
+	# now staged because something DOES link them: xcomp_probe, which
+	# de-risks a compositing Kestrel. libXrender is vendored too (the
+	# RENDER client the compositor blends through); libXcomposite and
+	# libXdamage are still not - the xcb bindings cover Composite.
+	@if [ ! -d "$(X11PREFIX)/lib" ]; then \
+		echo "X11 prefix missing - run tools/x11-shared-build.sh first"; \
+		exit 1; \
+	fi
+	@for l in libX11.so libxcb.so libXau.so libXdmcp.so libxkbfile.so \
+		libpixman-1.so libXfont2.so libfontenc.so libz.so libXext.so \
+		libX11-xcb.so libxcb-composite.so libXrender.so \
+		libXcursor.so libXfixes.so libXcomposite.so; do \
+		cp -a $(X11PREFIX)/lib/$${l}.* "$(ROOTFS64)/System/Libraries/"; \
+	done
+	# --- ICU4C (docs/design/foundation-plan.md §10, slice F13): the DATA backend
+	# the Foundation's data-driven families bind - the formatters, the time-zone
+	# names and DST rules, the non-Gregorian calendars, collation and the [d]
+	# fold. Three libraries plus their sonames: the common library, the i18n
+	# library, and the DATA PACKAGE, which --with-data-packaging=library makes a
+	# real shared library (the Debian arrangement). That is why the guest needs no
+	# data path and no ICU_DATA: musl's loader resolves libicudata.so.76 as an
+	# ordinary NEEDED entry, exactly like libz. ICU's own NEEDED closure is the
+	# C++ stack (libc++/libc++abi/libunwind/libc), staged above.
+	@if [ ! -d "$(ICUPREFIX)/lib" ]; then \
+		echo "ICU prefix missing - run tools/icu-build.sh first"; \
+		exit 1; \
+	fi
+	@for l in libicuuc.so libicui18n.so libicudata.so; do \
+		cp -a $(ICUPREFIX)/lib/$${l}.* "$(ROOTFS64)/System/Libraries/"; \
+	done
+	# FNX's own shared libconfig (first-party, .build/fnxlib): the
+	# config tool, toybox account tools and Xfb's configargs all NEEDED it.
+	@cp $(FNXLIB_CONFIG) "$(ROOTFS64)/System/Libraries/libconfig.so.1"
+	# The Objective-C runtime (docs/design/objc-toolchain-plan.md P3): same
+	# rule as libconfig and the C++ stack - the versioned file, whose SONAME
+	# ("libobjc.so.4.6") the guest loader resolves. Upstream tries to suppress
+	# the soname with a malformed set_property() call, so it has one.
+	@cp $(OBJC_PREFIX)/lib/libobjc.so.4.6 "$(ROOTFS64)/System/Libraries/libobjc.so.4.6"
+	# The Foundation (docs/design/foundation-plan.md F0): the same staging rule.
+	@cp $(FOUNDATION_LIB) "$(ROOTFS64)/System/Libraries/libfoundation.so.1"
+	# Its PUBLIC HEADERS, which is what makes an on-guest Objective-C rebuild
+	# possible - the gap docs/design/self-hosting-packages.md §6 records for the
+	# runtime. Lower-case directory on purpose: <Foundation/...>, never Apple's.
+	# THE GUEST'S OWN COPY IS `Headers/Foundation` NOW: with the library's directory renamed, the
+	# import spelling `<Foundation/...>` must name the STAGED tree too, or a guest build would be
+	# told our own headers do not exist (user's cleanup, 2026-09-20).
+	@mkdir -p "$(ROOTFS64)/System/Shared/Headers/Foundation"
+	@cp $(FOUNDATION_SRC)/*.h "$(ROOTFS64)/System/Shared/Headers/Foundation/"
 
 	# --- CoreGraphics (docs/design/coregraphics-plan.md C1-C3): the drawing library, staged
 	# by the SAME rule as Foundation - the versioned file, whose SONAME
@@ -1878,17 +1875,17 @@ $(foreach f,$(FN_FOUNDATION_SRCS),$(eval $(call FN_FOUNDATION_rule,$(f))))
 	# under the directory the import spelling names, so that a guest build saying
 	# <CoreGraphics/CGPath.h> finds OUR headers. THIS IS THE HALF THAT WAS MISSING UNTIL NOW:
 	# the library built and was in no image, so nothing on the guest could link it.
-# FNX-ARCHIVED: @cp $(CG_LIB) "$(ROOTFS64)/System/Libraries/libcoregraphics.so.1"
+	@cp $(CG_LIB) "$(ROOTFS64)/System/Libraries/libcoregraphics.so.1"
 	@mkdir -p "$(ROOTFS64)/System/Shared/Headers/CoreGraphics"
-# FNX-ARCHIVED: @cp userland/CoreGraphics/*.h "$(ROOTFS64)/System/Shared/Headers/CoreGraphics/"
+	@cp userland/CoreGraphics/*.h "$(ROOTFS64)/System/Shared/Headers/CoreGraphics/"
 	# --- The AppKit (docs/design/coregraphics-plan.md C8): the bridge library and its headers,
 	# staged the same way CoreGraphics is, into the directory the `<AppKit/…>` import spelling names.
 	# `$(APPKIT_LIB)` IS A PREREQUISITE of this target (mk/00-base.mk builds it), for the reason the
 	# CoreGraphics staging line records: a rule that copies a file nothing builds works only on a
 	# machine where the file happens to be there.
 	@mkdir -p "$(ROOTFS64)/System/Shared/Headers/AppKit"
-# FNX-ARCHIVED: @cp userland/AppKit/*.h "$(ROOTFS64)/System/Shared/Headers/AppKit/"
-# FNX-ARCHIVED: @cp $(APPKIT_LIB) "$(ROOTFS64)/System/Libraries/libappkit.so.1"
+	@cp userland/AppKit/*.h "$(ROOTFS64)/System/Shared/Headers/AppKit/"
+	@cp $(APPKIT_LIB) "$(ROOTFS64)/System/Libraries/libappkit.so.1"
 
 	# --- shared C++ stack (dynamic-C++): the versioned libc++/libc++abi/
 	# libunwind .so files from the llvm-cxx prefix (built shared since the
@@ -2063,7 +2060,7 @@ $(foreach f,$(FN_FOUNDATION_SRCS),$(eval $(call FN_FOUNDATION_rule,$(f))))
 	# AND its own SONAME, not a link-time symlink to a versioned one. The `libfoo.so.*` glob the other
 	# blocks use would copy NOTHING here, which is why these are named outright.
 	@if [ ! -d "$(COREFOUNDATION_PREFIX)/lib" ]; then \
-		echo "CoreFoundation prefix missing - run corefoundation/build.sh first"; \
+		echo "CoreFoundation prefix missing - run tools/corefoundation-build.sh first"; \
 		exit 1; \
 	fi
 	@if [ ! -d "$(LIBDISPATCH_PREFIX)/lib" ]; then \
@@ -2094,7 +2091,7 @@ $(foreach f,$(FN_FOUNDATION_SRCS),$(eval $(call FN_FOUNDATION_rule,$(f))))
 	# linked against a prefix that is not there fails in the LINKER with a missing -lcorefoundation, which
 	# names the symptom rather than the fix.
 	@if [ ! -d "$(COREFOUNDATION_PREFIX)/lib" ]; then \
-		echo "CoreFoundation prefix missing - run corefoundation/build.sh first"; \
+		echo "CoreFoundation prefix missing - run tools/corefoundation-build.sh first"; \
 		exit 1; \
 	fi
 	# THE OBJC WRAPPER AND NOT THE C ONE, BECAUSE libobjc2 ITSELF NEEDS THE C++ RUNTIME: this probe links
@@ -2126,12 +2123,12 @@ $(foreach f,$(FN_FOUNDATION_SRCS),$(eval $(call FN_FOUNDATION_rule,$(f))))
 	# C implementation. The smoke probe next door is deliberately C and Foundation-free; this one is the
 	# check the two halves of the bridge exist.
 	@if [ ! -d "$(COREFOUNDATION_PREFIX)/lib" ]; then \
-		echo "CoreFoundation prefix missing - run corefoundation/build.sh first"; \
+		echo "CoreFoundation prefix missing - run tools/corefoundation-build.sh first"; \
 		exit 1; \
 	fi
 	$(MUSL64_OBJC) userland/tests/corefoundation_bridge.m \
 		-Iuserland -I.build/cf-shim -I$(COREFOUNDATION_SRC)/include -I$(LIBDISPATCH_PREFIX)/include \
-		-L$(FNXLIB) \
+		-L$(FNXLIB) -lfoundation -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib -Wl,-rpath-link,$(LIBDISPATCH_PREFIX)/lib \
 		-L$(COREFOUNDATION_PREFIX)/lib -lcorefoundation \
 		-L$(LIBDISPATCH_PREFIX)/lib -ldispatch -lBlocksRuntime \
 		-Wl,-rpath-link,$(FNXLIB) -Wl,-rpath-link,$(COREFOUNDATION_PREFIX)/lib \

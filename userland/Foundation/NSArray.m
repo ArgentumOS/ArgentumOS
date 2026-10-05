@@ -1,511 +1,1888 @@
 /*
- * NSArray.m — the ordered collection that IS a CFArray.
- *
  * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
  * SPDX-License-Identifier: MIT
+ */
+/*
+ * NSArray.m — the ordered collection.
  *
- * SELF IS THE ARRAY. There is no second storage to fall out of step with CF's: every door below casts the
- * RECEIVER — not an ivar — to a CFArrayRef and calls CF's own function on it. That is what makes the free cast
- * in both directions true rather than merely compiled, and it is the same shape this library's NSString takes
- * toward CFString.
- *
- * AND BECAUSE SELF IS THE ARRAY, THIS CLASS IS A ROOT CLASS. It inherits nothing, so it answers the NSObject
- * protocol itself — and the reason it must be a root class rather than an NSObject subclass is a word
- * collision, worth stating where the doors are: NSObject's `_refcount` sits at offset 16, and so does CFArray's
- * `_count`. A subclass would shadow CF's count with a refcount, and every inherited NSObject method that reads
- * `_refcount` would read CF's element count. So EVERY DOOR BELOW TAKES CF'S ANSWER WHEREVER CF HAS ONE:
- * -retain/-release are CFRetain/CFRelease, because the one count is CF's; -retainCount asks CF for it;
- * -_cfTypeID asks the bridge which type this class was registered for; +alloc makes an empty CF array, because
- * that is the only kind of object this class can be.
- *
- * THE SENTINEL IS CF'S, because this tree defines no NSNotFound. CFArrayGetFirstIndexOfValue answers
- * kCFNotFound when the value is absent, so the door returns exactly what CF returned rather than translating
- * one sentinel into another.
+ * MANUAL OWNERSHIP: it owns its storage but implements no -retain/-release, so the
+ * slots are managed by hand with objc_retain/objc_release.
  */
 
 #import <Foundation/NSArray.h>
+#import <Foundation/NSCoder.h>	/* the NSCoding doors call the coder's methods, not just its type */
+#import <Foundation/NSURL.h>
+#import <Foundation/NSData.h>
+#import <Foundation/NSError.h>	/* the file-form doors answer a failure as a VALUE */
+#import <Foundation/NSPropertyListSerialization.h>
+#import <Foundation/NSString.h>
 #import <Foundation/NSException.h>
-#include <objc/runtime.h>
-#include <objc/message.h>	/* objc_msgSend, for the two makeObjectsPerformSelector: doors — see their note */
+#import <Foundation/NSIndexSet.h>
+#import <Foundation/NSSortDescriptor.h>
+/* FOR THE ARRAY-WIDE KVO DOORS (§63.45): they send the NSObject category's own doors, so the declarations
+ * have to be visible here or the compiler reports the send as an unknown selector. */
+#import <Foundation/NSKeyValueObserving.h>
+#import <objc/runtime.h>
+#include <objc/objc-arc.h>	/* objc_retain/objc_release: the C slots are not ARC-managed */
+#include <stdlib.h>
+#include <string.h>		/* memcpy, for -shuffledArray's draw out of the entropy source */
+#include <unistd.h>		/* getentropy: the same door NSUUID draws its bytes from */
+/* THE KEYED ARCHIVE'S KEY NAMES, shared with NSKeyedArchiver's structural branch so the NSCoding doors below
+ * and that branch cannot spell the same key differently (§63.12). */
+#import <Foundation/FNKeyedWire.h>
 
-extern unsigned long CFNXBridgeClassToType(Class cls, CFTypeID typeID);
-
-/* THE TWO ANSWERS THIS ROOT CLASS SHARES WITH NSObject RATHER THAN COPYING. The type lookup and the
- * runtime-built format string live in NSObject.m because that is where the bridge map is filled; a second copy
- * here is how two classes come to disagree about which type they are, or about how they describe themselves. */
-extern unsigned long FNXTypeIDForClass(Class cls);
-extern CFStringRef FNXCreateFormatString(const char *utf8);
-
-/*
- * THE COMPARISON IS OURS; EVERYTHING ELSE IN THE PAIR IS CF'S. This was decided by measurement.
- *
- * kCFTypeArrayCallBacks' equal is CFEqual (CFArray.c:23), and CFEqual's ObjC dispatch only fires for a class
- * CF's runtime has been told about (CFRuntime.c:1078) -- for any other class it falls through to
- * __CFGenericAssertIsCF (CFRuntime.c:1082) and TRAPS. So -containsObject: died with SIGILL on the first
- * object of an unregistered class, while -count and -objectAtIndex: were fine: they never compare.
- *
- * The shim below is the missing half of CF's own delegation rather than a replacement for it: CFEqual MEANT to
- * send -isEqual:, and that is exactly what this sends, for any class. Apple's NSArray compares with -isEqual:
- * too, so the two worlds agree here rather than one being worked around.
- *
- * RETAIN AND RELEASE STAY CF'S OWN. They are the half the object probe measured as working -- a CF array holds
- * an object of this library and is what ends it -- so they are copied verbatim from kCFTypeArrayCallBacks
- * rather than rewritten. Nothing about ownership changes here; only where the comparison comes from.
- *
- * AND APPLE WARNS ABOUT EXACTLY THIS SHAPE, in the same document that lists the bridged types: "If you install
- * a custom callback on a Core Foundation collection you are using, including a NULL callback, its memory
- * management behavior is undefined when accessed from Objective-C." THE DEVIATION HERE IS NARROWER THAN THE
- * WARNING, and stating which part is deliberately taken is what keeps it narrow: only `equal` is replaced,
- * while retain, release and copyDescription are CF's own kCFTypeArrayCallBacks values copied rather than
- * rewritten — so the zone Apple calls undefined is the COMPARISON, and item LIFETIME stays entirely CF's.
- */
-static Boolean fnx_array_equal(const void *value1, const void *value2)
+/* Grow to hold at least `needed`, never shrinking. */
+static id *array_grow(id *items, unsigned long *capacity, unsigned long needed)
 {
-	if (value1 == value2) {
-		return true;
+	unsigned long grown = (*capacity == 0) ? 4 : *capacity;
+
+	while (grown < needed) {
+		grown *= 2;
 	}
-	if (value1 == NULL || value2 == NULL) {
-		return false;
+	items = (id *)realloc(items, grown * sizeof(id));
+	if (items == NULL) {
+		return NULL;
 	}
-	return [(id)value1 isEqual:(id)value2] ? true : false;
+	*capacity = grown;
+	return items;
 }
 
-/* Built once, on first use, from CF's own pair. A plain flag is enough: the two threads that raced here would
- * write the same values, and a HALF-built pair is the one failure that would matter, so the ready flag is set
- * only after every field is in place. */
-static CFArrayCallBacks fnx_array_callbacks;
-static Boolean fnx_array_callbacks_ready = false;
+/* ===================================================================================================
+ * THE PRIVATE CONCRETE CLASSES (plan §C.3, M1). Apple's article's sentence - "You don't, and can't,
+ * choose the actual class of the instance" - is the shape: the public class is the FRONT, and these are
+ * the classes it answers with. §C.3 item 8: Apple does not publish its names, so ours are a free choice,
+ * they are named HERE and in no header, and §C.4 is the reason none of them may ever reach an archive
+ * (-classForCoder answers the front, and an archiver asks for THAT).
+ *
+ * THE STORAGE IS THE FRONT'S OWN IVARS. §C.3 item 5 is about the METHODS, not the layout: every class
+ * below that wants the general layout inherits _items/_count/_capacity/_mutations from NSArray, which is
+ * why the mutable family declares no second copy of them.
+ * =================================================================================================== */
 
-static const CFArrayCallBacks *fnx_array_callbacks_get(void)
+/* THE SMALL-CASE BOUNDARY. Apple publishes no number (its own small case is a single-element class), so
+ * this is OURS, stated in one place, and the probe asserts the boundary from both sides. */
+#define AG_ARRAY_SMALL_MAX 8
+
+/* THE EMPTY CASE, AND IT IS A SINGLETON: one shared instance, immortal, and the answer to -init. */
+@interface AGArrayEmpty : NSArray
++ (AGArrayEmpty *)emptyArray;
+@end
+
+/* THE ONE-ELEMENT CASE: the object IS the storage, so there is no heap block and no capacity. */
+@interface AGArrayOne : NSArray
 {
-	if (!fnx_array_callbacks_ready) {
-		fnx_array_callbacks = kCFTypeArrayCallBacks;
-		fnx_array_callbacks.equal = fnx_array_equal;
-		fnx_array_callbacks_ready = true;
-	}
-	return &fnx_array_callbacks;
+	id __unsafe_unretained _one;
 }
+- (id)initWithObject:(id)object;
+@end
+
+/* THE SMALL CASE: inline storage for AG_ARRAY_SMALL_MAX elements, beyond which the general class takes
+ * over. */
+@interface AGArraySmall : NSArray
+{
+	id __unsafe_unretained _small[AG_ARRAY_SMALL_MAX];
+	unsigned long _smallCount;
+}
+- (id)initWithObjects:(const id *)objects count:(unsigned long)count;
+@end
+
+/* THE GENERAL IMMUTABLE CASE. It adds no code: the front carries the general implementation over its own
+ * storage (see the note at the top of this file), and this class is the NAME that implementation answers
+ * to, so `[[NSArray array] class] != [NSArray class]` holds for the general case too (§C.3 item 3). */
+@interface AGArrayItems : NSArray
+@end
+
+/* THE MUTABLE CASE (§C.3 item 2: "a mutable constructor answers a mutable concrete class"). Also a name:
+ * NSMutableArray's own implementation is the mutable storage implementation. It is a SUBCLASS of
+ * NSMutableArray, so -isKindOfClass:, the mutable doors and the inherited layout all hold. */
+@interface AGArrayMutable : NSMutableArray
+@end
 
 @implementation NSArray
 
-/*
- * ALLOCATING AN NSArray CREATES AN EMPTY CF ARRAY, AND THERE IS NO OTHER HONEST ANSWER FOR THIS CLASS. It
- * declares no storage of its own — an NSArray IS a CFArray — so a receiver with no CF storage would be an
- * object whose words are not CF's. And the +alloc it would otherwise inherit is NSObject's, which writes
- * `_refcount` at offset 16: on this class that offset is CF's `_count`, AND a root class holding only `isa` is
- * 8 bytes wide, so the write would be both the wrong word and past the end of the allocation. Creating the
- * real thing avoids both — there is no shell in this design, so there is nothing to size.
- */
+/* THE DOOR IS `+alloc` (§C.3 item 1), AND THAT IS NOT A CHOICE HERE: this library has no `+allocWithZone:`
+ * (NSObject.h says so and says why), so `+alloc` is the one place a cluster can substitute a class.
+ *
+ * THE `self != [NSArray class]` TEST IS NOT A SMUGGLE. A concrete class INHERITS this method, and
+ * `[super alloc]` in a class method starts the lookup at NSArray's superclass with the receiver still
+ * being the class that was asked - so the routing happens exactly ONCE, at the front, and a concrete
+ * class asking for an instance gets one. */
 + (id)alloc
 {
-	return (id)CFArrayCreate(kCFAllocatorDefault, NULL, 0, fnx_array_callbacks_get());
+	if (self != [NSArray class]) {
+		return [super alloc];
+	}
+	return [AGArrayItems alloc];
 }
 
-- (id)init
++ (NSArray *)array
 {
-	/* NOTHING TO DO, AND THAT IS NOT A SHORTCUT: what +alloc handed over already IS an empty CF array. */
+	return [[self alloc] initWithObjects:NULL count:0];
+}
+
++ (NSArray *)arrayWithObject:(id)object
+{
+	return [[self alloc] initWithObject:object];
+}
+
++ (NSArray *)arrayWithObjects:(const id *)objects count:(unsigned long)count
+{
+	return [[self alloc] initWithObjects:objects count:count];
+}
+
+- (id)initWithObject:(id)object
+{
+	return [self initWithObjects:&object count:1];
+}
+
+- (id)initWithObjects:(const id *)objects count:(unsigned long)count
+{
+	/*
+	 * THE CLASS IS CHOSEN BY THE DATA (§C.3 item 2), AND ONLY FOR THIS FAMILY'S GENERAL CLASS. The guard
+	 * is a MEMBERSHIP test rather than a kind test because a mutable receiver (AGArrayMutable, through
+	 * NSMutableArray's +alloc) inherits this very implementation and must keep it: its layout is the same
+	 * and its family chooses no class at all. `objects != NULL` guards the two NON-EMPTY cases only: a
+	 * nonzero count with no storage is a caller error that must still reach the bounds check rather than
+	 * become a null dereference.
+	 */
+	if ([self isMemberOfClass:[AGArrayItems class]]) {
+		if (count == 0) {
+			/*
+			 * THE EMPTY CASE IS FIRST AND IT EXPECTS NO STORAGE POINTER: `+array` calls this with NULL and
+			 * count 0. The probe caught the earlier version, whose guard read `objects != NULL && ...` -
+			 * which sent the empty case down the GENERAL path, so `[NSArray array]` answered the general
+			 * class instead of the shared empty instance and the four cases stopped being four.
+			 */
+			[self release];	/* never initialized: the storage was never built */
+			return [AGArrayEmpty emptyArray];
+		}
+		if (objects != NULL && count == 1) {
+			[self release];
+			return [[AGArrayOne alloc] initWithObject:objects[0]];
+		}
+		if (objects != NULL && count <= AG_ARRAY_SMALL_MAX) {
+			[self release];
+			return [[AGArraySmall alloc] initWithObjects:objects count:count];
+		}
+	}
+	self = [super init];
+	if (self == nil) {
+		return nil;
+	}
+	_count = count;
+	_capacity = count;
+	_items = NULL;
+	if (count > 0) {
+		unsigned long i;
+
+		_items = (id *)calloc(count, sizeof(id));
+		if (_items == NULL) {
+			_count = 0;
+			_capacity = 0;
+			return nil;
+		}
+		for (i = 0; i < count; i++) {
+			_items[i] = objc_retain(objects[i]);
+		}
+	}
 	return self;
 }
 
-- (instancetype)initWithObjects:(const id _Nonnull * _Nullable)objects count:(NSUInteger)count
+- (void)dealloc
 {
-	/* CF's own retain/release callbacks hold each item as CFArrayCreate places it, so no slot is retained
-	 * here; only the comparison is ours (see fnx_array_equal). A count of zero is legal with a NULL vector. */
-	CFArrayRef array = CFArrayCreate(kCFAllocatorDefault, (const void **)objects, (CFIndex)count, fnx_array_callbacks_get());
+	unsigned long i;
 
-	/* THE RECEIVER IS RELEASED, NOT DISPOSED, BECAUSE IT IS A CF OBJECT RATHER THAN A SHELL. Re-initialising
-	 * is not a supported operation; what this does support is the shape the compiler writes for
-	 * `[[NSArray alloc] initWithObjects:count:]` — the +alloc'd EMPTY ARRAY is dropped and the filled one is
-	 * handed back, which is the class-cluster initialiser contract. CFRelease is the right spelling because
-	 * the receiver's +1 came from CFArrayCreate. */
-	CFRelease((CFTypeRef)self);
-
-	/* A NULL CFArrayCreate is a failed allocation, and Apple's contract for a failed -init is nil. */
-	return (NSArray *)array;
-}
-
-/* THE ONE COUNT, AND IT IS CF'S — the file header says why this pair cannot be NSObject's. */
-- (id)retain
-{
-	return (id)CFRetain((CFTypeRef)self);
-}
-
-- (void)release
-{
-	CFRelease((CFTypeRef)self);
-}
-
-/* ASKED OF CF, BECAUSE CF IS WHAT HOLDS IT. NSObject answers this from its own `_refcount`, which on this
- * class is CF's `_count` — a three-element array would report a retain count of three. CF's own door is the
- * only answer here that is not a coincidence. */
-- (NSUInteger)retainCount
-{
-	return (NSUInteger)CFGetRetainCount((CFTypeRef)self);
-}
-
-- (Class)class
-{
-	return object_getClass(self);
-}
-
-+ (Class)class
-{
-	return self;
-}
-
-- (BOOL)isKindOfClass:(Class)cls
-{
-	/* THE SAME WALK NSObject USES, taken from the header, so both root classes answer this identically. */
-	return FNXClassIsKindOfClass(object_getClass(self), cls);
-}
-
-/* CF'S OWN PROTOCOL FOR OBJC OBJECTS, AND IT IS NOT OPTIONAL: CFGetTypeID SENDS THIS rather than reading the
- * object's header when it recognises an object as Objective-C (CFRuntime.c:793). A root class must answer it
- * itself — NSObject's implementation is not inherited. */
-- (unsigned long)_cfTypeID
-{
-	return FNXTypeIDForClass(object_getClass(self));
-}
-
-/* IDENTITY AND HASH, WHICH IS WHAT NSObject ANSWERS TOO, AND THEY STAY A COHERENT PAIR.
- *
- * ⚠ A CONTENT-COMPARING -isEqual: IS OWED, AND DELIBERATELY NOT GUESSED AT HERE. Apple's NSArray compares its
- * elements; this answers identity, which is exactly what the class answered before it became a root class, so
- * nothing regresses — and -hash is identity for the same reason. The reason not to simply reach for CFEqual:
- * it dispatches only for a class CF knows (the trap named above), so comparing against an UNBRIDGED object
- * would fall through to __CFGenericAssertIsCF and TRAP rather than answering NO. That is the collection
- * family's question to answer once, together with NSSet and NSDictionary. */
-- (BOOL)isEqual:(id)other
-{
-	return (other == self) ? YES : NO;
-}
-
-- (NSUInteger)hash
-{
-	return (NSUInteger)(uintptr_t)self;
-}
-
-/* THE DESCRIPTION DOORS, SHARED WITH NSObject THROUGH THE FORMAT HELPER RATHER THAN BY INHERITANCE.
- *
- * ⚠ AN NSArray's description SHOULD LIST ITS ELEMENTS (Apple's) AND THIS ONE DOES NOT YET — it is NSObject's
- * `<Class: 0x...>` shape, which is again exactly what was inherited before, so nothing regresses. Building the
- * list means a separator, per-element descriptions and a walk of CF's storage; it is owed and named here rather
- * than half-written. */
-- (NSString *)description
-{
-	CFStringRef format = FNXCreateFormatString("<%s: %p>");
-	CFStringRef text = NULL;
-
-	if (format != NULL) {
-		text = CFStringCreateWithFormat(kCFAllocatorDefault, NULL, format,
-			class_getName(object_getClass(self)), (void *)self);
-		CFRelease(format);
+	for (i = 0; i < _count; i++) {
+		objc_release(_items[i]);
 	}
-	return (NSString *)text;
+	free(_items);
+	[super dealloc];	/* NSObject's -dealloc is what frees the instance */
 }
 
-+ (NSString *)description
+- (unsigned long)count
 {
-	CFStringRef format = FNXCreateFormatString("<%s>");
-	CFStringRef text = NULL;
-
-	if (format != NULL) {
-		text = CFStringCreateWithFormat(kCFAllocatorDefault, NULL, format, class_getName(self));
-		CFRelease(format);
-	}
-	return (NSString *)text;
+	return _count;
 }
 
-- (CFStringRef)copyDescription
+- (id)objectAtIndex:(unsigned long)index
 {
-	/* CF's own spelling of the same door, and it RETURNS RETAINED because CF's naming says so. */
-	return (CFStringRef)[self description];
-}
-
-- (NSUInteger)count
-{
-	return (NSUInteger)CFArrayGetCount((CFArrayRef)self);
-}
-
-- (id _Nonnull)objectAtIndex:(NSUInteger)index
-{
-	/* OUT OF RANGE RAISES, WHICH IS APPLE'S CONTRACT AND THE ONLY ANSWER THAT CANNOT BE A SILENT ONE. The bound
-	 * is CF's own count, so there is one notion of how long this array is; the message names the index and the
-	 * bound because a raise that does not say WHAT was wrong costs the caller a debugger.
-	 *
-	 * AND THIS DOOR WOULD OTHERWISE READ PAST THE STORAGE: CFArrayGetValueAtIndex is CF's unchecked accessor,
-	 * so before this check an index past the end was a read of memory this array does not own. */
-	if (index >= [self count]) {
+	/*
+	 * D10, AND COCOA RAISES HERE. The comment this replaces said "out of range is nil rather than an
+	 * exception: v1 has no exception objects yet (F4)" - a reason that EXPIRED AT F4 and was left
+	 * standing for several milestones, so a programming error travelled as a wrong answer instead of
+	 * stopping at the line that made it. The behaviour was pinned by a check precisely so that
+	 * changing it had to be deliberate; the check now asserts the raise.
+	 */
+	if (index >= _count) {
+		if (_count == 0) {
+			[NSException raise:NSRangeException
+			            format:@"-[NSArray objectAtIndex:]: index %lu beyond bounds for empty array",
+			                   index];
+		}
 		[NSException raise:NSRangeException
-		            format:@"*** -[NSArray objectAtIndex:]: index %lu beyond bounds %lu",
-		                   (unsigned long)index, (unsigned long)[self count]];
+		            format:@"-[NSArray objectAtIndex:]: index %lu beyond bounds [0 .. %lu]",
+		                   index, _count - 1];
 	}
-	return (id)CFArrayGetValueAtIndex((CFArrayRef)self, (CFIndex)index);
+	return _items[index];
 }
 
-- (id _Nonnull)objectAtIndexedSubscript:(NSUInteger)index
+/* Cocoa's subscript: `array[0]` lowers to this. */
+- (id)objectAtIndexedSubscript:(NSUInteger)index
 {
 	return [self objectAtIndex:index];
 }
 
-- (id _Nullable)firstObject
+- (id)firstObject
 {
 	return ([self count] == 0) ? nil : [self objectAtIndex:0];
 }
 
-- (id _Nullable)lastObject
+- (id)lastObject
 {
-	NSUInteger n = [self count];
+	unsigned long n = [self count];
 
 	return (n == 0) ? nil : [self objectAtIndex:n - 1];
 }
 
-- (BOOL)containsObject:(id _Nonnull)anObject
+- (unsigned long)indexOfObject:(id)object
 {
-	/* An array cannot hold nil under Apple's contract, so a nil query is false rather than a search. */
-	if (anObject == nil) {
-		return NO;
-	}
-	return CFArrayContainsValue((CFArrayRef)self, CFRangeMake(0, CFArrayGetCount((CFArrayRef)self)), (const void *)anObject);
-}
+	unsigned long n = [self count];
+	unsigned long i;
 
-/*
- * THE TWO TRANSLATIONS EVERY DOOR IN THIS BLOCK NEEDS, and both exist because CF and Cocoa disagree about a
- * spelling rather than about a behaviour.
- *
- * fnx_not_found IS THE SENTINEL: CF answers kCFNotFound (-1) and Apple answers NSNotFound (NSIntegerMax), so
- * a door that passed CF's value straight through would fail every Cocoa-style `== NSNotFound` test. The
- * archived library's own note records that as a silent failure — a lookup that never matches and never says so.
- *
- * fnx_check_range IS THE VALIDATION: Apple's range doors RAISE NSRangeException on a range beyond the bounds;
- * CF's own array functions ASSERT instead. Both mean "caller error", and the raise is the one a caller can
- * catch, so the bounds are checked here against CF's own count before CF ever sees the range.
- */
-static NSUInteger fnx_not_found(CFIndex found)
-{
-	return (found == kCFNotFound) ? NSNotFound : (NSUInteger)found;
-}
+	/* OVER THE PRIMITIVES (§C.3 item 5) - which is what makes a concrete class with INLINE storage, and
+	 * therefore none of this class's ivars, work through every door below. */
+	for (i = 0; i < n; i++) {
+		id element = [self objectAtIndex:i];
 
-static void fnx_check_range(NSArray *array, NSRange range)
-{
-	NSUInteger count = [array count];
-
-	/* THE ORDER MATTERS: `range.length > count - range.location` would underflow if location were already
-	 * past the end, so location is tested first and the subtraction only runs when it is safe. */
-	if (range.location > count || range.length > count - range.location) {
-		[NSException raise:NSRangeException
-		            format:@"*** -[NSArray]: range {%lu, %lu} out of bounds %lu",
-		                   (unsigned long)range.location, (unsigned long)range.length, (unsigned long)count];
-	}
-}
-
-- (NSUInteger)indexOfObject:(id _Nonnull)anObject
-{
-	if (anObject == nil) {
-		return NSNotFound;
-	}
-	return fnx_not_found(CFArrayGetFirstIndexOfValue((CFArrayRef)self, CFRangeMake(0, CFArrayGetCount((CFArrayRef)self)), (const void *)anObject));
-}
-
-- (NSUInteger)indexOfObject:(id _Nonnull)anObject inRange:(NSRange)range
-{
-	fnx_check_range(self, range);
-
-	if (anObject == nil) {
-		return NSNotFound;
-	}
-	return fnx_not_found(CFArrayGetFirstIndexOfValue((CFArrayRef)self, CFRangeMake((CFIndex)range.location, (CFIndex)range.length), (const void *)anObject));
-}
-
-/*
- * IDENTITY, NOT EQUALITY, WHICH IS WHY THIS ONE IS A SCAN RATHER THAN A CF CALL. CF's index search compares
- * through the array's OWN callbacks — meaning -isEqual:, which is what -indexOfObject: wants. This door wants
- * the same POINTER, and no callback can ask that question, so the walk is ours.
- */
-- (NSUInteger)indexOfObjectIdenticalTo:(id _Nonnull)anObject
-{
-	return [self indexOfObjectIdenticalTo:anObject inRange:NSMakeRange(0, [self count])];
-}
-
-- (NSUInteger)indexOfObjectIdenticalTo:(id _Nonnull)anObject inRange:(NSRange)range
-{
-	NSUInteger i;
-
-	fnx_check_range(self, range);
-	for (i = 0; i < range.length; i++) {
-		if ([self objectAtIndex:range.location + i] == anObject) {
-			return range.location + i;
+		if (element == object || [element isEqual:object]) {
+			return i;
 		}
 	}
 	return NSNotFound;
 }
 
-/* APPLE'S BULK ACCESSOR, AND CF HAS THE SAME ONE — so this delegates rather than walking the array a second
- * time. CFArrayGetValues writes into the caller's buffer through no callbacks at all: it hands back the very
- * pointers the array holds, which is exactly what the door promises. */
-- (void)getObjects:(id * _Nonnull)objects
+- (BOOL)containsObject:(id)object
 {
-	[self getObjects:objects range:NSMakeRange(0, [self count])];
+	return [self indexOfObject:object] != NSNotFound;
 }
 
-- (void)getObjects:(id * _Nonnull)objects range:(NSRange)range
+- (NSArray *)arrayByAddingObject:(id)object
 {
-	fnx_check_range(self, range);
-	CFArrayGetValues((CFArrayRef)self, CFRangeMake((CFIndex)range.location, (CFIndex)range.length), (const void **)objects);
+	NSMutableArray *copy = [[NSMutableArray alloc] initWithArray:self];
+
+	[copy addObject:object];
+	return copy;
 }
 
 /*
- * --- THE DERIVED ARRAYS, AND WHERE THE ITEMS' OWNERSHIP COMES FROM ---------------------------------------
+ * Build an array from a nil-terminated variadic list.
  *
- * EVERY ONE OF THESE BUILDS THE NEW ARRAY WITH **THIS** ARRAY'S CALLBACKS, because CFArrayCreateMutableCopy
- * copies the source's callback pair. So the items are retained by the same policy this array uses — one
- * retention for the new array, not two — and the comparison stays ours (fnx_array_equal) rather than reverting
- * to CF's CFEqual, which cannot compare an object this library built.
+ * `firstObject` IS the argument NAMED in the method signature, and va_start
+ * points the list at the argument AFTER it. Reading the list as though it began
+ * at firstObject therefore DROPPED the first element — ["x", "y"] came out as
+ * ["y"] — which is exactly what the array-extras check caught. So firstObject is
+ * element 0 by hand, and the list supplies the rest.
  *
- * AND THEY ANSWER +1 WHERE APPLE ANSWERS +0 (autoreleased). No pool exists here, so the header states the
- * deviation once rather than each door pretending otherwise.
+ * Two passes over the list, because the storage has to be exactly sized and a
+ * va_list cannot be rewound without a copy of it.
  */
-- (NSArray *)arrayByAddingObject:(id _Nonnull)anObject
+static NSArray *array_from_varargs(Class cls, id firstObject, va_list args)
 {
-	CFMutableArrayRef copy = CFArrayCreateMutableCopy(kCFAllocatorDefault, (CFIndex)[self count] + 1, (CFArrayRef)self);
+	va_list counter;
+	id *objects;
+	size_t extra = 0;
+	size_t i;
+	NSArray *result;
 
-	if (copy == NULL) {
+	if (firstObject == nil) {
+		return [[cls alloc] initWithObjects:NULL count:0];
+	}
+	va_copy(counter, args);
+	while (va_arg(counter, id) != nil) {
+		extra++;
+	}
+	va_end(counter);
+	objects = (id *)calloc(extra + 2, sizeof(id));
+	if (objects == NULL) {
 		return nil;
 	}
-	CFArrayAppendValue(copy, (const void *)anObject);
-	return (NSArray *)copy;
+	objects[0] = firstObject;
+	for (i = 0; i < extra; i++) {
+		objects[i + 1] = va_arg(args, id);
+	}
+	result = [[cls alloc] initWithObjects:objects count:extra + 1];
+	free(objects);
+	return result;
 }
 
-- (NSArray *)arrayByAddingObjectsFromArray:(NSArray * _Nonnull)otherArray
++ (NSArray *)arrayWithArray:(NSArray *)other
 {
-	CFMutableArrayRef copy = CFArrayCreateMutableCopy(kCFAllocatorDefault,
-	                                                  (CFIndex)([self count] + [otherArray count]),
-	                                                  (CFArrayRef)self);
+	return [[self alloc] initWithArray:other];
+}
 
-	if (copy == NULL) {
++ (NSArray *)arrayWithObjects:(id)firstObject, ...
+{
+	va_list args;
+	NSArray *result;
+
+	va_start(args, firstObject);
+	result = array_from_varargs(self, firstObject, args);
+	va_end(args);
+	return result;
+}
+
+/* ===================================================================================================
+ * THE NSCoding DOORS (§63.12). What they are FOR, since the archiver does not need them, is in the header.
+ * One key, and `-initWithArray:` is the funnel both ends meet at — so the class-choosing rule stays the
+ * INITIALIZER's.
+ * =================================================================================================== */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	return [self initWithArray:[coder decodeObjectForKey:FNKeyedObjectsKey]];
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	/* A COPY, AND THAT IS THE POINT: encoding `self` under this key would ask the coder for the very object it
+	 * is in the middle of writing, and the archive would record the array referring to itself. */
+	[coder encodeObject:[NSArray arrayWithArray:self] forKey:FNKeyedObjectsKey];
+}
+
+- (id)initWithArray:(NSArray *)other
+{
+	/*
+	 * THROUGH THE PUBLIC ACCESSOR. `other->_items` was the only cross-instance
+	 * field access in this class, and the check that faulted in the guest was the
+	 * only one containing it; every check that uses accessors passes.
+	 * -getObjects:range: is the class's own public answer for this job.
+	 */
+	NSUInteger n = [other count];
+	id __unsafe_unretained *objects;
+	id result;
+
+	if (n == 0) {
+		return [self initWithObjects:NULL count:0];
+	}
+	objects = (id __unsafe_unretained *)calloc(n, sizeof(id));
+	if (objects == NULL) {
 		return nil;
 	}
-	/* CF APPENDS THE OTHER ARRAY'S VALUES THROUGH THIS COPY'S CALLBACKS, so an item that both arrays hold is
-	 * retained once per array — which is what ownership means — and never twice for one slot. */
-	CFArrayAppendArray(copy, (CFArrayRef)otherArray, CFRangeMake(0, CFArrayGetCount((CFArrayRef)otherArray)));
-	return (NSArray *)copy;
+	[other getObjects:objects range:NSMakeRange(0, n)];
+	result = [self initWithObjects:objects count:n];
+	free(objects);
+	return result;
+}
+
+/* `copyItems`: each member is COPIED (`-copyWithZone:`), so the new array does not share it with `array`;
+ * NO leaves the member RETAINED by the new array like any other element. The copied/retained set is then
+ * handed to `-initWithArray:` so the class-choosing rule stays in the one funnel initializer. */
+- (instancetype)initWithArray:(NSArray *)array copyItems:(BOOL)flag
+{
+	NSMutableArray *copy = [[NSMutableArray alloc] init];
+	NSUInteger i;
+
+	for (i = 0; i < [array count]; i++) {
+		id element = [array objectAtIndex:i];
+
+		if (flag) {
+			/* REASONED (not measured): Apple's page says copyItems:YES sends -copyWithZone:. This
+			 * tree REMOVED the zone API and its NSCopying member is -copy, whose entry point IS the
+			 * override point (NSObject.h), so -copy is the faithful equivalent here. An element that
+			 * cannot be copied hits NSObject's loud-failure default rather than answering nil. */
+			id copied = [element copy];
+
+			[copy addObject:copied];
+		} else {
+			[copy addObject:element];
+		}
+	}
+	return [self initWithArray:copy];
+}
+
+- (id)initWithObjects:(id)firstObject, ...
+{
+	va_list args;
+	NSArray *built;
+
+	va_start(args, firstObject);
+	built = array_from_varargs([NSArray class], firstObject, args);
+	va_end(args);
+	return [self initWithArray:built];	/* and that goes through the accessor too */
+}
+
+- (NSArray *)arrayByAddingObjectsFromArray:(NSArray *)other
+{
+	NSMutableArray *copy = [[NSMutableArray alloc] initWithArray:self];
+
+	[copy addObjectsFromArray:other];
+	return copy;
 }
 
 - (NSArray *)subarrayWithRange:(NSRange)range
 {
-	CFMutableArrayRef sub;
-	NSUInteger i;
+	unsigned long n = [self count];
+	size_t start = range.location;
+	size_t length = range.length;
+	id __unsafe_unretained *objects;
+	NSArray *result;
 
-	fnx_check_range(self, range);
-	sub = CFArrayCreateMutable(kCFAllocatorDefault, (CFIndex)range.length, fnx_array_callbacks_get());
-	if (sub == NULL) {
+	if (start > n) {
+		start = n;
+	}
+	if (length > n - start) {
+		length = n - start;
+	}
+	objects = (id __unsafe_unretained *)calloc(length + 1, sizeof(id));
+	if (objects == NULL) {
 		return nil;
+	}
+	[self getObjects:objects range:NSMakeRange(start, length)];
+	result = [[NSArray alloc] initWithObjects:objects count:length];
+	free(objects);
+	return result;
+}
+
+- (void)getObjects:(id __unsafe_unretained *)buffer range:(NSRange)range
+{
+	size_t i;
+	unsigned long n = [self count];
+
+	if (buffer == NULL) {
+		return;
 	}
 	for (i = 0; i < range.length; i++) {
-		CFArrayAppendValue(sub, CFArrayGetValueAtIndex((CFArrayRef)self, (CFIndex)(range.location + i)));
+		buffer[i] = (range.location + i < n) ? [self objectAtIndex:range.location + i] : nil;
 	}
-	return (NSArray *)sub;
 }
 
-/*
- * COMPARISON DELEGATES TO CF, AND THAT IS ONLY LEGAL BECAUSE BOTH OPERANDS ARE CF-SHAPED. CFEqual's ObjC
- * dispatch is compiled OUT of this build (CFRuntime.c:784-786), so it takes its C path: same type ID, then
- * __CFArrayEqual, which walks the items through the array's OWN callbacks — ours. Two ordinary Foundation
- * objects would have trapped here; two arrays cannot.
- */
-- (BOOL)isEqualToArray:(NSArray * _Nonnull)otherArray
+/* THE WHOLE ARRAY: -getObjects:range: over the full bounds. Deprecated by Apple but still documented. */
+- (void)getObjects:(id __unsafe_unretained *)objects
 {
-	if (otherArray == self) {
-		return YES;
+	if (objects == NULL) {
+		return;
 	}
-	if (otherArray == nil || [otherArray count] != [self count]) {
-		return NO;
-	}
-	return CFEqual((CFTypeRef)self, (CFTypeRef)otherArray) ? YES : NO;
+	[self getObjects:objects range:NSMakeRange(0, [self count])];
 }
 
-- (id)firstObjectCommonWithArray:(NSArray * _Nonnull)otherArray
+- (NSUInteger)indexOfObject:(id)object inRange:(NSRange)range
+{
+	size_t i;
+
+	for (i = range.location; i < [self count] && i < range.location + range.length; i++) {
+		id element = [self objectAtIndex:i];
+
+		if (element == object || [element isEqual:object]) {
+			return i;
+		}
+	}
+	return NSNotFound;
+}
+
+- (NSUInteger)indexOfObjectIdenticalTo:(id)object
+{
+	size_t i;
+
+	for (i = 0; i < [self count]; i++) {
+		if ([self objectAtIndex:i] == object) {
+			return i;
+		}
+	}
+	return NSNotFound;
+}
+
+/* Identity within a range: the same walk as above, bounded by `range`. A range past the end is CLAMPED to
+ * the array's length, mirroring -indexOfObject:inRange: rather than raising. */
+- (NSUInteger)indexOfObjectIdenticalTo:(id)object inRange:(NSRange)range
+{
+	size_t i;
+
+	for (i = range.location; i < [self count] && i < range.location + range.length; i++) {
+		if ([self objectAtIndex:i] == object) {
+			return i;
+		}
+	}
+	return NSNotFound;
+}
+
+/* SEND A MESSAGE TO EVERY ELEMENT, in order, first to last. Nothing is skipped and no array is mutated:
+ * -performSelector: answers nil for an object that does not implement the selector rather than raising. */
+- (void)makeObjectsPerformSelector:(SEL)selector
 {
 	NSUInteger i;
 
-	if (otherArray == nil) {
-		return nil;
-	}
 	for (i = 0; i < [self count]; i++) {
-		id candidate = [self objectAtIndex:i];
+		[[self objectAtIndex:i] performSelector:selector];
+	}
+}
 
-		if ([otherArray containsObject:candidate]) {
-			return candidate;
+- (void)makeObjectsPerformSelector:(SEL)selector withObject:(id)argument
+{
+	NSUInteger i;
+
+	for (i = 0; i < [self count]; i++) {
+		[[self objectAtIndex:i] performSelector:selector withObject:argument];
+	}
+}
+
+/* THE FIRST SHARED MEMBER: the first element of the receiver that is -isEqual: to an element of `other`,
+ * or nil when they have none in common. The receiver's ORDER decides which common member is answered. */
+- (id)firstObjectCommonWithArray:(NSArray *)other
+{
+	NSUInteger i;
+
+	for (i = 0; i < [self count]; i++) {
+		id element = [self objectAtIndex:i];
+
+		if ([other containsObject:element]) {
+			return element;
 		}
 	}
-	/* APPLE ANSWERS THE FIRST ELEMENT OF SELF THAT THE OTHER ARRAY ALSO CONTAINS, and nil when there is none —
-	 * which is why the header annotates this door `_Nullable` while the derived arrays are only conditionally
-	 * so. */
 	return nil;
 }
 
-/*
- * --- SENDING NEWS TO THE ELEMENTS -----------------------------------------------------------------------
+/* The comparator sort, shared by the immutable and mutable forms. */
+static NSArray *array_sorted_with_comparator(NSArray *source, NSComparator comparator)
+{
+	NSMutableArray *sorted = [[NSMutableArray alloc] init];
+	NSUInteger i;
+
+	[sorted addObjectsFromArray:source];
+	for (i = 1; i < [sorted count]; i++) {
+		id key = [sorted objectAtIndex:i];
+		NSUInteger j = i;
+
+		while (j > 0 && comparator([sorted objectAtIndex:j - 1], key) ==
+			       NSOrderedDescending) {
+			[sorted replaceObjectAtIndex:j
+					   withObject:[sorted objectAtIndex:j - 1]];
+			j--;
+		}
+		[sorted replaceObjectAtIndex:j withObject:key];
+	}
+	return sorted;
+}
+
+- (NSArray *)sortedArrayUsingComparator:(NSComparator)comparator
+{
+	if (comparator == NULL) {
+		return [[NSArray alloc] initWithArray:self];
+	}
+	return array_sorted_with_comparator(self, comparator);
+}
+
+/* THE OPTIONS FORM (§62.104): the same algorithm, and the option is a FACT ABOUT IT rather than a branch —
+ * the insertion sort keeps equal elements in the order they arrived, which is what NSSortStable asks for. A
+ * concurrency hint is not taken (nothing here sorts concurrently), and the probe asserts the stability. */
+- (NSArray *)sortedArrayWithOptions:(NSSortOptions)options usingComparator:(NSComparator)comparator
+{
+	(void)options;
+	return array_sorted_with_comparator(self, comparator);
+}
+
+/* THE DESCRIPTOR CHAIN, and the reason the helper above is an INSERTION sort: it moves an element
+ * only while the comparison says NSOrderedDescending, so two elements that compare EQUAL keep
+ * the order they arrived in. A chain PROMISES that (F10), and the probe measures the promise
+ * rather than assuming it. The chain itself is the other half of the rule: the first descriptor
+ * decides, and only a TIE falls through to the next. */
+- (NSArray *)sortedArrayUsingDescriptors:(NSArray *)sortDescriptors
+{
+	NSUInteger count = [sortDescriptors count];
+
+	if (count == 0) {
+		return [[NSArray alloc] initWithArray:self];
+	}
+	return array_sorted_with_comparator(self, ^NSComparisonResult(id left, id right) {
+		NSUInteger d;
+
+		for (d = 0; d < count; d++) {
+			NSSortDescriptor *descriptor = [sortDescriptors objectAtIndex:d];
+			NSComparisonResult order = [descriptor compareObject:left toObject:right];
+
+			if (order != NSOrderedSame) {
+				return order;
+			}
+		}
+		return NSOrderedSame;
+	});
+}
+
+/* A C FUNCTION COMPARATOR is a function POINTER, not a table — so it is a rule like the rest,
+ * and `context` is handed back to it untouched. */
+- (NSArray *)sortedArrayUsingFunction:(NSInteger (*)(id, id, void *))comparator
+			      context:(nullable void *)context
+{
+	if (comparator == NULL) {
+		return [[NSArray alloc] initWithArray:self];
+	}
+	return array_sorted_with_comparator(self, ^NSComparisonResult(id left, id right) {
+		return (NSComparisonResult)comparator(left, right, context);
+	});
+}
+
+- (void)enumerateObjectsUsingBlock:(void (^)(id object, NSUInteger index, BOOL *stop))block
+{
+	NSUInteger i;
+	BOOL stop = NO;
+
+	if (block == NULL) {
+		return;
+	}
+	for (i = 0; i < [self count]; i++) {
+		block([self objectAtIndex:i], i, &stop);
+		if (stop) {
+			break;
+		}
+	}
+}
+
+- (NSArray *)objectsAtIndexes:(NSIndexSet *)indexes
+{
+	NSMutableArray *selected = [[NSMutableArray alloc] init];
+	NSUInteger index = [indexes firstIndex];
+
+	while (index != NSNotFound) {
+		if (index >= [self count]) {
+			/* Cocoa RAISES here rather than returning a short array: the caller
+			 * asked for an element that is not there. */
+			[NSException raise:NSRangeException
+				    format:@"-[NSArray objectsAtIndexes:]: index %lu beyond bounds %lu",
+					   (unsigned long)index, (unsigned long)[self count]];
+		}
+		[selected addObject:[self objectAtIndex:index]];
+		index = [indexes indexGreaterThanIndex:index];
+	}
+	return selected;
+}
+
+/* THE FIRST MATCH, AND IT STOPS THERE. `-indexesOfObjectsPassingTest:` below is the EXHAUSTIVE form and is
+ * deliberately a different walk: implementing this one as `[[self indexesOf…] firstIndex]` would answer the
+ * same index while calling a caller's predicate for every element after the match - and a predicate may have
+ * side effects, so "the same answer" is not the same behaviour. A nil predicate and no match both answer
+ * NSNotFound, which is Cocoa's "there is no such index". */
+- (NSUInteger)indexOfObjectPassingTest:(BOOL (^)(id object, NSUInteger index, BOOL *stop))predicate
+{
+	NSUInteger i;
+	BOOL stop = NO;
+
+	if (predicate == NULL) {
+		return NSNotFound;
+	}
+	for (i = 0; i < [self count] && !stop; i++) {
+		if (predicate([self objectAtIndex:i], i, &stop)) {
+			return i;
+		}
+	}
+	return NSNotFound;
+}
+
+- (NSIndexSet *)indexesOfObjectsPassingTest:(BOOL (^)(id object, NSUInteger index, BOOL *stop))predicate
+{
+	NSMutableIndexSet *matches = [[NSMutableIndexSet alloc] init];
+	NSUInteger i;
+	BOOL stop = NO;
+
+	for (i = 0; i < [self count] && !stop; i++) {
+		if (predicate([self objectAtIndex:i], i, &stop)) {
+			[matches addIndex:i];
+		}
+	}
+	return matches;
+}
+
+- (NSUInteger)indexOfObject:(id)object
+	      inSortedRange:(NSRange)range
+		  options:(NSBinarySearchingOptions)options
+	      usingComparator:(NSComparator)comparator
+{
+	/*
+	 * A LINEAR SCAN over an assumed-sorted range, which answers every option the
+	 * set defines: the first equal index, the last, or where the object would be
+	 * inserted. The contract asks for the ANSWER, not for a binary search.
+	 */
+	size_t start = range.location;
+	size_t end = start + range.length;
+	size_t i;
+	NSUInteger first = NSNotFound;
+	NSUInteger last = NSNotFound;
+
+	if (end > [self count]) {
+		end = [self count];
+	}
+	for (i = start; i < end; i++) {
+		NSComparisonResult order = comparator([self objectAtIndex:i], object);
+
+		if (order == NSOrderedSame) {
+			if (first == NSNotFound) {
+				first = i;
+			}
+			last = i;
+			continue;
+		}
+		if (order == NSOrderedDescending && first == NSNotFound) {
+			if (options & NSBinarySearchingInsertionIndex) {
+				return i;
+			}
+		}
+	}
+	if (options & NSBinarySearchingInsertionIndex) {
+		return (first != NSNotFound) ? last + 1 : end;
+	}
+	if (options & NSBinarySearchingLastEqual) {
+		return (last != NSNotFound) ? last : NSNotFound;
+	}
+	return first;
+}
+
+- (NSString *)componentsJoinedByString:(NSString *)separator
+{
+	NSMutableString *out = [[NSMutableString alloc] initWithUTF8String:""];
+	size_t i;
+
+	for (i = 0; i < [self count]; i++) {
+		if (i > 0) {
+			[out appendString:separator];
+		}
+		[out appendString:[[self objectAtIndex:i] description]];
+	}
+	return out;
+}
+
+/* An insertion sort over the elements' -compare: (or whatever the comparator
+ * selector answers). Quadratic, and honest about being a v1: correct first. */
+- (NSArray *)sortedArrayUsingSelector:(SEL)comparator
+{
+	NSMutableArray *sorted = [[NSMutableArray alloc] initWithArray:self];
+	size_t i;
+
+	for (i = 1; i < [sorted count]; i++) {
+		id key = [sorted objectAtIndex:i];
+		size_t j = i;
+
+		while (j > 0 &&
+		       ((NSComparisonResult (*)(id, SEL, id))objc_msgSend)(
+			       [sorted objectAtIndex:j - 1], comparator, key) ==
+		       NSOrderedDescending) {
+			[sorted replaceObjectAtIndex:j
+					   withObject:[sorted objectAtIndex:j - 1]];
+			j--;
+		}
+		[sorted replaceObjectAtIndex:j withObject:key];
+	}
+	return sorted;
+}
+
+- (NSEnumerator *)objectEnumerator
+{
+	return [[NSEnumerator alloc] initWithSequence:self reverse:NO];
+}
+
+- (NSEnumerator *)reverseObjectEnumerator
+{
+	return [[NSEnumerator alloc] initWithSequence:self reverse:YES];
+}
+
+- (BOOL)isEqualToArray:(NSArray *)other
+{
+	unsigned long i;
+
+	if (other == nil) {
+		return NO;
+	}
+	if (other == self) {
+		return YES;
+	}
+	if ([other count] != [self count]) {
+		return NO;
+	}
+	for (i = 0; i < [self count]; i++) {
+		id a = [self objectAtIndex:i];
+		id b = [other objectAtIndex:i];
+
+		if (a == b) {
+			continue;
+		}
+		if (a == nil || b == nil || ![a isEqual:b]) {
+			return NO;
+		}
+	}
+	return YES;
+}
+
+- (BOOL)isEqual:(id)other
+{
+	if (other == self) {
+		return YES;
+	}
+	if (other == nil || ![other isKindOfClass:[NSArray class]]) {
+		return NO;
+	}
+	return [self isEqualToArray:(NSArray *)other];
+}
+
+- (unsigned long)hash
+{
+	/* Order-dependent, matching equality: two arrays are equal only in the
+	 * same order, so the fold must be too. */
+	unsigned long h = 2166136261UL;
+	unsigned long i;
+
+	h ^= [self count];
+	h *= 16777619UL;
+	for (i = 0; i < [self count]; i++) {
+		h ^= [[self objectAtIndex:i] hash];
+		h *= 16777619UL;
+	}
+	return h;
+}
+
+- (NSString *)description
+{
+	NSMutableString *out = [[NSMutableString alloc] initWithUTF8String:"("];
+	unsigned long i;
+
+	/* One line, elements joined by ", " — not Cocoa's multi-line form, which
+	 * is a display convention rather than a contract. */
+	for (i = 0; i < [self count]; i++) {
+		if (i > 0) {
+			[out appendString:@", "];
+		}
+		[out appendString:[[self objectAtIndex:i] description]];
+	}
+	[out appendString:@")"];
+	return out;
+}
+
+/* §C.3 item 4, AND THIS IS THE BULLET THAT KEEPS THE REST OF THE LIBRARY WORKING: an archiver asks for
+ * -classForCoder, never for -class, so the PUBLIC name is what an archive holds and none of the private
+ * concrete names above can appear in one (§C.4). -classForArchiver defaults to this (M0, NSObject's). */
+- (Class)classForCoder
+{
+	return [NSArray class];
+}
+
+- (id)copy
+{
+	return [self retain];	/* +1: `copy` is an OWNED family (plan §15.2) — immutable */
+}
+
+- (id)mutableCopy
+{
+	return [[NSMutableArray alloc] initWithArray:self];
+}
+
+/* NSCopying keeps Cocoa's SHAPE with the zone accepted and ignored (the plan's
+ * §7 decision): there are no zones, but the selector stays for compatibility. */
+
+- (unsigned long)countByEnumeratingWithState:(NSFastEnumerationState *)state
+                                     objects:(id __unsafe_unretained *)buffer
+                                       count:(unsigned long)length
+{
+	unsigned long n = [self count];
+	unsigned long cursor = state->state;
+	unsigned long batch;
+	unsigned long i;
+
+	/*
+	 * OVER THE PRIMITIVES, THROUGH THE CALLER'S OWN BUFFER (§C.3 item 5). The version this replaces answered
+	 * `state->itemsPtr = _items` in ONE batch, which requires CONTIGUOUS storage - and the one-element and
+	 * small concrete classes HAVE NONE, so that version would have handed a fast-enumeration loop a pointer
+	 * into the front's ivars. `objects` IS caller-provided scratch that stays valid for the batch, which is
+	 * exactly what the protocol says it is for; `state->state` is the cursor, so a batch smaller than the
+	 * count is RESUMED rather than restarted.
+	 */
+	if (cursor >= n) {
+		return 0;
+	}
+	batch = n - cursor;
+	if (batch > length) {
+		batch = length;
+	}
+	if (batch == 0) {
+		return 0;	/* no scratch was offered this time round */
+	}
+	for (i = 0; i < batch; i++) {
+		buffer[i] = [self objectAtIndex:cursor + i];
+	}
+	state->itemsPtr = buffer;
+	state->mutationsPtr = &_mutations;
+	state->state = cursor + batch;
+	return batch;
+}
+
+/* --- THE LOCALE DESCRIPTION DOORS (§63.45) ----------------------------------------------------------
  *
- * THE ENVELOPE IS SENT, NOT SKIPPED, WHICH IS APPLE'S CONTRACT AND NOT A NICETY: these doors do NOT ask
- * -respondsToSelector: first, so an element that does not implement the selector raises
- * doesNotRecognizeSelector — the caller's mistake, reported where it happened. A version that skipped
- * non-responders would be silently doing less than it says.
+ * BOTH ARE DOCUMENTED AS "a string that represents the contents of the array, formatted as a property
+ * list" — i.e. the MULTI-LINE, INDENTED layout, which is the whole difference from -description here. THE
+ * ELEMENT RENDERER IS SHARED WITH -description's RULE, so the two spellings of a member cannot disagree:
+ * an element that answers -descriptionWithLocale:indent: is asked, anything else answers -description.
  *
- * AND THE DISPATCH IS objc_msgSend RATHER THAN -performSelector:, FOR A REASON WORTH STATING: -performSelector:
- * is an NSObject door this library does not have yet (NSObject's own surface is owed separately), and inventing
- * it here would put a foreign method on a class that is not this file's to change. objc_msgSend IS the message
- * send — the cast only tells the compiler the shape of the call.
- */
-- (void)makeObjectsPerformSelector:(SEL _Nonnull)aSelector
+ * ⚠ A NAMED DEVIATION, WRITTEN AT THE DOOR: a real property list would QUOTE string elements, and this
+ * does not — because -description here does not either, and one rendering rule for a member is worth more
+ * than a second quotation rule invented for one door. The LAYOUT is Apple's; the element text is this
+ * library's documented form. */
+/* ⚠ AND THE RENDERER IS A METHOD, NOT A FILE-SCOPE C FUNCTION, for a reason worth a line: C functions
+ * cannot be DEFINED inside an `@implementation` (clang: "function definition is not allowed here"), and
+ * this file's other helper (`array_grow`) sits at file scope for exactly that reason. A private `-fn…`
+ * method is the house's own idiom for a helper that belongs to the class's own body — NSArchiver spells
+ * its writers `-fnWriteByte:`/`-fnWriteBytes:length:` the same way. */
+- (void)fnAppendElement:(id)element to:(NSMutableString *)out locale:(nullable id)locale level:(NSUInteger)level
 {
 	NSUInteger i;
 
-	if (aSelector == NULL) {
-		[NSException raise:NSInvalidArgumentException
-		            format:@"*** -[NSArray makeObjectsPerformSelector:]: NULL selector"];
+	for (i = 0; i < level; i++) {
+		[out appendString:@"    "];
 	}
-	for (i = 0; i < [self count]; i++) {
-		((void (*)(id, SEL))objc_msgSend)([self objectAtIndex:i], aSelector);
+	if (element == nil) {
+		[out appendString:@"<nil>"];	/* -description on nil answers an empty string, which reads as a
+						 * missing element rather than as one that is not there */
+		return;
+	}
+	if ([element respondsToSelector:@selector(descriptionWithLocale:indent:)]) {
+		[out appendString:[element descriptionWithLocale:locale indent:level]];
+		return;
+	}
+	[out appendString:[element description]];
+}
+
+- (NSString *)descriptionWithLocale:(nullable id)locale indent:(NSUInteger)level
+{
+	NSMutableString *out = [[NSMutableString alloc] initWithUTF8String:"(\n"];
+	NSUInteger i, n = [self count];
+
+	for (i = 0; i < n; i++) {
+		[self fnAppendElement:[self objectAtIndex:i] to:out locale:locale level:level + 1];
+		if (i + 1 < n) {
+			[out appendString:@","];
+		}
+		[out appendString:@"\n"];
+	}
+	for (i = 0; i < level; i++) {
+		[out appendString:@"    "];
+	}
+	[out appendString:@")"];
+	return out;
+}
+
+- (NSString *)descriptionWithLocale:(nullable id)locale
+{
+	return [self descriptionWithLocale:locale indent:0];
+}
+
+/* --- THE OPTIONS FORMS OF THE ENUMERATION AND TEST DOORS (§63.45) -----------------------------------
+ *
+ * THE OPTIONS ARE THE WHOLE OF IT AND THEY ARE TWO: `NSEnumerationReverse` changes the DIRECTION of the
+ * walk, and `NSEnumerationConcurrent` is a hint nothing here takes — so a caller who passes it gets a
+ * correct, SEQUENTIAL answer, which is the same stance `-sortedArrayWithOptions:` already records for
+ * `NSSortConcurrent`. What is NOT a formality is `-indexOfObjectWithOptions:passingTest:` STOPPING at the
+ * first match: the pre-existing `-indexOfObjectPassingTest:` documents why (a predicate may have side
+ * effects, so "the same answer" is not the same behaviour), and these forms follow that rule exactly. */
+
+- (void)enumerateObjectsWithOptions:(NSEnumerationOptions)options
+			 usingBlock:(void (^)(id object, NSUInteger index, BOOL *stop))block
+{
+	if (block == NULL) {
+		return;
+	}
+	if ((options & NSEnumerationReverse) == 0) {
+		[self enumerateObjectsUsingBlock:block];
+		return;
+	}
+	{
+		NSUInteger i = [self count];
+		BOOL stop = NO;
+
+		while (i > 0 && !stop) {
+			i--;
+			block([self objectAtIndex:i], i, &stop);
+		}
 	}
 }
 
-- (void)makeObjectsPerformSelector:(SEL _Nonnull)aSelector withObject:(id _Nullable)argument
+- (void)enumerateObjectsAtIndexes:(NSIndexSet *)indexes
+			  options:(NSEnumerationOptions)options
+		       usingBlock:(void (^)(id object, NSUInteger index, BOOL *stop))block
 {
-	NSUInteger i;
+	NSUInteger index;
+	BOOL stop = NO;
 
-	if (aSelector == NULL) {
-		[NSException raise:NSInvalidArgumentException
-		            format:@"*** -[NSArray makeObjectsPerformSelector:withObject:]: NULL selector"];
+	if (block == NULL) {
+		return;
 	}
-	for (i = 0; i < [self count]; i++) {
-		((void (*)(id, SEL, id))objc_msgSend)([self objectAtIndex:i], aSelector, argument);
+	if ((options & NSEnumerationReverse) != 0) {
+		for (index = [indexes lastIndex]; index != NSNotFound && !stop;
+		     index = [indexes indexLessThanIndex:index]) {
+			block([self objectAtIndex:index], index, &stop);
+		}
+		return;
 	}
+	for (index = [indexes firstIndex]; index != NSNotFound && !stop;
+	     index = [indexes indexGreaterThanIndex:index]) {
+		block([self objectAtIndex:index], index, &stop);
+	}
+}
+
+- (NSUInteger)indexOfObjectWithOptions:(NSEnumerationOptions)options
+			   passingTest:(BOOL (^)(id object, NSUInteger index, BOOL *stop))predicate
+{
+	__block NSUInteger found = NSNotFound;
+
+	if (predicate == NULL) {
+		return NSNotFound;
+	}
+	[self enumerateObjectsWithOptions:options
+			       usingBlock:^(id object, NSUInteger index, BOOL *stop) {
+		if (predicate(object, index, stop)) {
+			found = index;
+			*stop = YES;
+		}
+	}];
+	return found;
+}
+
+- (NSUInteger)indexOfObjectAtIndexes:(NSIndexSet *)indexes
+			     options:(NSEnumerationOptions)options
+			 passingTest:(BOOL (^)(id object, NSUInteger index, BOOL *stop))predicate
+{
+	__block NSUInteger found = NSNotFound;
+
+	if (predicate == NULL) {
+		return NSNotFound;
+	}
+	[self enumerateObjectsAtIndexes:indexes
+				options:options
+			     usingBlock:^(id object, NSUInteger index, BOOL *stop) {
+		if (predicate(object, index, stop)) {
+			found = index;
+			*stop = YES;
+		}
+	}];
+	return found;
+}
+
+- (NSIndexSet *)indexesOfObjectsWithOptions:(NSEnumerationOptions)options
+				passingTest:(BOOL (^)(id object, NSUInteger index, BOOL *stop))predicate
+{
+	NSMutableIndexSet *matches = [[NSMutableIndexSet alloc] init];
+
+	if (predicate == NULL) {
+		return matches;
+	}
+	[self enumerateObjectsWithOptions:options
+			       usingBlock:^(id object, NSUInteger index, BOOL *stop) {
+		if (predicate(object, index, stop)) {
+			[matches addIndex:index];
+		}
+	}];
+	return matches;
+}
+
+- (NSIndexSet *)indexesOfObjectsAtIndexes:(NSIndexSet *)indexes
+				  options:(NSEnumerationOptions)options
+			      passingTest:(BOOL (^)(id object, NSUInteger index, BOOL *stop))predicate
+{
+	NSMutableIndexSet *matches = [[NSMutableIndexSet alloc] init];
+
+	if (predicate == NULL) {
+		return matches;
+	}
+	[self enumerateObjectsAtIndexes:indexes
+				options:options
+			     usingBlock:^(id object, NSUInteger index, BOOL *stop) {
+		if (predicate(object, index, stop)) {
+			[matches addIndex:index];
+		}
+	}];
+	return matches;
+}
+
+/* THE PATHNAME FILTER: those elements whose EXTENSION is one of the named ones, in order, by the same
+ * `-pathExtension` every other path decision in this library uses. A non-string element raises through
+ * the message, which is the honest answer — this door is about pathnames. */
+- (NSArray<NSString *> *)pathsMatchingExtensions:(NSArray<NSString *> *)filterTypes
+{
+	NSMutableArray *matched = [[NSMutableArray alloc] init];
+	NSUInteger i, n = [self count];
+
+	for (i = 0; i < n; i++) {
+		NSString *path = [self objectAtIndex:i];
+
+		if ([filterTypes containsObject:[path pathExtension]]) {
+			[matched addObject:path];
+		}
+	}
+	return matched;
+}
+
+/* THE SHUFFLE IS FISHER-YATES, and its ENTROPY IS `getentropy`'s — the door musl provides and NSUUID
+ * already draws from — rather than `rand()`, which is a seeded reproducible sequence and not a source of
+ * randomness at all. The zero-biased modulo is stated rather than hidden: a 64-bit draw modulo a small
+ * count is biased by less than one part in 2^58, and the alternative (rejection sampling) would change
+ * the number of draws a caller cannot observe anyway. */
+- (NSArray<id> *)shuffledArray
+{
+	NSMutableArray *shuffled = [[NSMutableArray alloc] initWithArray:self];
+	NSUInteger i = [shuffled count];
+
+	while (i > 1) {
+		unsigned char bytes[8];
+		uint64_t draw;
+		NSUInteger j;
+
+		if (getentropy(bytes, sizeof(bytes)) != 0) {
+			[NSException raise:NSInternalInconsistencyException
+				    format:@"-shuffledArray: the system entropy source is unavailable"];
+		}
+		memcpy(&draw, bytes, sizeof(draw));
+		i--;
+		j = (NSUInteger)(draw % i);
+		[shuffled exchangeObjectAtIndex:i withObjectAtIndex:j];
+	}
+	return shuffled;
+}
+
+/* --- THE SORT HINT PAIR (§63.45) --------------------------------------------------------------------
+ *
+ * **THE HINT IS CARRIED AS THE RECEIVER'S COUNT, AND THAT IS DELIBERATE: A HINT IS A SPEED DEVICE, SO
+ * NOTHING IN IT MAY BE ABLE TO MAKE AN ANSWER WRONG.** A count is what makes a stale or foreign hint
+ * DETECTABLE, and the count is the only thing this implementation puts in.
+ *
+ * WHAT IT BUYS: `-sortedArrayUsingFunction:context:hint:` runs a LINEAR already-sorted check under the
+ * caller's OWN comparator before sorting, so an array that is already in order costs n comparisons instead
+ * of an O(n^2) insertion sort's — and THAT CHECK IS SELF-VERIFYING, which is the property that matters: a
+ * hint reused on a different array can only cost a failed check, never a wrong answer. Apple publishes a
+ * hint as opaque ("speeds the sorting"); it publishes no FORMAT, so this one is ours and says so. */
+- (NSData *)sortedArrayHint
+{
+	uint64_t count = (uint64_t)[self count];
+
+	return [NSData dataWithBytes:&count length:sizeof(count)];
+}
+
+- (NSArray<id> *)sortedArrayUsingFunction:(NSInteger (*)(id, id, void *))comparator
+			      context:(nullable void *)context
+				 hint:(nullable NSData *)hint
+{
+	if (comparator != NULL && hint != nil && [hint length] == sizeof(uint64_t)) {
+		uint64_t count = 0;
+		NSUInteger i;
+		BOOL ordered = YES;
+
+		[hint getBytes:&count length:sizeof(count)];
+		if (count == (uint64_t)[self count]) {
+			for (i = 1; i < [self count]; i++) {
+				if (comparator([self objectAtIndex:i - 1], [self objectAtIndex:i],
+					       context) == NSOrderedDescending) {
+					ordered = NO;
+					break;
+				}
+			}
+			if (ordered) {
+				return [[NSArray alloc] initWithArray:self];
+			}
+		}
+	}
+	return [self sortedArrayUsingFunction:comparator context:context];
+}
+
+/* --- THE ARRAY-WIDE KVO DOORS (§63.45) --------------------------------------------------------------
+ *
+ * Apple's own note says these exist because invoking them "is potentially much faster than repeatedly
+ * invoking NSObject(NSKeyValueObservingRegistration) methods" — A PERFORMANCE CLAIM, NOT A DIFFERENT
+ * SEMANTICS, so the faithful implementation IS the walk, and it says so here rather than implying that a
+ * batch registration happens somewhere. The context-bearing form is the one Apple's header recommends for
+ * the remove side, for the reason its own comment gives; all three are here together so a caller who has
+ * the index set in hand never needs the loop. */
+- (void)addObserver:(NSObject *)observer
+ toObjectsAtIndexes:(NSIndexSet *)indexes
+	 forKeyPath:(NSString *)keyPath
+	    options:(NSKeyValueObservingOptions)options
+	    context:(nullable void *)context
+{
+	NSUInteger index;
+
+	for (index = [indexes firstIndex]; index != NSNotFound;
+	     index = [indexes indexGreaterThanIndex:index]) {
+		[[self objectAtIndex:index] addObserver:observer
+					     forKeyPath:keyPath
+						options:options
+						context:context];
+	}
+}
+
+- (void)removeObserver:(NSObject *)observer
+ fromObjectsAtIndexes:(NSIndexSet *)indexes
+	    forKeyPath:(NSString *)keyPath
+	       context:(nullable void *)context
+{
+	NSUInteger index;
+
+	for (index = [indexes firstIndex]; index != NSNotFound;
+	     index = [indexes indexGreaterThanIndex:index]) {
+		[[self objectAtIndex:index] removeObserver:observer forKeyPath:keyPath context:context];
+	}
+}
+
+- (void)removeObserver:(NSObject *)observer
+ fromObjectsAtIndexes:(NSIndexSet *)indexes
+	    forKeyPath:(NSString *)keyPath
+{
+	NSUInteger index;
+
+	for (index = [indexes firstIndex]; index != NSNotFound;
+	     index = [indexes indexGreaterThanIndex:index]) {
+		[[self objectAtIndex:index] removeObserver:observer forKeyPath:keyPath];
+	}
+}
+
+/* --- THE FILE-FORM DOORS (§63.45) -------------------------------------------------------------------
+ *
+ * A property list IS this family's file format (NSArray.h's own note says the plist conveniences are
+ * declared as a category), so `-writeToURL:error:` and its reading twin are the plist serialiser with the
+ * array's kind CHECKED on the way in: a plist that is a dictionary is not an array, and saying so is the
+ * difference between a diagnosable failure and a silently wrong type. -initWithContentsOfURL:error: keeps
+ * Apple's "no" is a VALUE contract — nil plus a filled-in NSError, never a raise. */
+- (nullable NSArray *)initWithContentsOfURL:(NSURL *)url error:(NSError * _Nullable * _Nullable)error
+{
+	NSData *data;
+	id plist;
+
+	if (error != NULL) {
+		*error = nil;
+	}
+	data = [NSData dataWithContentsOfURL:url options:0 error:error];
+	if (data == nil) {
+		return nil;	/* the reading door has already filled `error` in */
+	}
+	plist = [NSPropertyListSerialization propertyListWithData:data
+							  options:NSPropertyListImmutable
+							   format:NULL
+							    error:error];
+	if (plist == nil) {
+		return nil;
+	}
+	if (![plist isKindOfClass:[NSArray class]]) {
+		if (error != NULL) {
+			*error = [NSError errorWithDomain:NSCocoaErrorDomain
+						     code:NSPropertyListReadCorruptError
+					       userInfo:@{ NSLocalizedDescriptionKey :
+				[NSString stringWithFormat:@"%@ does not hold an ARRAY but a %@",
+					url, [plist class]] }];
+		}
+		return nil;
+	}
+	return [self initWithArray:plist];
+}
+
++ (nullable NSArray *)arrayWithContentsOfURL:(NSURL *)url error:(NSError * _Nullable * _Nullable)error
+{
+	return [[self alloc] initWithContentsOfURL:url error:error];
+}
+
+- (BOOL)writeToURL:(NSURL *)url error:(NSError * _Nullable * _Nullable)error
+{
+	NSData *data;
+
+	if (error != NULL) {
+		*error = nil;
+	}
+	data = [NSPropertyListSerialization dataWithPropertyList:self
+							  format:NSPropertyListXMLFormat_v1_0
+							 options:0
+							   error:error];
+	if (data == nil) {
+		return NO;
+	}
+	return [data writeToURL:url options:0 error:error];
+}
+
+@end
+
+@implementation NSMutableArray
+
+/* THE SAME DOOR AS THE IMMUTABLE FRONT (§C.3 item 1), and it is what makes a mutable constructor answer a
+ * mutable concrete class: NSMutableArray's own implementation stays where it is and AGArrayMutable is the
+ * name a caller sees. */
++ (id)alloc
+{
+	if (self != [NSMutableArray class]) {
+		return [super alloc];
+	}
+	return [AGArrayMutable alloc];
+}
+
+/* AND THE MUTABLE FRONT ANSWERS ITSELF TO AN ARCHIVER, for the same reason as NSArray's. */
+- (Class)classForCoder
+{
+	return [NSMutableArray class];
 }
 
 /*
- * THE BRIDGE, AND WHY THIS CLASS NEEDS IT. Registering the class with CF's type tells CF's runtime that an
- * object of THIS class is a CFArray: it is what makes CFArrayGetCount and its relatives accept one, and it is
- * the same line NSString carries for CFString. The hook that calls this runs when the class exists, which is
- * why this is a separate entry point rather than a constructor.
- *
- * AND THE REGISTRATION IS WHAT MAKES THE DOORS ABOVE NON-RECURSIVE. CF_IS_OBJC(typeID, obj) is an ISA
- * COMPARISON — true when the object's isa is NOT the class registered for that type — so it is FALSE for an
- * object of this class, and CFArrayGetCount called from -count takes CF's own C path instead of dispatching
- * back into -count. An object whose isa differed from the registered class would dispatch, and this file's
- * doors would call themselves.
+ * A MUTABLE ARRAY ENUMERATES BY COPYING, and that is the difference between an exception and a
+ * CRASH (D6 of §11.6.1, measured: STATUS=139). NSArray's implementation hands out `itemsPtr =
+ * _items` — its OWN storage — and that is safe there because an immutable array's elements are
+ * stable for its lifetime. A mutable array's are not: a mutation during the loop grows the
+ * storage, and a loop reading the old pointer is reading freed memory. The mutation word CANNOT
+ * save that, because it is only consulted when the loop comes back — after the read. Copying the
+ * batch into the caller's buffer makes the batch the loop's own, and the mutation is then what the
+ * word says it is: detected at the next check, and raised as NSGenericException.
  */
-void _CFNXBridgeArrayClasses(void)
+- (NSUInteger)countByEnumeratingWithState:(NSFastEnumerationState *)state
+				  objects:(id __unsafe_unretained *)buffer
+				    count:(NSUInteger)len
 {
-	/* Warm the callback pair too, so a caller that somehow reaches +alloc first still gets a complete pair
-	 * rather than the all-zero one a static starts as. */
-	(void)fnx_array_callbacks_get();
-	extern void _FNXBridgeClass(Class cls, unsigned long typeID);
+	unsigned long done = 0;
 
-	/* THE REGISTRATION ITSELF. A pattern-based edit removed this line while stripping a diagnostic that sat
-	 * beside it -- the second time in one session that a regex took a load-bearing line with it. If this call
-	 * disappears, NSArray silently stops being a CFArray to CF and nothing else looks wrong. */
-	_FNXBridgeClass([NSArray class], (unsigned long)CFArrayGetTypeID());
+	state->itemsPtr = buffer;
+	state->mutationsPtr = &_mutations;
+	while (state->state < _count && done < len) {
+		buffer[done++] = _items[state->state];
+		state->state++;
+	}
+	return done;
 }
+
++ (NSMutableArray *)array
+{
+	return [[self alloc] init];
+}
+
++ (NSMutableArray *)arrayWithCapacity:(unsigned long)capacity
+{
+	return [[self alloc] initWithCapacity:capacity];
+}
+
+- (id)initWithCapacity:(unsigned long)capacity
+{
+	self = [super init];
+	if (self != nil && capacity > 0) {
+		_items = (id *)calloc(capacity, sizeof(id));
+		if (_items == NULL) {
+			return nil;
+		}
+		_capacity = capacity;
+	}
+	return self;
+}
+
+/* THE SAME DOOR ON THE MUTABLE CLASS (§63.12), declared in its own block and therefore needing its own body:
+ * `--unimplemented` counts an implementation in the class or a SUBCLASS, so the front's does not satisfy it.
+ * `[super initWithCoder:]` reaches the front's, which funnels through `-initWithArray:` with `self` still the
+ * MUTABLE class — and the class-choosing rule sends only the immutable concrete class to the shared empty
+ * instance, so a mutable answer stays mutable. */
+- (nullable instancetype)initWithCoder:(NSCoder *)coder
+{
+	return [super initWithCoder:coder];
+}
+
+- (void)addObject:(id)object
+{
+	[self insertObject:object atIndex:_count];
+}
+
+- (void)insertObject:(id)object atIndex:(unsigned long)index
+{
+	if (index > _count) {
+		return;
+	}
+	if (_count + 1 > _capacity) {
+		id *grown = array_grow(_items, &_capacity, _count + 1);
+
+		if (grown == NULL) {
+			return;
+		}
+		_items = grown;
+	}
+	if (index < _count) {
+		unsigned long i;
+
+		for (i = _count; i > index; i--) {
+			_items[i] = _items[i - 1];
+		}
+	}
+	_items[index] = objc_retain(object);
+	_count++;
+	_mutations++;
+}
+
+- (void)removeObjectAtIndex:(unsigned long)index
+{
+	unsigned long i;
+
+	if (index >= _count) {
+		[NSException raise:NSRangeException
+				format:@"-[NSMutableArray removeObjectAtIndex:]: index %lu beyond bounds", index];
+	}
+	objc_release(_items[index]);
+	for (i = index; i + 1 < _count; i++) {
+		_items[i] = _items[i + 1];
+	}
+	_count--;
+	_items[_count] = NULL;
+	_mutations++;
+}
+
+- (void)removeAllObjects
+{
+	unsigned long i;
+
+	for (i = 0; i < _count; i++) {
+		objc_release(_items[i]);
+		_items[i] = NULL;
+	}
+	_count = 0;
+	_mutations++;
+}
+
+- (void)replaceObjectAtIndex:(NSUInteger)index withObject:(id)object
+{
+	if (index >= _count) {
+		[NSException raise:NSRangeException
+				format:@"-[NSMutableArray replaceObjectAtIndex:withObject:]: index %lu beyond bounds", index];
+	}
+	if (object == nil) {
+		[NSException raise:NSInvalidArgumentException
+				format:@"-[NSMutableArray replaceObjectAtIndex:withObject:]: object cannot be nil"];
+	}
+	objc_retain(object);
+	objc_release(_items[index]);
+	_items[index] = object;
+	_mutations++;
+}
+
+/* `array[i] = x`: Cocoa replaces at i, and APPENDS when i == count. */
+- (void)setObject:(id)object atIndexedSubscript:(NSUInteger)index
+{
+	if (object == nil) {
+		return;
+	}
+	if (index == _count) {
+		[self addObject:object];
+		return;
+	}
+	[self replaceObjectAtIndex:index withObject:object];
+}
+
+- (id)copy
+{
+	/* A snapshot, like every other mutable type here. */
+	return [[NSArray alloc] initWithObjects:_items count:_count];
+}
+
+- (void)addObjectsFromArray:(NSArray *)other
+{
+	NSUInteger i;
+
+	for (i = 0; i < [other count]; i++) {
+		[self addObject:[other objectAtIndex:i]];
+	}
+}
+
+- (void)insertObjects:(NSArray *)objects atIndexes:(NSIndexSet *)indexes
+{
+	NSUInteger index;
+	NSUInteger taken = 0;
+	NSUInteger offset = 0;
+
+	if ([objects count] != [indexes count]) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"-[NSMutableArray insertObjects:atIndexes:]: %lu objects but %lu indexes",
+				   (unsigned long)[objects count], (unsigned long)[indexes count]];
+	}
+	index = [indexes firstIndex];
+	while (index != NSNotFound) {
+		/* Every insertion shifts the LATER positions right, which is what the
+		 * offset is for. */
+		[self insertObject:[objects objectAtIndex:taken] atIndex:index + offset];
+		offset++;
+		taken++;
+		index = [indexes indexGreaterThanIndex:index];
+	}
+}
+
+- (void)removeObjectsAtIndexes:(NSIndexSet *)indexes
+{
+	/* DESCENDING: a removal shifts everything after it, so walking down means
+	 * every remaining position is still the one the caller asked for. */
+	NSUInteger index = [indexes lastIndex];
+
+	while (index != NSNotFound) {
+		[self removeObjectAtIndex:index];
+		index = [indexes indexLessThanIndex:index];
+	}
+}
+
+- (void)replaceObjectsAtIndexes:(NSIndexSet *)indexes withObjects:(NSArray *)objects
+{
+	NSUInteger index;
+	NSUInteger taken = 0;
+
+	if ([objects count] != [indexes count]) {
+		[NSException raise:NSInvalidArgumentException
+			    format:@"-[NSMutableArray replaceObjectsAtIndexes:withObjects:]: %lu objects but %lu indexes",
+				   (unsigned long)[objects count], (unsigned long)[indexes count]];
+	}
+	index = [indexes firstIndex];
+	while (index != NSNotFound) {
+		[self replaceObjectAtIndex:index withObject:[objects objectAtIndex:taken]];
+		taken++;
+		index = [indexes indexGreaterThanIndex:index];
+	}
+}
+
+- (void)removeLastObject
+{
+	if (_count > 0) {
+		[self removeObjectAtIndex:_count - 1];
+	}
+}
+
+- (void)removeObject:(id)object
+{
+	[self removeObject:object inRange:NSMakeRange(0, _count)];
+}
+
+- (void)removeObjectIdenticalTo:(id)object
+{
+	NSUInteger i;
+
+	for (i = 0; i < _count; i++) {
+		if (_items[i] == object) {
+			[self removeObjectAtIndex:i];
+			return;
+		}
+	}
+}
+
+- (void)removeObjectIdenticalTo:(id)object inRange:(NSRange)range
+{
+	NSUInteger i;
+
+	for (i = range.location; i < _count && i < range.location + range.length; i++) {
+		if (_items[i] == object) {
+			[self removeObjectAtIndex:i];
+			return;
+		}
+	}
+}
+
+- (void)sortUsingComparator:(NSComparator)comparator
+{
+	if (comparator == NULL) {
+		return;
+	}
+	[self setArray:array_sorted_with_comparator(self, comparator)];
+}
+
+- (void)sortWithOptions:(NSSortOptions)options usingComparator:(NSComparator)comparator
+{
+	if (comparator == NULL) {
+		return;
+	}
+	[self setArray:array_sorted_with_comparator(self, comparator)];
+}
+
+- (void)sortUsingDescriptors:(NSArray *)sortDescriptors
+{
+	[self setArray:[self sortedArrayUsingDescriptors:sortDescriptors]];
+}
+
+- (void)sortUsingFunction:(NSInteger (*)(id, id, void *))comparator context:(nullable void *)context
+{
+	[self setArray:[self sortedArrayUsingFunction:comparator context:context]];
+}
+
+- (void)replaceObjectsInRange:(NSRange)range
+	 withObjectsFromArray:(NSArray *)other
+			range:(NSRange)otherRange
+{
+	/*
+	 * Built into a FRESH array and swapped in: replacing in place while reading
+	 * from a range of a possibly-identical array is the aliasing hazard the
+	 * collection work already met once.
+	 */
+	NSMutableArray *built = [[NSMutableArray alloc] init];
+	NSUInteger i;
+
+	for (i = 0; i < [self count]; i++) {
+		if (i == range.location) {
+			NSUInteger k;
+
+			for (k = 0; k < otherRange.length && k < [other count]; k++) {
+				[built addObject:[other objectAtIndex:otherRange.location + k]];
+			}
+			for (k = 0; k < range.length && range.location + k < [self count]; k++) {
+				(void)k;
+			}
+			i = range.location + (range.length > 0 ? range.length - 1 : 0);
+			continue;
+		}
+		[built addObject:[self objectAtIndex:i]];
+	}
+	[self setArray:built];
+}
+
+- (void)removeObject:(id)object inRange:(NSRange)range
+{
+	NSUInteger i;
+
+	for (i = range.location; i < _count && i < range.location + range.length; i++) {
+		if (_items[i] == object || [_items[i] isEqual:object]) {
+			[self removeObjectAtIndex:i];
+			return;
+		}
+	}
+}
+
+- (void)removeObjectsInRange:(NSRange)range
+{
+	NSUInteger i;
+
+	for (i = 0; i < range.length; i++) {
+		if (range.location < _count) {
+			[self removeObjectAtIndex:range.location];
+		}
+	}
+}
+
+- (void)setArray:(NSArray *)other
+{
+	[self removeAllObjects];
+	[self addObjectsFromArray:other];
+}
+
+- (void)exchangeObjectAtIndex:(NSUInteger)first withObjectAtIndex:(NSUInteger)second
+{
+	id held;
+
+	if (first >= _count || second >= _count || first == second) {
+		return;
+	}
+	held = _items[first];
+	_items[first] = _items[second];
+	_items[second] = held;
+	_mutations++;
+}
+
+- (void)replaceObjectsInRange:(NSRange)range withObjectsFromArray:(NSArray *)other
+{
+	NSUInteger i = 0;
+
+	if (range.location >= _count) {
+		return;
+	}
+	for (i = 0; i < range.length && range.location + i < _count; i++) {
+		if (i < [other count]) {
+			[self replaceObjectAtIndex:range.location + i
+				     withObject:[other objectAtIndex:i]];
+		} else {
+			[self removeObjectAtIndex:range.location + i];
+		}
+	}
+}
+
+- (void)sortUsingSelector:(SEL)comparator
+{
+	NSArray *sorted = [[NSArray alloc] initWithObjects:_items count:_count];
+
+	[self setArray:[sorted sortedArrayUsingSelector:comparator]];
+}
+
+
+- (void)removeObjectsInArray:(NSArray *)otherArray
+{
+	/* ONE PASS OVER THE RECEIVER against the other array's membership. -containsObject: is used rather than a
+	 * set, so nothing is assumed about hashability. */
+	NSUInteger i = 0;
+
+	if (otherArray == nil || [otherArray count] == 0) {
+		return;
+	}
+	while (i < [self count]) {
+		if ([otherArray containsObject:[self objectAtIndex:i]]) {
+			[self removeObjectAtIndex:i];
+		} else {
+			i++;
+		}
+	}
+}
+
+- (void)removeObjectsFromIndices:(NSUInteger *)indices numIndices:(NSUInteger)count
+{
+	/* THE INDICES ARE SORTED DESCENDING FIRST, so every removal leaves the ones still to come valid — the
+	 * whole hazard of this door, and the reason it is worth writing rather than delegating. Duplicates are
+	 * harmless for the same reason. */
+	NSUInteger i, j;
+
+	if (indices == NULL || count == 0) {
+		return;
+	}
+	for (i = 1; i < count; i++) {
+		NSUInteger key = indices[i];
+
+		for (j = i; j > 0 && indices[j - 1] < key; j--) {
+			indices[j] = indices[j - 1];
+		}
+		indices[j] = key;
+	}
+	for (i = 0; i < count; i++) {
+		if (indices[i] < [self count]) {
+			[self removeObjectAtIndex:indices[i]];
+		}
+	}
+}
+@end
+
+
+/* ===================================================================================================
+ * THE CONCRETE CLASSES (§C.3 items 2, 3 and 8): the four immutable cases and the mutable one.
+ * =================================================================================================== */
+
+@implementation AGArrayItems
+
+/* [[NSArray alloc] init] IS A LEGITIMATE THING TO WRITE (§C.3 item 1) AND IT IS THE EMPTY CASE: this is
+ * the class `+alloc` answers with, so this is where the empty answer belongs. It is implemented HERE and
+ * NOT on the front on purpose - a concrete class that inherited such an -init from the front could not say
+ * `[super init]` without becoming the singleton, which is how a one-element array would silently turn into
+ * an empty one. */
+- (id)init
+{
+	[self release];	/* never initialized: the storage was never built */
+	return (id)[AGArrayEmpty emptyArray];
+}
+
+@end
+
+@implementation AGArrayEmpty
+
++ (AGArrayEmpty *)emptyArray
+{
+	static AGArrayEmpty *shared = nil;
+
+	if (shared == nil) {
+		shared = [[AGArrayEmpty alloc] init];
+	}
+	return shared;
+}
+
+/* IMMORTAL, AND THAT IS THE PRICE OF A SINGLETON IN A LIBRARY WITH NO `+allocWithZone:` AND NO COLLECTOR:
+ * a caller who retains or releases the shared instance must not be able to free it out from under every
+ * other caller. `-retainCount` is not a contract (NSObject.h says so); it answers unbounded rather than 1,
+ * because 1 is the one answer that invites a release. */
+- (id)retain { return self; }
+- (void)release { }
+- (id)autorelease { return self; }
+- (NSUInteger)retainCount { return NSUIntegerMax; }
+
+/* THE TWO PRIMITIVES (§C.3 item 5) AND NOTHING ELSE: every other read in this family is written over
+ * these, so an empty array answers -hash, -isEqualToArray:, -subarrayWithRange:, -description and fast
+ * enumeration correctly without a line of code here. */
+- (unsigned long)count
+{
+	return 0;
+}
+
+- (id)objectAtIndex:(unsigned long)index
+{
+	[NSException raise:NSRangeException
+	            format:@"-[NSArray objectAtIndex:]: index %lu beyond bounds for empty array", index];
+	return nil;
+}
+
+/* A FAST PATH, not a requirement: an empty collection enumerates nothing, so this skips the caller's
+ * buffer entirely. */
+- (unsigned long)countByEnumeratingWithState:(NSFastEnumerationState *)state
+                                     objects:(id __unsafe_unretained *)buffer
+                                       count:(unsigned long)length
+{
+	(void)buffer;
+	(void)length;
+	state->mutationsPtr = &state->extra[0];
+	return 0;
+}
+
+@end
+
+@implementation AGArrayOne
+
+- (id)initWithObject:(id)object
+{
+	self = [super init];
+	if (self != nil) {
+		_one = objc_retain(object);
+	}
+	return self;
+}
+
+- (void)dealloc
+{
+	objc_release(_one);
+	[super dealloc];
+}
+
+- (unsigned long)count
+{
+	return 1;
+}
+
+- (id)objectAtIndex:(unsigned long)index
+{
+	if (index != 0) {
+		[NSException raise:NSRangeException
+		            format:@"-[NSArray objectAtIndex:]: index %lu beyond bounds [0 .. 0]", index];
+	}
+	return _one;
+}
+
+@end
+
+@implementation AGArraySmall
+
+- (id)initWithObjects:(const id *)objects count:(unsigned long)count
+{
+	unsigned long i;
+
+	self = [super init];
+	if (self == nil) {
+		return nil;
+	}
+	_smallCount = count;	/* <= AG_ARRAY_SMALL_MAX by construction: this class is chosen by that bound */
+	for (i = 0; i < count; i++) {
+		_small[i] = objc_retain(objects[i]);
+	}
+	return self;
+}
+
+- (void)dealloc
+{
+	unsigned long i;
+
+	for (i = 0; i < _smallCount; i++) {
+		objc_release(_small[i]);
+	}
+	[super dealloc];
+}
+
+- (unsigned long)count
+{
+	return _smallCount;
+}
+
+- (id)objectAtIndex:(unsigned long)index
+{
+	if (index >= _smallCount) {
+		[NSException raise:NSRangeException
+		            format:@"-[NSArray objectAtIndex:]: index %lu beyond bounds [0 .. %lu]",
+		                   index, _smallCount - 1];
+	}
+	return _small[index];
+}
+
+@end
+
+@implementation AGArrayMutable
+
+/* NOTHING TO IMPLEMENT, AND THAT IS THE POINT: NSMutableArray's own implementation IS the mutable storage
+ * implementation, this class inherits it, and what a caller gains is the NAME that -class answers (§C.3
+ * items 2 and 3). */
 
 @end

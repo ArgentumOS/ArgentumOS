@@ -1,0 +1,154 @@
+diff --git a/Sources/CoreFoundation/CFArray.c b/Sources/CoreFoundation/CFArray.c
+index cc03d66..95c7ee7 100644
+--- a/Sources/CoreFoundation/CFArray.c
++++ b/Sources/CoreFoundation/CFArray.c
+@@ -965,7 +965,14 @@ void CFArraySortValues(CFMutableArrayRef array, CFRange range, CFComparatorFunct
+     Boolean immutable = false;
+     if (CF_IS_OBJC(_kCFRuntimeIDCFArray, array)) {
+         BOOL result;
+-        result = CF_OBJC_CALLV((NSMutableArray *)array, isKindOfClass:[NSMutableArray class]);
++        /* FNX LOCAL MODIFICATION 7 (Apache-2.0 §4(b)): `[NSMutableArray class]` is the ONLY expression in the
++         * whole subtree that wants a class OBJECT rather than a receiver, and under the gnustep-2.0 ABI it emits
++         * a reference to `._OBJC_REF_CLASS_NSMutableArray` - a symbol DEFINED BY THE CLASS'S OWN IMPLEMENTATION,
++         * which lives in libfoundation. That would make linking libcorefoundation need libfoundation, the
++         * layering inversion plan §6 describes and upstream's __CFSwiftBridge exists to avoid. Asking the RUNTIME
++         * for the class instead keeps the lookup at LOAD time and needs only libobjc2, which this library already
++         * links; a class not registered yet simply answers nil, which isKindOfClass: reads as false. */
++        result = CF_OBJC_CALLV((NSMutableArray *)array, isKindOfClass:(Class)objc_getClass("NSMutableArray"));
+         immutable = !result;
+     } else if (CF_IS_SWIFT(_kCFRuntimeIDCFArray, array)) {
+ #if DEPLOYMENT_RUNTIME_SWIFT
+diff --git a/Sources/CoreFoundation/CFRuntime.c b/Sources/CoreFoundation/CFRuntime.c
+index 5a5ee09..b73e243 100644
+--- a/Sources/CoreFoundation/CFRuntime.c
++++ b/Sources/CoreFoundation/CFRuntime.c
+@@ -1716,7 +1716,14 @@ static void _CFRelease(CFTypeRef CF_RELEASES_ARGUMENT cf) {
+             allocator = CFGetAllocator(cf);
+             usesSystemDefaultAllocator = _CFAllocatorIsSystemDefault(allocator);
+ 
+-            if (__kCFAllocatorTypeID_CONST != __CFGenericTypeID_inline(cf)) {
++            /* FNX LOCAL MODIFICATION 4 (Apache-2.0 §4(b)): __kCFAllocatorTypeID_CONST is referenced here and
++             * is DEFINED NOWHERE in the whole upstream commit - measured with `git grep` over the entire tree,
++             * the Swift half included, which finds this one USE and no declaration or definition. CFAllocatorGetTypeID()
++             * is the C API for the same value (CFBase.c:463) and is the idiom this very tree already uses for
++             * exactly this comparison (__CFGenericValidateType(allocator, CFAllocatorGetTypeID()) appears in
++             * CFCalendar.c, CFDateFormatter.c, CFLocale.c and others), so this is a substitution between
++             * spellings of one value and not a behaviour change. */
++            if (CFAllocatorGetTypeID() != __CFGenericTypeID_inline(cf)) {
+                 allocatorToRelease = (CFAllocatorRef _Nonnull)__CFGetAllocator(cf);
+             }
+ 	}
+diff --git a/Sources/CoreFoundation/CFURLAccess.c b/Sources/CoreFoundation/CFURLAccess.c
+index 443f1dc..11b78c0 100644
+--- a/Sources/CoreFoundation/CFURLAccess.c
++++ b/Sources/CoreFoundation/CFURLAccess.c
+@@ -57,7 +57,13 @@ DEFINE_WEAK_CFNETWORK_FUNC_FAIL(Boolean, _CFURLDestroyResource, (CFURLRef A, SIn
+ 
+ #endif
+ 
++/* FNX LOCAL MODIFICATION 6 (Apache-2.0 §4(b)): in the Objective-C build of this subtree NSString is a
++ * CLASS (fnx-cf-bridge.h declares it), so CF's pre-ObjC opaque-C-struct spelling of the same name cannot
++ * also be declared here - measured: "redefinition of 'NSString' as different kind of symbol". The
++ * typedef is what the C-only world used to name a bridged class; the ObjC world names it with @class. */
++#if !defined(INCLUDE_OBJC) || !INCLUDE_OBJC
+ typedef struct __NSString__ *NSString;
++#endif
+ 
+ /*
+     Pre-10.6 property keys
+diff --git a/Sources/CoreFoundation/include/ForSwiftFoundationOnly.h b/Sources/CoreFoundation/include/ForSwiftFoundationOnly.h
+index e2f4ab0..143be7c 100644
+--- a/Sources/CoreFoundation/include/ForSwiftFoundationOnly.h
++++ b/Sources/CoreFoundation/include/ForSwiftFoundationOnly.h
+@@ -38,8 +38,15 @@
+ #define _CRT_NONSTDC_NO_DEPRECATE
+ #include <Windows.h>
+ #else
++/* FNX LOCAL MODIFICATION 1 (Apache-2.0 §4(b)): <fts.h> is a BSD/Darwin header that musl does not
++ * carry, and NO CF SOURCE CALLS ANY fts FUNCTION - measured across Sources/CoreFoundation,
++ * fts_open/fts_read/fts_close/fts_children/fts_set/FTSENT/FTS( are all ZERO hits - so this include is
++ * vestigial for this build. GUARDED rather than stubbed: a stub named fts.h would silently shadow a
++ * real one the moment one appears. */
++#if __has_include(<fts.h>)
+ #include <fts.h>
+ #endif
++#endif
+ #if __has_include(<unistd.h>)
+ #include <unistd.h>
+ #endif
+diff --git a/Sources/CoreFoundation/internalInclude/CFInternal.h b/Sources/CoreFoundation/internalInclude/CFInternal.h
+index 488fb1d..0f48b8e 100644
+--- a/Sources/CoreFoundation/internalInclude/CFInternal.h
++++ b/Sources/CoreFoundation/internalInclude/CFInternal.h
+@@ -164,9 +164,18 @@ typedef struct os_log_s *os_log_t;
+ 
+ #include "ForFoundationOnly.h"
+ #if DEPLOYMENT_RUNTIME_SWIFT
+-#include "ForSwiftFoundationOnly.h"
+ #include "CFString.h"
+ #endif
++/* FNX LOCAL MODIFICATION 3 (Apache-2.0 §4(b)): the Swift-deployment guard above also guards the ONLY
++ * declaration site of the portable threading API (_CFThreadRef, _CFThreadAttributes, _CFThreadSpecificKey,
++ * _CFIsMainThread, _CFThreadSetName, _CFThreadCreate, _CFThreadSpecificGet/Set, _CFMainPThread, _CFEnviron,
++ * __CFHashDouble, CFSortIndexes) - yet CFPlatform.c, CFRunLoop.c, CFSocket.c, CFStream.c and CFRuntime.c
++ * USE those names under no guard at all. So with the Swift deployment off, the upstream C-only
++ * configuration does not compile: measured, 5 of 86 files failing on unknown type name _CFThreadRef.
++ * Including the header unconditionally is the MINIMAL deviation - declarations are harmless without a Swift
++ * runtime, and only USES create undefined references - and it duplicates no declaration, which a
++ * hand-written block here would have to do and could then let drift. */
++#include "ForSwiftFoundationOnly.h"
+ 
+ CF_EXPORT const char *_CFProcessName(void);
+ CF_PRIVATE CFStringRef _CFProcessNameString(void);
+@@ -954,10 +963,47 @@ CF_INLINE uintptr_t __CFISAForTypeID(CFTypeID typeID) {
+     }
+ }
+ 
+-#define CF_OBJC_FUNCDISPATCHV(typeID, obj, ...) do { } while (0)
+-#define CF_OBJC_RETAINED_FUNCDISPATCHV(typeID, obj, ...) do { } while (0)
+-#define CF_OBJC_CALLV(obj, ...) (0)
+-#define CF_IS_OBJC(typeID, obj) (0)
++/* FNX LOCAL MODIFICATION 5 (Apache-2.0 §4(b)): THE BRIDGE. Upstream's `#else` branch replaces the whole
++ * Objective-C dispatch vocabulary with stubs, and says why in ForFoundationOnly.h: "there's no Swift or ObjC
++ * runtime to interoperate with". This tree HAS one - libobjc2 - and plan §6 lists what the Apache port
++ * dropped as the work of the bridge. These four definitions are that work, and NONE OF THEM IS A GUESS:
++ *
++ * CF_IS_OBJC IS AN ISA COMPARISON, AND UPSTREAM'S OWN COMMENT SAYS SO (see __CFISAForTypeID above: "if you
++ * call CF_IS_OBJC on an objc object ... we will fail the isa comparison in CF_IS_OBJC"). An object is an
++ * Objective-C object when its first word is NOT the CF runtime class registered for the type it claims.
++ * The comparison is written out rather than routed through _CFTypeGetClass, which is defined FURTHER DOWN
++ * this header and so is not yet available here.
++ *
++ * THE DISPATCH MACROS FOLLOW CF_SWIFT_FUNCDISPATCHV_CHECK'S SHAPE, which is in this same file and is the
++ * sibling upstream does ship: `do { if (check(type, obj)) return (ret)...; } while (0)`. The second
++ * parameter is the RETURN TYPE - that is what the call sites show, e.g. CFString.c's
++ * `CF_OBJC_FUNCDISPATCHV(_kCFRuntimeIDCFString, CFIndex, (NSString *)str, length)`. RETAINED differs by
++ * ownership only: the CF function's contract is +1 while a Cocoa getter returns +0, which is what the
++ * macro's own name says.
++ *
++ * WITH THE CLASS TABLE EMPTY THIS CHANGES NOTHING ABOUT CF'S OWN OBJECTS, and that is deliberate for the
++ * first step: a CF-native object has _cfisa == __CFISAForTypeID(typeID) == 0 (INIT_CFRUNTIME_BASE sets 0),
++ * so CF_IS_OBJC is FALSE for it and CF keeps its own C path exactly as verified in M1. It is TRUE for a
++ * genuine NSString, whose isa is a real class pointer - which is the whole point. */
++/* A SMALL (TAGGED) OBJECT IS AN OBJECT AND MUST NOT BE DEREFERENCED - see FNX_CF_IS_SMALL_OBJECT in
++ * fnx-cf-bridge.h for the encoding, the runtime's rule, and the measurement that made this the fix: the
++ * isa read below faulted on a packed `@"..."` literal before any message was sent. THE ORDER IS LOAD-
++ * BEARING: `||` short-circuits, so a small object never reaches the dereference. */
++#define CF_IS_OBJC(typeID, obj) (FNX_CF_IS_SMALL_OBJECT(obj) || (((uintptr_t)((CFRuntimeBase *)(obj))->_cfisa) != __CFISAForTypeID(typeID)))
++
++#define CF_OBJC_FUNCDISPATCHV(typeID, rettype, obj, ...) do { \
++    if (CF_IS_OBJC(typeID, obj)) { \
++        return (rettype)[(id)(obj) __VA_ARGS__]; \
++    } \
++} while (0)
++
++#define CF_OBJC_RETAINED_FUNCDISPATCHV(typeID, rettype, obj, ...) do { \
++    if (CF_IS_OBJC(typeID, obj)) { \
++        return (rettype)[[(id)(obj) __VA_ARGS__] retain]; \
++    } \
++} while (0)
++
++#define CF_OBJC_CALLV(obj, ...) ([(id)(obj) __VA_ARGS__])
+ #define _CFTypeGetClass(obj) ((uintptr_t)((CFRuntimeBase *)obj)->_cfisa)
+ 
+ /* See comments in CFBase.c

@@ -55,7 +55,7 @@ test-list:
 # idempotent, it never changes what `make run-uefi` boots, and it can run before or after
 # `make rootagfs` in either order. The pack is the same call `rootagfs` makes, one path apart.
 .PHONY: testimg
-testimg: userland64 m0clang foundation2
+testimg: userland64 m0clang
 	@$(call fn_write_session_conf,shell)
 	python3 tools/mkagfs.py $(ROOTFS64) $(TESTIMG) 128
 	python3 tools/agfscheck.py $(TESTIMG) $(ROOTFS64)

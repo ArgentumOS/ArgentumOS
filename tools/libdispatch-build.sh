@@ -71,7 +71,7 @@
 # create-and-destroy) never takes a contended path - the uncontended case is a compare-and-swap - but
 # this is a real limit of the platform and not something this script can fix.
 #
-# WHY THE GUEST ONLY, FOR NOW: same reason as corefoundation/build.sh. No host consumer exists
+# WHY THE GUEST ONLY, FOR NOW: same reason as tools/corefoundation-build.sh. No host consumer exists
 # yet; the differential oracle is M6 and M1's acceptance is a guest smoke test. The host arm is
 # deliberately absent, not forgotten.
 
