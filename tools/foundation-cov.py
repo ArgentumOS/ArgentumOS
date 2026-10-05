@@ -60,6 +60,8 @@ CLAIM_HELPER_RE = re.compile(r'\bcovers\s*\(\s*"([A-Za-z_][A-Za-z0-9_]*)"\s*,\s*
 # A selector NAMED in probe text: @selector(x:) , or a whole string literal that is exactly a selector.
 SEL_RE = re.compile(r"@selector\s*\(\s*([A-Za-z_][A-Za-z0-9_]*:?)")
 LIT_RE = re.compile(r'"([A-Za-z_][A-Za-z0-9_]*:?)"')
+# A C comment, block or line: nothing inside one is evidence of anything (see the note in evidence()).
+COMMENT_RE = re.compile(r"/\*.*?\*/|//[^\n]*", re.S)
 
 
 def shipped():
@@ -93,10 +95,23 @@ def evidence():
                     continue
                 with open(os.path.join(dirpath, name), encoding="utf-8", errors="replace") as fh:
                     text = fh.read()
+                # COMMENTS ARE STRIPPED FIRST, AND FOR THE SAME REASON THE CLAIMS ARE: this file's own helper
+                # documents the syntax with an EXAMPLE claim, covers("NSString", "characterAtIndex:"), and an
+                # example in a comment is not coverage of anything. The literal-COVERS scanner was removed for
+                # exactly this (it read the sentence "A RECT COVERS HALF OF ..."), and the lesson generalises:
+                # an instrument that reads TEXT must decide what in that text is a CLAIM.
+                text = COMMENT_RE.sub(" ", text)
                 for owner, sel in CLAIM_HELPER_RE.findall(text):
                     asserted.add((owner, sel))
                     asserted.add((owner, sel.rstrip(":")))
-                for sel in SEL_RE.findall(text) + LIT_RE.findall(text):
+                # AND THE CLAIMS ARE NOT NAMING EVIDENCE, which the first version of this got wrong in a way
+                # worth stating: a covers("NSString", "objCType") call carries the selector as a LITERAL, so
+                # the `named` scan read it - and adding claims CLOSED twelve "uncovered" holes as a side
+                # effect. That is the wrong direction for an instrument: the work list would shrink because
+                # of how a claim is SPELLED rather than because a test touches the door. The tiers are
+                # independent by construction now: remove every claim line, THEN look for names.
+                named_text = CLAIM_HELPER_RE.sub("", text)
+                for sel in SEL_RE.findall(named_text) + LIT_RE.findall(named_text):
                     named_any.add(sel)
                     named_any.add(sel.rstrip(":"))
     return asserted, named_any

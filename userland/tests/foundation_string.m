@@ -25,9 +25,11 @@
 #include <unistd.h>		/* symlink, for §63.48's real-link resolution check */
 
 static int okc, failc;
+static int lastcheck;
 
 static void check(const char *name, int ok, const char *detail)
 {
+	lastcheck = ok;	/* read by covers(): a claim can only follow an assertion that held */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-STRING %s ok\n", name);
@@ -36,6 +38,25 @@ static void check(const char *name, int ok, const char *detail)
 		printf("FOUNDATION-STRING %s FAIL %s\n", name, detail ? detail : "");
 	}
 }
+
+/*
+ * covers("NSString", "characterAtIndex:") — THE BEHAVIOURAL CLAIM, piggybacked on the check above it.
+ *
+ * It takes NO condition of its own: check() records its result and covers() prints only when that result was
+ * true, so a claim cannot be printed beside a failed assertion. tools/foundation-cov.py reads these to tell
+ * `asserted` from `named`, and fails on a shipped selector that nothing claims.
+ *
+ * AND EVERY CLAIM BELOW WAS FILTERED AGAINST THE LEDGER BEFORE IT WAS WRITTEN: only an exact
+ * (owner, selector) SHIPPED pair is claimed, because a claim for a row the ledger does not carry is INERT -
+ * it counts for nothing and lengthens the gate's inert advisory, which is only useful while it is short.
+ */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* A va_list a caller owns, for -initWithFormat:locale:arguments: — the counterpart of the probe's own
  * -initWithFormat:arguments: check. */
@@ -151,6 +172,8 @@ int main(void)
 		      strcmp([c UTF8String], "hello") == 0 &&
 		      [c isKindOfClass:[NSString class]],
 		      "a 5-character literal decodes from its tag");
+	covers("NSString", "length");
+	covers("NSString", "UTF8String");
 	}
 
 	/* The object path, and value semantics across the two representations. */
@@ -164,6 +187,10 @@ int main(void)
 		      [big isEqualToString:owned] && [owned isEqualToString:big] &&
 		      [big hash] == [owned hash],
 		      "a long literal (an object, not a tag) equals an owned string");
+	covers("NSString", "length");
+	covers("NSString", "isEqualToString:");
+	covers("NSString", "hash");
+	covers("NSString", "stringWithUTF8String:");
 	}
 
 	{
@@ -173,6 +200,8 @@ int main(void)
 		check("mixed", [tagged isEqualToString:owned] &&
 		      [owned isEqualToString:tagged] && [tagged hash] == [owned hash],
 		      "a TAGGED string and an owned one are one value");
+	covers("NSString", "isEqualToString:");
+	covers("NSString", "stringWithUTF8String:");
 	}
 
 	/* The documented contract: -length counts UTF-16 CODE UNITS, the byte count has its own door, and
@@ -193,6 +222,13 @@ int main(void)
 		      [u rangeOfString:@"llo"].location == 2 &&
 		      strcmp([u UTF8String], bytes) == 0,
 		      "-length 5 UNITS (6 BYTES), and the ranges index units");
+	covers("NSString", "length");
+	covers("NSString", "lengthOfBytesUsingEncoding:");
+	covers("NSString", "characterAtIndex:");
+	covers("NSString", "substringWithRange:");
+	covers("NSString", "substringFromIndex:");
+	covers("NSString", "rangeOfString:");
+	covers("NSString", "UTF8String");
 	}
 
 	/* Mutation, and the snapshot rule for -copy of a mutable string. */
@@ -207,6 +243,8 @@ int main(void)
 		check("mutable", strcmp([m UTF8String], "abcd!") == 0 &&
 		      strcmp([snapshot UTF8String], "abcd") == 0,
 		      "mutation works and -copy is a snapshot");
+	covers("NSMutableString", "appendString:");
+	covers("NSString", "UTF8String");
 	}
 
 	/* Description: the root class's names the class, an override wins, and a
@@ -222,6 +260,8 @@ int main(void)
 			     "a NamedThing, thank you") == 0 &&
 		      [literal description] == literal,
 		      "root class names itself; an override wins; a string is its own");
+	covers("NSString", "description");
+	covers("NSString", "UTF8String");
 	}
 
 	/* A constant string that came from the other translation unit. */
@@ -229,6 +269,8 @@ int main(void)
 		check("cross-tu", [foundation_string_constant() length] == 4 &&
 		      [foundation_string_constant() isEqualToString:@"supt"],
 		      "a tagged constant string from the support unit");
+	covers("NSString", "length");
+	covers("NSString", "isEqualToString:");
 	}
 
 
@@ -403,6 +445,7 @@ int main(void)
 		check("string-variant-fitting-presentation-width",
 		      [s variantFittingPresentationWidth:40] == s,
 		      "a string with no variants answers itself, identically, for every width");
+	covers("NSString", "variantFittingPresentationWidth:");
 	}
 
 
@@ -422,15 +465,18 @@ int main(void)
 		      [ascii smallestEncoding] == NSASCIIStringEncoding &&
 		      [wide smallestEncoding] == NSUTF8StringEncoding,
 		      "-smallestEncoding is ASCII (1) for a 7-bit string, UTF-8 (4) once a high byte is present");
+	covers("NSString", "smallestEncoding");
 
 		check("string-fastest-encoding",
 		      [ascii fastestEncoding] == NSUTF8StringEncoding &&
 		      [wide fastestEncoding] == NSUTF8StringEncoding,
 		      "-fastestEncoding is the storage, UTF-8 (4), for both");
+	covers("NSString", "fastestEncoding");
 
 		check("string-default-cstring-encoding",
 		      [NSString defaultCStringEncoding] == NSUTF8StringEncoding,
 		      "+defaultCStringEncoding is UTF-8 (4), the one honest default C-string encoding here");
+	covers("NSString", "defaultCStringEncoding");
 
 		check("string-available-encodings",
 		      available != NULL && available[0] == NSASCIIStringEncoding &&
@@ -442,6 +488,9 @@ int main(void)
 		      [@"café" dataUsingEncoding:available[2]] != nil &&
 		      [NSString localizedNameOfStringEncoding:available[2]] != nil,
 		      "+​availableStringEncodings starts with ASCII(1) and UTF-8(4), its every later member CONVERTS and has a name, and the list is zero-terminated");
+	covers("NSString", "availableStringEncodings");
+	covers("NSString", "dataUsingEncoding:");
+	covers("NSString", "localizedNameOfStringEncoding:");
 	}
 
 	{
@@ -548,14 +597,18 @@ int main(void)
 		check("string-init-format-locale",
 		      [loc isEqualToString:@"7-x"] && [loc length] == 3,
 		      "-initWithFormat:locale: renders \"%d-%@\" with 7 and \"x\" as \"7-x\" (3 units)");
+	covers("NSString", "initWithFormat:locale:");
+	covers("NSString", "length");
 
 		check("string-init-format-locale-arguments",
 		      [viaList isEqualToString:@"2+3"] && [viaList length] == 3,
 		      "-initWithFormat:locale:arguments: renders \"%d+%d\" with 2 and 3 as \"2+3\" (3 units)");
+	covers("NSString", "initWithFormat:locale:arguments:");
 
 		check("string-localized-string-with-format",
 		      [localized isEqualToString:@"5 items"] && [localized length] == 7,
 		      "+localizedStringWithFormat: renders \"%d items\" with 5 as \"5 items\" (7 units)");
+	covers("NSString", "localizedStringWithFormat:");
 	}
 
 	{
@@ -573,6 +626,8 @@ int main(void)
 		      [nilObject isEqualToString:@"<(null)>"] &&
 		      [[NSString stringWithFormat:@"%@-%@", @"a", @"b"] isEqualToString:@"a-b"],
 		      "the conversions render, width and precision pass through, nil is (null)");
+	covers("NSString", "stringWithFormat:");
+	covers("NSString", "isEqualToString:");
 
 		/* `%@` with a TAGGED literal — named rather than incidental. A literal of
 		 * fewer than 9 ASCII characters is a pointer clang packs, not an object, so
@@ -593,6 +648,7 @@ int main(void)
 			      [owned isEqualToString:@"<owned>"] &&
 			      [boxed isEqualToString:@"<7>"],
 			      "a TAGGED literal, an owned string and a boxed number all render through %@");
+	covers("NSString", "stringWithFormat:");
 		}
 
 		/* The class-side form with an explicit list, from a unit that does not
@@ -628,6 +684,14 @@ int main(void)
 		      missing.location == NSNotFound &&
 		      fromIndex.location == 12 && fromIndex.length == 1,
 		      "ordering, case-insensitivity, prefix/suffix/contains, and NSNotFound");
+	covers("NSString", "compare:");
+	covers("NSString", "caseInsensitiveCompare:");
+	covers("NSString", "compare:options:");
+	covers("NSString", "hasPrefix:");
+	covers("NSString", "hasSuffix:");
+	covers("NSString", "containsString:");
+	covers("NSString", "rangeOfString:");
+	covers("NSString", "rangeOfString:options:range:");
 	}
 
 	{
@@ -659,6 +723,19 @@ int main(void)
 		      [[@"solo" componentsSeparatedByString:@","] count] == 1 &&
 		      [joined length] == 11,
 		      "case, substrings, appending, replacing and splitting");
+	covers("NSString", "uppercaseString");
+	covers("NSString", "lowercaseString");
+	covers("NSString", "capitalizedString");
+	covers("NSString", "substringFromIndex:");
+	covers("NSString", "substringToIndex:");
+	covers("NSString", "substringWithRange:");
+	covers("NSString", "stringByAppendingString:");
+	covers("NSString", "stringByAppendingFormat:");
+	covers("NSString", "stringByReplacingOccurrencesOfString:withString:");
+	covers("NSString", "stringByReplacingOccurrencesOfString:withString:options:range:");
+	covers("NSString", "componentsSeparatedByString:");
+	covers("NSString", "length");
+	covers("NSString", "lengthOfBytesUsingEncoding:");
 	}
 
 	{
@@ -672,6 +749,12 @@ int main(void)
 		      [@"1" boolValue] == YES && [@"0" boolValue] == NO &&
 		      [@"" boolValue] == NO && [@"no" boolValue] == NO,
 		      "the numeric conversions, and -boolValue's first-character rule");
+	covers("NSString", "intValue");
+	covers("NSString", "integerValue");
+	covers("NSString", "longLongValue");
+	covers("NSString", "floatValue");
+	covers("NSString", "doubleValue");
+	covers("NSString", "boolValue");
 	}
 
 	{
@@ -692,6 +775,12 @@ int main(void)
 		      [components count] == 4 &&
 		      [[components objectAtIndex:3] isEqualToString:@"ATA"],
 		      "last component, extension, deleting, appending, components");
+	covers("NSString", "lastPathComponent");
+	covers("NSString", "pathExtension");
+	covers("NSString", "stringByDeletingLastPathComponent");
+	covers("NSString", "stringByDeletingPathExtension");
+	covers("NSString", "stringByAppendingPathComponent:");
+	covers("NSString", "pathComponents");
 	}
 
 	{
@@ -736,6 +825,12 @@ int main(void)
 		      [[@"rel/path" stringByExpandingTildeInPath] isEqualToString:@"rel/path"] &&
 		      [[@"rel/path" stringByAbbreviatingWithTildeInPath] isEqualToString:@"rel/path"],
 		      "+pathWithComponents: joins \"a/b/c\" and \"/a/b\" (leading slash not doubled), -stringsByAppendingPaths: maps two elements to a/b and a/c, fileSystemRepresentation is \"/a/b\" byte for byte, getFileSystemRepresentation:maxLength: copies 5 bytes into a 64-byte buffer and refuses a 2-byte one, ~ expands to HOME and abbreviates back to \"~/dir/file\" (10 units), and a tilde-free path is unchanged");
+	covers("NSString", "pathWithComponents:");
+	covers("NSString", "stringsByAppendingPaths:");
+	covers("NSString", "fileSystemRepresentation");
+	covers("NSString", "getFileSystemRepresentation:maxLength:");
+	covers("NSString", "stringByExpandingTildeInPath");
+	covers("NSString", "stringByAbbreviatingWithTildeInPath");
 	}
 
 	{
@@ -761,6 +856,9 @@ int main(void)
 			[@"x" lengthOfBytesUsingEncoding:NSUnicodeStringEncoding] &&
 		      [@"x" dataUsingEncoding:NSNEXTSTEPStringEncoding] == nil,
 		      "the UTF-8 round trip, and honest answers for the encodings we do not store");
+	covers("NSString", "dataUsingEncoding:");
+	covers("NSString", "initWithData:encoding:");
+	covers("NSString", "lengthOfBytesUsingEncoding:");
 	}
 
 	{
@@ -789,6 +887,13 @@ int main(void)
 						     freeWhenDone:NO] isEqualToString:@"OK"] &&
 		      [borrowed isEqualToString:@"OK!"] && pool[0] == 'O' && pool[1] == 'K',
 		      "a surrogate pair is 1 character / 2 units / 4 bytes; -getCharacters:range: reads units back; and a borrowed buffer is never written");
+	covers("NSString", "stringWithCharacters:length:");
+	covers("NSString", "getCharacters:range:");
+	covers("NSString", "characterAtIndex:");
+	covers("NSString", "lengthOfBytesUsingEncoding:");
+	covers("NSString", "UTF8String");
+	covers("NSString", "initWithCharactersNoCopy:length:freeWhenDone:");
+	covers("NSMutableString", "appendString:");
 		{
 			/* freeWhenDone:YES hands ownership over, so this one is freed by the string. */
 			unichar *owned = (unichar *)malloc(2 * sizeof(unichar));
@@ -799,6 +904,7 @@ int main(void)
 			      [[[NSString alloc] initWithCharactersNoCopy:owned length:2
 							     freeWhenDone:YES] isEqualToString:@"yy"],
 			      "freeWhenDone:YES transfers the buffer to the receiver");
+	covers("NSString", "initWithCharactersNoCopy:length:freeWhenDone:");
 		}
 	}
 
@@ -826,6 +932,13 @@ int main(void)
 			      [mutable isEqualToString:@"Y-ab!"] &&
 			      [[NSMutableString string] length] == 0,
 			      "append/insert/delete/replace, the count-returning replace, and -copy as a snapshot");
+	covers("NSMutableString", "stringWithCapacity:");
+	covers("NSMutableString", "appendFormat:");
+	covers("NSMutableString", "appendString:");
+	covers("NSMutableString", "insertString:atIndex:");
+	covers("NSMutableString", "deleteCharactersInRange:");
+	covers("NSMutableString", "replaceCharactersInRange:withString:");
+	covers("NSMutableString", "replaceOccurrencesOfString:withString:options:range:");
 		}
 	}
 
