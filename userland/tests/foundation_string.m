@@ -1595,14 +1595,17 @@ NULL
 		      [[NSString stringWithFormat:@"en_GB=%@ fr_FR=%@",
 			[gb localizedStringForCountryCode:@"GB"],
 			[fr localizedStringForCountryCode:@"GB"]] UTF8String]);
+	covers("NSLocale", "localizedStringForCountryCode:");
 		check("locale-localized-string-names-a-currency",
 		      [[us localizedStringForCurrencyCode:@"EUR"] isEqualToString:@"Euro"],
 		      [[NSString stringWithFormat:@"en_US EUR=%@",
 			[us localizedStringForCurrencyCode:@"EUR"]] UTF8String]);
+	covers("NSLocale", "localizedStringForCurrencyCode:");
 		check("locale-localized-string-names-a-calendar",
 		      [[us localizedStringForCalendarIdentifier:@"hebrew"] isEqualToString:@"Hebrew Calendar"],
 		      [[NSString stringWithFormat:@"en_US hebrew=%@",
 			[us localizedStringForCalendarIdentifier:@"hebrew"]] UTF8String]);
+	covers("NSLocale", "localizedStringForCalendarIdentifier:");
 		check("locale-separators-come-from-the-locale",
 		      [[us decimalSeparator] isEqualToString:@"."] &&
 		      [[us groupingSeparator] isEqualToString:@","] &&
@@ -1612,23 +1615,31 @@ NULL
 			[us decimalSeparator], [us groupingSeparator], [fr decimalSeparator],
 			(unsigned)[[fr groupingSeparator] length] > 0 ?
 				(unsigned)[[fr groupingSeparator] characterAtIndex:0] : 0] UTF8String]);
+	covers("NSLocale", "decimalSeparator");
+	covers("NSLocale", "groupingSeparator");
 		check("locale-quotation-delimiters-are-the-locales",
 		      [[us quotationBeginDelimiter] isEqualToString:[NSString stringWithFormat:@"%C", (unichar)0x201C]] &&
 		      [[us quotationEndDelimiter] isEqualToString:[NSString stringWithFormat:@"%C", (unichar)0x201D]] &&
 		      [[fr quotationBeginDelimiter] isEqualToString:[NSString stringWithFormat:@"%C", (unichar)0x00AB]] &&
 		      [[fr quotationEndDelimiter] isEqualToString:[NSString stringWithFormat:@"%C", (unichar)0x00BB]],
 		      "en_US U+201C/U+201D and fr_FR U+00AB/U+00BB");
+	covers("NSLocale", "quotationBeginDelimiter");
+	covers("NSLocale", "quotationEndDelimiter");
 		check("locale-currency-code-and-symbol-are-the-locales",
 		      [[us currencyCode] isEqualToString:@"USD"] &&
 		      [[us currencySymbol] isEqualToString:@"$"] &&
 		      [[fr currencyCode] isEqualToString:@"EUR"],
 		      [[NSString stringWithFormat:@"en_US %@/%@ fr_FR %@", [us currencyCode],
 			[us currencySymbol], [fr currencyCode]] UTF8String]);
+	covers("NSLocale", "currencyCode");
+	covers("NSLocale", "currencySymbol");
 		check("locale-calendar-and-collation-come-from-the-locale",
 		      [[us calendarIdentifier] isEqualToString:@"gregorian"] &&
 		      [[us collationIdentifier] isEqualToString:@"standard"],
 		      [[NSString stringWithFormat:@"calendar=%@ collation=%@", [us calendarIdentifier],
 			[us collationIdentifier]] UTF8String]);
+	covers("NSLocale", "calendarIdentifier");
+	covers("NSLocale", "collationIdentifier");
 		{
 			NSCharacterSet *exemplar = [us exemplarCharacterSet];
 
@@ -1640,11 +1651,14 @@ NULL
 				(int)[exemplar characterIsMember:(unichar)'a'],
 				(int)[exemplar characterIsMember:(unichar)'z'],
 				(int)[exemplar characterIsMember:(unichar)'0']] UTF8String]);
+	covers("NSLocale", "exemplarCharacterSet");
+	covers("NSCharacterSet", "characterIsMember:");
 		}
 		check("locale-measurement-system-is-the-locales",
 		      ![us usesMetricSystem] && [fr usesMetricSystem] && [gb usesMetricSystem],
 		      [[NSString stringWithFormat:@"en_US=%d fr_FR=%d en_GB=%d", (int)[us usesMetricSystem],
 			(int)[fr usesMetricSystem], (int)[gb usesMetricSystem]] UTF8String]);
+	covers("NSLocale", "usesMetricSystem");
 		{
 			NSArray *langs = [NSLocale ISOLanguageCodes];
 			NSArray *ctries = [NSLocale ISOCountryCodes];
@@ -1659,6 +1673,10 @@ NULL
 				(unsigned long)[langs count], (int)[langs containsObject:@"en"],
 				(unsigned long)[ctries count], (int)[ctries containsObject:@"US"],
 				(int)[curs containsObject:@"USD"], (unsigned long)[common count]] UTF8String]);
+	covers("NSLocale", "ISOLanguageCodes");
+	covers("NSLocale", "ISOCountryCodes");
+	covers("NSLocale", "ISOCurrencyCodes");
+	covers("NSLocale", "commonISOCurrencyCodes");
 		}
 		{
 			NSLocale *sys = [NSLocale systemLocale];
@@ -1668,6 +1686,9 @@ NULL
 			      sys != nil && [[sys localeIdentifier] length] > 0 && automatic != nil,
 			      [[NSString stringWithFormat:@"system=%@ autoupdating=%@", [sys localeIdentifier],
 				[automatic localeIdentifier]] UTF8String]);
+	covers("NSLocale", "systemLocale");
+	covers("NSLocale", "autoupdatingCurrentLocale");
+	covers("NSLocale", "localeIdentifier");
 		}
 		{
 			NSLocale *zh = [NSLocale localeWithLocaleIdentifier:@"zh_Hans_CN"];
@@ -1682,6 +1703,11 @@ NULL
 			      [[NSString stringWithFormat:@"zh %@/%@/%@=>%@ ca variant=%@",
 				[zh languageCode], [zh scriptCode], [zh regionCode], [zh languageIdentifier],
 				[ca variantCode]] UTF8String]);
+	covers("NSLocale", "languageCode");
+	covers("NSLocale", "scriptCode");
+	covers("NSLocale", "regionCode");
+	covers("NSLocale", "languageIdentifier");
+	covers("NSLocale", "variantCode");
 		}
 		/* THE REGRESSION GUARDS: the two narrow doors above must keep nilling the DATA keys, or the
 		 * locale-basics and locale-display-names checks go red again (which is exactly what an earlier
@@ -1694,6 +1720,8 @@ NULL
 			[us objectForKey:NSLocaleDecimalSeparator],
 			[gb displayNameForKey:NSLocaleCurrencyCode value:@"EUR"],
 			[gb displayNameForKey:NSLocaleLanguageCode value:[NSNumber numberWithInt:7]]] UTF8String]);
+	covers("NSLocale", "objectForKey:");
+	covers("NSLocale", "displayNameForKey:value:");
 		check("locale-variant-display-stays-open",
 		      ![us respondsToSelector:sel_registerName("localizedStringForVariantCode:")],
 		      "-localizedStringForVariantCode: is absent (ICU's variant display table answers empty)");
