@@ -28053,3 +28053,11 @@ lost the word `named` that way, leaving "and  is not evidence of anything", and 
 command not found` beside it. `-F -` with a QUOTED heredoc (`<<'MSG'`) does not expand anything and is the form
 every other message in this session used; the one that broke was the one written with `-m`. The rule for a
 message that names code: QUOTE THE DELIMITER, or write the message to a file.
+
+**§63.247f, UPDATED (same day) — the numbers above are superseded by this line, because a stale count in this
+file is the failure mode it exists to prevent.** After the locale block's 28 claims: **asserted 181, named 478,
+uncovered 1,836 distinct** (from 156 / 503 / 1,836). The string probe now carries 200 claims and is green on the
+guest at 167/167. Still unclaimed in it: locale-basics, locale-turkic-*, locale-boundaries,
+locale-direction-follows-the-script, locale-windows-locale-code-round-trips,
+locale-localized-string-names-a-language, the eight composed-sequence-* checks, option-set-members-are-distinct-bits,
+transforms-and-keys-are-their-own-names and locale-keys-are-their-own-names.
