@@ -27893,3 +27893,27 @@ part of the tool's output rather than a footnote here: `--check` PRINTS every in
 `covers("<Class>", "<selector>")` and counts it for nothing, because an inert claim sitting in a probe's
 source otherwise looks exactly like counted coverage. Reading one is still "this gate cannot express it" —
 not "proved", and not "unproven" either; the assertion behind it may be perfectly real.
+
+**§63.247a — THE SECOND FAMILY, AND THE SAME ARITHMETIC MISTAKE MADE TWICE (2026-10-04).** The same pass over
+`foundation_value` added 33 claims across five checks (`number-convert`, `number-value`, `number-compare`,
+`number-description`, `number-matrix`) — and **THE MEASURED TIER COUNT IS 19 -> 46, NOT THE 19 -> 52 the commit
+message states.** The 52 was 19 plus 33 done in the head; the tool counts DISTINCT `(owner, selector)` PAIRS,
+and three of those checks each claim `numberWithInt:`, so repeats collapse. That is the SECOND time a count in
+this campaign was written from an unmeasured sum (the first was §63.247's 18-vs-19), and the rule is therefore
+hardened rather than repeated: **run the instrument, then quote it — never quote arithmetic about it.** The
+lesson is cheap to state and apparently expensive to keep.
+
+**AND THE CLAIMS WERE FILTERED AGAINST THE LEDGER BEFORE THEY WERE WRITTEN** — the safe inverse of §63.247's
+mistake. Where that one auto-corrected an owner by looking a selector UP (and so manufactured a claim for a
+class the assertion never touched), this keeps a claim only when the exact `(owner, selector)` pair is a
+SHIPPED row. It dropped two candidates: NSNumber's `-description` and `-objCType`, whose ledger rows are owned
+by NSObject and NSValue. Both would have been INERT — worth nothing and adding noise to an advisory that is
+only useful while it is short. Filtering claims is safe; GUESSING their owners is not.
+
+**AND ONE TERM WAS DELIBERATELY NOT CLAIMED.** `number-api-complete` asserts that NSNumber's audited Cocoa
+inventory EXISTS (`-respondsToSelector:`). Claiming its selectors as `asserted` would be precisely the vacuity
+the tier exists to prevent, so they stay `named` — the tier's whole job is to keep "a probe named it" and "a
+probe proved it" apart.
+
+State: **2,502 shipped selector rows — asserted 46, named 598, uncovered 1,851 distinct**, baseline current,
+`--check` clean, and the inert advisory still six rows (the filter added none).
