@@ -164,8 +164,11 @@ static id fn_loaded_classes;
 }
 @end
 
+static int lastcheck;
+
 static void check(const char *name, int ok, const char *detail)
 {
+	lastcheck = ok;	/* read by covers(): a claim can only follow an assertion that held */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-BUNDLE %s ok\n", name);
@@ -174,6 +177,17 @@ static void check(const char *name, int ok, const char *detail)
 		printf("FOUNDATION-BUNDLE %s FAIL %s\n", name, detail ? detail : "");
 	}
 }
+
+/* covers("NSBundle", "mainBundle") — the behavioural claim, piggybacked on the check above it: no condition of
+ * its own, printed only when the last check's result was true. See tools/foundation-cov.py; every claim is
+ * filtered against the ledger, since one for a row the ledger does not carry is inert. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 #define FIXTURES "/System/Temporary Files/fn_bundle_probe/"
 
@@ -265,24 +279,36 @@ int main(void)
 		      [[[contents resourceURL] path] isEqualToString:resourcePath] &&
 		      [[[contents executableURL] path] isEqualToString:executablePath],
 		      "3 URLs (bundle, resource, executable) each equal their path");
+	covers("NSBundle", "bundleURL");
+	covers("NSBundle", "resourceURL");
+	covers("NSBundle", "executableURL");
+	covers("NSBundle", "bundlePath");
+	covers("NSBundle", "resourcePath");
+	covers("NSBundle", "executablePath");
 
 		check("resource-urls-mirror-the-path-lookups",
 		      [[helloURL path] isEqualToString:flatHello] &&
 		      [helloURLs count] == 1 &&
 		      [[[helloURLs objectAtIndex:0] path] isEqualToString:[helloURL path]],
 		      "1 URL equals its 1 path, and the plural door returns 1 of 1 file");
+	covers("NSBundle", "URLForResource:withExtension:");
+	covers("NSBundle", "URLsForResourcesWithExtension:subdirectory:");
+	covers("NSBundle", "pathForResource:ofType:");
 
 		check("resource-url-in-bundle-with-url",
 		      byBundleURL != nil && [[byBundleURL path] hasSuffix:@"Resources/hello.txt"] &&
 		      [NSBundle URLForResource:@"hello" withExtension:@"txt" subdirectory:nil
 				      inBundleWithURL:notBundleURL] == nil,
 		      "1 of 2 bundle URLs finds the resource; the non-bundle finds 0");
+	covers("NSBundle", "URLForResource:withExtension:subdirectory:inBundleWithURL:");
 
 		check("bundle-from-url-and-init-with-url",
 		      [[[NSBundle bundleWithURL:contentsURL] bundlePath] isEqualToString:[contents bundlePath]] &&
 		      [[[[NSBundle alloc] initWithURL:contentsURL] bundlePath] isEqualToString:[contents bundlePath]] &&
 		      [NSBundle bundleWithURL:notBundleURL] == nil,
 		      "2 of 3 URLs open a bundle (bundleWithURL:, initWithURL:); 1 is not a bundle");
+	covers("NSBundle", "bundleWithURL:");
+	covers("NSBundle", "initWithURL:");
 	}
 
 	{
@@ -294,6 +320,10 @@ int main(void)
 		      [contents sharedSupportPath] == nil &&
 		      [[[contents builtInPlugInsURL] path] isEqualToString:plugInsPath],
 		      "2 of 3 directories present (PlugIns, Frameworks), 1 absent (SharedSupport)");
+	covers("NSBundle", "builtInPlugInsPath");
+	covers("NSBundle", "privateFrameworksPath");
+	covers("NSBundle", "sharedSupportPath");
+	covers("NSBundle", "builtInPlugInsURL");
 	}
 
 	{
@@ -305,6 +335,8 @@ int main(void)
 		      [[[contents URLForAuxiliaryExecutable:@"foundation_bundle_payload.so"] path]
 			isEqualToString:auxPath],
 		      "1 executable found, 1 missing answers nil, and its 1 URL mirrors the path");
+	covers("NSBundle", "pathForAuxiliaryExecutable:");
+	covers("NSBundle", "URLForAuxiliaryExecutable:");
 	}
 
 	check("class-resource-door-searches-the-main-bundle",
@@ -314,6 +346,9 @@ int main(void)
 	      [[NSBundle pathsForResourcesOfType:@"txt" inDirectory:nil] count] ==
 		[[[NSBundle mainBundle] pathsForResourcesOfType:@"txt" inDirectory:nil] count],
 	      "the 2 class doors answer their mainBundle; the fixture holds the 1 file");
+	covers("NSBundle", "pathForResource:ofType:inDirectory:");
+	covers("NSBundle", "mainBundle");
+	covers("NSBundle", "pathsForResourcesOfType:inDirectory:");
 
 	check("localization-aware-resource-lookup",
 	      [[contents pathForResource:@"hello" ofType:@"txt" inDirectory:nil forLocalization:@"en"]
@@ -322,6 +357,8 @@ int main(void)
 		hasSuffix:@"Resources/hello.txt"] &&
 	      [[contents pathsForResourcesOfType:@"txt" inDirectory:nil forLocalization:@"en"] count] == 1,
 	      "en finds 1 in en.lproj; fr falls back to the 1 flat file; the plural door returns 1");
+	covers("NSBundle", "pathForResource:ofType:inDirectory:forLocalization:");
+	covers("NSBundle", "pathsForResourcesOfType:inDirectory:forLocalization:");
 
 	check("localized-string-over-explicit-localizations",
 	      [[contents localizedStringForKey:@"k" value:nil table:@"T" localizations:@[@"en"]]
@@ -329,6 +366,7 @@ int main(void)
 	      [[contents localizedStringForKey:@"k" value:nil table:@"T" localizations:@[@"de"]]
 		isEqualToString:@"flat-value"],
 	      "1 of 2 localizations picks its own table (en), the other falls back (de) to 1 flat value");
+	covers("NSBundle", "localizedStringForKey:value:table:localizations:");
 
 	check("preferred-localizations-match-preferences",
 	      [[NSBundle preferredLocalizationsFromArray:@[@"en", @"fr", @"de"] forPreferences:@[@"fr"]]
@@ -336,12 +374,16 @@ int main(void)
 	      [[NSBundle preferredLocalizationsFromArray:@[@"en", @"fr"] forPreferences:@[@"es"]]
 		isEqualToArray:@[@"en", @"fr"]],
 	      "1 of 3 available matches 1 preference; 0 matches leaves the 2-element list unchanged");
+	covers("NSBundle", "preferredLocalizationsFromArray:forPreferences:");
 
 	check("development-localization-and-localized-info",
 	      [[contents developmentLocalization] isEqualToString:@"en"] &&
 	      [[[contents localizedInfoDictionary] objectForKey:@"CFBundleName"] isEqualToString:@"Bundle Fixture"] &&
 	      [[contents preferredLocalizations] count] >= 1,
 	      "1 development region, 1 manifest value, and >=1 preferred localization");
+	covers("NSBundle", "developmentLocalization");
+	covers("NSBundle", "localizedInfoDictionary");
+	covers("NSBundle", "preferredLocalizations");
 
 	{
 		/* ⚠ THE IMAGE AND SOUND DOORS ARE **NOT** FOUNDATION'S ANY MORE (§63.52), AND THIS IS THE HALF THAT
@@ -377,6 +419,7 @@ int main(void)
 		      flatArch == nil,
 		      "1 architecture code read from the payload's ELF header (EM_X86_64), and the text-file "
 		      "executable answers nil (0 codes)");
+	covers("NSBundle", "executableArchitectures");
 	}
 
 	/* THE CODE-LOADING HALF, HONESTLY: the fixture's payload is a TEXT FILE, so dlopen must FAIL - and the
@@ -387,6 +430,9 @@ int main(void)
 	check("bundle-load-refuses-a-payload-that-is-not-code",
 	      ![flat isLoaded] && ![flat load] && ![flat isLoaded] && [flat principalClass] == nil,
 	      "a flat bundle whose executable is a text file does not dlopen; isLoaded stays NO");
+	covers("NSBundle", "loaded");
+	covers("NSBundle", "load");
+	covers("NSBundle", "principalClass");
 	/* THE POSITIVE LOAD PATH: dlopen a REAL shared library, then objc_getClass the NSPrincipalClass the
 	 * manifest names - and the notification carrying NSLoadedClasses. An observer is registered FIRST, because
 	 * a notification posted before the observer exists is a notification nobody sees. */
@@ -403,11 +449,14 @@ int main(void)
 		check("bundle-load-brings-in-real-code",
 		      [contents load] && [contents isLoaded],
 		      "dlopen of the bundle's own shared library answers YES and isLoaded follows");
+	covers("NSBundle", "loaded");
+	covers("NSBundle", "load");
 		principal = [contents principalClass];
 		check("bundle-principal-class-comes-from-the-manifest",
 		      principal != nil && strcmp(class_getName(principal), "BundleFixturePrincipal") == 0 &&
 		      [(NSObject *)principal isKindOfClass:[NSObject class]],
 		      "NSPrincipalClass names a class the loaded library defines");
+	covers("NSBundle", "principalClass");
 		if (principal != nil) {
 			instance = [[principal alloc] init];
 			answer = [instance performSelector:@selector(fixtureAnswer)];
@@ -415,6 +464,7 @@ int main(void)
 		check("bundle-loaded-class-is-usable",
 		      answer != nil && [answer isEqualToString:@"the payload answered"],
 		      "an instance of the loaded class answers through the library's own code");
+	covers("NSBundle", "principalClass");
 		/* -classNamed: MUST ANSWER A CLASS THE BUNDLE PROVIDES, and +bundleForClass: the bundle that provided
 		 * it: the class the manifest named comes back, a name the runtime does not know comes back nil, and a
 		 * class OUTSIDE the bundle (NSObject, in the library's own image) has no providing fixture bundle. */
@@ -424,10 +474,13 @@ int main(void)
 		      [NSBundle bundleForClass:principal] == contents &&
 		      [NSBundle bundleForClass:[NSObject class]] == nil,
 		      "1 of 2 names answered by -classNamed:, and the providing bundle is 1 of 1");
+	covers("NSBundle", "classNamed:");
+	covers("NSBundle", "bundleForClass:");
 		check("bundle-load-posts-its-notification-with-the-classes",
 		      fn_loaded_notification_seen && fn_loaded_classes != nil &&
 		      [fn_loaded_classes containsObject:@"BundleFixturePrincipal"],
 		      "NSBundleDidLoadNotification carried NSLoadedClasses naming the principal class");
+	covers("NSBundle", "load");
 	}
 
 	/* THE ERROR-REPORTING LOADING DOORS. flat's executable is a text file that EXISTS, so -preflightAndReturnError:
@@ -444,6 +497,8 @@ int main(void)
 		      ![missing preflightAndReturnError:&err] && err != nil &&
 		      ![missing loadAndReturnError:&err] && err != nil,
 		      "3 error paths (flat preflight read-yes, flat load-no, missing exe) each carry 1 NSError");
+	covers("NSBundle", "preflightAndReturnError:");
+	covers("NSBundle", "loadAndReturnError:");
 	}
 
 	{
@@ -455,6 +510,8 @@ int main(void)
 		check("bundle-unload-answers-no-when-nothing-was-loaded",
 		      freshBundle != nil && ![freshBundle isLoaded] && ![freshBundle unload],
 		      "a bundle never asked to load reports isLoaded NO and unload answers NO");
+	covers("NSBundle", "loaded");
+	covers("NSBundle", "unload");
 	}
 
 	{
@@ -476,6 +533,8 @@ int main(void)
 		      problem == nil,
 		      [[NSString stringWithFormat:@"data=%lu seen=%d back=%@ problem=%@",
 			(unsigned long)[data length], (int)seen, back, problem] UTF8String]);
+	covers("NSPropertyListSerialization", "dataFromPropertyList:format:errorDescription:");
+	covers("NSPropertyListSerialization", "propertyListFromData:mutabilityOption:format:errorDescription:");
 	}
 	{
 		/* THE OUT-PARAM IS A STRING, not an NSError, and garbage must fill it. */
@@ -487,6 +546,7 @@ int main(void)
 
 		check("plist-legacy-error-description-is-a-string", bad == nil && problem != nil && [problem length] > 0,
 		      [[NSString stringWithFormat:@"bad=%@ problem=%@", bad, problem] UTF8String]);
+	covers("NSPropertyListSerialization", "propertyListFromData:mutabilityOption:format:errorDescription:");
 	}
 	{
 		/* THE STATED READING: this tree WRITES XML, so the binary format answers nil WITH a description
@@ -499,6 +559,7 @@ int main(void)
 		check("plist-binary-write-is-refused-with-a-description",
 		      binary == nil && problem != nil && [problem rangeOfString:@"binary"].location != NSNotFound,
 		      [[NSString stringWithFormat:@"binary=%@ problem=%@", binary, problem] UTF8String]);
+	covers("NSPropertyListSerialization", "dataFromPropertyList:format:errorDescription:");
 	}
 
 
