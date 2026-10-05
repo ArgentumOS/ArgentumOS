@@ -419,6 +419,8 @@ def is_per_release_version_constant(row):
 # keeps this ground a rule rather than a hole.
 # ============================================================================
 OTHER_FRAMEWORK = frozenset((
+    # iOS-only NetworkExtension: NEHotspotHelperCommand has no macOS existence at all.
+    "bindToHotspotHelperCommand:",
     "applyFontTraits:range:",
     "attributedStringWithAdaptiveImageGlyph:attributes:",
     "attributedStringWithAttachment:",

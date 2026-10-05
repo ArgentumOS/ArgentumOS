@@ -33,7 +33,7 @@
 # filtered out:  NSBackgroundActivityScheduler,  NSBlockOperation,  NSByteCountFormatter,  NSCache,  NSCalendarDate,  NSDataDetector,  NSDateComponentsFormatter,  NSDateInterval,  NSDateIntervalFormatter,  NSDimension,  NSEnergyFormatter,  NSExpression,  NSExtensionContext,  NSExtensionItem,  NSFileCoordinator,  NSFileProviderService,  NSFileSecurity,  NSFileVersion,  NSHashTable,  NSISO8601DateFormatter,  NSInflectionRule,  NSInvocationOperation,  NSItemProvider,  NSJSONSerialization,  NSLengthFormatter,  NSLinguisticTagger,  NSListFormatter,  NSLocalizedNumberFormatRule,  NSMapTable,  NSMassFormatter,  NSMeasurement,  NSMeasurementFormatter,  NSMorphology,  NSMutableOrderedSet,  NSOperation,  NSOperationQueue,  NSOrderedCollectionDifference,  NSOrderedSet,  NSOrthography,  NSPersonNameComponents,  NSPointerArray,  NSPointerFunctions,  NSPredicate,  NSPresentationIntent,  NSProgress,  NSRegularExpression,  NSRelativeDateTimeFormatter,  NSSecureUnarchiveFromDataTransformer,  NSTermOfAddress,  NSTextCheckingResult,  NSURLComponents,  NSURLSession,  NSURLSessionConfiguration,  NSURLSessionStreamTask,  NSURLSessionTask,  NSURLSessionTaskMetrics,  NSURLSessionWebSocketMessage,  NSURLSessionWebSocketTask,  NSUUID,  NSUbiquitousKeyValueStore,  NSUnit,  NSUnitAcceleration,  NSUnitAngle,  NSUnitArea,  NSUnitConcentrationMass,  NSUnitConverter,  NSUnitDispersion,  NSUnitDuration,  NSUnitEnergy,  NSUnitFrequency,  NSUnitFuelEfficiency,  NSUnitIlluminance,  NSUnitInformationStorage,  NSUnitLength,  NSUnitMass,  NSUnitPower,  NSUnitPressure,  NSUnitSpeed,  NSUnitTemperature,  NSUnitVolume,  NSUserActivity,  NSUserNotification,  NSUserNotificationCenter,  NSUserUnixTask,  NSValueTransformer
 #
 # kind	status	name	owner	family	why	src
-# method	shipped	1760	open	33	struck	421
+# method	shipped	1760	open	31	struck	423
 # property	shipped	742	open	12	struck	182
 
 
@@ -200,7 +200,7 @@ method	shipped	-removeObserver:fromObjectsAtIndexes:forKeyPath:context:	NSArray	
 method	shipped	-reverseObjectEnumerator	NSArray	Fundamentals / Basic Collections / Querying an Array	-	objc
 method	shipped	-setValue:forKey:	NSArray	Fundamentals / Basic Collections / Key-Value Coding	-	objc
 method	shipped	-shuffledArray	NSArray	Fundamentals / Basic Collections / Randomly Shuffling an Array	-	objc
-method	open	-shuffledArrayWithRandomSource:	NSArray	Fundamentals / Basic Collections / Randomly Shuffling an Array	-	objc
+method	struck	-shuffledArrayWithRandomSource:	NSArray	Fundamentals / Basic Collections / Randomly Shuffling an Array	declined	objc
 method	shipped	-sortedArrayUsingComparator:	NSArray	Fundamentals / Basic Collections / Sorting	-	objc
 method	shipped	-sortedArrayUsingDescriptors:	NSArray	Fundamentals / Basic Collections / Sorting	-	objc
 method	shipped	-sortedArrayUsingFunction:context:	NSArray	Fundamentals / Basic Collections / Sorting	-	objc
@@ -1651,7 +1651,7 @@ method	shipped	-replaceOccurrencesOfString:withString:options:range:	NSMutableSt
 method	shipped	-setString:	NSMutableString	Fundamentals / Strings / Modifying a String	-	objc
 method	shipped	+stringWithCapacity:	NSMutableString	Fundamentals / Strings / Creating and Initializing a Mutable String	-	objc
 method	shipped	-addValue:forHTTPHeaderField:	NSMutableURLRequest	Networking / Requests and responses / Accessing header fields	-	objc
-method	open	-bindToHotspotHelperCommand:	NSMutableURLRequest	Networking / Requests and responses / Working with hotspots	-	objc
+method	struck	-bindToHotspotHelperCommand:	NSMutableURLRequest	Networking / Requests and responses / Working with hotspots	other-framework	objc
 method	shipped	-setValue:forHTTPHeaderField:	NSMutableURLRequest	Networking / Requests and responses / Accessing header fields	-	objc
 property	shipped	HTTPBody	NSMutableURLRequest	Networking / Requests and responses / Accessing request components	-	objc
 property	shipped	HTTPBodyStream	NSMutableURLRequest	Networking / Requests and responses / Accessing request components	-	objc
