@@ -39,6 +39,7 @@
 #import <CoreGraphics/NSCoderCGGeometry.h>
 
 #include <stdio.h>
+#include <string.h>
 
 /* THE ARCHIVABLE CLASS: both halves of the protocol, and a link that can point anywhere — including
  * back at an ancestor, which is the case an archive has to survive. */
@@ -1129,7 +1130,8 @@ int main(void)
 			(int)[keyed allowsKeyedCoding], (int)[sequential allowsKeyedCoding],
 			(int)[keyed requiresSecureCoding], [keyed allowedClasses],
 			(int)[keyed decodingFailurePolicy], [keyed systemVersion], hintBack]);
-		covers("NSCoder", "allowsKeyedCoding");
+		covers("NSCoder", "allowedClasses");
+	covers("NSCoder", "allowsKeyedCoding");
 		covers("NSCoder", "requiresSecureCoding");
 		covers("NSCoder", "decodingFailurePolicy");
 		covers("NSCoder", "systemVersion");
@@ -1161,6 +1163,92 @@ int main(void)
 				      : @"raised, but the message does not carry the failure")
 			     : @"-failWithError: returned instead of raising");
 		covers("NSCoder", "failWithError:");
+	}
+
+	printf("FOUNDATION-CODER DIAG leg=plist-door\n");
+	{
+		/* THE KEYED PROPERTY-LIST DOOR AND ITS REFUSAL, NEW ASSERTIONS. The contract is in the door's own
+		 * source: a property list is one of the PLIST'S OWN TYPES and this is a CHECK rather than a coercion,
+		 * so an object that is not one of them is REFUSED. Both halves are asserted - the round trip of a
+		 * real plist, and the raise for a class the plist cannot carry - because a door that coerced
+		 * everything would pass the first half alone. */
+		NSMutableData *plistData = [[NSMutableData alloc] init];
+		NSKeyedArchiver *plistWriter = [[NSKeyedArchiver alloc] initForWritingWithMutableData:plistData];
+		NSArray *plist = [NSArray arrayWithObjects:@"entry", [NSNumber numberWithInt:21], nil];
+		id plistBack;
+		BOOL coerced = NO;
+
+		[plistWriter encodeObject:plist forKey:@"plist"];
+		[plistWriter encodeObject:[[CoderNode alloc] init] forKey:@"not-a-plist"];
+		[plistWriter finishEncoding];
+		{
+			NSKeyedUnarchiver *plistReader = [[NSKeyedUnarchiver alloc] initForReadingWithData:plistData];
+
+			plistBack = [plistReader decodePropertyListForKey:@"plist"];
+			@try {
+				(void)[plistReader decodePropertyListForKey:@"not-a-plist"];
+				coerced = YES;
+			} @catch (NSException *e) {
+				(void)e;
+			}
+			check("keyed-property-list-door-refuses-a-non-plist",
+			      [plistBack isKindOfClass:[NSArray class]] && [plistBack count] == 2 &&
+			      [[plistBack objectAtIndex:0] isEqualToString:@"entry"] &&
+			      [[plistBack objectAtIndex:1] intValue] == 21 && !coerced,
+			      [NSString stringWithFormat:@"plistBack=%@ coerced=%d", plistBack, (int)coerced]);
+			covers("NSCoder", "decodePropertyListForKey:");
+		}
+		printf("FOUNDATION-CODER DIAG leg=plist-door-done\n");
+	}
+
+	printf("FOUNDATION-CODER DIAG leg=bytes-for-key\n");
+	{
+		/* THE BYTES-BY-KEY PAIR, NEW ASSERTIONS - the primitive NSData's coding is built on. The length is
+		 * the door's OWN out-parameter, so a door that answered the right bytes with the wrong count (or the
+		 * reverse) cannot pass. */
+		static const unsigned char payload[5] = { 0x01, 0x02, 0x00, 0x04, 0xff };
+		NSMutableData *bytesData = [[NSMutableData alloc] init];
+		NSKeyedArchiver *bytesWriter = [[NSKeyedArchiver alloc] initForWritingWithMutableData:bytesData];
+		NSUInteger byteCount = 0;
+		const void *bytesBack = NULL;
+
+		[bytesWriter encodeBytes:payload length:sizeof(payload) forKey:@"payload"];
+		[bytesWriter finishEncoding];
+		{
+			NSKeyedUnarchiver *bytesReader = [[NSKeyedUnarchiver alloc] initForReadingWithData:bytesData];
+
+			bytesBack = [bytesReader decodeBytesForKey:@"payload" returnedLength:&byteCount];
+			check("bytes-for-key-pair-round-trips-with-its-length",
+			      bytesBack != NULL && byteCount == sizeof(payload) &&
+			      memcmp(bytesBack, payload, sizeof(payload)) == 0,
+			      [NSString stringWithFormat:@"bytes=%p count=%lu (wanted %lu)",
+				bytesBack, (unsigned long)byteCount, (unsigned long)sizeof(payload)]);
+			covers("NSCoder", "encodeBytes:length:forKey:");
+			covers("NSCoder", "decodeBytesForKey:returnedLength:");
+		}
+		printf("FOUNDATION-CODER DIAG leg=bytes-for-key-done\n");
+	}
+
+	printf("FOUNDATION-CODER DIAG leg=data-objects\n");
+	{
+		/* THE SEQUENTIAL DATA-OBJECT PAIR, NEW ASSERTIONS: the sequential convention's own way to carry a
+		 * blob, asserted through the archiver pair that implements it rather than the base, which declares
+		 * them abstract. */
+		NSMutableData *blobData = [[NSMutableData alloc] init];
+		NSArchiver *blobWriter = [[NSArchiver alloc] initForWritingWithMutableData:blobData];
+		NSData *blob = [NSData dataWithBytes:"\x01\x02\x03" length:3];
+		NSData *blobBack;
+
+		[blobWriter encodeDataObject:blob];
+		blobBack = [[[NSUnarchiver alloc] initForReadingWithData:blobData] decodeDataObject];
+		check("sequential-data-object-pair-round-trips",
+		      blobBack != nil && [blobBack length] == 3 &&
+		      memcmp([blobBack bytes], "\x01\x02\x03", 3) == 0,
+		      [NSString stringWithFormat:@"blobBack=%@ (%lu bytes)", blobBack,
+			(unsigned long)(blobBack != nil ? [blobBack length] : 0)]);
+		covers("NSCoder", "encodeDataObject:");
+		covers("NSCoder", "decodeDataObject");
+		printf("FOUNDATION-CODER DIAG leg=data-objects-done\n");
 	}
 
 	printf("FOUNDATION-CODER RESULT ok=%d fail=%d\n", okc, failc);

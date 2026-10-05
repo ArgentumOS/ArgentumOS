@@ -56,6 +56,7 @@ CHECKS = (
 	  "coder-top-level-error-door", "coder-top-level-root-door", "coder-collection-class-doors", "coder-secure-coding-gate",
 	  "coder-conditional-object", "coder-geometry-doors", "coder-geometry-door-refusal", "coder-sequential-plist-doors",
 	  "coder-sequential-bulk-doors", "fail-with-error-raises-carrying-the-callers-description", "keyed-coder-capabilities-and-the-copy-hints", "keyed-scalar-primitives-round-trip",
+	  "bytes-for-key-pair-round-trips-with-its-length", "keyed-property-list-door-refuses-a-non-plist", "sequential-data-object-pair-round-trips",
 )
 
 
