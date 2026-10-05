@@ -1537,12 +1537,29 @@ still use the keyword form and are still reported, unchanged, by that gate.
 **A class is not DONE until every ledger row for it is shipped or struck (user decision A,
 `dec-401590d41e81ec9c`).** That makes the `--check` output the work list, and this unit moved it:
 
-    NSArray STALE SHIPPED CLAIM   54 -> 42
     tree-wide STALE SHIPPED CLAIM 4758 -> 4742      (16 rows: 12 NSArray selectors + 4 range symbols)
+    NSArray, row-shaped, measured after the unit:   51 OWED of 74 ledger rows
+                                                    42 instance methods + 8 CLASS methods + 1 property
+
+## THE COUNTING RULE, AND A FIGURE IN THIS SECTION THAT WAS WRONG
+
+The 16 tree-wide rows are measured. **The NSArray figure first written here — "54 -> 42" — was an UNDER-COUNT
+and is withdrawn.** It came from `grep 'STALE SHIPPED CLAIM.*NSArray -'`, which requires the row NAME to begin
+with `-` — and **eight of NSArray's owed rows are CLASS methods (`+array`, `+arrayWithArray:`, …) and a ninth
+is the bare-named property `sortedArrayHint`**, so that grep could not see nine rows in any reading. The
+tranche touched only INSTANCE methods, so the same nine were invisible before it as well; by the same
+arithmetic the honest pair is 63 -> 51. (Verified after the fact: `--check | grep 'STALE SHIPPED CLAIM.*NSArray'`
+= 51, of which 42 begin `-`, 8 begin `+`, and 1 is bare.)
+
+**THE RULE, which is why this is recorded rather than quietly corrected: count a class's owed rows from the
+TOOL'S OWN OUTPUT SHAPE — row kind, owner, name — never from a grep for a name prefix.** A ledger row's name
+has three shapes (`-selector`, `+selector`, and a bare name for a property or a type), so a prefix grep
+silently measures one shape and reports it as the total. This is the second time in this campaign that an
+ad-hoc grep of the ledger produced a number the ledger does not support; the tool always had the right one.
 
 ## WHY THE GATE IS READABLE AT ALL, WHICH IS NOT OBVIOUS
 
-The 54 rows were already marked `shipped` — that word means *"our public headers DECLARE it, and `--check`
+Those rows are already marked `shipped` — that word means *"our public headers DECLARE it, and `--check`
 fails if they stop"* — so the archive made them **claims that stopped being true**. Implementing a selector
 does not need a row "flipped": it makes the existing claim true again, and the stale list shrinks by exactly
 one per door. `--check`'s NSArray section IS the remaining work list, counted on every run.
