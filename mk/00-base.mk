@@ -395,7 +395,17 @@ TOYBOX64_BIN  = third_party/toybox/toybox64
 # The clean-room wall's mechanical half (docs/design/foundation-plan.md §2): no
 # GNUstep/ObjFW/Apple-Foundation header import by first-party code, and never the
 # runtime's legacy <objc/Object.h>.
-foundation-gate: foundation-sweep
+foundation-gate: foundation-sweep foundation-cov
+
+# The BEHAVIOURAL half of the ledger (user decision, 2026-10-04): every SHIPPED selector against the
+# tests that touch it. The ledger above says what is declared; nothing said what is PROVED, and the
+# probes' `inventory` arrays assert only that a name EXISTS. Three tiers, and only the first means
+# proved: `asserted` (a probe claims it with covers(), which takes the assertion's result so a failing
+# assertion cannot print the claim), `named` (the probe touches it - NOT a claim), `none` (the work
+# list). It fails on a NEW uncovered selector, so a door cannot ship without a check, and that is the
+# discipline which makes "every implemented method" countable rather than aspirational.
+foundation-cov:
+	@python3 tools/foundation-cov.py --check
 	@python3 tools/foundation-gate.py
 
 # The ledger's mechanical half (docs/design/foundation-plan.md §11.2, source 2,
