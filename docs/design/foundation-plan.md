@@ -28110,3 +28110,25 @@ where selectors have the most parts, which is where the most complex API lives.
 under-matches lies in the OPTIMISTIC direction about work remaining (it invents work) - the opposite of the
 `named` tier's deliberate over-claim to the safe side. Both faults are cheap to make and only a CONTRADICTION
 between two measurements finds them.
+
+**§63.247i — A CORRECTION TO dc791d32's MESSAGE, AND THE LEDGER'S ANSWER ABOUT THE CG GEOMETRY DOORS
+(2026-10-04). CORRECTED STATE: asserted 352, named 640, uncovered 1,503 distinct.**
+
+**WHAT THE MESSAGE OVERSTATED.** dc791d32 says the whole keyed geometry family was claimed - "encode/decode for
+CGPoint, CGSize, CGRect, CGVector, CGAffineTransform, NSPoint, NSSize, NSRect". The TEN `CG*` doors were DROPPED
+BY THE LEDGER FILTER and the eight `NS*` ones were kept, so the sentence describes a set that did not land. The
+number is right (346 -> 352, six distinct pairs); the prose was not.
+
+**AND THE LEDGER'S ANSWER IS A FACT WORTH HAVING:** the `CG*` coder doors are not in the selector ledger in ANY
+status - `encodeCGPoint:forKey:`, `decodeCGPointForKey:`, `encodeCGSize:forKey:` and their siblings appear
+nowhere in it - while the `NS*` spellings (`encodePoint:forKey:`, `encodeRect:forKey:`, ...) are shipped rows and
+were claimed. That is consistent with the 10.2 cut: Apple added the CG geometry coder doors later than the
+baseline, so the ledger never carried them, and `foundation_coder` asserting them is a check of code this
+project ships beyond its documented surface rather than a ledger row going unproved. **A probe may exercise more
+than the ledger records; that is not a defect in either.**
+
+**THE LESSON, WHICH IS A NEW CLAUSE ON THE MESSAGE RITUAL.** The read-back added in §63.247g catches a MESSAGE
+that got MANGLED (a shell expansion, a missing terminator). It does NOT catch a message that is FALSE - and this
+one was written forward from intent ("I added the geometry family") rather than read back from the filter's
+report, which had listed all ten drops in the same output. So: **read the tool's own drop list before writing
+the sentence that summarises it.**
