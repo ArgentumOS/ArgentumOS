@@ -8,8 +8,9 @@ compiles here unmodified. Supersedes the drawing half of
 
 ## 1. The decisions, and who made them
 
-**SIX**, all user-stated during 2026-09, recorded here because until now they
-existed only in conversation while the tree said the opposite:
+**SEVEN**, all user-stated, recorded here because until now they existed only in
+conversation while the tree said the opposite (six during 2026-09, the seventh on
+2026-10-05):
 
 1. **Duplicate Apple's drawing API as used in macOS** (user, 2026-09):
    *"What I want is to duplicate Apple's drawing API as used in macOS."*
@@ -41,16 +42,51 @@ existed only in conversation while the tree said the opposite:
    parked C++ UIKit (tag `park/argentum-uikit-u6a`) is therefore a RECORD of the
    widget behaviour worked out in it, not a base to continue from** — the same
    relationship this plan already has with the retracted CoreFoundation plan.
+7. **THE OWED SURFACE IS THE 10.6-ERA API** (user, 2026-10-05: *"strike all Core
+   Graphics owed work which dates to after Mac OS X 10.6"*) — an INTRODUCTION-version
+   ground, and its reason is decision 4's: the duplication exists so an older Mac
+   application compiles against it, and an application of that era is not calling API
+   that did not exist when it was written. It is EVIDENCE-BACKED rather than
+   self-reported: the version comes from Apple's own page metadata
+   (`docs/reference/coregraphics-era.txt`, collected by `tools/coregraphics-era-fetch.py`),
+   a struck row must have a version PROVING it, and a row the artefact cannot date is NOT
+   struck — `--check` reports those instead, because unmeasured is not old. And it strikes
+   OWED work: a row this tree has ALREADY SHIPPED is reported, never removed, so what to do
+   about existing code stays a decision.
 
 ## 2. The contract, stated so it can be checked
 
 > **The reference contract is the public API of the macOS 14 SDK, DEPRECATED
-> SYMBOLS INCLUDED.** A symbol is in scope if it is declared in a macOS 14 SDK
-> header; where Apple deprecates it, the ledger records that as a LABEL
-> (`why` = `deprecated`) and the row is owed like any other. What the vintage
-> distinguishes is *introduced, deprecated, obsoleted* — the annotation is a
-> triple — so the record keeps all three and the replacement where Apple names
-> one, which is what a porting caller needs to see.
+> SYMBOLS INCLUDED — AND THE OWED WORK IS THE 10.6-ERA API.** A symbol is in scope
+> if it is declared in a macOS 14 SDK header; where Apple deprecates it, the ledger
+> records that as a LABEL (`why` = `deprecated`) and the row is owed like any other.
+> What the vintage distinguishes is *introduced, deprecated, obsoleted* — the
+> annotation is a triple — so the record keeps all three and the replacement where
+> Apple names one, which is what a porting caller needs to see. **AND A SYMBOL
+> INTRODUCED AFTER 10.6 IS NOT OWED (decision 7, 2026-10-05)**: it is struck with the
+> version that proves it, and where this tree already ships it the row is REPORTED
+> rather than removed.
+
+**AND THE INTRODUCTION VERSION IS MEASURED NOW, WHICH RETIRES §9's BLOCKER FOR HALF
+OF THE TRIPLE.** This plan's §9 and `tools/coregraphics-sweep.py` both used to say
+Apple's data gives the deprecation boolean and **no version**, so pinning any vintage
+needed the SDK headers. **MEASURED 2026-10-05 AND WRONG BEFORE:** a symbol **PAGE**'s
+`metadata.platforms[]` carries `introducedAt` and `deprecatedAt` — `CGFontGetAscent`
+**10.5**, `CGContextClip` **10.0**, `CGColorSpaceCreateWithName` **10.2**,
+`CGColorConversionInfoCreateForToneMapping` **15.0**. The old note generalised from
+the one shape that really is version-less: `CGWindowListCreateImage` comes back
+`platforms: null`. The distinction that matters is *which endpoint*: the **index NODE**
+(what `--refresh` walks) carries the boolean alone; the **PAGE** carries the versions.
+So the artefact is a second fetch, exactly as Foundation's own era ground is, and the
+SDK is no longer required for a symbol's introduction version. **THE UNDECIDED REMAINDER
+IS REAL, COUNTED, AND CHARACTERISED** — and it is a fact about which KINDS Apple versions
+rather than about any symbol: functions (675 of 735) and vars (117 of 135) carry
+`introducedAt`, while the DECLARATION kinds mostly do not — enum cases 86 of 444, enums
+6 of 57, macros 2 of 107, typealiases 1 of 100, structs 0 of 20 — so `CGBitmapLayout`,
+`CGColor`, `CGBlendMode` and `kCGBlendModeNormal` are pages with no version anywhere in
+their JSON. `CGAffineTransform` is the one unversioned `collectionGroup` container page,
+and `CGWindowListCreateImage` the one page with `platforms: null`. `--check` prints every
+undecided row; none of them is assumed to be old.
 
 Apple's annotation is a **triple**, not a boolean — measured:
 `SCREEN_CAPTURE_OBSOLETE(10.5, 14.0, 15.0)` is *introduced, deprecated,
@@ -381,6 +417,15 @@ Each is a surface slice with its own acceptance; none is scheduled yet.
   API as ledger rows with states (§2), derived from Apple's published
   contract; **header text ours**. *Acceptance*: every row has a state; the
   excluded rows carry their deprecation version and replacement.
+  **AND C0 CARRIES THE STRIKE GROUNDS.** The ledger's `struck` state is decided by
+  `STRIKE_REASONS` and by nothing else: `swift-only` (a name that exists for the Swift
+  importer and means nothing to a C caller) and, since 2026-10-05, `after-10.6`
+  (decision 7) — which is the one that reshapes the WORK LIST, because the tail it cuts
+  is where most of the ledger's rows live. The era ground's evidence is
+  `docs/reference/coregraphics-era.txt`, its generator `tools/coregraphics-era-fetch.py`,
+  and `tools/coregraphics-sweep.py --apply-era` is what writes the flips; `--check`
+  verifies both directions (a struck row must be dated, and a shipped out-of-era row is
+  reported rather than removed).
 - **C1 — geometry and transforms.** The `CGPoint`/`CGSize`/`CGRect`
   function families and `CGAffineTransform` maths. `NSAffineTransform` is
   already landed and its checks pinned the index convention, so the maths
@@ -843,13 +888,29 @@ later reader is told not to "fix" it.
   coherent (`CGContextSelectFont`, `CGContextShowText*`, `CGContextShowGlyphs*`,
   `CGTextEncoding`, the `kCGEncoding*` cases,
   `CGColorSpaceCreateWithPlatformColorSpace`), which independently reproduces the
-  boundary read out of Apple's prose. **What it does NOT carry is the VERSION:** a
+  boundary read out of Apple's prose. **AND THE VERSION IS AVAILABLE TOO — THE
+  CLAIM THAT IT WAS NOT IS CORRECTED HERE (2026-10-05).** This bullet used to say a
   symbol page's `metadata.platforms` reads
-  `{"name": "macOS", "deprecated": false}` with no `deprecatedAt`. So the ledger's
-  `deprecated` rows are a **conservative superset** of the contract's exclusions —
-  a post-14 deprecation strikes a row macOS 14 would keep in scope — and pinning
-  the vintage still needs the SDK headers (names + three versions + replacement +
-  source; **ship the LIST, never the header text; keep the generator**).
+  `{"name": "macOS", "deprecated": false}` with no `deprecatedAt`, so pinning a
+  vintage needed the SDK headers. **MEASURED WRONG:** that is the shape of the ONE
+  page that carries no platform data (`CGWindowListCreateImage`, `platforms: null`);
+  a page that carries any carries `introducedAt` AND `deprecatedAt` (CGFontGetAscent
+  10.5, CGContextClip 10.0, CGColorSpaceCreateWithName 10.2,
+  CGColorConversionInfoCreateForToneMapping 15.0). The endpoint distinction is the
+  whole of it: the **index NODE** carries the deprecation boolean alone, the **PAGE**
+  carries the versions. So the SDK is no longer required for a symbol's introduction
+  version — `docs/reference/coregraphics-era.txt` +
+  `tools/coregraphics-era-fetch.py` are the artefact and its generator, and
+  `tools/coregraphics-sweep.py --apply-era` strikes the rows it dates after 10.6
+  (decision 7, §1). **WHAT REMAINS UNDECIDED IS SMALLER, COUNTED AND CHARACTERISED**:
+  the declaration KINDS Apple publishes without a version (enum cases 86 of 444, enums
+  6 of 57, macros 2 of 107, typealiases 1 of 100, structs 0 of 20), one `collectionGroup`
+  container page, and no index path that fails to resolve — those rows stay owed, and
+  `--check` prints them. The
+  old caveat stands only for the DEPRECATION vintage: the boolean is still a
+  conservative superset of the contract's exclusions, so `ship the LIST, never the
+  header text` still governs, and what the SDK would add there is the obsoleted
+  third of the triple.
 - **The CG-named value types ARE in the ledger now.** This was a named missing pass
   and it is DONE: `CGPoint` documents under
   `/documentation/corefoundation/cgpoint` (verified), so the sweep fetches

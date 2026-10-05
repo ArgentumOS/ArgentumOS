@@ -7,6 +7,8 @@
 #          (plus .../index/corefoundation, CG-named rows only — see below)
 # measured: 2026-09-26
 #
+#   (the counts block and the strike-reason line below are recomputed by --apply-era from
+#    this file's own rows and the era artefact; --refresh regenerates the whole surface.)
 # kind	status	name	owner	family	why	src
 #
 # AND 76 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
@@ -42,72 +44,72 @@
 # counted, NOT excluded: 0 distinct names Apple documents on a `swift.` page
 # but which carry the CG spelling.
 #
-# why the struck rows are struck: 
+# why the struck rows are struck: after-10.6 230
 #
 # counts by kind:
-#   func       shipped  207   open  528   struck    0
+#   func       shipped  207   open  419   struck  109
 #   macro      shipped    7   open  100   struck    0
-#   enum       shipped   13   open   44   struck    0
-#   case       shipped   84   open  360   struck    0
-#   var        shipped   18   open  117   struck    0
-#   typealias  shipped   17   open   83   struck    0
+#   enum       shipped   13   open   41   struck    3
+#   case       shipped   84   open  296   struck   64
+#   var        shipped   18   open   64   struck   53
+#   typealias  shipped   17   open   82   struck    1
 #   struct     shipped    8   open   12   struck    0
 case	open	CGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
 case	open	CGGlyphMin	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
 case	open	CGPDFDataFormatJPEG2000	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
 case	open	CGPDFDataFormatJPEGEncoded	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
 case	open	CGPDFDataFormatRaw	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
-case	open	CGPDFTagTypeAnnotation	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeArt	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeArtifact	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeBibliography	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeBlockQuote	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeCaption	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeCode	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeDiv	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeDocument	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeFigure	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeForm	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeFormula	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeHeader	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeHeader1	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeHeader2	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeHeader3	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeHeader4	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeHeader5	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeHeader6	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeIndex	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeLabel	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeLink	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeList	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeListBody	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeListItem	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeNonStructure	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeNote	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeObject	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeParagraph	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypePart	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypePrivate	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeQuote	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeReference	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeRuby	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeRubyAnnotationText	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeRubyBaseText	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeRubyPunctuation	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeSection	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeSpan	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeTOC	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeTOCI	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeTable	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeTableBody	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeTableDataCell	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeTableFooter	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeTableHeader	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeTableHeaderCell	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeTableRow	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeWarichu	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeWarichuPunctiation	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	CGPDFTagTypeWarichuText	-	Reference / Enumerations / Enumeration Cases	-	objc
+case	struck	CGPDFTagTypeAnnotation	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeArt	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeArtifact	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeBibliography	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeBlockQuote	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeCaption	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeCode	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeDiv	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeDocument	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeFigure	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeForm	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeFormula	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeHeader	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeHeader1	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeHeader2	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeHeader3	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeHeader4	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeHeader5	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeHeader6	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeIndex	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeLabel	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeLink	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeList	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeListBody	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeListItem	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeNonStructure	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeNote	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeObject	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeParagraph	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypePart	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypePrivate	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeQuote	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeReference	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeRuby	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeRubyAnnotationText	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeRubyBaseText	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeRubyPunctuation	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeSection	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeSpan	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeTOC	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeTOCI	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeTable	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeTableBody	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeTableDataCell	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeTableFooter	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeTableHeader	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeTableHeaderCell	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeTableRow	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeWarichu	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeWarichuPunctiation	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	CGPDFTagTypeWarichuText	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
 case	shipped	CGRectMaxXEdge	-	CoreFoundation, CG-named / Reference / Enumerations / Enumeration Cases	-	objc
 case	shipped	CGRectMaxYEdge	-	CoreFoundation, CG-named / Reference / Enumerations / Enumeration Cases	-	objc
 case	shipped	CGRectMinXEdge	-	CoreFoundation, CG-named / Reference / Enumerations / Enumeration Cases	-	objc
@@ -321,12 +323,12 @@ case	shipped	kCGImageByteOrderDefault	-	Reference / Enumerations / Constants	-	o
 case	open	kCGImageByteOrderMask	-	Reference / Enumerations / Constants	deprecated	objc
 case	open	kCGImageComponentFloat	-	Enumerations / Enumeration Cases	-	objc
 case	open	kCGImageComponentInteger	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGImagePixelFormatMask	-	Reference / Enumerations / Enumeration Cases	deprecated	objc
-case	open	kCGImagePixelFormatPacked	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	kCGImagePixelFormatRGB101010	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	kCGImagePixelFormatRGB555	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	kCGImagePixelFormatRGB565	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	kCGImagePixelFormatRGBCIF10	-	Reference / Enumerations / Enumeration Cases	-	objc
+case	struck	kCGImagePixelFormatMask	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	kCGImagePixelFormatPacked	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	kCGImagePixelFormatRGB101010	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	kCGImagePixelFormatRGB555	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	kCGImagePixelFormatRGB565	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	kCGImagePixelFormatRGBCIF10	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
 case	shipped	kCGInterpolationDefault	-	Opaque Types / Drawing Images and PDF Content / Constants	-	objc
 case	shipped	kCGInterpolationHigh	-	Opaque Types / Drawing Images and PDF Content / Constants	-	objc
 case	shipped	kCGInterpolationLow	-	Opaque Types / Drawing Images and PDF Content / Constants	-	objc
@@ -472,13 +474,13 @@ case	open	kCGTextFillStrokeClip	-	Opaque Types / Drawing Text / Constants	-	objc
 case	open	kCGTextInvisible	-	Opaque Types / Drawing Text / Constants	-	objc
 case	open	kCGTextStroke	-	Opaque Types / Drawing Text / Constants	-	objc
 case	open	kCGTextStrokeClip	-	Opaque Types / Drawing Text / Constants	-	objc
-case	open	kCGToneMappingDefault	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	kCGToneMappingEXRGamma	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	kCGToneMappingHeadroomAdaptiveGainCurve	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	kCGToneMappingITURecommended	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	kCGToneMappingImageSpecificLumaScaling	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	kCGToneMappingNone	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	kCGToneMappingReferenceWhiteBased	-	Reference / Enumerations / Enumeration Cases	-	objc
+case	struck	kCGToneMappingDefault	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	kCGToneMappingEXRGamma	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	kCGToneMappingHeadroomAdaptiveGainCurve	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	kCGToneMappingITURecommended	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	kCGToneMappingImageSpecificLumaScaling	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	kCGToneMappingNone	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
+case	struck	kCGToneMappingReferenceWhiteBased	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
 case	open	kCGTornOffMenuWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
 case	open	kCGUtilityWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
 case	open	kCGWindowImageBestResolution	-	Services / Data Types / Type Properties	-	objc
@@ -527,7 +529,7 @@ enum	shipped	CGGradientDrawingOptions	-	Opaque Types / Drawing Gradients and Sha
 enum	shipped	CGImageAlphaInfo	-	Opaque Types / Examining an image	-	objc
 enum	shipped	CGImageByteOrderInfo	-	Reference / Enumerations	-	objc
 enum	open	CGImageComponentInfo	-	Enumerations	-	objc
-enum	open	CGImagePixelFormatInfo	-	Reference / Enumerations	-	objc
+enum	struck	CGImagePixelFormatInfo	-	Reference / Enumerations	after-10.6	objc
 enum	shipped	CGInterpolationQuality	-	Opaque Types / Drawing Images and PDF Content	-	objc
 enum	shipped	CGLineCap	-	Opaque Types / Constants	-	objc
 enum	shipped	CGLineJoin	-	Opaque Types / Constants	-	objc
@@ -537,7 +539,7 @@ enum	open	CGPDFAccessPermissions	-	Reference / Structures	-	objc
 enum	open	CGPDFBox	-	Opaque Types / Abstract Types for PDF Document Content / Constants	-	objc
 enum	open	CGPDFDataFormat	-	Opaque Types / Abstract Types for PDF Document Content / Constants	-	objc
 enum	open	CGPDFObjectType	-	Opaque Types / Abstract Types for PDF Document Content / Constants	-	objc
-enum	open	CGPDFTagType	-	Reference / Enumerations	-	objc
+enum	struck	CGPDFTagType	-	Reference / Enumerations	after-10.6	objc
 enum	shipped	CGPathDrawingMode	-	Opaque Types / Drawing the Current Graphics Path	-	objc
 enum	shipped	CGPathElementType	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
 enum	shipped	CGPatternTiling	-	Opaque Types / Constants	-	objc
@@ -547,7 +549,7 @@ enum	open	CGScrollEventUnit	-	Services / Constants	-	objc
 enum	open	CGScrollPhase	-	Reference / Enumerations	-	objc
 enum	open	CGTextDrawingMode	-	Opaque Types / Drawing Text	-	objc
 enum	open	CGTextEncoding	-	Opaque Types / Constants	deprecated	objc
-enum	open	CGToneMapping	-	Reference / Enumerations	-	objc
+enum	struck	CGToneMapping	-	Reference / Enumerations	after-10.6	objc
 enum	open	CGWindowBackingType	-	Services / Data Types	-	objc
 enum	open	CGWindowImageOption	-	Services / Data Types	-	objc
 enum	open	CGWindowLevelKey	-	Services / Data Types / Window levels	-	objc
@@ -555,7 +557,7 @@ enum	open	CGWindowListOption	-	Services / Data Types	-	objc
 enum	open	CGWindowSharingType	-	Services / Data Types	-	objc
 func	open	CGAcquireDisplayFadeReservation	-	Services / Display Fade Effects	-	objc
 func	shipped	CGAffineTransformConcat	-	Reference / Modifying Affine Transformations	-	objc
-func	open	CGAffineTransformDecompose	-	Reference / Functions	-	objc
+func	struck	CGAffineTransformDecompose	-	Reference / Functions	after-10.6	objc
 func	shipped	CGAffineTransformEqualToTransform	-	Reference / Evaluating Affine Transforms	-	objc
 func	shipped	CGAffineTransformInvert	-	Reference / Modifying Affine Transformations	-	objc
 func	shipped	CGAffineTransformIsIdentity	-	Reference / Evaluating Affine Transforms	-	objc
@@ -563,14 +565,14 @@ func	shipped	CGAffineTransformMake	-	Reference / Creating an Affine Transformati
 func	shipped	CGAffineTransformMakeRotation	-	Reference / Creating an Affine Transformation Matrix	-	objc
 func	shipped	CGAffineTransformMakeScale	-	Reference / Creating an Affine Transformation Matrix	-	objc
 func	shipped	CGAffineTransformMakeTranslation	-	Reference / Creating an Affine Transformation Matrix	-	objc
-func	open	CGAffineTransformMakeWithComponents	-	Reference / Functions	-	objc
+func	struck	CGAffineTransformMakeWithComponents	-	Reference / Functions	after-10.6	objc
 func	shipped	CGAffineTransformRotate	-	Reference / Modifying Affine Transformations	-	objc
 func	shipped	CGAffineTransformScale	-	Reference / Modifying Affine Transformations	-	objc
 func	shipped	CGAffineTransformTranslate	-	Reference / Modifying Affine Transformations	-	objc
 func	open	CGAssociateMouseAndMouseCursorPosition	-	Services / Controlling the Mouse Cursor	-	objc
 func	open	CGBeginDisplayConfiguration	-	Services / Configuring Displays	-	objc
 func	shipped	CGBitmapContextCreate	-	Functions	-	objc
-func	open	CGBitmapContextCreateAdaptive	-	Functions	-	objc
+func	struck	CGBitmapContextCreateAdaptive	-	Functions	after-10.6	objc
 func	open	CGBitmapContextCreateImage	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
 func	open	CGBitmapContextCreateWithData	-	Functions	-	objc
 func	shipped	CGBitmapContextGetAlphaInfo	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
@@ -582,16 +584,16 @@ func	shipped	CGBitmapContextGetColorSpace	-	Opaque Types / Managing a Bitmap Gra
 func	shipped	CGBitmapContextGetData	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
 func	shipped	CGBitmapContextGetHeight	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
 func	shipped	CGBitmapContextGetWidth	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
-func	open	CGBitmapInfoMake	-	Functions	-	objc
+func	struck	CGBitmapInfoMake	-	Functions	after-10.6	objc
 func	open	CGCancelDisplayConfiguration	-	Services / Configuring Displays	-	objc
 func	open	CGCaptureAllDisplays	-	Services / Capturing and Releasing Displays	-	objc
 func	open	CGCaptureAllDisplaysWithOptions	-	Services / Capturing and Releasing Displays	-	objc
-func	open	CGColorConversionInfoConvertData	-	Reference / Functions	-	objc
-func	open	CGColorConversionInfoCreate	-	Opaque Types / Creating a Color Conversion	-	objc
-func	open	CGColorConversionInfoCreateForToneMapping	-	Functions	deprecated	objc
-func	open	CGColorConversionInfoCreateFromList	-	Opaque Types / Creating a Color Conversion	-	objc
-func	open	CGColorConversionInfoCreateFromListWithArguments	-	Reference / Functions	-	objc
-func	open	CGColorConversionInfoCreateWithOptions	-	Opaque Types / Creating a Color Conversion	-	objc
+func	struck	CGColorConversionInfoConvertData	-	Reference / Functions	after-10.6	objc
+func	struck	CGColorConversionInfoCreate	-	Opaque Types / Creating a Color Conversion	after-10.6	objc
+func	struck	CGColorConversionInfoCreateForToneMapping	-	Functions	after-10.6	objc
+func	struck	CGColorConversionInfoCreateFromList	-	Opaque Types / Creating a Color Conversion	after-10.6	objc
+func	struck	CGColorConversionInfoCreateFromListWithArguments	-	Reference / Functions	after-10.6	objc
+func	struck	CGColorConversionInfoCreateWithOptions	-	Opaque Types / Creating a Color Conversion	after-10.6	objc
 func	open	CGColorConversionInfoGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGColorCreate	-	Opaque Types / Creating Colors	-	objc
 func	shipped	CGColorCreateCopy	-	Opaque Types / Creating Colors	-	objc
@@ -599,51 +601,51 @@ func	shipped	CGColorCreateCopyByMatchingToColorSpace	-	Opaque Types / Converting
 func	shipped	CGColorCreateCopyWithAlpha	-	Opaque Types / Creating Colors	-	objc
 func	open	CGColorCreateGenericCMYK	-	Opaque Types / Creating Colors	-	objc
 func	shipped	CGColorCreateGenericGray	-	Opaque Types / Creating Colors	-	objc
-func	open	CGColorCreateGenericGrayGamma2_2	-	Opaque Types / Creating Colors	-	objc
+func	struck	CGColorCreateGenericGrayGamma2_2	-	Opaque Types / Creating Colors	after-10.6	objc
 func	shipped	CGColorCreateGenericRGB	-	Opaque Types / Creating Colors	-	objc
-func	open	CGColorCreateSRGB	-	Opaque Types / Creating Colors	-	objc
-func	open	CGColorCreateWithContentHeadroom	-	Functions	-	objc
+func	struck	CGColorCreateSRGB	-	Opaque Types / Creating Colors	after-10.6	objc
+func	struck	CGColorCreateWithContentHeadroom	-	Functions	after-10.6	objc
 func	shipped	CGColorCreateWithPattern	-	Opaque Types / Creating Colors	-	objc
 func	shipped	CGColorEqualToColor	-	Opaque Types / Examining a Color	-	objc
 func	shipped	CGColorGetAlpha	-	Opaque Types / Examining a Color	-	objc
 func	shipped	CGColorGetColorSpace	-	Opaque Types / Examining a Color	-	objc
 func	shipped	CGColorGetComponents	-	Opaque Types / Examining a Color	-	objc
 func	open	CGColorGetConstantColor	-	Opaque Types / Creating Colors	-	objc
-func	open	CGColorGetContentHeadroom	-	Functions	-	objc
+func	struck	CGColorGetContentHeadroom	-	Functions	after-10.6	objc
 func	shipped	CGColorGetNumberOfComponents	-	Opaque Types / Examining a Color	-	objc
 func	shipped	CGColorGetPattern	-	Opaque Types / Examining a Color	-	objc
 func	open	CGColorGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGColorRelease	-	Opaque Types / Retaining and Releasing Color Objects	-	objc
 func	shipped	CGColorRetain	-	Opaque Types / Retaining and Releasing Color Objects	-	objc
-func	open	CGColorSpaceCopyBaseColorSpace	-	Reference / Functions	-	objc
-func	open	CGColorSpaceCopyICCData	-	Opaque Types / Examining a Color Space	-	objc
+func	struck	CGColorSpaceCopyBaseColorSpace	-	Reference / Functions	after-10.6	objc
+func	struck	CGColorSpaceCopyICCData	-	Opaque Types / Examining a Color Space	after-10.6	objc
 func	open	CGColorSpaceCopyICCProfile	-	Opaque Types / Examining a Color Space	deprecated	objc
 func	open	CGColorSpaceCopyName	-	Opaque Types / Examining a Color Space	-	objc
-func	open	CGColorSpaceCopyPropertyList	-	Opaque Types / Examining a Color Space	-	objc
+func	struck	CGColorSpaceCopyPropertyList	-	Opaque Types / Examining a Color Space	after-10.6	objc
 func	shipped	CGColorSpaceCreateCalibratedGray	-	Opaque Types / Creating Color Spaces	-	objc
 func	shipped	CGColorSpaceCreateCalibratedRGB	-	Opaque Types / Creating Color Spaces	-	objc
-func	open	CGColorSpaceCreateCopyWithStandardRange	-	Reference / Functions	-	objc
+func	struck	CGColorSpaceCreateCopyWithStandardRange	-	Reference / Functions	after-10.6	objc
 func	shipped	CGColorSpaceCreateDeviceCMYK	-	Opaque Types / Creating Color Spaces	-	objc
 func	shipped	CGColorSpaceCreateDeviceGray	-	Opaque Types / Creating Color Spaces	-	objc
 func	shipped	CGColorSpaceCreateDeviceRGB	-	Opaque Types / Creating Color Spaces	-	objc
-func	open	CGColorSpaceCreateExtended	-	Reference / Functions	-	objc
-func	open	CGColorSpaceCreateExtendedLinearized	-	Reference / Functions	-	objc
+func	struck	CGColorSpaceCreateExtended	-	Reference / Functions	after-10.6	objc
+func	struck	CGColorSpaceCreateExtendedLinearized	-	Reference / Functions	after-10.6	objc
 func	shipped	CGColorSpaceCreateICCBased	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceCreateIndexed	-	Opaque Types / Creating Color Spaces	-	objc
 func	shipped	CGColorSpaceCreateLab	-	Opaque Types / Creating Color Spaces	-	objc
-func	open	CGColorSpaceCreateLinearized	-	Reference / Functions	-	objc
+func	struck	CGColorSpaceCreateLinearized	-	Reference / Functions	after-10.6	objc
 func	shipped	CGColorSpaceCreatePattern	-	Opaque Types / Creating Color Spaces	-	objc
-func	open	CGColorSpaceCreateWithColorSyncProfile	-	Reference / Functions	-	objc
+func	struck	CGColorSpaceCreateWithColorSyncProfile	-	Reference / Functions	after-10.6	objc
 func	shipped	CGColorSpaceCreateWithICCData	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceCreateWithICCProfile	-	Opaque Types / Creating Color Spaces	deprecated	objc
 func	shipped	CGColorSpaceCreateWithName	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceCreateWithPlatformColorSpace	-	Opaque Types / Creating Color Spaces	deprecated	objc
-func	open	CGColorSpaceCreateWithPropertyList	-	Opaque Types / Creating Color Spaces	-	objc
+func	struck	CGColorSpaceCreateWithPropertyList	-	Opaque Types / Creating Color Spaces	after-10.6	objc
 func	open	CGColorSpaceGetBaseColorSpace	-	Opaque Types / Examining a Color Space	-	objc
 func	open	CGColorSpaceGetColorTable	-	Opaque Types / Examining a Color Space	-	objc
 func	open	CGColorSpaceGetColorTableCount	-	Opaque Types / Examining a Color Space	-	objc
 func	shipped	CGColorSpaceGetModel	-	Opaque Types / Examining a Color Space	-	objc
-func	open	CGColorSpaceGetName	-	Reference / Functions	-	objc
+func	struck	CGColorSpaceGetName	-	Reference / Functions	after-10.6	objc
 func	shipped	CGColorSpaceGetNumberOfComponents	-	Opaque Types / Examining a Color Space	-	objc
 func	open	CGColorSpaceGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGColorSpaceIsHDR	-	Reference / Functions	-	objc
@@ -654,7 +656,7 @@ func	shipped	CGColorSpaceRelease	-	Opaque Types / Retaining and Releasing Color 
 func	shipped	CGColorSpaceRetain	-	Opaque Types / Retaining and Releasing Color Spaces	-	objc
 func	shipped	CGColorSpaceSupportsOutput	-	Opaque Types / Examining a Color Space	-	objc
 func	shipped	CGColorSpaceUsesExtendedRange	-	Reference / Functions	-	objc
-func	open	CGColorSpaceUsesITUR_2100TF	-	Reference / Functions	-	objc
+func	struck	CGColorSpaceUsesITUR_2100TF	-	Reference / Functions	after-10.6	objc
 func	open	CGCompleteDisplayConfiguration	-	Services / Configuring Displays	-	objc
 func	open	CGConfigureDisplayFadeEffect	-	Services / Display Fade Effects	-	objc
 func	open	CGConfigureDisplayMirrorOfDisplay	-	Services / Configuring Displays	-	objc
@@ -692,7 +694,7 @@ func	shipped	CGContextConvertSizeToUserSpace	-	Opaque Types / Converting Between
 func	open	CGContextCopyPath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	shipped	CGContextDrawConicGradient	-	Reference / Functions	-	objc
 func	shipped	CGContextDrawImage	-	Opaque Types / Drawing Images and PDF Content	-	objc
-func	open	CGContextDrawImageApplyingToneMapping	-	Reference / Functions	-	objc
+func	struck	CGContextDrawImageApplyingToneMapping	-	Reference / Functions	after-10.6	objc
 func	open	CGContextDrawLayerAtPoint	-	Opaque Types / Drawing Core Graphics Layers	-	objc
 func	open	CGContextDrawLayerInRect	-	Opaque Types / Drawing Core Graphics Layers	-	objc
 func	shipped	CGContextDrawLinearGradient	-	Opaque Types / Drawing Gradients and Shadings	-	objc
@@ -713,8 +715,8 @@ func	open	CGContextFillRects	-	Opaque Types / Drawing Shapes	-	objc
 func	shipped	CGContextFlush	-	Opaque Types / Managing a Graphics Context	-	objc
 func	shipped	CGContextGetCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
 func	shipped	CGContextGetClipBoundingBox	-	Opaque Types / Working with the Current Clipping Path	-	objc
-func	open	CGContextGetContentToneMappingInfo	-	Functions	-	objc
-func	open	CGContextGetEDRTargetHeadroom	-	Reference / Functions	-	objc
+func	struck	CGContextGetContentToneMappingInfo	-	Functions	after-10.6	objc
+func	struck	CGContextGetEDRTargetHeadroom	-	Reference / Functions	after-10.6	objc
 func	shipped	CGContextGetInterpolationQuality	-	Opaque Types / Drawing Images and PDF Content	-	objc
 func	shipped	CGContextGetPathBoundingBox	-	Opaque Types / Examining the Current Graphics Path	-	objc
 func	shipped	CGContextGetPathCurrentPoint	-	Opaque Types / Examining the Current Graphics Path	-	objc
@@ -743,8 +745,8 @@ func	shipped	CGContextSetBlendMode	-	Opaque Types / Managing a Graphics Context	
 func	open	CGContextSetCMYKFillColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetCMYKStrokeColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetCharacterSpacing	-	Opaque Types / Drawing Text	-	objc
-func	open	CGContextSetContentToneMappingInfo	-	Functions	-	objc
-func	open	CGContextSetEDRTargetHeadroom	-	Reference / Functions	-	objc
+func	struck	CGContextSetContentToneMappingInfo	-	Functions	after-10.6	objc
+func	struck	CGContextSetEDRTargetHeadroom	-	Reference / Functions	after-10.6	objc
 func	open	CGContextSetFillColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetFillColorSpace	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	shipped	CGContextSetFillColorWithColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
@@ -789,7 +791,7 @@ func	shipped	CGContextStrokePath	-	Opaque Types / Drawing the Current Graphics P
 func	shipped	CGContextStrokeRect	-	Opaque Types / Drawing Shapes	-	objc
 func	shipped	CGContextStrokeRectWithWidth	-	Opaque Types / Drawing Shapes	-	objc
 func	shipped	CGContextSynchronize	-	Opaque Types / Managing a Graphics Context	-	objc
-func	open	CGContextSynchronizeAttributes	-	Functions	-	objc
+func	struck	CGContextSynchronizeAttributes	-	Functions	after-10.6	objc
 func	shipped	CGContextTranslateCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
 func	open	CGConvertColorDataWithFormat	-	Reference / Functions	-	objc
 func	open	CGCursorIsDrawnInFramebuffer	-	Services / Controlling the Mouse Cursor	deprecated	objc
@@ -807,11 +809,11 @@ func	shipped	CGDataProviderCreateWithCFData	-	Opaque Types / Creating Direct-Acc
 func	shipped	CGDataProviderCreateWithData	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 func	shipped	CGDataProviderCreateWithFilename	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 func	open	CGDataProviderCreateWithURL	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
-func	open	CGDataProviderGetInfo	-	Reference / Functions	-	objc
+func	struck	CGDataProviderGetInfo	-	Reference / Functions	after-10.6	objc
 func	open	CGDataProviderGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGDataProviderRelease	-	Opaque Types / Retaining and Releasing Data Providers	-	objc
 func	shipped	CGDataProviderRetain	-	Opaque Types / Retaining and Releasing Data Providers	-	objc
-func	open	CGDirectDisplayCopyCurrentMetalDevice	-	Reference / Functions	-	objc
+func	struck	CGDirectDisplayCopyCurrentMetalDevice	-	Reference / Functions	after-10.6	objc
 func	open	CGDisplayAvailableModes	-	Services / Creating and Managing Display Modes	deprecated	objc
 func	open	CGDisplayBestModeForParameters	-	Services / Creating and Managing Display Modes	deprecated	objc
 func	open	CGDisplayBestModeForParametersAndRefreshRate	-	Services / Creating and Managing Display Modes	deprecated	objc
@@ -846,8 +848,8 @@ func	open	CGDisplayModeCopyPixelEncoding	-	Services / Getting Information About 
 func	open	CGDisplayModeGetHeight	-	Services / Getting Information About a Display Mode	-	objc
 func	open	CGDisplayModeGetIODisplayModeID	-	Services / Getting Information About a Display Mode	-	objc
 func	open	CGDisplayModeGetIOFlags	-	Services / Getting Information About a Display Mode	-	objc
-func	open	CGDisplayModeGetPixelHeight	-	Services / Data Types / Instance Properties	-	objc
-func	open	CGDisplayModeGetPixelWidth	-	Services / Data Types / Instance Properties	-	objc
+func	struck	CGDisplayModeGetPixelHeight	-	Services / Data Types / Instance Properties	after-10.6	objc
+func	struck	CGDisplayModeGetPixelWidth	-	Services / Data Types / Instance Properties	after-10.6	objc
 func	open	CGDisplayModeGetRefreshRate	-	Services / Getting Information About a Display Mode	-	objc
 func	open	CGDisplayModeGetTypeID	-	Services / Getting Information About a Display Mode	-	objc
 func	open	CGDisplayModeGetWidth	-	Services / Getting Information About a Display Mode	-	objc
@@ -884,7 +886,7 @@ func	open	CGDisplaySwitchToMode	-	Services / Creating and Managing Display Modes
 func	open	CGDisplayUnitNumber	-	Services / Getting the Display Configuration	-	objc
 func	open	CGDisplayUsesOpenGLAcceleration	-	Services / Getting the Display Configuration	-	objc
 func	open	CGDisplayVendorNumber	-	Services / Getting the Display Configuration	-	objc
-func	open	CGEXRToneMappingGammaGetDefaultOptions	-	Functions	-	objc
+func	struck	CGEXRToneMappingGammaGetDefaultOptions	-	Functions	after-10.6	objc
 func	open	CGEnableEventStateCombining	-	Services / Deprecated Functions	deprecated	objc
 func	open	CGErrorSetCallback	-	Reference / Functions	-	objc
 func	open	CGEventCreate	-	Services / Working With Events	-	objc
@@ -894,7 +896,7 @@ func	open	CGEventCreateFromData	-	Services / Working With Events	-	objc
 func	open	CGEventCreateKeyboardEvent	-	Services / Working With Events	-	objc
 func	open	CGEventCreateMouseEvent	-	Services / Working With Events	-	objc
 func	open	CGEventCreateScrollWheelEvent	-	Services / Working With Events	-	objc
-func	open	CGEventCreateScrollWheelEvent2	-	Services / Data Types / Initializers	-	objc
+func	struck	CGEventCreateScrollWheelEvent2	-	Services / Data Types / Initializers	after-10.6	objc
 func	open	CGEventCreateSourceFromEvent	-	Services / Working With Events	-	objc
 func	open	CGEventGetDoubleValueField	-	Services / Working With Events	-	objc
 func	open	CGEventGetFlags	-	Services / Working With Events	-	objc
@@ -908,7 +910,7 @@ func	open	CGEventKeyboardGetUnicodeString	-	Services / Working With Events	-	obj
 func	open	CGEventKeyboardSetUnicodeString	-	Services / Working With Events	-	objc
 func	open	CGEventPost	-	Services / Working With Event Taps	-	objc
 func	open	CGEventPostToPSN	-	Services / Working With Event Taps	-	objc
-func	open	CGEventPostToPid	-	Services / Data Types / Instance Methods	-	objc
+func	struck	CGEventPostToPid	-	Services / Data Types / Instance Methods	after-10.6	objc
 func	open	CGEventSetDoubleValueField	-	Services / Working With Events	-	objc
 func	open	CGEventSetFlags	-	Services / Working With Events	-	objc
 func	open	CGEventSetIntegerValueField	-	Services / Working With Events	-	objc
@@ -936,7 +938,7 @@ func	open	CGEventSourceSetPixelsPerLine	-	Services / Working With Event Sources	
 func	open	CGEventSourceSetUserData	-	Services / Working With Event Sources	-	objc
 func	open	CGEventTapCreate	-	Services / Working With Event Taps	-	objc
 func	open	CGEventTapCreateForPSN	-	Services / Working With Event Taps	-	objc
-func	open	CGEventTapCreateForPid	-	Services / Data Types / Type Methods	-	objc
+func	struck	CGEventTapCreateForPid	-	Services / Data Types / Type Methods	after-10.6	objc
 func	open	CGEventTapEnable	-	Services / Working With Event Taps	-	objc
 func	open	CGEventTapIsEnabled	-	Services / Working With Event Taps	-	objc
 func	open	CGEventTapPostEvent	-	Services / Working With Event Taps	-	objc
@@ -985,21 +987,21 @@ func	open	CGGetLastMouseDelta	-	Services / Controlling the Mouse Cursor	-	objc
 func	open	CGGetOnlineDisplayList	-	Services / Finding Displays	-	objc
 func	shipped	CGGradientCreateWithColorComponents	-	Opaque Types / Creating Gradient Instances	-	objc
 func	shipped	CGGradientCreateWithColors	-	Opaque Types / Creating Gradient Instances	-	objc
-func	open	CGGradientCreateWithContentHeadroom	-	Functions	-	objc
-func	open	CGGradientGetContentHeadroom	-	Functions	-	objc
+func	struck	CGGradientCreateWithContentHeadroom	-	Functions	after-10.6	objc
+func	struck	CGGradientGetContentHeadroom	-	Functions	after-10.6	objc
 func	open	CGGradientGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGGradientRelease	-	Opaque Types / Retaining and Releasing a Gradient	-	objc
 func	shipped	CGGradientRetain	-	Opaque Types / Retaining and Releasing a Gradient	-	objc
-func	open	CGImageCalculateContentAverageLightLevel	-	Opaque Types / Adopting high dynamic range (HDR)	-	objc
-func	open	CGImageCalculateContentHeadroom	-	Opaque Types / Adopting high dynamic range (HDR)	-	objc
-func	open	CGImageContainsImageSpecificToneMappingMetadata	-	Reference / Functions	-	objc
+func	struck	CGImageCalculateContentAverageLightLevel	-	Opaque Types / Adopting high dynamic range (HDR)	after-10.6	objc
+func	struck	CGImageCalculateContentHeadroom	-	Opaque Types / Adopting high dynamic range (HDR)	after-10.6	objc
+func	struck	CGImageContainsImageSpecificToneMappingMetadata	-	Reference / Functions	after-10.6	objc
 func	shipped	CGImageCreate	-	Opaque Types / Creating images	-	objc
 func	open	CGImageCreateCopy	-	Opaque Types / Copying an image	-	objc
-func	open	CGImageCreateCopyWithCalculatedHDRStats	-	Opaque Types / Adopting high dynamic range (HDR)	-	objc
+func	struck	CGImageCreateCopyWithCalculatedHDRStats	-	Opaque Types / Adopting high dynamic range (HDR)	after-10.6	objc
 func	open	CGImageCreateCopyWithColorSpace	-	Opaque Types / Copying an image	-	objc
-func	open	CGImageCreateCopyWithContentAverageLightLevel	-	Opaque Types / Adopting high dynamic range (HDR)	-	objc
-func	open	CGImageCreateCopyWithContentHeadroom	-	Reference / Functions	-	objc
-func	open	CGImageCreateWithContentHeadroom	-	Opaque Types / Creating images	-	objc
+func	struck	CGImageCreateCopyWithContentAverageLightLevel	-	Opaque Types / Adopting high dynamic range (HDR)	after-10.6	objc
+func	struck	CGImageCreateCopyWithContentHeadroom	-	Reference / Functions	after-10.6	objc
+func	struck	CGImageCreateWithContentHeadroom	-	Opaque Types / Creating images	after-10.6	objc
 func	open	CGImageCreateWithImageInRect	-	Opaque Types / Creating images by modifying an image	-	objc
 func	shipped	CGImageCreateWithJPEGDataProvider	-	Opaque Types / Creating images	-	objc
 func	open	CGImageCreateWithMask	-	Opaque Types / Creating images by modifying an image	-	objc
@@ -1009,25 +1011,25 @@ func	shipped	CGImageGetAlphaInfo	-	Opaque Types / Examining an image	-	objc
 func	shipped	CGImageGetBitmapInfo	-	Opaque Types / Examining an image	-	objc
 func	shipped	CGImageGetBitsPerComponent	-	Opaque Types / Examining an image	-	objc
 func	shipped	CGImageGetBitsPerPixel	-	Opaque Types / Examining an image	-	objc
-func	open	CGImageGetByteOrderInfo	-	Reference / Functions	-	objc
+func	struck	CGImageGetByteOrderInfo	-	Reference / Functions	after-10.6	objc
 func	shipped	CGImageGetBytesPerRow	-	Opaque Types / Examining an image	-	objc
 func	shipped	CGImageGetColorSpace	-	Opaque Types / Examining an image	-	objc
-func	open	CGImageGetContentAverageLightLevel	-	Opaque Types / Adopting high dynamic range (HDR)	-	objc
-func	open	CGImageGetContentHeadroom	-	Opaque Types / Adopting high dynamic range (HDR)	-	objc
+func	struck	CGImageGetContentAverageLightLevel	-	Opaque Types / Adopting high dynamic range (HDR)	after-10.6	objc
+func	struck	CGImageGetContentHeadroom	-	Opaque Types / Adopting high dynamic range (HDR)	after-10.6	objc
 func	shipped	CGImageGetDataProvider	-	Opaque Types / Examining an image	-	objc
 func	open	CGImageGetDecode	-	Opaque Types / Examining an image	-	objc
 func	shipped	CGImageGetHeight	-	Opaque Types / Examining an image	-	objc
-func	open	CGImageGetPixelFormatInfo	-	Reference / Functions	-	objc
+func	struck	CGImageGetPixelFormatInfo	-	Reference / Functions	after-10.6	objc
 func	shipped	CGImageGetRenderingIntent	-	Opaque Types / Examining an image	-	objc
 func	shipped	CGImageGetShouldInterpolate	-	Opaque Types / Examining an image	-	objc
 func	open	CGImageGetTypeID	-	Opaque Types / Working with Core Foundation types	-	objc
-func	open	CGImageGetUTType	-	Opaque Types / Examining an image	-	objc
+func	struck	CGImageGetUTType	-	Opaque Types / Examining an image	after-10.6	objc
 func	shipped	CGImageGetWidth	-	Opaque Types / Examining an image	-	objc
 func	open	CGImageIsMask	-	Opaque Types / Examining an image	-	objc
 func	open	CGImageMaskCreate	-	Opaque Types / Creating image masks	-	objc
 func	shipped	CGImageRelease	-	Opaque Types / Retaining and releasing images	-	objc
 func	shipped	CGImageRetain	-	Opaque Types / Retaining and releasing images	-	objc
-func	open	CGImageShouldToneMap	-	Reference / Functions	-	objc
+func	struck	CGImageShouldToneMap	-	Reference / Functions	after-10.6	objc
 func	open	CGInhibitLocalEvents	-	Services / Deprecated Functions	deprecated	objc
 func	open	CGLayerCreateWithContext	-	Opaque Types / Creating Layer Objects	-	objc
 func	open	CGLayerGetContext	-	Opaque Types / Examining a Layer	-	objc
@@ -1037,7 +1039,7 @@ func	open	CGLayerRelease	-	Opaque Types / Retaining and Releasing Color Objects	
 func	open	CGLayerRetain	-	Opaque Types / Retaining and Releasing Color Objects	-	objc
 func	open	CGMainDisplayID	-	Services / Finding Displays	-	objc
 func	open	CGOpenGLDisplayMaskToDisplayID	-	Services / Finding Displays	-	objc
-func	open	CGPDFArrayApplyBlock	-	Reference / Functions	-	objc
+func	struck	CGPDFArrayApplyBlock	-	Reference / Functions	after-10.6	objc
 func	open	CGPDFArrayGetArray	-	Opaque Types / Getting Data from a PDF Array	-	objc
 func	open	CGPDFArrayGetBoolean	-	Opaque Types / Getting Data from a PDF Array	-	objc
 func	open	CGPDFArrayGetCount	-	Opaque Types / Getting Data from a PDF Array	-	objc
@@ -1056,27 +1058,27 @@ func	open	CGPDFContentStreamGetStreams	-	Opaque Types / Getting Data from a PDF 
 func	open	CGPDFContentStreamRelease	-	Opaque Types / Retaining and Releasing a PDF Content Stream Object	-	objc
 func	open	CGPDFContentStreamRetain	-	Opaque Types / Retaining and Releasing a PDF Content Stream Object	-	objc
 func	open	CGPDFContextAddDestinationAtPoint	-	Opaque Types / Managing a PDF Graphics Context	-	objc
-func	open	CGPDFContextAddDocumentMetadata	-	Opaque Types / Managing a PDF Graphics Context	-	objc
-func	open	CGPDFContextAddStructureTreeRootChild	-	Functions	-	objc
-func	open	CGPDFContextBeginMarkedContentSequence	-	Functions	-	objc
-func	open	CGPDFContextBeginNonStructuralMarkedContentSequence	-	Functions	-	objc
-func	open	CGPDFContextBeginObjectReference	-	Functions	-	objc
+func	struck	CGPDFContextAddDocumentMetadata	-	Opaque Types / Managing a PDF Graphics Context	after-10.6	objc
+func	struck	CGPDFContextAddStructureTreeRootChild	-	Functions	after-10.6	objc
+func	struck	CGPDFContextBeginMarkedContentSequence	-	Functions	after-10.6	objc
+func	struck	CGPDFContextBeginNonStructuralMarkedContentSequence	-	Functions	after-10.6	objc
+func	struck	CGPDFContextBeginObjectReference	-	Functions	after-10.6	objc
 func	open	CGPDFContextBeginPage	-	Opaque Types / Managing a PDF Graphics Context	-	objc
-func	open	CGPDFContextBeginTag	-	Reference / Functions	-	objc
+func	struck	CGPDFContextBeginTag	-	Reference / Functions	after-10.6	objc
 func	open	CGPDFContextClose	-	Opaque Types / Managing a PDF Graphics Context	-	objc
 func	open	CGPDFContextCreate	-	Opaque Types / Creating PDF Graphics Contexts	-	objc
 func	open	CGPDFContextCreateWithURL	-	Opaque Types / Creating PDF Graphics Contexts	-	objc
-func	open	CGPDFContextEndMarkedContentSequence	-	Functions	-	objc
-func	open	CGPDFContextEndObjectReference	-	Functions	-	objc
+func	struck	CGPDFContextEndMarkedContentSequence	-	Functions	after-10.6	objc
+func	struck	CGPDFContextEndObjectReference	-	Functions	after-10.6	objc
 func	open	CGPDFContextEndPage	-	Opaque Types / Managing a PDF Graphics Context	-	objc
-func	open	CGPDFContextEndTag	-	Reference / Functions	-	objc
+func	struck	CGPDFContextEndTag	-	Reference / Functions	after-10.6	objc
 func	open	CGPDFContextSetDestinationForRect	-	Opaque Types / Managing a PDF Graphics Context	-	objc
 func	open	CGPDFContextSetIDTree	-	Reference / Functions	-	objc
-func	open	CGPDFContextSetOutline	-	Reference / Functions	-	objc
+func	struck	CGPDFContextSetOutline	-	Reference / Functions	after-10.6	objc
 func	open	CGPDFContextSetPageTagStructureTree	-	Reference / Functions	-	objc
 func	open	CGPDFContextSetParentTree	-	Reference / Functions	-	objc
 func	open	CGPDFContextSetURLForRect	-	Opaque Types / Managing a PDF Graphics Context	-	objc
-func	open	CGPDFDictionaryApplyBlock	-	Reference / Functions	-	objc
+func	struck	CGPDFDictionaryApplyBlock	-	Reference / Functions	after-10.6	objc
 func	open	CGPDFDictionaryApplyFunction	-	Opaque Types / Applying a Function to All Entries	-	objc
 func	open	CGPDFDictionaryGetArray	-	Opaque Types / Getting Data from a Dictionary	-	objc
 func	open	CGPDFDictionaryGetBoolean	-	Opaque Types / Getting Data from a Dictionary	-	objc
@@ -1092,7 +1094,7 @@ func	open	CGPDFDocumentAllowsCopying	-	Opaque Types / Working with an Encrypted 
 func	open	CGPDFDocumentAllowsPrinting	-	Opaque Types / Working with an Encrypted PDF Document	-	objc
 func	open	CGPDFDocumentCreateWithProvider	-	Opaque Types / Creating PDF Documents	-	objc
 func	open	CGPDFDocumentCreateWithURL	-	Opaque Types / Creating PDF Documents	-	objc
-func	open	CGPDFDocumentGetAccessPermissions	-	Reference / Functions	-	objc
+func	struck	CGPDFDocumentGetAccessPermissions	-	Reference / Functions	after-10.6	objc
 func	open	CGPDFDocumentGetArtBox	-	Opaque Types / Getting Page Information	deprecated	objc
 func	open	CGPDFDocumentGetBleedBox	-	Opaque Types / Getting Page Information	deprecated	objc
 func	open	CGPDFDocumentGetCatalog	-	Opaque Types / Examining a PDF Document	-	objc
@@ -1101,7 +1103,7 @@ func	open	CGPDFDocumentGetID	-	Opaque Types / Examining a PDF Document	-	objc
 func	open	CGPDFDocumentGetInfo	-	Opaque Types / Examining a PDF Document	-	objc
 func	open	CGPDFDocumentGetMediaBox	-	Opaque Types / Getting Page Information	deprecated	objc
 func	open	CGPDFDocumentGetNumberOfPages	-	Opaque Types / Examining a PDF Document	-	objc
-func	open	CGPDFDocumentGetOutline	-	Reference / Functions	-	objc
+func	struck	CGPDFDocumentGetOutline	-	Reference / Functions	after-10.6	objc
 func	open	CGPDFDocumentGetPage	-	Opaque Types / Examining a PDF Document	-	objc
 func	open	CGPDFDocumentGetRotationAngle	-	Opaque Types / Getting Page Information	deprecated	objc
 func	open	CGPDFDocumentGetTrimBox	-	Opaque Types / Getting Page Information	deprecated	objc
@@ -1112,8 +1114,8 @@ func	open	CGPDFDocumentIsUnlocked	-	Opaque Types / Working with an Encrypted PDF
 func	open	CGPDFDocumentRelease	-	Opaque Types / Retaining and Releasing PDF Documents	-	objc
 func	open	CGPDFDocumentRetain	-	Opaque Types / Retaining and Releasing PDF Documents	-	objc
 func	open	CGPDFDocumentUnlockWithPassword	-	Opaque Types / Working with an Encrypted PDF Document	-	objc
-func	open	CGPDFMarkedContentItemRelease	-	Functions	-	objc
-func	open	CGPDFMarkedContentItemRetain	-	Functions	-	objc
+func	struck	CGPDFMarkedContentItemRelease	-	Functions	after-10.6	objc
+func	struck	CGPDFMarkedContentItemRetain	-	Functions	after-10.6	objc
 func	open	CGPDFObjectGetType	-	Opaque Types / Abstract Types for PDF Document Content / Getting Object Types and Values	-	objc
 func	open	CGPDFObjectGetValue	-	Opaque Types / Abstract Types for PDF Document Content / Getting Object Types and Values	-	objc
 func	open	CGPDFOperatorTableCreate	-	Opaque Types / Abstract Types for PDF Document Content / Creating a PDF Operator Table	-	objc
@@ -1150,40 +1152,40 @@ func	open	CGPDFStringCopyDate	-	Opaque Types / Abstract Types for PDF Document C
 func	open	CGPDFStringCopyTextString	-	Opaque Types / Abstract Types for PDF Document Content / Converting PDF Strings	-	objc
 func	open	CGPDFStringGetBytePtr	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF String Data	-	objc
 func	open	CGPDFStringGetLength	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF String Data	-	objc
-func	open	CGPDFStructureElementAddMarkedContentItem	-	Functions	-	objc
-func	open	CGPDFStructureElementAddStructureElement	-	Functions	-	objc
-func	open	CGPDFStructureElementCreate	-	Functions	-	objc
-func	open	CGPDFStructureElementRelease	-	Functions	-	objc
-func	open	CGPDFStructureElementRetain	-	Functions	-	objc
-func	open	CGPDFStructureElementSetActualText	-	Functions	-	objc
-func	open	CGPDFStructureElementSetAlternativeText	-	Functions	-	objc
-func	open	CGPDFStructureElementSetExpansionText	-	Functions	-	objc
-func	open	CGPDFStructureElementSetLanguageIdentifier	-	Functions	-	objc
-func	open	CGPDFStructureElementSetTitle	-	Functions	-	objc
-func	open	CGPDFTagTypeGetName	-	Reference / Enumerations / Instance Properties	-	objc
+func	struck	CGPDFStructureElementAddMarkedContentItem	-	Functions	after-10.6	objc
+func	struck	CGPDFStructureElementAddStructureElement	-	Functions	after-10.6	objc
+func	struck	CGPDFStructureElementCreate	-	Functions	after-10.6	objc
+func	struck	CGPDFStructureElementRelease	-	Functions	after-10.6	objc
+func	struck	CGPDFStructureElementRetain	-	Functions	after-10.6	objc
+func	struck	CGPDFStructureElementSetActualText	-	Functions	after-10.6	objc
+func	struck	CGPDFStructureElementSetAlternativeText	-	Functions	after-10.6	objc
+func	struck	CGPDFStructureElementSetExpansionText	-	Functions	after-10.6	objc
+func	struck	CGPDFStructureElementSetLanguageIdentifier	-	Functions	after-10.6	objc
+func	struck	CGPDFStructureElementSetTitle	-	Functions	after-10.6	objc
+func	struck	CGPDFTagTypeGetName	-	Reference / Enumerations / Instance Properties	after-10.6	objc
 func	open	CGPSConverterAbort	-	Opaque Types / Miscellaneous Functions	-	objc
 func	open	CGPSConverterConvert	-	Opaque Types / Miscellaneous Functions	-	objc
 func	open	CGPSConverterCreate	-	Opaque Types / Initializers	-	objc
 func	open	CGPSConverterGetTypeID	-	Opaque Types / Type Properties	-	objc
 func	open	CGPSConverterIsConverting	-	Opaque Types / Miscellaneous Functions	-	objc
 func	shipped	CGPathApply	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
-func	open	CGPathApplyWithBlock	-	Reference / Functions	-	objc
+func	struck	CGPathApplyWithBlock	-	Reference / Functions	after-10.6	objc
 func	open	CGPathContainsPoint	-	Opaque Types / Examining a Graphics Path	-	objc
 func	open	CGPathCreateCopy	-	Opaque Types / Copying a Graphics Path	-	objc
 func	shipped	CGPathCreateCopyByDashingPath	-	Opaque Types / Copying a Graphics Path	-	objc
 func	shipped	CGPathCreateCopyByFlattening	-	Reference / Functions	-	objc
-func	open	CGPathCreateCopyByIntersectingPath	-	Reference / Functions	-	objc
-func	open	CGPathCreateCopyByNormalizing	-	Reference / Functions	-	objc
+func	struck	CGPathCreateCopyByIntersectingPath	-	Reference / Functions	after-10.6	objc
+func	struck	CGPathCreateCopyByNormalizing	-	Reference / Functions	after-10.6	objc
 func	shipped	CGPathCreateCopyByStrokingPath	-	Opaque Types / Copying a Graphics Path	-	objc
-func	open	CGPathCreateCopyBySubtractingPath	-	Reference / Functions	-	objc
-func	open	CGPathCreateCopyBySymmetricDifferenceOfPath	-	Reference / Functions	-	objc
-func	open	CGPathCreateCopyByTransformingPath	-	Opaque Types / Copying a Graphics Path	-	objc
-func	open	CGPathCreateCopyByUnioningPath	-	Reference / Functions	-	objc
-func	open	CGPathCreateCopyOfLineByIntersectingPath	-	Reference / Functions	-	objc
-func	open	CGPathCreateCopyOfLineBySubtractingPath	-	Reference / Functions	-	objc
+func	struck	CGPathCreateCopyBySubtractingPath	-	Reference / Functions	after-10.6	objc
+func	struck	CGPathCreateCopyBySymmetricDifferenceOfPath	-	Reference / Functions	after-10.6	objc
+func	struck	CGPathCreateCopyByTransformingPath	-	Opaque Types / Copying a Graphics Path	after-10.6	objc
+func	struck	CGPathCreateCopyByUnioningPath	-	Reference / Functions	after-10.6	objc
+func	struck	CGPathCreateCopyOfLineByIntersectingPath	-	Reference / Functions	after-10.6	objc
+func	struck	CGPathCreateCopyOfLineBySubtractingPath	-	Reference / Functions	after-10.6	objc
 func	open	CGPathCreateMutableCopy	-	Opaque Types / Copying a Graphics Path	-	objc
-func	open	CGPathCreateMutableCopyByTransformingPath	-	Opaque Types / Copying a Graphics Path	-	objc
-func	open	CGPathCreateSeparateComponents	-	Reference / Functions	-	objc
+func	struck	CGPathCreateMutableCopyByTransformingPath	-	Opaque Types / Copying a Graphics Path	after-10.6	objc
+func	struck	CGPathCreateSeparateComponents	-	Reference / Functions	after-10.6	objc
 func	shipped	CGPathCreateWithEllipseInRect	-	Opaque Types / Creating Graphics Paths	-	objc
 func	shipped	CGPathCreateWithRect	-	Opaque Types / Creating Graphics Paths	-	objc
 func	shipped	CGPathCreateWithRoundedRect	-	Opaque Types / Creating Graphics Paths	-	objc
@@ -1192,7 +1194,7 @@ func	shipped	CGPathGetBoundingBox	-	Opaque Types / Examining a Graphics Path	-	o
 func	shipped	CGPathGetCurrentPoint	-	Opaque Types / Examining a Graphics Path	-	objc
 func	shipped	CGPathGetPathBoundingBox	-	Opaque Types / Examining a Graphics Path	-	objc
 func	open	CGPathGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
-func	open	CGPathIntersectsPath	-	Reference / Functions	-	objc
+func	struck	CGPathIntersectsPath	-	Reference / Functions	after-10.6	objc
 func	shipped	CGPathIsEmpty	-	Opaque Types / Examining a Graphics Path	-	objc
 func	open	CGPathIsRect	-	Opaque Types / Examining a Graphics Path	-	objc
 func	shipped	CGPathRelease	-	Opaque Types / Retaining and Releasing a Path	-	objc
@@ -1209,9 +1211,9 @@ func	open	CGPointMakeWithDictionaryRepresentation	-	Reference / Creating a Geome
 func	open	CGPostKeyboardEvent	-	Services / Deprecated Functions	deprecated	objc
 func	open	CGPostMouseEvent	-	Services / Deprecated Functions	deprecated	objc
 func	open	CGPostScrollWheelEvent	-	Services / Deprecated Functions	deprecated	objc
-func	open	CGPreflightListenEventAccess	-	Reference / Functions	-	objc
-func	open	CGPreflightPostEventAccess	-	Reference / Functions	-	objc
-func	open	CGPreflightScreenCaptureAccess	-	Reference / Functions	-	objc
+func	struck	CGPreflightListenEventAccess	-	Reference / Functions	after-10.6	objc
+func	struck	CGPreflightPostEventAccess	-	Reference / Functions	after-10.6	objc
+func	struck	CGPreflightScreenCaptureAccess	-	Reference / Functions	after-10.6	objc
 func	shipped	CGRectApplyAffineTransform	-	Reference / Applying Affine Transformations	-	objc
 func	shipped	CGRectContainsPoint	-	Reference / Checking for Membership	-	objc
 func	shipped	CGRectContainsRect	-	Reference / Checking for Membership	-	objc
@@ -1242,15 +1244,15 @@ func	open	CGRegisterScreenRefreshCallback	-	Services / Getting Information About
 func	open	CGReleaseAllDisplays	-	Services / Capturing and Releasing Displays	-	objc
 func	open	CGReleaseDisplayFadeReservation	-	Services / Display Fade Effects	-	objc
 func	open	CGReleaseScreenRefreshRects	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
-func	open	CGRenderingBufferLockBytePtr	-	Functions	-	objc
-func	open	CGRenderingBufferProviderCreate	-	Functions	-	objc
-func	open	CGRenderingBufferProviderCreateWithCFData	-	Functions	-	objc
-func	open	CGRenderingBufferProviderGetSize	-	Functions	-	objc
-func	open	CGRenderingBufferProviderGetTypeID	-	Functions	-	objc
-func	open	CGRenderingBufferUnlockBytePtr	-	Functions	-	objc
-func	open	CGRequestListenEventAccess	-	Reference / Functions	-	objc
-func	open	CGRequestPostEventAccess	-	Reference / Functions	-	objc
-func	open	CGRequestScreenCaptureAccess	-	Reference / Functions	-	objc
+func	struck	CGRenderingBufferLockBytePtr	-	Functions	after-10.6	objc
+func	struck	CGRenderingBufferProviderCreate	-	Functions	after-10.6	objc
+func	struck	CGRenderingBufferProviderCreateWithCFData	-	Functions	after-10.6	objc
+func	struck	CGRenderingBufferProviderGetSize	-	Functions	after-10.6	objc
+func	struck	CGRenderingBufferProviderGetTypeID	-	Functions	after-10.6	objc
+func	struck	CGRenderingBufferUnlockBytePtr	-	Functions	after-10.6	objc
+func	struck	CGRequestListenEventAccess	-	Reference / Functions	after-10.6	objc
+func	struck	CGRequestPostEventAccess	-	Reference / Functions	after-10.6	objc
+func	struck	CGRequestScreenCaptureAccess	-	Reference / Functions	after-10.6	objc
 func	open	CGRestorePermanentDisplayConfiguration	-	Services / Configuring Displays	-	objc
 func	open	CGScreenRegisterMoveCallback	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
 func	open	CGScreenUnregisterMoveCallback	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
@@ -1261,10 +1263,10 @@ func	open	CGSetDisplayTransferByTable	-	Services / Adjusting the Display Gamma	-
 func	open	CGSetLocalEventsFilterDuringSuppressionState	-	Services / Deprecated Functions	deprecated	objc
 func	open	CGSetLocalEventsSuppressionInterval	-	Services / Deprecated Functions	deprecated	objc
 func	shipped	CGShadingCreateAxial	-	Opaque Types / Creating Shading Objects	-	objc
-func	open	CGShadingCreateAxialWithContentHeadroom	-	Functions	-	objc
+func	struck	CGShadingCreateAxialWithContentHeadroom	-	Functions	after-10.6	objc
 func	shipped	CGShadingCreateRadial	-	Opaque Types / Creating Shading Objects	-	objc
-func	open	CGShadingCreateRadialWithContentHeadroom	-	Functions	-	objc
-func	open	CGShadingGetContentHeadroom	-	Functions	-	objc
+func	struck	CGShadingCreateRadialWithContentHeadroom	-	Functions	after-10.6	objc
+func	struck	CGShadingGetContentHeadroom	-	Functions	after-10.6	objc
 func	open	CGShadingGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGShadingRelease	-	Opaque Types / Retaining and Releasing Shading Objects	-	objc
 func	shipped	CGShadingRetain	-	Opaque Types / Retaining and Releasing Shading Objects	-	objc
@@ -1287,7 +1289,7 @@ func	open	CGWindowListCreateDescriptionFromArray	-	Services / Getting Window Inf
 func	open	CGWindowListCreateImage	-	Functions	-	objc
 func	open	CGWindowListCreateImageFromArray	-	Functions	-	objc
 func	open	CGWindowServerCFMachPort	-	Services / Getting Window Server Information	deprecated	objc
-func	open	CGWindowServerCreateServerPort	-	Reference / Functions	-	objc
+func	struck	CGWindowServerCreateServerPort	-	Reference / Functions	after-10.6	objc
 macro	shipped	CGAffineTransformMake	-	Reference / Macros	-	objc
 macro	open	CGDisplayNoErr	-	Reference / Constants	-	objc
 macro	open	CGEventMaskBit	-	Services / Working With Event Taps	-	objc
@@ -1479,7 +1481,7 @@ typealias	open	CGPDFDictionaryApplierFunction	-	Opaque Types / Callbacks	-	objc
 typealias	open	CGPDFDictionaryRef	-	Opaque Types / Data Types	-	objc
 typealias	open	CGPDFDocumentRef	-	Opaque Types	-	objc
 typealias	open	CGPDFInteger	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	-	objc
-typealias	open	CGPDFMarkedContentItemRef	-	Type Aliases	-	objc
+typealias	struck	CGPDFMarkedContentItemRef	-	Type Aliases	after-10.6	objc
 typealias	open	CGPDFObjectRef	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	-	objc
 typealias	open	CGPDFOperatorCallback	-	Opaque Types / Abstract Types for PDF Document Content / Callbacks	-	objc
 typealias	open	CGPDFOperatorTableRef	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	-	objc
@@ -1521,30 +1523,30 @@ var	shipped	CGRectInfinite	-	Reference / Constants	-	objc
 var	shipped	CGRectNull	-	Reference / Constants	-	objc
 var	shipped	CGRectZero	-	Reference / Constants / Constants	-	objc
 var	shipped	CGSizeZero	-	Reference / Constants / Constants	-	objc
-var	open	kCGAdaptiveMaximumBitDepth	-	Variables	-	objc
+var	struck	kCGAdaptiveMaximumBitDepth	-	Variables	after-10.6	objc
 var	open	kCGBitmapByteOrder16Host	-	Opaque Types / Constants / Constants	deprecated	objc
 var	open	kCGBitmapByteOrder32Host	-	Opaque Types / Constants / Constants	deprecated	objc
 var	open	kCGColorBlack	-	Opaque Types / Getting System Colors	-	objc
 var	open	kCGColorClear	-	Opaque Types / Getting System Colors	-	objc
-var	open	kCGColorConversionBlackPointCompensation	-	Opaque Types / Type Properties	-	objc
-var	open	kCGColorConversionTRCSize	-	Opaque Types / Converting Between Color Spaces	-	objc
-var	open	kCGColorSpaceACESCGLinear	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
+var	struck	kCGColorConversionBlackPointCompensation	-	Opaque Types / Type Properties	after-10.6	objc
+var	struck	kCGColorConversionTRCSize	-	Opaque Types / Converting Between Color Spaces	after-10.6	objc
+var	struck	kCGColorSpaceACESCGLinear	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
 var	shipped	kCGColorSpaceAdobeRGB1998	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceCoreMedia709	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
+var	struck	kCGColorSpaceCoreMedia709	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
 var	shipped	kCGColorSpaceDCIP3	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	shipped	kCGColorSpaceDisplayP3	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceDisplayP3_HLG	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceDisplayP3_PQ	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceDisplayP3_PQ_EOTF	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
-var	open	kCGColorSpaceExtendedDisplayP3	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceExtendedGray	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceExtendedITUR_2020	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceExtendedLinearDisplayP3	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceExtendedLinearGray	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceExtendedLinearITUR_2020	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceExtendedLinearSRGB	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
+var	struck	kCGColorSpaceDisplayP3_HLG	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
+var	struck	kCGColorSpaceDisplayP3_PQ	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
+var	struck	kCGColorSpaceDisplayP3_PQ_EOTF	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
+var	struck	kCGColorSpaceExtendedDisplayP3	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
+var	struck	kCGColorSpaceExtendedGray	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
+var	struck	kCGColorSpaceExtendedITUR_2020	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
+var	struck	kCGColorSpaceExtendedLinearDisplayP3	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
+var	struck	kCGColorSpaceExtendedLinearGray	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
+var	struck	kCGColorSpaceExtendedLinearITUR_2020	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
+var	struck	kCGColorSpaceExtendedLinearSRGB	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
 var	open	kCGColorSpaceExtendedRange	-	Reference / Constants	-	objc
-var	open	kCGColorSpaceExtendedSRGB	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
+var	struck	kCGColorSpaceExtendedSRGB	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
 var	open	kCGColorSpaceGenericCMYK	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	open	kCGColorSpaceGenericGray	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
 var	shipped	kCGColorSpaceGenericGrayGamma2_2	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
@@ -1553,26 +1555,26 @@ var	open	kCGColorSpaceGenericRGB	-	Opaque Types / Accessing System-Defined Color
 var	open	kCGColorSpaceGenericRGBLinear	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	shipped	kCGColorSpaceGenericXYZ	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	shipped	kCGColorSpaceITUR_2020	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceITUR_2020_HLG	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
-var	open	kCGColorSpaceITUR_2020_PQ	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
-var	open	kCGColorSpaceITUR_2020_PQ_EOTF	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
-var	open	kCGColorSpaceITUR_2020_sRGBGamma	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceITUR_2100_HLG	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceITUR_2100_PQ	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceITUR_709	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceITUR_709_HLG	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceITUR_709_PQ	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
+var	struck	kCGColorSpaceITUR_2020_HLG	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
+var	struck	kCGColorSpaceITUR_2020_PQ	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
+var	struck	kCGColorSpaceITUR_2020_PQ_EOTF	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
+var	struck	kCGColorSpaceITUR_2020_sRGBGamma	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
+var	struck	kCGColorSpaceITUR_2100_HLG	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
+var	struck	kCGColorSpaceITUR_2100_PQ	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
+var	struck	kCGColorSpaceITUR_709	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
+var	struck	kCGColorSpaceITUR_709_HLG	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
+var	struck	kCGColorSpaceITUR_709_PQ	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
 var	shipped	kCGColorSpaceLinearDisplayP3	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	shipped	kCGColorSpaceLinearGray	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceLinearITUR_2020	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
+var	struck	kCGColorSpaceLinearITUR_2020	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
 var	shipped	kCGColorSpaceLinearSRGB	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	shipped	kCGColorSpaceROMMRGB	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	shipped	kCGColorSpaceSRGB	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	open	kCGColorWhite	-	Opaque Types / Getting System Colors	-	objc
-var	open	kCGContentAverageLightLevel	-	Variables	-	objc
-var	open	kCGContentAverageLightLevelNits	-	Variables	-	objc
-var	open	kCGDefaultHDRImageContentHeadroom	-	Reference / Constants	-	objc
-var	open	kCGDisplayShowDuplicateLowResolutionModes	-	Reference / Constants	-	objc
+var	struck	kCGContentAverageLightLevel	-	Variables	after-10.6	objc
+var	struck	kCGContentAverageLightLevelNits	-	Variables	after-10.6	objc
+var	struck	kCGDefaultHDRImageContentHeadroom	-	Reference / Constants	after-10.6	objc
+var	struck	kCGDisplayShowDuplicateLowResolutionModes	-	Reference / Constants	after-10.6	objc
 var	open	kCGDisplayStreamColorSpace	-	Variables	-	objc
 var	open	kCGDisplayStreamDestinationRect	-	Variables	-	objc
 var	open	kCGDisplayStreamMinimumFrameTime	-	Variables	-	objc
@@ -1584,13 +1586,13 @@ var	open	kCGDisplayStreamYCbCrMatrix	-	Variables	-	objc
 var	open	kCGDisplayStreamYCbCrMatrix_ITU_R_601_4	-	Services / Data Types / Type Properties	-	objc
 var	open	kCGDisplayStreamYCbCrMatrix_ITU_R_709_2	-	Services / Data Types / Type Properties	-	objc
 var	open	kCGDisplayStreamYCbCrMatrix_SMPTE_240M_1995	-	Services / Data Types / Type Properties	-	objc
-var	open	kCGDynamicRangeConstrained	-	Variables	-	objc
-var	open	kCGDynamicRangeHigh	-	Variables	-	objc
-var	open	kCGDynamicRangeStandard	-	Variables	-	objc
-var	open	kCGEXRToneMappingGammaDefog	-	Reference / Constants	-	objc
-var	open	kCGEXRToneMappingGammaExposure	-	Reference / Constants	-	objc
-var	open	kCGEXRToneMappingGammaKneeHigh	-	Reference / Constants	-	objc
-var	open	kCGEXRToneMappingGammaKneeLow	-	Reference / Constants	-	objc
+var	struck	kCGDynamicRangeConstrained	-	Variables	after-10.6	objc
+var	struck	kCGDynamicRangeHigh	-	Variables	after-10.6	objc
+var	struck	kCGDynamicRangeStandard	-	Variables	after-10.6	objc
+var	struck	kCGEXRToneMappingGammaDefog	-	Reference / Constants	after-10.6	objc
+var	struck	kCGEXRToneMappingGammaExposure	-	Reference / Constants	after-10.6	objc
+var	struck	kCGEXRToneMappingGammaKneeHigh	-	Reference / Constants	after-10.6	objc
+var	struck	kCGEXRToneMappingGammaKneeLow	-	Reference / Constants	after-10.6	objc
 var	open	kCGFontIndexInvalid	-	Opaque Types / Working with Font Tables / Constants	-	objc
 var	open	kCGFontIndexMax	-	Opaque Types / Working with Font Tables / Constants	-	objc
 var	open	kCGFontVariationAxisDefaultValue	-	Opaque Types / Working with Variations / Constants	-	objc
@@ -1598,14 +1600,14 @@ var	open	kCGFontVariationAxisMaxValue	-	Opaque Types / Working with Variations /
 var	open	kCGFontVariationAxisMinValue	-	Opaque Types / Working with Variations / Constants	-	objc
 var	open	kCGFontVariationAxisName	-	Opaque Types / Working with Variations / Constants	-	objc
 var	open	kCGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	-	objc
-var	open	kCGPDFContextAccessPermissions	-	Reference / Constants	-	objc
+var	struck	kCGPDFContextAccessPermissions	-	Reference / Constants	after-10.6	objc
 var	open	kCGPDFContextAllowsCopying	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	-	objc
 var	open	kCGPDFContextAllowsPrinting	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	-	objc
 var	open	kCGPDFContextArtBox	-	Opaque Types / Creating PDF Graphics Contexts / Box Keys	-	objc
 var	open	kCGPDFContextAuthor	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	-	objc
 var	open	kCGPDFContextBleedBox	-	Opaque Types / Creating PDF Graphics Contexts / Box Keys	-	objc
-var	open	kCGPDFContextCreateLinearizedPDF	-	Reference / Constants	-	objc
-var	open	kCGPDFContextCreatePDFA	-	Reference / Constants	-	objc
+var	struck	kCGPDFContextCreateLinearizedPDF	-	Reference / Constants	after-10.6	objc
+var	struck	kCGPDFContextCreatePDFA	-	Reference / Constants	after-10.6	objc
 var	open	kCGPDFContextCreator	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	-	objc
 var	open	kCGPDFContextCropBox	-	Opaque Types / Creating PDF Graphics Contexts / Box Keys	-	objc
 var	open	kCGPDFContextEncryptionKeyLength	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	-	objc
@@ -1618,25 +1620,25 @@ var	open	kCGPDFContextSubject	-	Opaque Types / Creating PDF Graphics Contexts / 
 var	open	kCGPDFContextTitle	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	-	objc
 var	open	kCGPDFContextTrimBox	-	Opaque Types / Creating PDF Graphics Contexts / Box Keys	-	objc
 var	open	kCGPDFContextUserPassword	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	-	objc
-var	open	kCGPDFOutlineChildren	-	Reference / Constants	-	objc
-var	open	kCGPDFOutlineDestination	-	Reference / Constants	-	objc
-var	open	kCGPDFOutlineDestinationRect	-	Reference / Constants	-	objc
-var	open	kCGPDFOutlineTitle	-	Reference / Constants	-	objc
-var	open	kCGPDFTagPropertyActualText	-	Reference / Data Types / Type Properties	-	objc
-var	open	kCGPDFTagPropertyAlternativeText	-	Reference / Data Types / Type Properties	-	objc
-var	open	kCGPDFTagPropertyLanguageText	-	Reference / Data Types / Type Properties	-	objc
-var	open	kCGPDFTagPropertyTitleText	-	Reference / Data Types / Type Properties	-	objc
+var	struck	kCGPDFOutlineChildren	-	Reference / Constants	after-10.6	objc
+var	struck	kCGPDFOutlineDestination	-	Reference / Constants	after-10.6	objc
+var	struck	kCGPDFOutlineDestinationRect	-	Reference / Constants	after-10.6	objc
+var	struck	kCGPDFOutlineTitle	-	Reference / Constants	after-10.6	objc
+var	struck	kCGPDFTagPropertyActualText	-	Reference / Data Types / Type Properties	after-10.6	objc
+var	struck	kCGPDFTagPropertyAlternativeText	-	Reference / Data Types / Type Properties	after-10.6	objc
+var	struck	kCGPDFTagPropertyLanguageText	-	Reference / Data Types / Type Properties	after-10.6	objc
+var	struck	kCGPDFTagPropertyTitleText	-	Reference / Data Types / Type Properties	after-10.6	objc
 var	open	kCGPDFXDestinationOutputProfile	-	Opaque Types / Creating PDF Graphics Contexts / Output Intent Keys	-	objc
 var	open	kCGPDFXInfo	-	Opaque Types / Creating PDF Graphics Contexts / Output Intent Keys	-	objc
 var	open	kCGPDFXOutputCondition	-	Opaque Types / Creating PDF Graphics Contexts / Output Intent Keys	-	objc
 var	open	kCGPDFXOutputConditionIdentifier	-	Opaque Types / Creating PDF Graphics Contexts / Output Intent Keys	-	objc
 var	open	kCGPDFXOutputIntentSubtype	-	Opaque Types / Creating PDF Graphics Contexts / Output Intent Keys	-	objc
 var	open	kCGPDFXRegistryName	-	Opaque Types / Creating PDF Graphics Contexts / Output Intent Keys	-	objc
-var	open	kCGPreferredDynamicRange	-	Variables	-	objc
-var	open	kCGSkipBoostToHDR	-	Reference / Constants	-	objc
-var	open	kCGUse100nitsHLGOOTF	-	Reference / Constants	-	objc
-var	open	kCGUseBT1886ForCoreVideoGamma	-	Reference / Constants	-	objc
-var	open	kCGUseLegacyHDREcosystem	-	Reference / Constants	-	objc
+var	struck	kCGPreferredDynamicRange	-	Variables	after-10.6	objc
+var	struck	kCGSkipBoostToHDR	-	Reference / Constants	after-10.6	objc
+var	struck	kCGUse100nitsHLGOOTF	-	Reference / Constants	after-10.6	objc
+var	struck	kCGUseBT1886ForCoreVideoGamma	-	Reference / Constants	after-10.6	objc
+var	struck	kCGUseLegacyHDREcosystem	-	Reference / Constants	after-10.6	objc
 var	open	kCGWindowAlpha	-	Services / Constants / Constants	-	objc
 var	open	kCGWindowBackingLocationVideoMemory	-	Services / Constants / Constants	-	objc
 var	open	kCGWindowBounds	-	Services / Constants / Constants	-	objc
