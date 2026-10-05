@@ -231,8 +231,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers(): a claim can only follow an assertion that held */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-CODER %s ok\n", name);
@@ -242,6 +245,17 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		       detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSCoder", "encodeObject:forKey:") — the behavioural claim, piggybacked on the check above it: it
+ * takes no condition of its own and prints only when the last check's result was true. See
+ * tools/foundation-cov.py; the claims are filtered against the ledger so none of them is inert. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* A BYTE-RUN SEARCH, spelled out rather than reaching for `memmem`, so the probe depends on nothing the
  * guest's libc may or may not declare. The archive is plist TEXT and a class name is ASCII, so this is the
@@ -339,11 +353,17 @@ int main(void)
 		      [NSString stringWithFormat:@"set=%@ mutable=%@",
 			backPlain != nil ? backPlain : @"(nil)",
 			backMutable != nil ? backMutable : @"(nil)"]);
+	covers("NSSet", "setWithArray:");
+	covers("NSSet", "setWithArray:");
+	covers("NSSet", "member:");
+	covers("NSSet", "containsObject:");
+	covers("NSKeyedArchiver", "archivedDataWithRootObject:");
 		check("the-set-archive-names-the-public-class",
 		      setArchive != nil &&
 		      fn_contains([setArchive bytes], [setArchive length], "NSSet") &&
 		      !fn_contains([setArchive bytes], [setArchive length], "AGSet"),
 		      @"a set's archive must name NSSet and no private concrete class");
+	covers("NSKeyedArchiver", "archivedDataWithRootObject:");
 	}
 
 	{
@@ -367,6 +387,9 @@ int main(void)
 				(unsigned long)(back != nil ? [back count] : 0),
 				(unsigned long)(back != nil ? [back countForObject:@"x"] : 0),
 				(unsigned long)(back != nil ? [back countForObject:@"y"] : 0)]);
+	covers("NSSet", "set");
+	covers("NSCountedSet", "addObject:");
+	covers("NSCountedSet", "countForObject:");
 		}
 	}
 
@@ -389,6 +412,7 @@ int main(void)
 			back != nil ? [back array] : @"(nil)",
 			(orderedArchive != nil &&
 			 fn_contains([orderedArchive bytes], [orderedArchive length], "NSOrderedSet"))]);
+	covers("NSKeyedArchiver", "archivedDataWithRootObject:");
 	}
 
 	{
@@ -485,6 +509,8 @@ int main(void)
 			(unsigned long)(objects != nil ? [objects count] : 0),
 			classEntry != nil ? [classEntry objectForKey:@"$classname"] : @"(none)",
 			classEntry != nil ? [classEntry objectForKey:@"$classes"] : @"(none)"]);
+	covers("NSKeyedArchiver", "archivedDataWithRootObject:");
+	covers("NSPropertyListSerialization", "propertyListWithData:options:format:error:");
 	}
 
 	{
@@ -500,6 +526,7 @@ int main(void)
 		check("coder-base-raises",
 		      abstract != nil && raised,
 		      raised ? @"raised" : @"the abstract NSCoder accepted a write");
+	covers("NSCoder", "encodeObject:forKey:");
 	}
 
 	/* ---- W9: the delegates, Cocoa's instance flow, and the secure transformer ---- */
@@ -721,6 +748,15 @@ int main(void)
 			      i32 == (int32_t)123456 && i64 == (int64_t)9007199254740993LL,
 			      [NSString stringWithFormat:@"arr=%@ str=%@ i32=%d i64=%lld",
 			       arr, str, (int) i32, (long long) i64]);
+	covers("NSCoder", "decodeObjectOfClass:forKey:");
+	covers("NSKeyedArchiver", "initForWritingWithMutableData:");
+	covers("NSCoder", "encodeObject:forKey:");
+	covers("NSCoder", "encodeInt32:forKey:");
+	covers("NSCoder", "encodeInt64:forKey:");
+	covers("NSKeyedArchiver", "finishEncoding");
+	covers("NSKeyedUnarchiver", "initForReadingWithData:");
+	covers("NSKeyedUnarchiver", "decodeInt32ForKey:");
+	covers("NSKeyedUnarchiver", "decodeInt64ForKey:");
 		}
 
 		/* THE REFUSAL IS THE FEATURE: the array key is NOT a string, and under the DEFAULT policy
@@ -736,6 +772,7 @@ int main(void)
 			}
 			check("coder-typed-object-door-refusal", raised,
 			      raised ? @"raised" : @"a wrong-class decode was accepted");
+	covers("NSCoder", "decodeObjectOfClass:forKey:");
 		}
 
 		/* THE POLICY DOOR: under SetErrorAndReturn the SAME refusal is a VALUE — nil, with -error set. */
@@ -747,6 +784,8 @@ int main(void)
 			check("coder-decode-failure-policy",
 			      wrong == nil && [reader error] != nil,
 			      [NSString stringWithFormat:@"value=%@ error=%@", wrong, [reader error]]);
+	covers("NSCoder", "decodeObjectOfClass:forKey:");
+	covers("NSCoder", "error");
 		}
 
 		/* THE TOP-LEVEL ERROR DOORS: a key that names nothing is nil + NSError; a key that names
@@ -761,6 +800,7 @@ int main(void)
 			      nothing == nil && missing != nil &&
 			      [something isEqualToString:@"hello"] && present == nil,
 			      [NSString stringWithFormat:@"missing=%@ present=%@", missing, something]);
+	covers("NSCoder", "decodeTopLevelObjectForKey:error:");
 		}
 	}
 
@@ -778,6 +818,9 @@ int main(void)
 		      [[root name] isEqualToString:@"root-door"] && [root count] == 9 && error == nil,
 		      [NSString stringWithFormat:@"root=%@ error=%@",
 		       [root isKindOfClass:[CoderNode class]] ? [root name] : @"(wrong class)", error]);
+	covers("NSCoder", "decodeTopLevelObjectAndReturnError:");
+	covers("NSKeyedArchiver", "archivedDataWithRootObject:");
+	covers("NSKeyedUnarchiver", "initForReadingWithData:");
 	}
 
 	{
@@ -803,6 +846,12 @@ int main(void)
 		      [dict isKindOfClass:[NSDictionary class]] && [dict count] == 1 &&
 		      [[dict objectForKey:@"k"] isEqualToString:@"v"],
 		      [NSString stringWithFormat:@"arr=%@ dict=%@", arr, dict]);
+	covers("NSCoder", "decodeArrayOfObjectsOfClass:forKey:");
+	covers("NSCoder", "decodeDictionaryWithKeysOfClass:objectsOfClass:forKey:");
+	covers("NSCoder", "encodeObject:forKey:");
+	covers("NSKeyedUnarchiver", "initForReadingWithData:");
+	covers("NSKeyedArchiver", "initForWritingWithMutableData:");
+	covers("NSKeyedArchiver", "finishEncoding");
 	}
 
 	{
@@ -823,6 +872,9 @@ int main(void)
 		}
 		check("coder-secure-coding-gate", raised,
 		      raised ? @"refused" : @"a non-NSSecureCoding class was decoded under secure coding");
+	covers("NSCoder", "decodeObjectForKey:");
+	covers("NSKeyedArchiver", "archivedDataWithRootObject:");
+	covers("NSKeyedUnarchiver", "initForReadingWithData:");
 	}
 
 	{
@@ -850,6 +902,9 @@ int main(void)
 		      [NSString stringWithFormat:@"again=%@ unseenIsNil=%d",
 		       [again isKindOfClass:[CoderNode class]] ? [again name] : @"(nil)",
 		       (int)([reader decodeObjectForKey:@"unseen"] == nil)]);
+	covers("NSCoder", "decodeObjectForKey:");
+	covers("NSCoder", "encodeConditionalObject:forKey:");
+	covers("NSCoder", "encodeObject:forKey:");
 	}
 
 	{
@@ -906,6 +961,13 @@ int main(void)
 			      [NSString stringWithFormat:@"cgp=(%g,%g) cgr=(%g,%g,%g,%g) tr=(%g,%g)",
 			       cgp.x, cgp.y, cgr.origin.x, cgr.origin.y,
 			       cgr.size.width, cgr.size.height, cgt.tx, cgt.ty]);
+	covers("NSCoder", "encodePoint:forKey:");
+	covers("NSCoder", "encodeSize:forKey:");
+	covers("NSCoder", "encodeRect:forKey:");
+	covers("NSCoder", "encodeObject:forKey:");
+	covers("NSCoder", "decodePointForKey:");
+	covers("NSCoder", "decodeSizeForKey:");
+	covers("NSCoder", "decodeRectForKey:");
 
 			/* A VALUE THE ARCHIVE DID NOT WRITE AS A BOX IS REFUSED: the door checks the class rather
 			 * than reading the wrong bytes as a structure. */
