@@ -28023,3 +28023,26 @@ the first that was measured and still wrong.
 **NOT claimed, deliberately, in the same region:** `locale-api-complete` and `characterset-api-complete` assert
 that the SELECTORS EXIST, not that anything behaves. Claiming those would be exactly the vacuity the tier
 exists to prevent, so they stay `named` - and that distinction is the whole reason the tier has three levels.
+
+**§63.247f — WHERE THE ASSERTED TIER STANDS AFTER FOUR FAMILIES (2026-10-04).** The two `--by-class` / `--check`
+readings, for the next session's starting point:
+
+    tool/foundation-cov.py --check
+      2,502 shipped selector rows — asserted 156, named 503, uncovered 1,836 distinct (baseline current, rc=0)
+
+**Four families, three probes, every one guest-verified:** collections (`foundation_collection`, 72/72 checks,
+77 claims), values (`foundation_value`, 31/31, 33 claims), strings (`foundation_string`, 167/167, 172 claims).
+**156 of 2,502 rows are PROVED.**
+
+**THE ONE THING THIS CAMPAIGN HAS PROVEN INDEPENDENTLY OF ITS OWN NUMBERS** is in a probe comment quoted in
+§63.247e's commit: three character sets were ASCII/Latin-1 approximations — `+whitespaceCharacterSet` was the
+space alone, `+uppercaseLetterCharacterSet` was `'A'-'Z'` where Apple specifies Lu AND Lt, `+letterCharacterSet`
+stopped at Latin-1 — and the api-complete inventory was GREEN throughout, because it asserts that a documented
+set EXISTS and never asserts what is IN one. That is the gap between a declaration and a behaviour, measured by
+the tree, and it is why the tier is worth its claims.
+
+**WHAT IS NOT DONE, unsentimentally:** 1,836 rows are still untouched by any test, and the asserted tier grows
+mostly by claiming what already ran. Closing the uncovered set means writing NEW assertions — the law battery
+(coherence, aliasing, ownership, sentinels, ranges) and per-selector spec cases — which is the next real unit
+rather than more of this pass. A row's `named` state is also not evidence of anything: it means a probe spelled
+the selector, nothing more.
