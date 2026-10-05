@@ -28282,3 +28282,30 @@ bug touched. The check my claim rides on (`lines-come-back-whole-and-in-order`) 
 **OPEN: two paragraph checks in foundation_enumerate_substrings fail, and it is not known whether the probe's
 expectation is stale or the paragraph doors are wrong.** That is a unit of work, not a footnote - it needs the two
 checks' expectations read against the doors' published rule before anything is changed.
+
+**§63.247q (CONTINUED) — THE PARAGRAPH RED IS A STALE PROBE, AND THE DECISIVE EVIDENCE IS THE LIBRARY'S OWN QUOTE
+OF APPLE'S SPELLING (2026-10-04).** Localized: both failing checks are ONE defect of expectation, not two, because
+`fnUnitContaining:` delegates to `fnEnumerate:` and both doors therefore answer from the same paragraph arm
+(userland/Foundation/FNTextBreaking.m ~147).
+
+WHAT THE CODE DOES: the paragraph arm splits at every CR/LF/PS, so for `one\ntwo\n\nthree\nfour\n` it yields
+`{0,4}, {4,4}, {8,1}, {9,6}, {15,4}` - five units, each a line plus its terminator, and each unit's ENCLOSING
+range is itself (a paragraph is the largest unit, so its enclosing unit is its own). That is exactly the actual
+the two checks report.
+
+WHAT THE CHECKS EXPECT: `{0,7}` for "one" and "two" (a paragraph as a RUN of lines), `{8,0}` for the blank line,
+`{9,10}` for "three"/"four", and 2 paragraphs for the two-paragraph fixture. That is the SUPERSEDED rule - and the
+file says so itself, twice. The stale comment is at the top ("A PARAGRAPH IS A RUN OF LINES with no blank line
+between them"); the correction is at ~line 94: "it used to read a paragraph as a run of lines with no blank line
+between them, and SKIPPED blank lines. IT WAS ALIGNED to Apple's three characters - CR, LF, PS - in the same unit
+... a blank line is now an EMPTY PARAGRAPH". THE LIBRARY'S OWN NOTE ALSO QUOTES THE AUTHORITY: Apple documents the
+paragraph door as text "delimited by a carriage return, newline, or paragraph separator", and Apple's header says
+`NSStringEnumerationByParagraphs` is "Equivalent to paragraphRangeForRange:". Under that rule each LF DELIMITS a
+paragraph, so "one\ntwo\n" is two paragraphs and the implementation is RIGHT.
+
+**SO THE FIX IS TO THE TWO CHECKS' EXPECTATIONS, and it is NOT done in this commit because the exact replacement
+numbers have a second question in them that has not been measured: whether the enumeration's RANGES include or
+exclude the terminating newline (the runs say {0,4} with it; the probe's stale runs say {0,7} without), and whether
+a blank line's paragraph is {8,1} or {8,0}. Those are answerable from Apple's published contract for the two
+spellings - and answering them from the implementation's current output instead would enshrine whatever it does,
+which is the one thing a parity test must never do.** Handed off as the next unit, with the localization done.
