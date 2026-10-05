@@ -28,8 +28,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-ATTRIBUTEDSTRING %s ok\n", name);
@@ -38,6 +41,15 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		printf("FOUNDATION-ATTRIBUTEDSTRING %s FAIL %s\n", name, detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSAttributedString", "string") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 static NSString *fn_A(void) { return @"A"; }
 static NSString *fn_B(void) { return @"B"; }
@@ -228,6 +240,7 @@ int main(void)
 		      [[owned allKeys] count] == 1,
 		      [NSString stringWithFormat:@"stillThere=%d keys=%lu", (int)stillThere,
 			(unsigned long)[[owned allKeys] count]]);
+	covers("NSAttributedString", "initWithAttributedString:");
 	}
 
 	/* ---- THE INVENTORY, BOTH WAYS ------------------------------------------------------------------- */
@@ -599,6 +612,9 @@ int main(void)
 			      whole.location == 0 && whole.length == 1 && [pieceValue intValue] == 2,
 			      [NSString stringWithFormat:@"piece=%@ run=%@ B=%@", [piece string], fn_r(whole),
 				pieceValue]);
+	covers("NSAttributedString", "attributedSubstringFromRange:");
+	covers("NSAttributedString", "attribute:atIndex:longestEffectiveRange:inRange:");
+	covers("NSAttributedString", "string");
 		}
 
 		{
@@ -694,6 +710,8 @@ int main(void)
 		      [[values objectAtIndex:0] isEqual:@"(null):{0, 3}"] &&
 		      [[values objectAtIndex:1] hasPrefix:@"2:"],
 		      [NSString stringWithFormat:@"forward=%@ reverse=%@ values=%@", forward, reverse, values]);
+	covers("NSAttributedString", "enumerateAttribute:inRange:options:usingBlock:");
+	covers("NSAttributedString", "enumerateAttributesInRange:options:usingBlock:");
 		check("attribute-enumeration-honours-reverse",
 		      [reverseValues count] == 2 &&
 		      [[reverseValues objectAtIndex:0] isEqual:[values objectAtIndex:1]] &&
@@ -728,6 +746,9 @@ int main(void)
 		      [[fixed string] isEqual:@"abcd"] && [fixed length] == 4,
 		      [NSString stringWithFormat:@"original=%@ copy=%@", [s attributesAtIndex:0 effectiveRange:NULL],
 			[copy attributesAtIndex:0 effectiveRange:NULL]]);
+	covers("NSAttributedString", "attributesAtIndex:effectiveRange:");
+	covers("NSAttributedString", "string");
+	covers("NSAttributedString", "initWithString:attributes:");
 	}
 
 	{
@@ -809,6 +830,7 @@ int main(void)
 		      data == nil && error != nil && description != nil &&
 		      [description rangeOfString:@"not implemented"].location != NSNotFound,
 		      [NSString stringWithFormat:@"data=%@ error=%@", data, description]);
+	covers("NSAttributedString", "dataFromRange:documentAttributes:error:");
 
 		{
 			/* THE SHELL: `{`, the `\rtf1` header, a font table, and the closing `}` as the last byte before
@@ -834,6 +856,7 @@ int main(void)
 			      fn_bytes_contain(out, "\\{") && fn_bytes_contain(out, "\\}") &&
 			      fn_bytes_contain(out, "\\\\"),
 			      @"each of `{` `}` `\\` goes out backslash-escaped");
+	covers("NSAttributedString", "RTFFromRange:documentAttributes:");
 		}
 
 		/* THE `\uN?` ESCAPE AND ITS SIGN: U+00E9 is 233, U+2014 is 8212, and U+FFFD is NEGATIVE (-3, because
@@ -907,6 +930,7 @@ int main(void)
 		check("double-click-answers-the-word-at-an-index",
 		      word.location == 0 && word.length == 5,
 		      [NSString stringWithFormat:@"doubleClick(1)=%@ (want the first word (0,5))", fn_r(word)]);
+	covers("NSAttributedString", "doubleClickAtIndex:");
 
 		/* forward from inside the first word -> the NEXT word's start (6); backward from inside the last
 		 * word -> the PREVIOUS word's start (6); at the string's end when nothing is after, UNCHANGED (15). */
@@ -914,6 +938,7 @@ int main(void)
 		      forward == 6 && backward == 6 && stuck == 15,
 		      [NSString stringWithFormat:@"forward(1)=%lu backward(8)=%lu stuck(15)=%lu (want 6, 6, 15)",
 		      (unsigned long)forward, (unsigned long)backward, (unsigned long)stuck]);
+	covers("NSAttributedString", "nextWordFromIndex:forward:");
 	}
 
 	{
@@ -931,6 +956,7 @@ int main(void)
 		      mid == 3 && start == 0 && none == NSNotFound,
 		      [NSString stringWithFormat:@"mid=%lu start=%lu none=%lu (want 3, 0, not-found)",
 		      (unsigned long)mid, (unsigned long)start, (unsigned long)none]);
+	covers("NSAttributedString", "lineBreakBeforeIndex:withinRange:");
 	}
 
 	{
@@ -949,6 +975,7 @@ int main(void)
 		      url != nil && r.location == 7 && r.length == 20 &&
 		      [[url absoluteString] isEqual:@"http://example.com/a"] && none == nil,
 		      [NSString stringWithFormat:@"url=%@ range=%@ none=%@", url, fn_r(r), none]);
+	covers("NSAttributedString", "URLAtIndex:effectiveRange:");
 	}
 
 	{
@@ -975,6 +1002,9 @@ int main(void)
 		      calls == 3 && reason != nil &&
 		      [reason rangeOfString:@"not implemented"].location != NSNotFound,
 		      [NSString stringWithFormat:@"calls=%d reason=%@", calls, reason]);
+	covers("NSAttributedString", "loadFromHTMLWithData:options:completionHandler:");
+	covers("NSAttributedString", "loadFromHTMLWithFileURL:options:completionHandler:");
+	covers("NSAttributedString", "loadFromHTMLWithString:options:completionHandler:");
 	}
 
 
