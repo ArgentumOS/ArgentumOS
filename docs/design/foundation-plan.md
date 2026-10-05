@@ -28084,3 +28084,29 @@ filter against the ledger.
 ledger carries the row under the PROPERTY's name (`fileURL`) — Apple declares it as
 `@property (readonly, getter=isFileURL) BOOL fileURL`. Three more were inert for the usual reason (NSObject's
 `-description`, `-hash`, `-isEqual:`). The tool's inert advisory is what made both visible.
+
+**§63.247h — THE SELECTOR PATTERN COULD NOT SEE A MULTI-ARGUMENT DOOR, AND IT INFLATED EVERY WORK-LIST FIGURE IN
+THIS CAMPAIGN (2026-10-04). CORRECTED STATE: asserted 322, named 645, uncovered 1,528 distinct.** All earlier
+counts in §63.247–§63.247g are SUPERSEDED - not because claims landed, but because the instrument was wrong.
+
+**THE BUG, in one line of regex.** All three selector patterns ended `[A-Za-z_][A-Za-z0-9_]*:?` - ONE colon at
+most - so a claim or a naming of any selector with TWO OR MORE arguments was invisible:
+`attributesOfItemAtPath:error:`, `copyItemAtPath:toPath:error:`,
+`stringByReplacingOccurrencesOfString:withString:options:range:`. The general form is a keyword followed by zero
+or more `:keyword` parts.
+
+**HOW IT WAS FOUND, and this is the part worth keeping: A CLAIM THAT SHOULD HAVE COUNTED DIDN'T.** The file
+manager tranche added 42 claims and the tier moved by 10 - and the uncovered list STILL NAMED
+`attributesOfItemAtPath:error:` and `copyItemAtPath:toPath:error:` among its untouched rows. A probe claiming a
+door while the census calls that door untouched is a contradiction, and it was the instrument, not the probe.
+The `named` scan had the same defect, which is why so many doors read as untouched even where probes named them
+explicitly.
+
+**MEASURED CONSEQUENCE:** asserted 235 -> 322, named 473 -> 645, **uncovered 1,787 -> 1,528**. 259 rows were on
+the work list only because of how their names are SPELLED. The inflation was not random: it was worst exactly
+where selectors have the most parts, which is where the most complex API lives.
+
+**THE RULE THIS ADDS to the instrument's own record:** a pattern is an instrument, and an instrument that
+under-matches lies in the OPTIMISTIC direction about work remaining (it invents work) - the opposite of the
+`named` tier's deliberate over-claim to the safe side. Both faults are cheap to make and only a CONTRADICTION
+between two measurements finds them.

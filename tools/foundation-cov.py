@@ -56,10 +56,17 @@ TESTDIRS = (os.path.join(ROOT, "userland/tests"),)
 # directory contains the phrase "COVERS HALF OF ...", and the instrument invented covers("HALF", "OF") out of
 # a sentence. That is the trap this tree's sweep has already recorded once (a comment that spells the keyword
 # steals the attribution), and the answer is the same: make the claim exactly one auditable call shape.
-CLAIM_HELPER_RE = re.compile(r'\bcovers\s*\(\s*"([A-Za-z_][A-Za-z0-9_]*)"\s*,\s*"([A-Za-z_][A-Za-z0-9_]*:?)"')
+# ONE KEYWORD OR SEVERAL, AND THE DIFFERENCE IS NOT COSMETIC. The first version of this pattern ended
+# `[A-Za-z_][A-Za-z0-9_]*:?` - ONE colon at most - so a claim or a naming of ANY selector with two or more
+# arguments was INVISIBLE: attributesOfItemAtPath:error:, copyItemAtPath:toPath:error:,
+# stringByReplacingOccurrencesOfString:withString:options:range:. Every multi-argument door was reported as
+# untouched even when a probe named it, and the measured consequence is below (the census's work list was
+# inflated by exactly the doors whose names have the most parts). A keyword, then zero or more `:keyword`.
+SELECTOR = r"[A-Za-z_][A-Za-z0-9_]*(?::[A-Za-z_][A-Za-z0-9_]*)*:?"
+CLAIM_HELPER_RE = re.compile(r'\bcovers\s*\(\s*"([A-Za-z_][A-Za-z0-9_]*)"\s*,\s*"(' + SELECTOR + r')"')
 # A selector NAMED in probe text: @selector(x:) , or a whole string literal that is exactly a selector.
-SEL_RE = re.compile(r"@selector\s*\(\s*([A-Za-z_][A-Za-z0-9_]*:?)")
-LIT_RE = re.compile(r'"([A-Za-z_][A-Za-z0-9_]*:?)"')
+SEL_RE = re.compile(r"@selector\s*\(\s*(" + SELECTOR + r")")
+LIT_RE = re.compile(r'"(' + SELECTOR + r')"')
 # A C comment, block or line: nothing inside one is evidence of anything (see the note in evidence()).
 COMMENT_RE = re.compile(r"/\*.*?\*/|//[^\n]*", re.S)
 
