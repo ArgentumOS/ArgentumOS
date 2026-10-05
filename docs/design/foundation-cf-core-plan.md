@@ -43,11 +43,31 @@ not absorbed.
 ## 2. Current state (all figures measured in this tree)
 
 - `userland/Foundation`: **74,935 lines** of `.m` across **170 public headers**.
-- The **toll-free-bridged** class set — the only classes a bridge can reach — is **21,474 lines,
-  ≈ 29%**: `NSString 5569, NSURL 2169, NSArray 1845, NSCalendar 1722, NSDictionary 1427,
-  NSOrderedSet 1399, NSData 1058, NSRunLoop 1016, NSCharacterSet 976, NSLocale 945, NSSet 834,
-  NSNumber 655, NSTimeZone 534, NSError 329, NSInputStream 324, NSSortDescriptor 246, NSDate 235,
-  NSCountedSet 191`.
+- The **toll-free-bridged** class set — the only classes a bridge can reach — was **21,474 lines, ≈ 29%**:
+  `NSString 5569, NSURL 2169, NSArray 1845, NSCalendar 1722, NSDictionary 1427, NSOrderedSet 1399,
+  NSData 1058, NSRunLoop 1016, NSCharacterSet 976, NSLocale 945, NSSet 834, NSNumber 655, NSTimeZone 534,
+  NSError 329, NSInputStream 324, NSSortDescriptor 246, NSDate 235, NSCountedSet 191`.
+
+  ### CORRECTED 2026-10-04 against Apple's own table, which it turns out this plan lacked
+
+  Apple publishes THE list — Table 1 of *Toll-Free Bridged Types* — and it is now transcribed at
+  `docs/reference/toll-free-bridged-types.txt` with its two reading rules. Diffed against it, THE LIST ABOVE
+  IS WRONG IN FOUR MEMBERS AND ELEVEN OMISSIONS:
+
+  * **NOT BRIDGED AT ALL: `NSRunLoop`, `NSOrderedSet`, `NSSortDescriptor`, `NSCountedSet`** — none appears in
+    any row of Table 1, and there is no `CFOrderedSet`/`CFSortDescriptor`/`CFCountedSet` to appear. Apple's own
+    prose names the first one: *"NSRunLoop is not toll-free bridged to CFRunLoop"*. Those four names carry
+    **1,016 + 1,399 + 246 + 191 = 2,852 lines, 13% of the figure above.**
+  * **MISSING: `NSAttributedString` + `NSMutableAttributedString`, `NSNull`, `NSTimer`, `NSOutputStream`, and
+    the seven `NSMutable*` forms.** The mutable classes need no separate line count, because **the archived
+    library implements each one inside its immutable sibling's file** (measured: `@implementation NSMutableArray`
+    is in NSArray.m, `NSMutableString` in NSString.m, and so on) — and **`NSTimer` is inside NSRunLoop.m**,
+    which is why that file's 1,016 lines are partly bridged after all while its namesake class is not.
+  * **AND THE FIGURE ITSELF DOES NOT REPRODUCE.** Measured from `archive/Foundation/*.m` today: **77,164**
+    lines total (the plan says 74,935) and NSString.m at **5,693** (the plan says 5,569) — the plan's numbers
+    predate the archived library's last edits. The 17 canonical classes that own their own file sum to 21,453,
+    which lands within 21 lines of the plan's 21,474 **over a different membership**: a coincidence of
+    offsetting errors, and exactly the kind that hides a scope error.
 - **The other ≈71% is untouched by this decision** — NSCoder/NSKeyedArchiver, NSFileManager,
   NSNotification, NSOperation, URL loading, text and formatting. The live work list (141 open
   methods + 45 open properties) lives almost entirely there, which is why this plan can be taken

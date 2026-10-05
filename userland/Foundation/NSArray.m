@@ -51,6 +51,13 @@ extern CFStringRef FNXCreateFormatString(const char *utf8);
  * RETAIN AND RELEASE STAY CF'S OWN. They are the half the object probe measured as working -- a CF array holds
  * an object of this library and is what ends it -- so they are copied verbatim from kCFTypeArrayCallBacks
  * rather than rewritten. Nothing about ownership changes here; only where the comparison comes from.
+ *
+ * AND APPLE WARNS ABOUT EXACTLY THIS SHAPE, in the same document that lists the bridged types: "If you install
+ * a custom callback on a Core Foundation collection you are using, including a NULL callback, its memory
+ * management behavior is undefined when accessed from Objective-C." THE DEVIATION HERE IS NARROWER THAN THE
+ * WARNING, and stating which part is deliberately taken is what keeps it narrow: only `equal` is replaced,
+ * while retain, release and copyDescription are CF's own kCFTypeArrayCallBacks values copied rather than
+ * rewritten — so the zone Apple calls undefined is the COMPARISON, and item LIFETIME stays entirely CF's.
  */
 static Boolean fnx_array_equal(const void *value1, const void *value2)
 {
