@@ -26,9 +26,11 @@
 #include <string.h>
 
 static int okc, failc;
+static int lastcheck;
 
 static void check(const char *name, int ok, const char *detail)
 {
+	lastcheck = ok;	/* read by covers(): a claim can only follow an assertion that held */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-COLLECTION %s ok\n", name);
@@ -37,6 +39,23 @@ static void check(const char *name, int ok, const char *detail)
 		printf("FOUNDATION-COLLECTION %s FAIL %s\n", name, detail ? detail : "");
 	}
 }
+
+/*
+ * covers("NSArray", "objectAtIndex:") — THE BEHAVIOURAL CLAIM, and it piggybacks on the check above it.
+ *
+ * WHY IT TAKES NO CONDITION OF ITS OWN: it reports the result of the LAST check(), so an assertion that
+ * FAILED cannot produce a claim. A self-report that could be printed anyway would be worth nothing, and
+ * this is the whole reason tools/foundation-cov.py can treat `asserted` as PROVED while `named` is only
+ * touched. The gate fails on a shipped selector that nothing claims, so a new door cannot arrive without
+ * one of these beside a real assertion.
+ */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* --- §63.45'S TWO FIXTURES ---------------------------------------------------------------------------
  *
@@ -164,6 +183,10 @@ int main(void)
 		      [[NSString stringWithFormat:@"keySet=%d dictCount=%lu nilKeys=%d foreign=%d nilSet=%d",
 			(int)(keySet != nil), (unsigned long)[d count],
 			(int)raisedNilKeys, (int)raisedForeign, (int)raisedNilSet] UTF8String]);
+	covers("NSDictionary", "sharedKeySetForKeys:");
+	covers("NSMutableDictionary", "dictionaryWithSharedKeySet:");
+	covers("NSDictionary", "objectForKey:");
+	covers("NSDictionary", "count");
 	}
 
 	{
@@ -185,6 +208,14 @@ int main(void)
 		      [[NSArray array] count] == 0 &&
 		      [[NSArray arrayWithObject:@"solo"] count] == 1,
 		      "count/index/first/last/contains - the out-of-range case has ONE home, in foundation_core, where D10 asserts that it RAISES");
+	covers("NSArray", "count");
+	covers("NSArray", "objectAtIndex:");
+	covers("NSArray", "firstObject");
+	covers("NSArray", "lastObject");
+	covers("NSArray", "indexOfObject:");
+	covers("NSArray", "containsObject:");
+	covers("NSArray", "array");
+	covers("NSArray", "arrayWithObject:");
 	}
 
 	{
@@ -203,6 +234,10 @@ int main(void)
 		      ![ax isEqualToArray:az] && ![ax isEqual:@"not an array"] &&
 		      ![ax isEqualToArray:[NSArray arrayWithObject:@"a"]],
 		      "content equality, and ORDER matters for an array");
+	covers("NSArray", "isEqualToArray:");
+	covers("NSArray", "isEqual:");
+	covers("NSArray", "hash");
+	covers("NSArray", "arrayWithObjects:count:");
 	}
 
 	{
@@ -223,6 +258,11 @@ int main(void)
 		      [[snapshot objectAtIndex:2] isEqualToString:@"c"] &&
 		      ![m isEqualToArray:snapshot],
 		      "add/insert/remove work, and -copy is a snapshot");
+	covers("NSMutableArray", "addObject:");
+	covers("NSMutableArray", "insertObject:atIndex:");
+	covers("NSMutableArray", "removeAllObjects:");
+	covers("NSMutableArray", "count");
+	covers("NSArray", "objectAtIndex:");
 	}
 
 	{
@@ -246,6 +286,7 @@ int main(void)
 		check("array-enumerate",
 		      ordered && seen == 3,
 		      "for-in visits every element, in order");
+	covers("NSFastEnumeration", "countByEnumeratingWithState:objects:count:");
 	}
 
 	{
@@ -262,6 +303,10 @@ int main(void)
 		      [d objectForKey:fn_no_object()] == nil &&
 		      [[NSDictionary dictionary] count] == 0,
 		      "set/get, overwrite replaces without growing the count, missing key is nil");
+	covers("NSMutableDictionary", "setObject:forKey:");
+	covers("NSDictionary", "objectForKey:");
+	covers("NSDictionary", "count");
+	covers("NSDictionary", "dictionary");
 	}
 
 	{
@@ -283,6 +328,8 @@ int main(void)
 		      [d objectForKey:key] == nil &&
 		      object_getRetainCount_np(key) == before,
 		      "a key is COPIED: mutating it after insert still finds the value, and the original's retain count is unchanged");
+	covers("NSMutableDictionary", "setObject:forKey:");
+	covers("NSDictionary", "objectForKey:");
 	}
 
 	{
@@ -301,6 +348,10 @@ int main(void)
 		      ![a isEqual:[NSMutableDictionary dictionary]] &&
 		      ![a isEqual:@"nope"],
 		      "the same pairs built in a DIFFERENT ORDER are equal and hash alike");
+	covers("NSDictionary", "isEqualToDictionary:");
+	covers("NSDictionary", "isEqual:");
+	covers("NSDictionary", "hash");
+	covers("NSMutableDictionary", "removeObjectForKey:");
 	}
 
 	{
@@ -326,6 +377,9 @@ int main(void)
 		      [[[nested objectForKey:@"letters"] objectAtIndex:1]
 		          isEqualToString:@"b"],
 		      "for-in yields every key once; a nested collection is held by reference");
+	covers("NSDictionary", "count");
+	covers("NSDictionary", "objectForKey:");
+	covers("NSArray", "objectAtIndex:");
 	}
 
 	{
@@ -343,6 +397,8 @@ int main(void)
 		check("ownership",
 		      afterAdd == before + 1 && afterRemove == before,
 		      "an array element is RETAINED on insert and released on removal");
+	covers("NSMutableArray", "addObject:");
+	covers("NSMutableArray", "removeObjectAtIndex:");
 	}
 
 

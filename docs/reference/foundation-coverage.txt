@@ -516,7 +516,6 @@ NSDictionary	keysOfEntriesPassingTest:	method	-keysOfEntriesPassingTest:	# needs
 NSDictionary	keysOfEntriesWithOptions:passingTest:	method	-keysOfEntriesWithOptions:passingTest:	# needs a check
 NSDictionary	keysSortedByValueWithOptions:usingComparator:	method	-keysSortedByValueWithOptions:usingComparator:	# needs a check
 NSDictionary	objectsForKeys:notFoundMarker:	method	-objectsForKeys:notFoundMarker:	# needs a check
-NSDictionary	sharedKeySetForKeys:	method	+sharedKeySetForKeys:	# needs a check
 NSDictionary	writeToFile:atomically:	method	-writeToFile:atomically:	# needs a check
 NSDictionary	writeToURL:atomically:	method	-writeToURL:atomically:	# needs a check
 NSDictionary	writeToURL:error:	method	-writeToURL:error:	# needs a check
@@ -942,7 +941,6 @@ NSMutableData	compressUsingAlgorithm:error:	method	-compressUsingAlgorithm:error
 NSMutableData	decompressUsingAlgorithm:error:	method	-decompressUsingAlgorithm:error:	# needs a check
 NSMutableData	replaceBytesInRange:withBytes:	method	-replaceBytesInRange:withBytes:	# needs a check
 NSMutableData	replaceBytesInRange:withBytes:length:	method	-replaceBytesInRange:withBytes:length:	# needs a check
-NSMutableDictionary	dictionaryWithSharedKeySet:	method	+dictionaryWithSharedKeySet:	# needs a check
 NSMutableDictionary	setObject:forKey:	method	-setObject:forKey:	# needs a check
 NSMutableDictionary	setObject:forKeyedSubscript:	method	-setObject:forKeyedSubscript:	# needs a check
 NSMutableDictionary	setValue:forKey:	method	-setValue:forKey:	# needs a check
