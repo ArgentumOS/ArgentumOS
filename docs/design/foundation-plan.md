@@ -28222,3 +28222,25 @@ even callable (the one-argument form does not exist), so the "mention" could onl
 is not a cross-check - it is a weaker instrument whose disagreements have to be adjudicated one by one, and it
 cost three of them here. The `uncovered` set is the authoritative "no code touches this" list; the useful
 sub-question ("is it callable at all?") is answered by the ledger, not by a grep.
+
+**§63.247o — WHAT `tier none` ACTUALLY MEANS, MEASURED, AND THE RETRACTION OF §63.247n (2026-10-04).** The
+baseline's own header says a row there is "a shipped selector NO test touches". THAT SENTENCE IS LOOSER THAN THE
+CODE. Measured three ways:
+ 1. the probe CALLS `-rangeOfComposedCharacterSequenceAtIndex:` at userland/tests/foundation_string.m:2197 and
+    again at 2202/2207/2216/2221/2226/2231/2236 (with `-rangeOfComposedCharacterSequencesForRange:` at 2236),
+    and those calls are real code, not prose;
+ 2. BOTH rows were listed in docs/reference/foundation-coverage.txt = tier `none`;
+ 3. `classify()` — the tool's own live verdict, read through importlib, not through my grep — now answers
+    `asserted` for those two rows AND for the four this turn's checks add.
+So a row can be CALLED and still be `none`: the naming scan registers an `@selector` or a name written as a
+literal (its docstring says "as the inventory arrays do"), NOT a message send. **`tier none` means "no probe
+ASSERTS it", which is the campaign's work queue and the right unit of work - it does not mean "nothing touches
+it".**
+
+**AND THAT RETRACTS §63.247n.** There I retracted my grep-based split of 9/13 and said the grep was strictly
+worse than the tool. It was not: the grep was closer to "is this door CALLED", which the tool does not answer at
+all, and the tool was closer to "is it ASSERTED", which the grep does not answer. Each was a weaker version of
+the other's question, and I compared them as if they were the same one. What is true: the grep must strip prose
+(a failure message and a format string were among its three false positives), and the tool's own queue is
+authoritative for the thing this campaign measures. **TWO INSTRUMENTS, TWO QUESTIONS - say which question is
+being asked before comparing their answers.**

@@ -3566,6 +3566,128 @@ NULL
 		covers("NSString", "stringByApplyingTransform:reverse:");
 	}
 
+	{
+		/* NEW ASSERTION: THE DEPRECATED RANGED C-STRING DOOR. Its contract is in the library's own note - it
+		 * converts a RANGE and REPORTS what it could not convert, and a failure leaves the buffer alone -
+		 * and the terminator is the delegated door's own rule, so it is asserted rather than assumed. */
+		NSString *s = [NSString stringWithUTF8String:"caf\xC3\xA9"];
+		char room[32], small[3];
+		NSRange left = NSMakeRange(NSNotFound, 0), failedLeft = NSMakeRange(NSNotFound, 0);
+
+		memset(room, 'Z', sizeof(room));
+		memset(small, 'Z', sizeof(small));
+		[s getCString:room maxLength:sizeof(room) range:NSMakeRange(1, 3) remainingRange:&left];
+		[s getCString:small maxLength:sizeof(small) range:NSMakeRange(0, [s length])
+		    remainingRange:&failedLeft];
+
+		check("ranged-cstring-door-converts-a-range-and-reports-the-rest",
+		      /* "afe" + the accent from unit 1: 4 bytes, terminated, and the range reported as consumed */
+		      memcmp(room, "af\xC3\xA9", 4) == 0 && room[4] == '\0' &&
+		      left.location == 4 && left.length == 0 &&
+		      /* AND A BUFFER THAT CANNOT HOLD IT IS REFUSED WITH THE WHOLE RANGE LEFT OVER and the buffer
+		       * untouched - the half the library's note calls out by name. */
+		      (unsigned char)small[0] == 'Z' && failedLeft.location == 0 && failedLeft.length == 4,
+		      [[NSString stringWithFormat:@"room=%s room4=%d left=%lu,%lu small0=%d failedLeft=%lu,%lu",
+			room, (int)room[4], (unsigned long)left.location, (unsigned long)left.length,
+			(int)(unsigned char)small[0], (unsigned long)failedLeft.location,
+			(unsigned long)failedLeft.length] UTF8String]);
+		covers("NSString", "getCString:maxLength:range:remainingRange:");
+	}
+
+	{
+		/* NEW ASSERTIONS: THE THREE NO-COPY CONSTRUCTORS. What is OBSERVABLE is asserted - the value, the
+		 * length, and for the deallocator form THE BLOCK RUNNING with the buffer's length, which
+		 * distinguishes a block that is never called from one called with the wrong count. The doors build
+		 * through the copying constructor and then release the buffer, so the string never IS the caller's
+		 * bytes; that shape is asserted by the values, and the buffer discipline by the deallocator. */
+		char *heap = (char *)malloc(8);
+		char *heap2 = (char *)malloc(8);
+		char *cstr = (char *)malloc(8);
+		__block BOOL deallocatorRan = NO;
+		__block NSUInteger deallocatorLength = 0;
+		NSString *byFreeWhenDone, *byDeallocator, *byCStringNoCopy;
+
+		memcpy(heap, "abcdefgh", 8);
+		memcpy(heap2, "xyz", 3);
+		memcpy(cstr, "OK", 3);
+		byFreeWhenDone = [[NSString alloc] initWithBytesNoCopy:heap length:5
+							      encoding:NSUTF8StringEncoding freeWhenDone:YES];
+		byDeallocator = [[NSString alloc] initWithBytesNoCopy:heap2 length:3
+							     encoding:NSUTF8StringEncoding
+							    deallocator:^(void *bytes, NSUInteger length) {
+			deallocatorRan = YES;
+			deallocatorLength = length;
+			free(bytes);
+		}];
+		byCStringNoCopy = [[NSString alloc] initWithCStringNoCopy:cstr length:2 freeWhenDone:YES];
+
+		check("no-copy-constructors-build-the-value-and-honour-their-buffers",
+		      byFreeWhenDone != nil && [byFreeWhenDone isEqualToString:@"abcde"] &&
+		      byFreeWhenDone.length == 5 &&
+		      byDeallocator != nil && [byDeallocator isEqualToString:@"xyz"] &&
+		      deallocatorRan && deallocatorLength == 3 &&
+		      byCStringNoCopy != nil && [byCStringNoCopy isEqualToString:@"OK"] &&
+		      byCStringNoCopy.length == 2,
+		      [[NSString stringWithFormat:@"freeWhenDone=%@ deallocator=%@ ran=%d len=%lu cStringNoCopy=%@",
+			byFreeWhenDone, byDeallocator, (int)deallocatorRan, (unsigned long)deallocatorLength,
+			byCStringNoCopy] UTF8String]);
+		covers("NSString", "initWithBytesNoCopy:length:encoding:freeWhenDone:");
+		covers("NSString", "initWithBytesNoCopy:length:encoding:deallocator:");
+		covers("NSString", "initWithCStringNoCopy:length:freeWhenDone:");
+	}
+
+	{
+		/* NEW ASSERTION: THE LENGTH-TAKING C-STRING CREATOR. The library's note states the rule - the length
+		 * is honoured and the NUL is not - so the fixture has NO terminator at the count and other bytes
+		 * beyond it. A door that scanned for a terminator would answer 5 units for `two`. */
+		static const char bytes[] = { 'a', 'b', 'c', 'd', 'e' };
+		NSString *two = [NSString stringWithCString:bytes length:2];
+		NSString *five = [NSString stringWithCString:bytes length:5];
+		const char *noBytes = NULL;
+		NSString *nullBytes = [NSString stringWithCString:noBytes length:3];
+
+		check("cstring-with-length-reads-exactly-that-many-bytes",
+		      two != nil && [two isEqualToString:@"ab"] && two.length == 2 &&
+		      five != nil && [five isEqualToString:@"abcde"] && five.length == 5 &&
+		      nullBytes == nil,
+		      [[NSString stringWithFormat:@"two=%@ (%lu) five=%@ (%lu) null=%d", two,
+			(unsigned long)two.length, five, (unsigned long)five.length,
+			(int)(nullBytes == nil)] UTF8String]);
+		covers("NSString", "stringWithCString:length:");
+	}
+
+	{
+		/* NEW ASSERTIONS: THE COMPOSED-CHARACTER-SEQUENCE RANGE DOORS, on the definition this family states
+		 * - a base plus the marks that follow it. So "e" + U+0301 is ONE sequence of two units, index 1
+		 * belongs to it, and a range that spans part of it expands to the whole. AND A SURROGATE PAIR IS
+		 * ONE COMPOSED SEQUENCE, which is the case a mark-walking implementation can miss. */
+		static const unichar pairUnits[] = { 'h', 0xD83D, 0xDE00, 'i' };
+		NSString *marked = [NSString stringWithUTF8String:"e\xCC\x81"];
+		NSString *pair = [NSString stringWithCharacters:pairUnits length:4];
+		NSRange at0 = [marked rangeOfComposedCharacterSequenceAtIndex:0];
+		NSRange at1 = [marked rangeOfComposedCharacterSequenceAtIndex:1];
+		NSRange spanning = [marked rangeOfComposedCharacterSequencesForRange:NSMakeRange(1, 1)];
+		NSRange pairAt1 = [pair rangeOfComposedCharacterSequenceAtIndex:1];
+		NSRange pairWhole = [pair rangeOfComposedCharacterSequencesForRange:NSMakeRange(1, 2)];
+
+		check("composed-sequence-ranges-name-the-base-and-its-marks",
+		      marked.length == 2 &&
+		      at0.location == 0 && at0.length == 2 &&
+		      at1.location == 0 && at1.length == 2 &&
+		      spanning.location == 0 && spanning.length == 2 &&
+		      pairAt1.location == 1 && pairAt1.length == 2 &&
+		      pairWhole.location == 1 && pairWhole.length == 2,
+		      [[NSString stringWithFormat:
+			@"at0=%lu,%lu at1=%lu,%lu spanning=%lu,%lu pairAt1=%lu,%lu pairWhole=%lu,%lu",
+			(unsigned long)at0.location, (unsigned long)at0.length,
+			(unsigned long)at1.location, (unsigned long)at1.length,
+			(unsigned long)spanning.location, (unsigned long)spanning.length,
+			(unsigned long)pairAt1.location, (unsigned long)pairAt1.length,
+			(unsigned long)pairWhole.location, (unsigned long)pairWhole.length] UTF8String]);
+		covers("NSString", "rangeOfComposedCharacterSequenceAtIndex:");
+		covers("NSString", "rangeOfComposedCharacterSequencesForRange:");
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness
