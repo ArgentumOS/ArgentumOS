@@ -1069,6 +1069,7 @@ NULL
 		      [[m objectAtIndex:0] isEqualToString:@"b"] &&
 		      [[m objectAtIndex:2] isEqualToString:@"c"],
 		      "the nil-terminated variadic creation keeps every element, including the first");
+	covers("NSArray", "arrayWithObjects:");
 	}
 
 	{
@@ -1080,6 +1081,7 @@ NULL
 		          isEqualToString:@"solo"] &&
 		      [[[NSArray array] componentsJoinedByString:@"-"] isEqualToString:@""],
 		      "componentsJoinedByString:, including the one- and zero-element cases");
+	covers("NSArray", "componentsJoinedByString:");
 	}
 
 	{
@@ -1091,6 +1093,7 @@ NULL
 		      [[sub objectAtIndex:1] isEqualToString:@"3"] &&
 		      [[numbers subarrayWithRange:NSMakeRange(3, 99)] count] == 1,
 		      "subarrayWithRange:, and a range that runs off the end is clamped");
+	covers("NSArray", "subarrayWithRange:");
 	}
 
 	{
@@ -1105,6 +1108,8 @@ NULL
 		      [[m objectAtIndex:0] isEqualToString:@"b"] &&
 		      [sorted indexOfObjectIdenticalTo:[sorted objectAtIndex:0]] == 0,
 		      "sortedArrayUsingSelector: sorts without touching the receiver");
+	covers("NSArray", "sortedArrayUsingSelector:");
+	covers("NSArray", "indexOfObjectIdenticalTo:");
 	}
 
 	{
@@ -1116,6 +1121,7 @@ NULL
 		      [m indexOfObject:@"a" inRange:NSMakeRange(5, 1)] == NSNotFound &&
 		      [m indexOfObjectIdenticalTo:@"a"] == 1,
 		      "ranged equality search, and both bounds cases for NSNotFound");
+	covers("NSArray", "indexOfObject:inRange:");
 	}
 
 	{
@@ -1128,6 +1134,7 @@ NULL
 		      [held[0] isEqualToString:@"2"] && [held[1] isEqualToString:@"3"] &&
 		      held[2] == nil,
 		      "getObjects:range: fills exactly the range it was asked for");
+	covers("NSArray", "getObjects:range:");
 	}
 
 	{
@@ -1157,6 +1164,11 @@ NULL
 		ok = ok && [changed count] == 2 && [[changed objectAtIndex:1] isEqualToString:@"l"];
 		check("array-bulk", ok,
 		      "exchange, removeLastObject, addObjectsFromArray, replaceObjectsInRange: and setArray:");
+	covers("NSMutableArray", "exchangeObjectAtIndex:withObjectAtIndex:");
+	covers("NSMutableArray", "removeLastObject");
+	covers("NSMutableArray", "addObjectsFromArray:");
+	covers("NSMutableArray", "replaceObjectsInRange:withObjectsFromArray:");
+	covers("NSMutableArray", "setArray:");
 	}
 
 	{
@@ -1172,6 +1184,9 @@ NULL
 		      [m count] == 3 &&
 		      [plusOne count] == 4 && [[plusOne objectAtIndex:3] isEqualToString:@"z"],
 		      "arrayWithArray:, arrayByAddingObjectsFromArray: and arrayByAddingObject: leave the receiver alone");
+	covers("NSArray", "arrayWithArray:");
+	covers("NSArray", "arrayByAddingObjectsFromArray:");
+	covers("NSArray", "arrayByAddingObject:");
 	}
 
 	{
@@ -1183,6 +1198,8 @@ NULL
 		      [numbers indexOfObjectIdenticalTo:distinct] == NSNotFound &&
 		      [numbers indexOfObjectIdenticalTo:[numbers objectAtIndex:1]] == 1,
 		      "equality finds it where identity does not (a tagged literal is not the owned copy)");
+	covers("NSArray", "indexOfObject:");
+	covers("NSArray", "indexOfObjectIdenticalTo:");
 	}
 
 	{
@@ -1228,6 +1245,13 @@ NULL
 		      held[0] != nil && [held[0] isEqualToString:@"1"] &&
 		      held[3] != nil && [held[3] isEqualToString:@"4"],
 		      "makeObjectsPerformSelector: both forms (removeLastObject then addObject: z, so t1/t2 each go 2->1->2), firstObjectCommonWithArray: (the first SHARED member b, nil when none), indexOfObjectIdenticalTo:inRange: (index 2 in {0,4}, NSNotFound in {0,2}, and a same-valued copy is not identical), getObjects: (the whole array: held[0]=1, held[3]=4), initWithArray:copyItems:YES copies the mutable member (still orig after the source changed), copyItems:NO shares it (same pointer)");
+	covers("NSArray", "makeObjectsPerformSelector:");
+	covers("NSArray", "makeObjectsPerformSelector:withObject:");
+	covers("NSArray", "firstObjectCommonWithArray:");
+	covers("NSArray", "indexOfObjectIdenticalTo:inRange:");
+	covers("NSArray", "getObjects:");
+	covers("NSArray", "initWithArray:copyItems:");
+	covers("NSArray", "initWithArray:");
 	}
 
 
@@ -1347,6 +1371,7 @@ NULL
 
 		check("dict-strings-file-format", [got isEqual:expected],
 		      [[NSString stringWithFormat:@"got: %@", got] UTF8String]);
+	covers("NSDictionary", "descriptionInStringsFileFormat");
 	}
 
 
@@ -1382,6 +1407,9 @@ NULL
 			      [copied isEqualToDictionary:arrays] &&
 			      [built count] == 1 && [[built objectForKey:@"q"] isEqualToString:@"p"],
 			      "the nil-terminated pairs keep BOTH halves (the array family dropped its first), the two-array form, and the copy constructor");
+	covers("NSDictionary", "dictionaryWithObjectsAndKeys:");
+	covers("NSDictionary", "dictionaryWithObjects:forKeys:count:");
+	covers("NSDictionary", "dictionaryWithDictionary:");
 		}
 	}
 
@@ -1412,6 +1440,10 @@ NULL
 		      [[missing objectAtIndex:1] isEqualToString:@"?"] &&
 		      [d count] == 4 && [[d allKeysForObject:@"nope"] count] == 0,
 		      "allKeys/allValues, allKeysForObject: for a shared value, and objectsForKeys:notFoundMarker:");
+	covers("NSDictionary", "allKeys");
+	covers("NSDictionary", "allValues");
+	covers("NSDictionary", "allKeysForObject:");
+	covers("NSDictionary", "objectsForKeys:notFoundMarker:");
 	}
 
 	{
@@ -1438,6 +1470,9 @@ NULL
 
 		check("dict-bulk", ok,
 		      "addEntriesFromDictionary: accumulates, setDictionary: replaces, removeObjectsForKeys: drops a list");
+	covers("NSMutableDictionary", "addEntriesFromDictionary:");
+	covers("NSMutableDictionary", "setDictionary:");
+	covers("NSMutableDictionary", "removeObjectsForKeys:");
 	}
 
 	{
@@ -1462,6 +1497,7 @@ NULL
 		check("dict-getobjects",
 		      sawOne && gotValues[0] != nil && gotKeys[1] != nil,
 		      "getObjects:andKeys: fills parallel arrays with each pair intact");
+	covers("NSDictionary", "getObjects:andKeys:");
 	}
 
 
@@ -1521,6 +1557,10 @@ NULL
 				     return [left compare:right];
 			     }] == 3,
 		      "enumerateObjectsUsingBlock: (index and stop), both comparator sorts, and the sorted-range search");
+	covers("NSArray", "sortedArrayUsingComparator:");
+	covers("NSArray", "enumerateObjectsUsingBlock:");
+	covers("NSMutableArray", "sortUsingComparator:");
+	covers("NSArray", "indexOfObject:inSortedRange:options:usingComparator:");
 	}
 
 	{
