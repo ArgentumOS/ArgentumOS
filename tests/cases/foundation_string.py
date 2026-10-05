@@ -77,7 +77,7 @@ CHECKS = (
 	  "completepathintostring-completes-and-filters", "linguistic-tags-pair-agree", "linguistic-sentence-range-is-the-taggers-own", "url-sets-allow-what-their-component-allows",
 	  "url-sets-exclude-the-delimiters-they-must", "url-sets-derived-pairs-are-equal", "url-query-set-encodes-only-what-must-be", "contents-doors-round-trip-or-refuse-with-an-error",
 	  "url-contents-doors-mirror-the-path-doors", "a-missing-file-and-a-dead-scheme-are-refused-with-an-error", "validated-format-instance-doors-refuse-an-unlisted-specifier", "byte-out-door-sizes-copies-and-refuses",
-	  "compatibility-normalization-folds-the-ligature-canonical-keeps",
+	  "compatibility-normalization-folds-the-ligature-canonical-keeps", "folding-takes-case-and-marks-separately", "strip-diacritics-decomposes-then-removes-marks",
 )
 
 

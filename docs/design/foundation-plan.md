@@ -28207,3 +28207,18 @@ out; the second added the byte-level facts and named the clause outright - `| ok
 wholeEq=0 tailEq=1`. `wholeEq=0` beside `tailEq=1` is the whole diagnosis: `buf` no longer held the whole copy,
 and it held `afé` exactly. **When a check fails and its own detail cannot say which clause, the detail is the
 first thing to extend - not the last.**
+
+**§63.247n — THE UNCOVERED SET ALREADY MEANS "MENTIONED NOWHERE IN CODE", AND MY RE-DERIVATION OF IT WAS
+WORSE (2026-10-04).** Asked which of the 22 still-unnamed NSString rows were "already exercised by a check and
+merely unclaimed", I grepped the probe sources for each selector name and split them 9/13. THE SPLIT WAS NOISE:
+`foundation-cov.py` ALREADY strips comments (`COMMENT_RE`) and string literals (`LIT_RE`) before it looks for a
+name, so a row it leaves in `uncovered` is one no CODE mentions - and my grep, which stripped nothing, counted
+PROSE as exercise. Three of the nine "touched" rows turned out to be detail strings and comments: `getCharacters:`
+appeared only inside the phrase "-getCharacters:range: reads units back" in a failure message, and both
+`getCString:` and `getCString:maxLength:` only in a format string and a comment. The bare `getCString:` row is not
+even callable (the one-argument form does not exist), so the "mention" could only ever have been prose.
+
+**THE RULE: TO ASK WHAT THE INSTRUMENT ASKS, ASK THE INSTRUMENT.** A second, hand-rolled scan of the same sources
+is not a cross-check - it is a weaker instrument whose disagreements have to be adjudicated one by one, and it
+cost three of them here. The `uncovered` set is the authoritative "no code touches this" list; the useful
+sub-question ("is it callable at all?") is answered by the ledger, not by a grep.

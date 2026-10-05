@@ -3504,6 +3504,68 @@ NULL
 		covers("NSString", "decomposedStringWithCompatibilityMapping");
 	}
 
+	{
+		/* NEW ASSERTIONS: THE FOLDING DOOR. It applies a rule the library STATES - ASCII case plus the
+		 * non-base marks - and the case that separates the two options is asserted beside the combined one,
+		 * so a door that folded only one of them cannot pass. The refusal of width/numeric folding (this
+		 * library ships no tables for them, so it raises rather than answering a different question) is the
+		 * option-taking comparisons' contract and is asserted in their family, not here. */
+		NSString *eAcute = [NSString stringWithUTF8String:"caf\xC3\xA9"];
+		NSString *both = [eAcute stringByFoldingWithOptions:
+					(NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch) locale:nil];
+		NSString *caseOnly = [eAcute stringByFoldingWithOptions:NSCaseInsensitiveSearch locale:nil];
+		NSString *marksOnly = [@"CAF\xC3\x89" stringByFoldingWithOptions:NSDiacriticInsensitiveSearch
+									 locale:nil];
+		NSString *plain = [@"plain" stringByFoldingWithOptions:NSCaseInsensitiveSearch locale:nil];
+
+		check("folding-takes-case-and-marks-separately",
+		      both != nil && [both isEqualToString:@"cafe"] && both.length == 4 &&
+		      /* CASE ONLY MUST KEEP THE ACCENT - the assertion that makes the first line about the marks
+		       * and not about a fold that happens to drop them. "café" is 4 units, so this is a real
+		       * difference and not a length coincidence. */
+		      [caseOnly isEqualToString:eAcute] && caseOnly.length == 4 &&
+		      /* AND MARKS ONLY MUST KEEP THE CASE */
+		      [marksOnly isEqualToString:@"CAFE"] && marksOnly.length == 4 &&
+		      [plain isEqualToString:@"plain"],
+		      [[NSString stringWithFormat:@"both=%@ caseOnly=%@ marksOnly=%@", both, caseOnly,
+			marksOnly] UTF8String]);
+		covers("NSString", "stringByFoldingWithOptions:locale:");
+	}
+
+	{
+		/* NEW ASSERTIONS: THE TRANSFORM DOOR, on the two transform names this library implements. The
+		 * strip is "decompose canonically, then remove every non-base mark", so its answers are the
+		 * canonical pair's plus the removal - which is why the ligature is asserted to SURVIVE here (a
+		 * canonical decomposition does not touch a compatibility ligature; the compatibility
+		 * normalization doors are the ones that fold it, and they are asserted above). And `reverse` is
+		 * ignored for a strip, which the library states, so the flagged answer must equal the unflagged
+		 * one rather than merely being plausible. */
+		NSString *eAcute = [NSString stringWithUTF8String:"caf\xC3\xA9"];
+		NSString *stripped = [eAcute stringByApplyingTransform:NSStringTransformStripDiacritics
+							       reverse:NO];
+		NSString *stripCombining = [eAcute stringByApplyingTransform:NSStringTransformStripCombiningMarks
+								     reverse:NO];
+		NSString *reversed = [eAcute stringByApplyingTransform:NSStringTransformStripDiacritics
+							       reverse:YES];
+		NSString *ligature = [@"\uFB01" stringByApplyingTransform:NSStringTransformStripDiacritics
+								  reverse:NO];
+		NSString *plain = [@"plain" stringByApplyingTransform:NSStringTransformStripDiacritics reverse:NO];
+
+		check("strip-diacritics-decomposes-then-removes-marks",
+		      stripped != nil && [stripped isEqualToString:@"cafe"] && stripped.length == 4 &&
+		      stripCombining != nil && [stripCombining isEqualToString:@"cafe"] &&
+		      /* `reverse` is meaningless for a strip: the library says so, and here it is measured rather
+		       * than believed. */
+		      reversed != nil && [reversed isEqualToString:stripped] &&
+		      /* THE COMPATIBILITY LIGATURE SURVIVES A CANONICAL STRIP, which is the boundary this door
+		       * shares with the canonical normalization pair. */
+		      ligature != nil && [ligature isEqualToString:@"\uFB01"] && ligature.length == 1 &&
+		      [plain isEqualToString:@"plain"],
+		      [[NSString stringWithFormat:@"strip=%@ combining=%@ reversed=%@ ligature=%lu units plain=%@",
+			stripped, stripCombining, reversed, (unsigned long)ligature.length, plain] UTF8String]);
+		covers("NSString", "stringByApplyingTransform:reverse:");
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness
