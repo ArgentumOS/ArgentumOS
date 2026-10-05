@@ -492,6 +492,9 @@ int main(void)
 			"date", "dateWithTimeIntervalSinceNow:", "dateWithTimeIntervalSince1970:",
 			"dateWithTimeInterval:sinceDate:", "dateWithTimeIntervalSinceReferenceDate:",
 			"distantPast", "distantFuture", "timeIntervalSinceReferenceDate",
+			/* D7's kind (A), and it is DEMANDED because it SHIPS: deprecated, the deprecation ground
+			 * RETIRED (2026-09-26), the ledger ships the row under NSDate, and NSDate implements it. */
+			"dateWithString:",
 			NULL
 		};
 		static const char *instanceSelectors[] = {
@@ -511,10 +514,20 @@ int main(void)
 			NULL
 		};
 		static const char *excluded[] = {
-			/* MOVED TO THE REQUIRED LIST ABOVE: D7's kind (A) — deprecated, retired ground, OWED,
-			 * and implemented here, so it is demanded rather than excluded. */
-			"initWithString:",					/* removed from Cocoa's documented API */
-			"dateWithString:",					/* removed from Cocoa's documented API */
+			/* +dateWithString: WAS HERE and now sits in the required list above: D7's kind (A) —
+			 * deprecated, retired ground, shipped by the ledger and implemented here. It was found by
+			 * the guest run, because the loop below used to ask only the INSTANCE and this is a CLASS
+			 * method (see the loop's own note). */
+			/*
+			 * -initWithString: STAYS, AND THE REASON IS NOW A MEASUREMENT RATHER THAN THE OLD ONE
+			 * ("removed from Cocoa's documented API", which is not a ground this project has): the
+			 * ledger ships the row with its `why` column reading `deprecated`, NSDate.h and NSDate.m
+			 * neither declare nor implement it, and the NSDate INSTANCE this probe holds does not
+			 * answer it — so for THIS inventory it is correctly ABSENT, while its own ledger row keeps
+			 * it in the work list. Retiring a FALSE reason is the point of this pass; dropping a TRUE
+			 * entry would not be.
+			 */
+			"initWithString:",
 			/* Needs a piece this Foundation does not ship: a date PARSER. */
 			"dateWithNaturalLanguageString:",			/* needs a date parser */
 			"dateWithNaturalLanguageString:locale:",		/* needs a date parser */
