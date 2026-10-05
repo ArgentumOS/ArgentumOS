@@ -2465,6 +2465,12 @@ NULL
 		      [[@"istanbul" localizedUppercaseString]
 			isEqualToString:[@"istanbul" uppercaseStringWithLocale:[NSLocale currentLocale]]],
 		      "the Turkish locale capitalizes istanbul as İstanbul where the plain door gives Istanbul, the dotless pair folds inside a word, a non-Turkic locale matches the plain door, and the three deprecated spellings delegate to the current locale");
+	covers("NSString", "capitalizedStringWithLocale:");
+	covers("NSString", "localizedCapitalizedString");
+	covers("NSString", "localizedLowercaseString");
+	covers("NSString", "localizedUppercaseString");
+	covers("NSString", "uppercaseStringWithLocale:");
+	covers("NSString", "lowercaseStringWithLocale:");
 	}
 
 	{
@@ -2496,6 +2502,9 @@ NULL
 		      /* AND A NEEDLE THAT IS NOT THERE IS STILL NOT THERE, whatever the fold. */
 		      ![@"café" localizedCaseInsensitiveContainsString:@"tea"],
 		      "the standard doors fold case and diacritics (the match lands on the receiver's own \"café\"), the case-insensitive door folds case only, and a miss stays NSNotFound/NO");
+	covers("NSString", "localizedStandardRangeOfString:");
+	covers("NSString", "localizedStandardContainsString:");
+	covers("NSString", "localizedCaseInsensitiveContainsString:");
 	}
 
 	{
@@ -2590,6 +2599,7 @@ NULL
 		      [[NSString stringWithCString:"caf\xc3\xa9" encoding:NSUTF8StringEncoding]
 			isEqualToString:@"café"],
 		      "UTF-8 and ASCII round-trip, a high byte labelled ASCII is refused, an unstored encoding is refused, NULL is nil, and real UTF-8 answers the string it names");
+	covers("NSString", "stringWithCString:encoding:");
 	}
 
 	{
@@ -2626,6 +2636,10 @@ NULL
 		      /* and the byte door refuses an unstored encoding and a high byte under ASCII, like its C-string twin */
 		      bytesAsAscii == nil && bytesUnstored == nil,
 		      "the -init C-string/byte doors mirror the class doors: UTF-8 and ASCII round-trip (4 and 11 units), the deprecated no-encoding name uses UTF-8, a length of 3 reads \"abc\" and \"xyz\" (3 units) without a NUL, and a high byte labelled ASCII and an unstored encoding are both refused");
+	covers("NSString", "initWithCString:encoding:");
+	covers("NSString", "initWithCString:");
+	covers("NSString", "initWithCString:length:");
+	covers("NSString", "initWithBytes:length:encoding:");
 	}
 
 	{
@@ -2678,6 +2692,8 @@ NULL
 			fileError != nil ? [fileError description] : @"(none)",
 			refused != nil ? refused : @"(nil)",
 			transportError != nil ? [transportError description] : @"(none)"] UTF8String]);
+	covers("NSString", "writeToFile:atomically:encoding:error:");
+	covers("NSString", "stringWithContentsOfURL:encoding:error:");
 	}
 
 	{
