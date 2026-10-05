@@ -1056,7 +1056,22 @@ static NSString *fn_key_for_class(Class cls)
 
 - (BOOL)containsValueForKey:(NSString *)key
 {
-	return key != nil && [(NSDictionary *)[self fnCurrentEntry] objectForKey:key] != nil;
+	NSDictionary *scope;
+
+	if (key == nil) {
+		return NO;
+	}
+	/* THE SAME TWO SCOPES -decodeObjectForKey: HAS, BECAUSE THE QUESTION IS THE SAME ONE ASKED WITHOUT
+	 * DECODING: inside -initWithCoder: the keys are the CURRENT entry's, and outside it they are the
+	 * ARCHIVE'S TOP-LEVEL ones (a caller who built an unarchiver reads its root's keys). AND A QUERY ANSWERS
+	 * NO IN BOTH, WHICH IS WHY THIS DOOR MAY NOT GO THROUGH -fnCurrentEntry:: that helper's
+	 * "only meaningful inside -initWithCoder:" raise belongs to the DECODES, and using it here made
+	 * -containsValueForKey: raise for a key that WAS written - the deviation this door was fixed for. */
+	if ([_stack count] == 0) {
+		return [(NSDictionary *)_top objectForKey:key] != nil;
+	}
+	scope = (NSDictionary *)[_stack lastObject];
+	return scope != nil && [scope objectForKey:key] != nil;
 }
 
 - (BOOL)decodeBoolForKey:(NSString *)key

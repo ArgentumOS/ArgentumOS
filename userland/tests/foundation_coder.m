@@ -1038,6 +1038,131 @@ int main(void)
 	covers("NSUnarchiver", "initForReadingWithData:");
 	}
 
+	printf("FOUNDATION-CODER DIAG leg=keyed-scalars\n");
+	{
+		/* THE KEYED SCALAR PRIMITIVES, NEW ASSERTIONS - the family nothing had ever asserted. The values are
+		 * chosen so a decode through the WRONG door cannot pass: -12345 is not 2.5, and the integer is past
+		 * 2^53, where a double-precision shortcut would lose it. `containsValueForKey:` is asserted BESIDE
+		 * them, positively and negatively, because it is the door whose deviation this check was written
+		 * against (§63.247u): it used to RAISE for a key that was written. */
+		NSMutableData *scalarData = [[NSMutableData alloc] init];
+		NSKeyedArchiver *scalarWriter = [[NSKeyedArchiver alloc] initForWritingWithMutableData:scalarData];
+		BOOL yesBack = NO, noBack = YES;
+		int intBack = 0;
+		NSInteger integerBack = 0;
+		double doubleBack = 0;
+		float floatBack = 0;
+
+		[scalarWriter encodeBool:YES forKey:@"yes"];
+		[scalarWriter encodeBool:NO forKey:@"no"];
+		[scalarWriter encodeInt:-12345 forKey:@"int"];
+		[scalarWriter encodeInteger:(NSInteger)9007199254740993LL forKey:@"integer"];
+		[scalarWriter encodeDouble:2.5 forKey:@"double"];
+		[scalarWriter encodeFloat:0.5f forKey:@"float"];
+		[scalarWriter finishEncoding];
+
+		NSKeyedUnarchiver *scalarReader = [[NSKeyedUnarchiver alloc] initForReadingWithData:scalarData];
+		yesBack = [scalarReader decodeBoolForKey:@"yes"];
+		noBack = [scalarReader decodeBoolForKey:@"no"];
+		intBack = [scalarReader decodeIntForKey:@"int"];
+		integerBack = [scalarReader decodeIntegerForKey:@"integer"];
+		doubleBack = [scalarReader decodeDoubleForKey:@"double"];
+		floatBack = [scalarReader decodeFloatForKey:@"float"];
+
+		check("keyed-scalar-primitives-round-trip",
+		      yesBack == YES && noBack == NO &&
+		      intBack == -12345 && integerBack == (NSInteger)9007199254740993LL &&
+		      doubleBack == 2.5 && floatBack == 0.5f &&
+		      [scalarReader containsValueForKey:@"yes"] && [scalarReader containsValueForKey:@"double"] &&
+		      ![scalarReader containsValueForKey:@"never-written"],
+		      [NSString stringWithFormat:@"bool=%d/%d int=%d integer=%lld double=%g float=%g contains=%d,%d,%d",
+			(int)yesBack, (int)noBack, intBack, (long long)integerBack, doubleBack, (double)floatBack,
+			(int)[scalarReader containsValueForKey:@"yes"],
+			(int)[scalarReader containsValueForKey:@"double"],
+			(int)[scalarReader containsValueForKey:@"never-written"]]);
+		covers("NSCoder", "encodeBool:forKey:");
+		covers("NSCoder", "decodeBoolForKey:");
+		covers("NSCoder", "encodeInt:forKey:");
+		covers("NSCoder", "decodeIntForKey:");
+		covers("NSCoder", "encodeInteger:forKey:");
+		covers("NSCoder", "decodeIntegerForKey:");
+		covers("NSCoder", "encodeDouble:forKey:");
+		covers("NSCoder", "decodeDoubleForKey:");
+		covers("NSCoder", "encodeFloat:forKey:");
+		covers("NSCoder", "decodeFloatForKey:");
+		covers("NSCoder", "containsValueForKey:");
+		printf("FOUNDATION-CODER DIAG leg=keyed-scalars-done\n");
+	}
+
+	printf("FOUNDATION-CODER DIAG leg=capabilities\n");
+	{
+		/* THE CAPABILITIES AND THE TWO COPY HINTS. Each answers something the library STATES in its own
+		 * source: the base allows NO keyed coding (the keyed classes override it), it requires no secure
+		 * coding and carries no allowed classes until told to, its failure policy defaults to RAISE, and
+		 * -systemVersion is nil BY DESIGN ("this library records none; nil is unknown, which is not a
+		 * version"). The hints are the sequential object conventions, which this library treats as an
+		 * EQUIVALENCE to -encodeObject:, so the assertion is that the object comes back - the sentence the
+		 * implementation's own comment makes. */
+		NSMutableData *hintData = [[NSMutableData alloc] init];
+		NSKeyedArchiver *keyed = [[NSKeyedArchiver alloc] initForWritingWithMutableData:hintData];
+		NSMutableData *seqData = [[NSMutableData alloc] init];
+		NSArchiver *sequential = [[NSArchiver alloc] initForWritingWithMutableData:seqData];
+		NSString *shared = @"bycopy-and-byref";
+		id hintBack;
+
+		/* THE HINTS GO ON THE SEQUENTIAL WRITER, which is what they are: they are the SEQUENTIAL object
+		 * conventions, and the probe's own mirror check records that a KEYED door called on a sequential
+		 * archiver raises - so the reverse holds too, and the first draft of this check died here doing it
+		 * the other way round. The capability questions are asked of BOTH coders, because the answers
+		 * differ by design: the base allows no keyed coding and the keyed classes override it. */
+		[sequential encodeBycopyObject:shared];
+		[sequential encodeByrefObject:shared];
+		hintBack = [[[NSUnarchiver alloc] initForReadingWithData:seqData] decodeObject];
+
+		check("keyed-coder-capabilities-and-the-copy-hints",
+		      [keyed allowsKeyedCoding] && ![sequential allowsKeyedCoding] &&
+		      ![keyed requiresSecureCoding] && [keyed allowedClasses] == nil &&
+		      [keyed decodingFailurePolicy] == NSDecodingFailurePolicyRaiseException &&
+		      [keyed systemVersion] == nil &&
+		      hintBack != nil && [hintBack isEqualToString:shared],
+		      [NSString stringWithFormat:@"keyed=%d seq=%d secure=%d classes=%@ policy=%d version=%@ back=%@",
+			(int)[keyed allowsKeyedCoding], (int)[sequential allowsKeyedCoding],
+			(int)[keyed requiresSecureCoding], [keyed allowedClasses],
+			(int)[keyed decodingFailurePolicy], [keyed systemVersion], hintBack]);
+		covers("NSCoder", "allowsKeyedCoding");
+		covers("NSCoder", "requiresSecureCoding");
+		covers("NSCoder", "decodingFailurePolicy");
+		covers("NSCoder", "systemVersion");
+		covers("NSCoder", "encodeBycopyObject:");
+		covers("NSCoder", "encodeByrefObject:");
+		printf("FOUNDATION-CODER DIAG leg=capabilities-done\n");
+	}
+
+	{
+		/* -failWithError: IS THE DECODER'S "I CANNOT ANSWER", and the base's rule is to RAISE carrying the
+		 * ERROR'S OWN description rather than naming an absent door - a correction the implementation's
+		 * comment records. Both halves are asserted: that it raised, and that the message carries the
+		 * failure the caller reported. The coder is a KEYED ARCHIVER rather than a reader over empty data,
+		 * so this asserts the DOOR and not a reader's initialiser. */
+		NSError *failure = [NSError errorWithDomain:@"FNCoderProbe" code:7
+						   userInfo:[NSDictionary dictionaryWithObject:@"the probe's own failure"
+											forKey:NSLocalizedDescriptionKey]];
+		NSKeyedArchiver *plain = [[NSKeyedArchiver alloc] initForWritingWithMutableData:[[NSMutableData alloc] init]];
+		BOOL raised = NO, named = NO;
+
+		@try {
+			[plain failWithError:failure];
+		} @catch (NSException *e) {
+			raised = YES;
+			named = [[e reason] rangeOfString:@"the probe's own failure"].location != NSNotFound;
+		}
+		check("fail-with-error-raises-carrying-the-callers-description", raised && named,
+		      raised ? (named ? @"raised, carrying the description"
+				      : @"raised, but the message does not carry the failure")
+			     : @"-failWithError: returned instead of raising");
+		covers("NSCoder", "failWithError:");
+	}
+
 	printf("FOUNDATION-CODER RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

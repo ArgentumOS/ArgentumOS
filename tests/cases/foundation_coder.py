@@ -47,29 +47,16 @@ import re
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_coder"
-CHECKS = ("coder-round-trip-scalars", "coder-round-trip-collections", "coder-round-trip-sets",
-          "the-set-archive-names-the-public-class", "coder-round-trip-counted-set",
-          "coder-round-trip-ordered-set",
-          "coder-shared-objects",
-          "coder-cycle", "coder-null-and-nil", "coder-archive-shape", "coder-base-raises",
-          # W9: the two delegates (through Cocoa's instance flow) and the secure transformer
-          "coder-archiver-delegate", "coder-instance-flow", "coder-unarchiver-delegate",
-          "value-transformer-secure-unarchive",
-          # §63.22: the value types' OWN doors, driven directly with a coder (the archiver writes these
-          # classes inline, so -encodeObject: never calls them) — and the two doors that shipped with no
-          # check at all until this unit: NSDate's and NSData's.
-          "the-four-value-type-doors-round-trip", "the-date-and-data-doors-round-trip",
-          # the type-checked object doors, the fixed-width integers, the decode-error surface, the
-          # secure-coding gate, and the conditional door
-          "coder-typed-object-doors", "coder-typed-object-door-refusal",
-          "coder-decode-failure-policy", "coder-top-level-error-door", "coder-top-level-root-door",
-          "coder-collection-class-doors", "coder-secure-coding-gate", "coder-conditional-object",
-          # the keyed geometry doors (a struct boxed in an NSValue) and their class refusal
-          "coder-geometry-doors", "coder-geometry-door-refusal",
-          # the LEGACY SEQUENTIAL doors on NSCoder, driven through the classic NSArchiver/NSUnarchiver
-          # pair (the only coders that answer them): a property list through the object door, and a
-          # run of values through the concatenated-type-code door
-          "coder-sequential-plist-doors", "coder-sequential-bulk-doors")
+CHECKS = (
+	  "coder-round-trip-scalars", "coder-round-trip-collections", "coder-round-trip-sets", "the-set-archive-names-the-public-class",
+	  "coder-round-trip-counted-set", "coder-round-trip-ordered-set", "coder-shared-objects", "coder-cycle",
+	  "coder-null-and-nil", "coder-archive-shape", "coder-base-raises", "coder-archiver-delegate",
+	  "coder-instance-flow", "coder-unarchiver-delegate", "value-transformer-secure-unarchive", "the-four-value-type-doors-round-trip",
+	  "the-date-and-data-doors-round-trip", "coder-typed-object-doors", "coder-typed-object-door-refusal", "coder-decode-failure-policy",
+	  "coder-top-level-error-door", "coder-top-level-root-door", "coder-collection-class-doors", "coder-secure-coding-gate",
+	  "coder-conditional-object", "coder-geometry-doors", "coder-geometry-door-refusal", "coder-sequential-plist-doors",
+	  "coder-sequential-bulk-doors", "fail-with-error-raises-carrying-the-callers-description", "keyed-coder-capabilities-and-the-copy-hints", "keyed-scalar-primitives-round-trip",
+)
 
 
 class Case(BaseCase):
