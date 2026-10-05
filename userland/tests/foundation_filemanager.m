@@ -50,8 +50,11 @@ static int okc, failc;
 /* §63.193: the legacy handler doors' accounting. */
 static int fn_probe_handler_calls = 0;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers(): a claim can only follow an assertion that held */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-FILEMANAGER %s ok\n", name);
@@ -61,6 +64,18 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		       detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSFileManager", "contentsAtPath:") — the behavioural claim, piggybacked on the check above it: it
+ * takes no condition of its own and prints only when the last check's result was true, so a claim cannot
+ * appear beside a failed assertion. See tools/foundation-cov.py; every claim is filtered against the ledger,
+ * because a claim for a row the ledger does not carry is inert. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 static NSString *fn_path(NSString *relative)
 {
@@ -88,6 +103,7 @@ int main(void)
 	check("fs-default-manager",
 	      manager != nil && manager == [NSFileManager defaultManager],
 	      manager == [NSFileManager defaultManager] ? @"one instance" : @"two instances");
+	covers("NSFileManager", "defaultManager");
 
 	{
 		BOOL made = [manager createDirectoryAtPath:fn_path(@"inner/deeper")
@@ -106,6 +122,10 @@ int main(void)
 		      [[manager contentsOfDirectoryAtPath:fn_path(@"inner") error:NULL] count] == 2,
 		      [NSString stringWithFormat:@"made=%d file=%d listing=%@", (int)made,
 			(int)fileExists, [manager contentsOfDirectoryAtPath:fn_path(@"inner") error:NULL]]);
+	covers("NSFileManager", "createDirectoryAtPath:withIntermediateDirectories:attributes:error:");
+	covers("NSFileManager", "createFileAtPath:contents:attributes:");
+	covers("NSFileManager", "fileExistsAtPath:isDirectory:");
+	covers("NSFileManager", "contentsOfDirectoryAtPath:error:");
 	}
 
 	{
@@ -124,6 +144,9 @@ int main(void)
 		      [NSString stringWithFormat:@"type=%@ size=%@",
 			attributes != nil ? [attributes objectForKey:NSFileType] : @"(nil)",
 			attributes != nil ? [attributes objectForKey:NSFileSize] : @"(nil)"]);
+	covers("NSFileManager", "createFileAtPath:contents:attributes:");
+	covers("NSFileManager", "attributesOfItemAtPath:error:");
+	covers("NSFileManager", "fileExistsAtPath:isDirectory:");
 	}
 
 	{
@@ -149,6 +172,11 @@ int main(void)
 			(int)moved, (int)copied,
 			(int)[manager fileExistsAtPath:fn_path(@"inner/sized.bin")],
 			(int)copiedFile, (int)copiedDeep]);
+	covers("NSFileManager", "moveItemAtPath:toPath:error:");
+	covers("NSFileManager", "copyItemAtPath:toPath:error:");
+	covers("NSFileManager", "attributesOfItemAtPath:error:");
+	covers("NSFileManager", "fileExistsAtPath:");
+	covers("NSFileManager", "contentsOfDirectoryAtPath:error:");
 	}
 
 	{
@@ -161,6 +189,7 @@ int main(void)
 		      [[error localizedDescription] length] > 0,
 		      [NSString stringWithFormat:@"removed=%d error=%@", (int)removed,
 			error != nil ? [error localizedDescription] : @"(none)"]);
+	covers("NSFileManager", "removeItemAtPath:error:");
 	}
 
 	{
@@ -192,6 +221,10 @@ int main(void)
 		      [NSString stringWithFormat:@"target=%@ before=%@ after=%@ linkRemoved=%d error=%@",
 			target, before, after, (int)linkRemoved,
 			linkError != nil ? [linkError localizedDescription] : @"(none)"]);
+	covers("NSFileManager", "destinationOfSymbolicLinkAtPath:error:");
+	covers("NSFileManager", "currentDirectoryPath");
+	covers("NSFileManager", "changeCurrentDirectoryPath:");
+	covers("NSFileManager", "removeItemAtPath:error:");
 	}
 
 	{
@@ -472,6 +505,7 @@ int main(void)
 			(unsigned long)(bytes != nil ? [bytes length] : 0),
 			[fm contentsAtPath:fn_s3(@"tree")] == nil ? "nil" : "not nil",
 			[fm contentsAtPath:fn_s3(@"not-here.txt")] == nil ? "nil" : "not nil"]);
+	covers("NSFileManager", "contentsAtPath:");
 
 		/* THE EQUALITY RULE'S SIX ANSWERS. Two links are built to ONE target, because "compares the
 		 * links themselves" is only observable when the targets agree; and the differing tree differs
@@ -503,6 +537,10 @@ int main(void)
 			(int)[fm contentsEqualAtPath:fn_s3(@"tree/a.txt") andPath:fn_s3(@"tree/sub/b.txt")],
 			(int)[fm contentsEqualAtPath:fn_s3(@"link-one") andPath:fn_s3(@"link-two")],
 			(int)[fm contentsEqualAtPath:fn_s3(@"link-one") andPath:fn_s3(@"file.txt")]]);
+	covers("NSFileManager", "contentsEqualAtPath:andPath:");
+	covers("NSFileManager", "createSymbolicLinkAtPath:withDestinationPath:error:");
+	covers("NSFileManager", "copyItemAtPath:toPath:error:");
+	covers("NSFileManager", "createFileAtPath:contents:attributes:");
 
 		/* THE OTHER KIND OF LINK, MADE TO SOMETHING THAT DOES NOT EXIST - which is the point of
 		 * Apple's own sentence about this door, and the thing a "check the target first"
@@ -518,6 +556,9 @@ int main(void)
 		      [NSString stringWithFormat:@"made=%d target=%@ exists=%d error=%@", (int)linkMade,
 			linkTarget, (int)[fm fileExistsAtPath:fn_s3(@"nowhere-at-all")],
 			doorError != nil ? [doorError localizedDescription] : @"(none)"]);
+	covers("NSFileManager", "createSymbolicLinkAtPath:withDestinationPath:error:");
+	covers("NSFileManager", "destinationOfSymbolicLinkAtPath:error:");
+	covers("NSFileManager", "fileExistsAtPath:");
 
 		/* THE TWO REFUSALS, AND THE BYTES THAT MUST SURVIVE THEM. */
 		[fm createFileAtPath:fn_s3(@"exists.txt") contents:original attributes:nil];
@@ -536,6 +577,10 @@ int main(void)
 			(int)copiedOnto, (long)(copyOntoError != nil ? [copyOntoError code] : -1),
 			survivor != nil ? [survivor description] : @"(nil)",
 			(int)[fm fileExistsAtPath:fn_s3(@"other.txt")]]);
+	covers("NSFileManager", "copyItemAtPath:toPath:error:");
+	covers("NSFileManager", "contentsAtPath:");
+	covers("NSFileManager", "fileExistsAtPath:");
+	covers("NSFileManager", "createFileAtPath:contents:attributes:");
 
 		movedOnto = [fm moveItemAtPath:fn_s3(@"other.txt")
 					toPath:fn_s3(@"exists.txt")
@@ -549,6 +594,9 @@ int main(void)
 			(int)movedOnto, (long)(moveOntoError != nil ? [moveOntoError code] : -1),
 			(int)[fm fileExistsAtPath:fn_s3(@"other.txt")],
 			survivor != nil ? [survivor description] : @"(nil)"]);
+	covers("NSFileManager", "moveItemAtPath:toPath:error:");
+	covers("NSFileManager", "contentsAtPath:");
+	covers("NSFileManager", "fileExistsAtPath:");
 
 		/* A SYMLINK IS COPIED AS A LINK, AND THE DANGLING ONE IS THE PROOF: a "copy" that followed
 		 * the link would have nothing to read at all, so the dangling case is the sharpest form of the
@@ -571,6 +619,10 @@ int main(void)
 			(int)[fm contentsEqualAtPath:fn_s3(@"link-one") andPath:fn_s3(@"link-copy")],
 			[fm contentsAtPath:fn_s3(@"link-copy")] != nil ?
 				[[fm contentsAtPath:fn_s3(@"link-copy")] description] : @"(nil)"]);
+	covers("NSFileManager", "destinationOfSymbolicLinkAtPath:error:");
+	covers("NSFileManager", "contentsEqualAtPath:andPath:");
+	covers("NSFileManager", "contentsAtPath:");
+	covers("NSFileManager", "copyItemAtPath:toPath:error:");
 
 		/* ---- W8 SLICE 3c: THE FILE SYSTEM'S OWN NUMBERS, THE INODE KEYS, THE MISSING TYPE WORDS AND
 		 * THE RELATIONSHIP RULE - and Apple states both of this doors' traps itself, so neither is a
@@ -595,6 +647,8 @@ int main(void)
 				size, freeSize, nodes,
 				[[fsAttributes objectForKey:NSFileSystemNumber] unsignedLongLongValue],
 				statOK ? (unsigned long long)st.st_dev : 0ULL]);
+	covers("NSFileManager", "attributesOfFileSystemForPath:error:");
+	covers("NSFileManager", "attributesOfItemAtPath:error:");
 
 			/* THE THREE KEYS THAT ARE A stat(2) FIELD BY APPLE'S OWN NAMING, plus the key that is
 			 * PUBLISHED AND NEVER FILLED: this substrate keeps no birth time, and an absent entry is
@@ -616,6 +670,7 @@ int main(void)
 				[[itemAttributes objectForKey:NSFileDeviceIdentifier] unsignedLongLongValue],
 				statOK ? (unsigned long long)st.st_dev : 0ULL,
 				[itemAttributes objectForKey:NSFileCreationDate] == nil ? @"absent" : @"present"]);
+	covers("NSFileManager", "attributesOfItemAtPath:error:");
 
 			/* AND THE TYPE VOCABULARY, WHICH WAS MISSING THREE WORDS: a SOCKET is one of them and the
 			 * probe can make one, while a FIFO is NOT - Apple publishes no value for a fifo, so the
@@ -632,6 +687,7 @@ int main(void)
 				[itemAttributes objectForKey:NSFileType],
 				[[fm attributesOfItemAtPath:fn_s3(@"sock") error:NULL] objectForKey:NSFileType],
 				[[fm attributesOfItemAtPath:fn_s3(@"pipe") error:NULL] objectForKey:NSFileType]]);
+	covers("NSFileManager", "attributesOfItemAtPath:error:");
 
 			/* THE RELATIONSHIP RULE IS A PATH RULE, and the case that catches a careless
 			 * implementation is the SIBLING WHOSE NAME ONLY PREFIXES the directory: a plain
@@ -759,6 +815,8 @@ int main(void)
 				setError != nil ? [setError localizedDescription] : @"(none)",
 				[[after objectForKey:NSFilePosixPermissions] unsignedShortValue],
 				[[after objectForKey:NSFileModificationDate] timeIntervalSince1970]]);
+	covers("NSFileManager", "setAttributes:ofItemAtPath:error:");
+	covers("NSFileManager", "attributesOfItemAtPath:error:");
 		}
 
 		/* AND THE SENTENCE THAT SEPARATES THIS DOOR FROM ITS READER: "if the last component of the
@@ -795,6 +853,8 @@ int main(void)
 				[[targetAfter objectForKey:NSFilePosixPermissions] unsignedShortValue],
 				[[linkBefore objectForKey:NSFilePosixPermissions] unsignedShortValue],
 				[[linkAfter objectForKey:NSFilePosixPermissions] unsignedShortValue]]);
+	covers("NSFileManager", "setAttributes:ofItemAtPath:error:");
+	covers("NSFileManager", "attributesOfItemAtPath:error:");
 		}
 
 		/* ---- W8 SLICE 3e: WHAT TO SHOW A USER, AND THE KEYS WHOSE ENTRY CAN ONLY BE ABSENT --------- */
@@ -813,6 +873,7 @@ int main(void)
 			      [missingName isEqualToString:fn_s3(@"not-here")],
 			      [NSString stringWithFormat:@"file=%@ dir=%@ missing=%@", name, dirName,
 				missingName]);
+	covers("NSFileManager", "displayNameAtPath:");
 		}
 		{
 			/* AND THE SAME RULE COMPONENT BY COMPONENT, with the failure case answered the OTHER way
@@ -827,6 +888,7 @@ int main(void)
 			      [NSString stringWithFormat:@"%lu part(s), last=%@, missing=%s",
 				(unsigned long)(parts != nil ? [parts count] : 0), lastPart,
 				[fm componentsToDisplayForPath:fn_s3(@"not-here")] == nil ? "nil" : "not nil"]);
+	covers("NSFileManager", "componentsToDisplayForPath:");
 		}
 		{
 			/* AND THE KEYS WHOSE ENTRY CAN ONLY BE ABSENT: seven names this class will never fill,
@@ -850,6 +912,7 @@ int main(void)
 			      attributes != nil && [flagKeys count] == 7 && absent,
 			      [NSString stringWithFormat:@"%lu key(s), all absent=%d",
 				(unsigned long)[flagKeys count], (int)absent]);
+	covers("NSFileManager", "attributesOfItemAtPath:error:");
 		}
 
 		{
@@ -876,12 +939,14 @@ int main(void)
 		check("temporary-directory-is-the-fsh-path",
 		      [temporary isEqualToString:@"/System/Temporary Files/"],
 		      @"NSTemporaryDirectory() answers the FSH's own temporary directory");
+	covers("NSFileManager", "fileExistsAtPath:isDirectory:");
 
 		/* AND THE DIRECTION THAT MATTERS: THE PATH IT ANSWERS IS REAL. A constant that named a directory
 		 * nothing creates would pass the check above and be useless. */
 		check("temporary-directory-exists",
 		      exists && isDirectory,
 		      @"the directory NSTemporaryDirectory() names exists and is a directory");
+	covers("NSFileManager", "fileExistsAtPath:isDirectory:");
 	}
 
 	{
@@ -925,6 +990,8 @@ int main(void)
 		      bytes != NULL && strcmp(bytes, [sample UTF8String]) == 0 &&
 		      back != nil && [back isEqualToString:sample],
 		      @"the path's bytes are its UTF-8 form and a counted read turns them back into the string");
+	covers("NSFileManager", "fileSystemRepresentationWithPath:");
+	covers("NSFileManager", "stringWithFileSystemRepresentation:length:");
 	}
 
 	{
