@@ -284,7 +284,14 @@ int main(void)
 			}
 		}
 		for (i = 0; excluded[i] != NULL; i++) {
-			if ([probe respondsToSelector:sel_registerName(excluded[i])]) {
+			SEL excludedSel = sel_registerName(excluded[i]);
+
+			/* BOTH TABLES, AND THE CLASS SIDE IS NOT DECORATION: this loop used to ask only the
+			 * INSTANCE, so an `excluded` entry naming a CLASS method could NEVER fire. That is
+			 * exactly how +dataWithContentsOfMappedFile: sat in this list while NSData implemented
+			 * it — the check was silent about the one shape it could not see. */
+			if ([probe respondsToSelector:excludedSel] ||
+			    class_getClassMethod((Class)object_getClass(probe), excludedSel) != NULL) {
 				complete = 0;
 				printf("FOUNDATION-VALUE present but EXCLUDED: %s\n", excluded[i]);
 			}
@@ -359,6 +366,8 @@ int main(void)
 			"dataWithBytesNoCopy:length:freeWhenDone:", "dataWithData:",
 			"dataWithContentsOfFile:", "dataWithContentsOfFile:options:error:",
 			"dataWithBase64EncodedString:", "dataWithBase64EncodedString:options:",
+			/* §11 D7's kind (A): deprecated, retired ground, OWED — and shipped, so DEMANDED. */
+			"dataWithContentsOfMappedFile:",
 			/* D7's kind (D): these SHIPPED on 2026-09-19, so the inventory demands them. */
 			"dataWithContentsOfURL:", "dataWithContentsOfURL:options:error:",
 			NULL
@@ -370,6 +379,8 @@ int main(void)
 			/* F12's codecs: they SHIPPED, so the inventory must demand them. */
 			"compressedDataUsingAlgorithm:error:", "decompressedDataUsingAlgorithm:error:",
 			"initWithBase64EncodedString:options:", "initWithBase64EncodedData:options:",
+			/* The other two of D7's kind (A) that this tree implements. */
+			"initWithContentsOfMappedFile:", "getBytes:",
 			"length", "bytes", "getBytes:length:", "getBytes:range:",
 			"subdataWithRange:", "rangeOfData:options:range:",
 			"base64EncodedStringWithOptions:", "base64EncodedDataWithOptions:",
@@ -393,10 +404,12 @@ int main(void)
 			"resetBytesInRange:", NULL
 		};
 		static const char *excluded[] = {
-			/* Deprecated by Cocoa itself. */
-			"dataWithContentsOfMappedFile:",	/* superseded by the :options: form */
-			"initWithContentsOfMappedFile:",	/* superseded by the :options: form */
-			"getBytes:",				/* superseded by -getBytes:length: */
+			/* THESE THREE MOVED TO THE REQUIRED LISTS ABOVE, because they SHIP. They used to sit
+			 * here on the ground "Deprecated by Cocoa itself", AND THAT GROUND WAS RETIRED
+			 * (2026-09-26, §62.24 / §11's D7 kind (A)): deprecated API is IN SCOPE for this
+			 * Foundation, so every one of these is OWED rather than tolerated — and this tree
+			 * implements all three. An `excluded` entry is a CLAIM about the tree, and the probe
+			 * was reporting "present but EXCLUDED", which is the claim being false out loud. */
 			/* THE SIX URL-TAKING FORMS USED TO BE LISTED HERE as "not shipped". They are
 			 * IMPLEMENTED now (delegation to the file forms once a file URL is a path, with
 			 * a REGISTERED refusal for every other scheme — §11.6.1 D9), so they moved to
@@ -444,7 +457,14 @@ int main(void)
 			}
 		}
 		for (i = 0; excluded[i] != NULL; i++) {
-			if ([probe respondsToSelector:sel_registerName(excluded[i])]) {
+			SEL excludedSel = sel_registerName(excluded[i]);
+
+			/* BOTH TABLES, AND THE CLASS SIDE IS NOT DECORATION: this loop used to ask only the
+			 * INSTANCE, so an `excluded` entry naming a CLASS method could NEVER fire. That is
+			 * exactly how +dataWithContentsOfMappedFile: sat in this list while NSData implemented
+			 * it — the check was silent about the one shape it could not see. */
+			if ([probe respondsToSelector:excludedSel] ||
+			    class_getClassMethod((Class)object_getClass(probe), excludedSel) != NULL) {
 				complete = 0;
 				printf("FOUNDATION-VALUE present but EXCLUDED: %s\n", excluded[i]);
 			}
@@ -480,6 +500,10 @@ int main(void)
 			"timeIntervalSince1970", "timeIntervalSinceReferenceDate",
 			"timeIntervalSinceNow", "timeIntervalSinceDate:",
 			"dateByAddingTimeInterval:", "earlierDate:", "laterDate:",
+			"addTimeInterval:",			/* D7 kind (A): deprecated, retired ground, shipped here */
+			"descriptionWithCalendarFormat:timeZone:locale:",	/* ditto — and the object the probe
+								 * holds ANSWERS it (NSCalendarDate implements it), which is why the
+								 * exclusion could not stand */
 			"compare:", "isEqualToDate:",
 			"isEqual:", "hash", "description", "descriptionWithLocale:",
 			"copy", "mutableCopy",
@@ -487,8 +511,8 @@ int main(void)
 			NULL
 		};
 		static const char *excluded[] = {
-			/* Deprecated by Cocoa itself. */
-			"addTimeInterval:",					/* superseded by -dateByAddingTimeInterval: */
+			/* MOVED TO THE REQUIRED LIST ABOVE: D7's kind (A) — deprecated, retired ground, OWED,
+			 * and implemented here, so it is demanded rather than excluded. */
 			"initWithString:",					/* removed from Cocoa's documented API */
 			"dateWithString:",					/* removed from Cocoa's documented API */
 			/* Needs a piece this Foundation does not ship: a date PARSER. */
@@ -498,7 +522,6 @@ int main(void)
 			 * SHIP (F7 and stage E). These are absent from NSDATE's own surface
 			 * because they are the CALENDAR's methods, which is where Cocoa puts them:
 			 * the arithmetic lives on the calendar as -dateByAdding…. */
-			"descriptionWithCalendarFormat:timeZone:locale:",	/* the CALENDAR's method, and Apple deprecated it: OWED (§62.24) */
 			"dateByAddingComponents:toDate:options:",		/* NSCalendar's method, not NSDate's */
 			"dateByAddingUnit:value:toDate:options:",		/* NSCalendar's method, not NSDate's */
 			/* THE TWO NSCoding ENTRIES USED TO BE LISTED HERE. NSDate implements them now
@@ -523,7 +546,14 @@ int main(void)
 			}
 		}
 		for (i = 0; excluded[i] != NULL; i++) {
-			if ([probe respondsToSelector:sel_registerName(excluded[i])]) {
+			SEL excludedSel = sel_registerName(excluded[i]);
+
+			/* BOTH TABLES, AND THE CLASS SIDE IS NOT DECORATION: this loop used to ask only the
+			 * INSTANCE, so an `excluded` entry naming a CLASS method could NEVER fire. That is
+			 * exactly how +dataWithContentsOfMappedFile: sat in this list while NSData implemented
+			 * it — the check was silent about the one shape it could not see. */
+			if ([probe respondsToSelector:excludedSel] ||
+			    class_getClassMethod((Class)object_getClass(probe), excludedSel) != NULL) {
 				complete = 0;
 				printf("FOUNDATION-VALUE present but EXCLUDED: %s\n", excluded[i]);
 			}
