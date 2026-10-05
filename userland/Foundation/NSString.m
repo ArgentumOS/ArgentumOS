@@ -18,8 +18,9 @@
  * AND ITS METHODS CALL THE TWINS, WHICH IS THE DELEGATION RULE IN ITS SHARPEST FORM. CF's public doors
  * dispatch to us (CF_OBJC_FUNCDISPATCHV(..., NSString, length)) and fall back to the C implementation;
  * the non-dispatching twins exist beside them labelled "for NSCFString", which is THIS class. So -length
- * calls _CFStringGetLength2 — CF's real work, no dispatch, no assertion check — rather than reimplementing
- * anything, and rather than calling CFStringGetLength, which would dispatch straight back into here.
+ * calls _CFStringGetLength2 and -characterAtIndex: calls _CFStringCheckAndGetCharacterAtIndex — CF's real
+ * work, no dispatch, no assertion check — rather than reimplementing anything, and rather than calling
+ * CFStringGetLength/CFStringGetCharacterAtIndex, which would dispatch straight back into here.
  *
  * AND ITS NAME IS NOT A CHOICE. CFBase.h has carried the answer all along:
  *
@@ -32,11 +33,15 @@
 #include <objc/runtime.h>
 #include <CoreFoundation/CoreFoundation.h>
 
-/* THE TWO DECLARATIONS THIS FILE NEEDS, both ours, both with the same provenance: the bridging door is
- * this tree's addition to the CF package (modification 9), and the twin is upstream's, declared in CF's
- * INTERNAL headers because upstream expects its own Foundation to be the caller. */
+/* THE DECLARATIONS THIS FILE NEEDS, both ours, both with the same provenance: the bridging door is this
+ * tree's addition to the CF package (modification 9), and the twins are upstream's, declared in CF's INTERNAL
+ * headers because upstream expects its own Foundation to be the caller. */
 extern unsigned long CFNXBridgeClassToType(Class cls, CFTypeID typeID);
 extern CFIndex _CFStringGetLength2(CFStringRef str);
+/* THE CHARACTER TWIN, and CFString.c's own comment is what makes it the right one rather than the obvious
+ * one: "This one is for NSCFString usage; it doesn't do ObjC dispatch; but it does do range check". The
+ * range check is the whole reason to use it instead of the guts function it wraps. */
+extern int _CFStringCheckAndGetCharacterAtIndex(CFStringRef str, CFIndex idx, UniChar *ch);
 /* THE HASH TWIN, named FOR THE CLASS IT SERVES -- the same convention as the length twin above. CF keeps it
  * internal because upstream expects its own Foundation to be the caller. */
 extern CFHashCode CFStringHashNSString(CFStringRef str);
@@ -109,6 +114,16 @@ extern CFHashCode CFStringHashNSString(CFStringRef str);
 + (Class)class
 {
 	return self;
+}
+
+/* AND THE INSTANCE TWIN, WHOSE ABSENCE WAS A PROTOCOL GAP RATHER THAN A HARMLESS OMISSION. The NSObject
+ * protocol declares `- (Class)class` as well as `+ (Class)class`, and this class answered only the class
+ * method -- which is why the build carried the warning "method 'class' in protocol 'NSObject' not
+ * implemented". A SUBCLASS inherits both and needs no declaration; a ROOT class must answer both, because it
+ * inherits nothing that could answer on its behalf. */
+- (Class)class
+{
+	return object_getClass(self);
 }
 
 /* NOT static, AND REACHED FROM TWO PLACES: the library constructor below, and CF's own hook when it finishes
@@ -200,16 +215,37 @@ __attribute__((constructor)) static void _FNXRegisterBridgedClassesAtLoad(void)
 	_FNXRegisterAllBridgedClasses();
 }
 
+/* WHAT COUNT IS: UNITS, which is what CFStringGetLength means and what Apple's -length means, so the two
+ * worlds cannot disagree about how long this string is. */
 - (unsigned long)length
 {
 	return (unsigned long)_CFStringGetLength2((CFStringRef)self);
 }
 
-/* -characterAtIndex: BELONGS HERE TOO, and it is deliberately not written yet: its twin's name was GUESSED
- * (the length twin's was checked, and this one's guess cost a link error), and a guess is not worth a
- * method. The twin exists -- CFString.c has the pair -- and finding its name is the first thing the next
- * door added here needs. -length alone is what proves the cast works.
- */
+/* THE OTHER HALF OF THAT PAIR, AND IT IS CF'S OWN FUNCTION RATHER THAN A REIMPLEMENTATION. CF keeps this
+ * twin beside the length one for exactly this class, and its own comment says what it adds: no ObjC dispatch,
+ * but a range check. The range check is the point -- the guts function it wraps would read past a CFString's
+ * storage, while this answers CF's bounds error instead. (The sentinel is CF's enum, whose success value is
+ * _CFStringErrNone == 0, so "non-zero" is the failure test and no constant of ours is being invented.)
+ *
+ * OUT OF RANGE ANSWERS 0, WHICH IS THIS LIBRARY'S ANSWER AND NOT APPLE'S, AND THE DIFFERENCE IS NAMED RATHER
+ * THAN HIDDEN. Apple raises NSRangeException; this library has no NSException class to raise (it is these
+ * four classes and no more). NSConstantString, the class beside this one, answers 0 for the same reason --
+ * so the two agree, which is the property worth having until there is an exception to raise with.
+ *
+ * AND ONE LIVE BUG DIES WITH IT: -isEqual: ABOVE CALLS THIS DOOR ON BOTH OPERANDS, so before this method
+ * existed, comparing a CF-native string raised doesNotRecognizeSelector instead of comparing. The warning
+ * that used to sit here said the twin's name had been GUESSED once and cost a link error; the name is now
+ * read out of CFString.c's own comment pair rather than guessed, which is why the guess is not repeated. */
+- (unsigned short)characterAtIndex:(unsigned long)index
+{
+	UniChar ch = 0;
+
+	if (_CFStringCheckAndGetCharacterAtIndex((CFStringRef)self, (CFIndex)index, &ch) != 0) {
+		return 0;
+	}
+	return (unsigned short)ch;
+}
 
 @end
 

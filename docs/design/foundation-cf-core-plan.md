@@ -1365,3 +1365,61 @@ A class that is BOTH registered for a CF type AND instantiated by this library m
 includes its IVAR LAYOUT, not only its dispatch: the class must not declare, or inherit, a field that lands on
 one of CF's. `NSObject` is exempt because it IS the CF header (isa + `_cfinfoa`) plus one word of its own; every
 bridged class below it must be a root class, or CF's storage and Foundation's will share a word.
+
+
+# THE TWO `NSString` FOLLOW-UPS, BOTH TAKEN — AND THE SWEEP IS NOW ZERO
+
+**`foundation_object` is 20/20** (two checks added), `foundation_collection` 16/16, the build is
+warning-free, and `tools/foundation-sweep.py --unimplemented` answers **0 declared selectors with no
+implementation** — the red that had been carried as pre-existing since §63 is CLOSED, not parked.
+
+## 1. `-class` — a ROOT CLASS OWES BOTH HALVES OF THE PROTOCOL
+
+`@protocol NSObject` declares `- (Class)class` AND `+ (Class)class`. `NSString` answered only the class
+method, because "a class method is what `[NSString class]` needs" — which is true and insufficient: a SUBCLASS
+inherits both and needs no declaration, while a ROOT class must answer both, since it inherits nothing that
+could answer on its behalf. The compiler had been saying so all along, in a warning that was being read as
+noise:
+
+    NSString.m:46: warning: method 'class' in protocol 'NSObject' not implemented [-Wprotocol]
+
+One method (`return object_getClass(self);`, the same body NSObject uses) removes it. **The shape is the same
+lesson as NSArray's: a root class is a checklist, and every protocol member on it is a line someone has to
+write.**
+
+## 2. `-characterAtIndex:` — THE TWIN'S NAME WAS NEVER THE GUESS IT WAS FEARED TO BE
+
+The door was declared in `NSString.h` and defined NOWHERE, and the comment where it belonged recorded why the
+work had stopped: *"its twin's name was GUESSED … and this one's guess cost a link error"*. The name is not a
+guess, it is in `CFString.c` beside the length twin's, with CF's own sentence saying which one this class
+wants:
+
+    CFIndex _CFStringGetLength2(CFStringRef str)                     /* "for NSCFString; no dispatch" */
+    int     _CFStringCheckAndGetCharacterAtIndex(CFStringRef, CFIndex, UniChar *)
+                                       /* "for NSCFString usage; it doesn't do ObjC dispatch; but it does do range check" */
+
+The range check is the reason to take THAT one rather than the guts function it wraps: the guts reads straight
+past a CFString's storage, while this answers CF's bounds error. It is `CF_EXPORT`ed in `ForFoundationOnly.h`,
+so the declaration is the only thing Foundation needed (`_CFStringErrNone == 0`, so "non-zero" is the failure
+test and no sentinel of ours is invented).
+
+**AND IT WAS A LIVE BUG RATHER THAN A MISSING NICETY.** `-isEqual:` — in this same class — walks
+`-characterAtIndex:` on both operands, so before this method existed, comparing a CF-native string raised
+`doesNotRecognizeSelector` instead of comparing. The probe now asserts both halves as separate claims, with the
+expected characters known independently of the door (`"native"`: index 0 `'n'`, index 5 `'e'`):
+
+    and-answers-its-own-characters           [(id)cfStr characterAtIndex:0] == 'n' && …[5] == 'e'
+    and-compares-equal-to-an-equal-string    two CF-native strings, same content, -isEqual: answers YES
+
+**ONE DEVIATION, STATED AT THE DOOR:** out of range answers **0**, where Apple raises `NSRangeException`. This
+library has no `NSException` class to raise with (it is these four classes), and `NSConstantString` — the class
+beside this one — answers 0 for the same reason, so the two AGREE, which is the property worth having until
+there is an exception to raise with.
+
+## AND A WARNING SWEPT UP ON THE WAY
+
+`NSArray.h`'s `+alloc`/`-init` were unannotated, which cost a `-Wnullability-completeness` warning the moment
+the probes recompiled against the header. They are now annotated **from the implementation** (this tree's
+standing practice): `+ (id _Nullable)alloc` because it returns whatever `CFArrayCreate` returned, and
+`- (id _Nonnull)init` because that one answers the receiver. A full rebuild of the four class files and both
+probes is now **warning-free**.

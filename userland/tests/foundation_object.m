@@ -29,6 +29,7 @@
  */
 
 #import <Foundation/NSObject.h>
+#import <Foundation/NSString.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <stdio.h>
 #include <string.h>
@@ -224,6 +225,27 @@ int main(void) {
 			      "[(id)cfStr length] did not answer 6 - a CF object cannot be messaged");
 			check("and-casts-back-to-cf", CFStringGetLength(native) == 6,
 			      "CFStringGetLength on the same pointer did not answer 6 - the cast back does not work");
+			/* THE SWEEP WAS RIGHT TO FLAG THIS DOOR, AND IT WAS NOT A MISSING NICETY:
+			 * -characterAtIndex: was DECLARED in NSString.h and defined NOWHERE, while -isEqual: walks it
+			 * on both operands -- so comparing a CF-native string raised doesNotRecognizeSelector. The two
+			 * checks below are that door and the bug it unblocked, as separate claims because they are
+			 * separate claims: a door that answers can still be reached wrongly.
+			 *
+			 * "native" IS THE SIX-CHARACTER STRING MADE ABOVE, so the expected characters are known
+			 * independently of the door under test: index 0 is 'n' and index 5 is 'e'. */
+			check("and-answers-its-own-characters",
+			      [(id)native characterAtIndex:0] == 'n' && [(id)native characterAtIndex:5] == 'e',
+			      "[(id)cfStr characterAtIndex:] did not answer the string's own characters");
+			{
+				CFStringRef twin = CFStringCreateWithCString(kCFAllocatorDefault, "native", kCFStringEncodingUTF8);
+
+				check("and-compares-equal-to-an-equal-string",
+				      twin != NULL && [(id)native isEqual:(id)twin],
+				      "-isEqual: on two CF-native strings did not answer YES - the door it walks is missing");
+				if (twin != NULL) {
+					CFRelease(twin);
+				}
+			}
 		} else {
 			/* A FAILED PRECONDITION MUST NOT TAKE THE PROCESS WITH IT: messaging an object that has no class
 			 * is a CRASH, not a check - and the crash hides the tally and every check after it, which is
@@ -233,6 +255,10 @@ int main(void) {
 			      "not run: the CF-native object has no class, so there is nothing to message");
 			check("and-casts-back-to-cf", 0,
 			      "not run: the CF-native object has no class, so there is nothing to cast");
+			check("and-answers-its-own-characters", 0,
+			      "not run: the CF-native object has no class, so there is nothing to ask for a character");
+			check("and-compares-equal-to-an-equal-string", 0,
+			      "not run: the CF-native object has no class, so there is nothing to compare");
 		}
 		if (native != NULL) {
 			CFRelease(native);

@@ -67,11 +67,12 @@ __attribute__((objc_root_class))
  * refcount into a class that has nowhere to put one (offset 16 is CF's `_count`, and a root class with only
  * `isa` is 8 bytes wide). There is no shell in this design, so there is nothing to size.
  *
- * NEITHER OF THESE IS ANNOTATED, AND THAT MATCHES NSObject.h AND THE TRUTH: +alloc CAN answer nil, because it
- * returns what CFArrayCreate returns. */
-+ (id)alloc;
+ * THE TWO ARE ANNOTATED FROM THE IMPLEMENTATION RATHER THAN BY CONVENTION, which is this tree's standing
+ * practice and here it also silences a real -Wnullability-completeness warning: +alloc CAN answer nil (it is
+ * whatever CFArrayCreate returned), so it is _Nullable, while -init answers the receiver and never nil. */
++ (id _Nullable)alloc;
 
-- (id)init;
+- (id _Nonnull)init;
 
 /* THE ONE DOOR THAT FILLS AN ARRAY, and it cannot answer with `self` — see the implementation. That is why the
  * result is `instancetype` rather than a promise that the address is unchanged. */
