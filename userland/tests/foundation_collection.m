@@ -1408,6 +1408,9 @@ NULL
 			      [copied isEqualToDictionary:arrays] &&
 			      [built count] == 1 && [[built objectForKey:@"q"] isEqualToString:@"p"],
 			      "the nil-terminated pairs keep BOTH halves (the array family dropped its first), the two-array form, and the copy constructor");
+	covers("NSDictionary", "dictionaryWithObjects:forKeys:");
+	covers("NSDictionary", "initWithObjectsAndKeys:");
+	covers("NSDictionary", "initWithDictionary:");
 	covers("NSDictionary", "dictionaryWithObjectsAndKeys:");
 	covers("NSDictionary", "dictionaryWithObjects:forKeys:count:");
 	covers("NSDictionary", "dictionaryWithDictionary:");
@@ -1592,6 +1595,7 @@ NULL
 		      [matched containsIndex:2] && [matched containsIndex:3] &&
 		      exhaustiveCalls == 4 && missing == NSNotFound,
 		      "the first-match walk STOPS at the match (2 predicate calls for a match at index 1), the indexes form visits all four, and an absent value answers NSNotFound");
+	covers("NSArray", "indexesOfObjectsPassingTest:");
 	}
 
 	{
@@ -1690,6 +1694,9 @@ NULL
 		      [[bySelector objectAtIndex:0] isEqualToString:@"a"] &&
 		      [[bySelector objectAtIndex:2] isEqualToString:@"c"],
 		      "enumerateKeysAndObjectsUsingBlock: pairs each key with its own value, and both keys-sorted-by-value forms order by the VALUES");
+	covers("NSDictionary", "enumerateKeysAndObjectsUsingBlock:");
+	covers("NSDictionary", "keysSortedByValueUsingComparator:");
+	covers("NSDictionary", "keysSortedByValueUsingSelector:");
 	}
 
 	{
@@ -1753,6 +1760,8 @@ NULL
 		      wrote && back != nil && [back isEqualToArray:out],
 		      [[NSString stringWithFormat:@"wrote=%d back=%lu",
 			(int)wrote, (unsigned long)(back != nil ? [back count] : 0)] UTF8String]);
+	covers("NSArray", "writeToFile:atomically:");
+	covers("NSArray", "arrayWithContentsOfFile:");
 		remove([path UTF8String]);
 	}
 
@@ -1767,6 +1776,8 @@ NULL
 		      wrote && back != nil && [back isEqualToArray:out],
 		      [[NSString stringWithFormat:@"wrote=%d back=%lu",
 			(int)wrote, (unsigned long)(back != nil ? [back count] : 0)] UTF8String]);
+	covers("NSArray", "writeToURL:atomically:");
+	covers("NSArray", "arrayWithContentsOfURL:");
 		remove([path UTF8String]);
 	}
 
@@ -1800,6 +1811,8 @@ NULL
 		      wrote && back != nil && [back isEqualToDictionary:out],
 		      [[NSString stringWithFormat:@"wrote=%d back=%lu",
 			(int)wrote, (unsigned long)(back != nil ? [back count] : 0)] UTF8String]);
+	covers("NSDictionary", "writeToFile:atomically:");
+	covers("NSDictionary", "dictionaryWithContentsOfFile:");
 		remove([path UTF8String]);
 	}
 
@@ -1814,6 +1827,8 @@ NULL
 		      wrote && back != nil && [back isEqualToDictionary:out],
 		      [[NSString stringWithFormat:@"wrote=%d back=%lu",
 			(int)wrote, (unsigned long)(back != nil ? [back count] : 0)] UTF8String]);
+	covers("NSDictionary", "writeToURL:atomically:");
+	covers("NSDictionary", "dictionaryWithContentsOfURL:");
 		remove([path UTF8String]);
 	}
 
@@ -1989,6 +2004,7 @@ NULL
 		      gotValues[0] != nil && gotKeys[0] != nil &&
 		      gotValues[1] != nil && gotKeys[1] != nil,
 		      "the two-array constructor; copyItems:NO sharing the value and copyItems:YES copying it; the counted buffer filling both arrays");
+	covers("NSDictionary", "initWithObjects:forKeys:count:");
 	}
 
 	{
@@ -2253,6 +2269,7 @@ NULL
 			      [[plain objectAtIndex:0] isEqualToString:@"alpha"] &&
 			      [foreign count] == 1,
 			      "the hint neither changes the ANSWER nor breaks on an array it did not come from");
+	covers("NSArray", "sortedArrayUsingFunction:context:");
 		}
 
 		/* THE ARRAY-WIDE KVO DOORS: one observation per INDEXED element, and the context-bearing removal
