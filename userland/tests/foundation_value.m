@@ -210,6 +210,8 @@ int main(void)
 		      [foundation_value_date()
 		          isEqualToDate:[NSDate dateWithTimeIntervalSince1970:1000.0]],
 		      "values built in the support unit equal local ones");
+	covers("NSDate", "isEqualToDate:");
+	covers("NSDate", "dateWithTimeIntervalSince1970:");
 	}
 
 
@@ -690,6 +692,13 @@ int main(void)
 		      [[NSDate distantPast] compare:now] == NSOrderedAscending &&
 		      [[NSDate distantFuture] compare:now] == NSOrderedDescending,
 		      "relative dates, the reference date, and distant past/future ordering");
+	covers("NSDate", "timeIntervalSince1970");
+	covers("NSDate", "timeIntervalSinceDate:");
+	covers("NSDate", "timeIntervalSinceReferenceDate");
+	covers("NSDate", "timeIntervalSinceNow");
+	covers("NSDate", "compare:");
+	covers("NSDate", "distantPast");
+	covers("NSDate", "distantFuture");
 	}
 
 

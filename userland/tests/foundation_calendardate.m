@@ -286,6 +286,8 @@ int main(void)
 		      [past compare:(NSDate *)future] == NSOrderedAscending,
 		      [NSString stringWithFormat:@"past=%@ future=%@", [past descriptionWithLocale:nil],
 			[future descriptionWithLocale:nil]]);
+	covers("NSDate", "compare:");
+	covers("NSDate", "descriptionWithLocale:");
 	}
 
 
@@ -312,6 +314,7 @@ int main(void)
 		      nope == nil,
 		      [NSString stringWithFormat:@"utc=%g shifted=%g nope=%@", [utc srAbsoluteTime],
 			[shifted srAbsoluteTime], nope == nil ? @"nil" : @"NOT nil"]);
+	covers("NSDate", "dateWithString:");
 	}
 	{
 		/* THE PRE-10.6 SPELLING IS THE MODERN ONE, and `now` is Swift's spelling of +date. */
@@ -324,6 +327,8 @@ int main(void)
 		      now != nil && [now timeIntervalSinceNow] < 5.0 && [now timeIntervalSinceNow] > -5.0,
 		      [NSString stringWithFormat:@"later=%g now-off=%g", [later srAbsoluteTime],
 			[now timeIntervalSinceNow]]);
+	covers("NSDate", "dateByAddingTimeInterval:");
+	covers("NSDate", "timeIntervalSinceNow");
 	}
 
 	printf("FOUNDATION-CALENDARDATE RESULT ok=%d fail=%d\n", okc, failc);
