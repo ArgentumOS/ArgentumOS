@@ -27,8 +27,11 @@
 
 static int okc = 0, failc = 0;
 
+static int lastcheck;
+
 static void check(const char *name, BOOL held, NSString *why)
 {
+	lastcheck = held;	/* read by covers() */
 	if (held) {
 		okc++;
 		printf("FOUNDATION-ARCHIVER %s ok\n", name);
@@ -37,6 +40,15 @@ static void check(const char *name, BOOL held, NSString *why)
 		printf("FOUNDATION-ARCHIVER %s FAIL: %s\n", name, [why UTF8String]);
 	}
 }
+
+/* covers("NSCoder", "decodeObject") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* DID THIS BLOCK RAISE, AND WHAT? The exception's NAME is part of the contract here — a refusal that named
  * the wrong exception would be a different refusal — so each check asks for the name it expects. */
@@ -318,6 +330,7 @@ int main(void)
 		check("data-that-is-not-an-archive-answers-nil",
 		      bad == nil && short_ == nil,
 		      @"an invalid archive is a nil, which is a value a caller can act on");
+	covers("NSCoder", "decodeObject");
 		check("a-truncated-archive-raises-instead-of-reading-past-its-end",
 		      [truncated isEqualToString:NSInconsistentArchiveException],
 		      @"a short read is NSInconsistentArchiveException — the exception Apple names for bad archive "
@@ -348,6 +361,7 @@ int main(void)
 			check("reading-a-value-as-the-wrong-type-raises",
 			      [name isEqualToString:NSInconsistentArchiveException],
 			      @"a string where an int was asked for is not a coercion, it is an inconsistent archive");
+	covers("NSCoder", "decodeValueOfObjCType:at:size:");
 		}
 	}
 
@@ -405,6 +419,7 @@ int main(void)
 			check("the-version-door-raises-rather-than-fabricating",
 			      [name isEqualToString:NSInconsistentArchiveException],
 			      @"this wire records no class versions, so none is answered");
+	covers("NSCoder", "versionForClassName:");
 		}
 	}
 
@@ -438,6 +453,8 @@ int main(void)
 			      [NSString stringWithFormat:@"a struct written as its type code comes back as itself "
 						@"(wrote {%.2f, %.2f}, read {%.2f, %.2f})",
 						in.x, in.y, out.x, out.y]);
+	covers("NSCoder", "encodeValueOfObjCType:at:");
+	covers("NSCoder", "decodeValueOfObjCType:at:");
 		}
 
 		/* THE SIX UNKEYED GEOMETRY DOORS, in ONE archive and in the order a sequential format requires. */
@@ -468,6 +485,12 @@ int main(void)
 						pointBack.x, pointBack.y, sizeBack.width, sizeBack.height,
 						rectBack.origin.x, rectBack.origin.y,
 						rectBack.size.width, rectBack.size.height]);
+	covers("NSCoder", "encodePoint:");
+	covers("NSCoder", "decodePoint");
+	covers("NSCoder", "encodeSize:");
+	covers("NSCoder", "decodeSize");
+	covers("NSCoder", "encodeRect:");
+	covers("NSCoder", "decodeRect");
 		}
 
 		/* THE ARRAY DOORS: a RUN of values whose stride is the type's own size. */
@@ -485,6 +508,8 @@ int main(void)
 			      back[0] == 11 && back[1] == -22 && back[2] == 33,
 			      [NSString stringWithFormat:@"three ints written as one array come back as %d, %d, %d",
 						back[0], back[1], back[2]]);
+	covers("NSCoder", "encodeArrayOfObjCType:count:at:");
+	covers("NSCoder", "decodeArrayOfObjCType:count:at:");
 		}
 
 		/* THE SIZED READING DOOR HONOURS THE SIZE THE CALLER DECLARED — that is what it is FOR, and it is
@@ -540,6 +565,9 @@ int main(void)
 			      bytes != NULL && bytes[0] == 'a' && bytes[1] == 'b' && bytes[2] == 'c' &&
 			      bytes[3] == 'd',
 			      @"a run that MEETS the floor is handed back unchanged");
+	covers("NSCoder", "encodeBytes:length:");
+	covers("NSCoder", "encodeBytes:length:forKey:");
+	covers("NSCoder", "decodeBytesWithMinimumLength:");
 		}
 		{
 			NSMutableData *data = [[NSMutableData alloc] init];
@@ -556,6 +584,7 @@ int main(void)
 			      [name isEqualToString:NSInvalidArgumentException],
 			      @"a run SHORTER than the floor is a corrupt archive, not a shorter value — and the "
 			      @"refusal goes through -failWithError:, exactly as Apple's own text says");
+	covers("NSCoder", "decodeBytesWithMinimumLength:");
 		}
 
 		/* AND THE MUTUAL EXCLUSION, ONE DOOR FURTHER OUT: a geometry door is the SEQUENTIAL family's, so a

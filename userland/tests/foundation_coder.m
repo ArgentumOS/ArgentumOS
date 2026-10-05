@@ -748,6 +748,8 @@ int main(void)
 			      i32 == (int32_t)123456 && i64 == (int64_t)9007199254740993LL,
 			      [NSString stringWithFormat:@"arr=%@ str=%@ i32=%d i64=%lld",
 			       arr, str, (int) i32, (long long) i64]);
+	covers("NSCoder", "decodeInt32ForKey:");
+	covers("NSCoder", "decodeInt64ForKey:");
 	covers("NSCoder", "decodeObjectOfClass:forKey:");
 	covers("NSKeyedArchiver", "initForWritingWithMutableData:");
 	covers("NSCoder", "encodeObject:forKey:");
@@ -902,6 +904,7 @@ int main(void)
 		      [NSString stringWithFormat:@"again=%@ unseenIsNil=%d",
 		       [again isKindOfClass:[CoderNode class]] ? [again name] : @"(nil)",
 		       (int)([reader decodeObjectForKey:@"unseen"] == nil)]);
+	covers("NSCoder", "encodeConditionalObject:");
 	covers("NSCoder", "decodeObjectForKey:");
 	covers("NSCoder", "encodeConditionalObject:forKey:");
 	covers("NSCoder", "encodeObject:forKey:");
@@ -1010,6 +1013,8 @@ int main(void)
 		      [[plistBack objectAtIndex:0] isEqualToString:@"plist-entry"] &&
 		      [[plistBack objectAtIndex:1] intValue] == 21,
 		      [NSString stringWithFormat:@"plistBack=%@", plistBack]);
+	covers("NSCoder", "encodePropertyList:");
+	covers("NSCoder", "decodePropertyList");
 
 		/* `"id"` IS `@encode(int) @encode(double)` CONCATENATED — the door takes ONE string of codes,
 		 * and each code names the address that follows it in the varargs. */
