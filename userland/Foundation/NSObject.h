@@ -72,19 +72,14 @@
 #include <stddef.h>
 
 /*
- * APPLE'S NULLABILITY SPELLING, WHICH THIS LIBRARY DID NOT HAVE. Apple declares these two in NSObjCRuntime.h
- * (a header this tree does not carry), and the classes written here annotate with the `_Nullable`/`_Nonnull`
- * KEYWORDS instead — the same region note in a different spelling. They are defined anyway, because a header
- * written to APPLE'S spelling should compile: NSException.h is the first such, and it is a port, so its
- * annotations came across as they were rather than being rewritten into the local style.
- *
- * DEFINING THEM OPENS NO REGION. The pragma is emitted where a header WRITES the macro, never here — so this
- * pair is a vocabulary, not a switch, and adding it cannot change how any existing header is read.
+ * APPLE'S NULLABILITY SPELLING AND THE VALUE TYPES NOW LIVE IN THEIR OWN HEADER — which is where Apple keeps
+ * them, and where this file's own note said NSUInteger would move "the moment a second class needs it, and
+ * only then". That moment arrived: NSArray's range-taking doors make it four classes plus a struct. So
+ * Foundation/NSObjCRuntime.h is the home of NSUInteger/NSInteger (ALIASED to CFIndex/CFOptionFlags, which are
+ * the same types), of NSRange/NSRangePointer/NSMakeRange, of NSNotFound, and of these two macros. Imported
+ * rather than re-declared so there is one definition of each and nothing to drift.
  */
-#ifndef NS_ASSUME_NONNULL_BEGIN
-#define NS_ASSUME_NONNULL_BEGIN	_Pragma("clang assume_nonnull begin")
-#define NS_ASSUME_NONNULL_END		_Pragma("clang assume_nonnull end")
-#endif
+#import <Foundation/NSObjCRuntime.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -118,7 +113,9 @@ extern "C" {
  * library's own integer spelling (it moves to its own header the moment a second class needs it, and only
  * then), and NSString is named because -description returns one — here that is CoreFoundation's string
  * seen through the bridge, which is what makes the two description doors the same door. */
-typedef unsigned long NSUInteger;
+/* MOVED, AND THE PARAGRAPH ABOVE SAID WHEN: NSUInteger was "this library's own integer spelling" until a
+ * second class needed it — and Foundation/NSObjCRuntime.h is now that home, where it is an ALIAS of CF's
+ * CFOptionFlags (the same type by construction). NSObject.h imports it, so every consumer is unchanged. */
 @class NSString;
 
 /*

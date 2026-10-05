@@ -86,6 +86,43 @@ __attribute__((objc_root_class))
 - (BOOL)containsObject:(id _Nonnull)anObject;
 - (NSUInteger)indexOfObject:(id _Nonnull)anObject;
 
+/* ------------------------------------------------------------------------------------------------
+ * THE SURFACE, PART ONE: every door that needs only what this tree already has.
+ *
+ * THE SENTINEL IS APPLE'S `NSNotFound`, NOT CF'S `kCFNotFound`, AND THESE DOORS TRANSLATE AT CF'S BOUNDARY.
+ * CF answers -1 for "not there"; Apple answers NSIntegerMax, and those are DIFFERENT NUMBERS — so a
+ * Cocoa-style `if ([array indexOfObject:x] == NSNotFound)` never matches a door that passes CF's value
+ * through. The archived library's own note records that silent failure, and the value now lives in
+ * Foundation/NSObjCRuntime.h with the reason.
+ *
+ * AND ONE OWNERSHIP DEVIATION, STATED ONCE FOR EVERY DOOR THAT BUILDS AN ARRAY: -arrayByAddingObject:,
+ * -arrayByAddingObjectsFromArray: and -subarrayWithRange: answer +1, WHERE APPLE ANSWERS +0 (autoreleased).
+ * This library has no autorelease pool, so a +0 nobody gave up would be a lie a caller could act on — the same
+ * deviation NSException's factory carries for the same reason, and the same one that keeps `+array` out until
+ * there is a pool to own the result. They are `_Nullable` because the array they build is whatever CF's copy
+ * returned, exactly as +alloc is.
+ * ------------------------------------------------------------------------------------------------ */
+
+/* QUERYING — the rest of it. The three range-taking doors read NSRange from NSObjCRuntime.h. */
+- (NSUInteger)indexOfObject:(id _Nonnull)anObject inRange:(NSRange)range;
+- (NSUInteger)indexOfObjectIdenticalTo:(id _Nonnull)anObject;
+- (NSUInteger)indexOfObjectIdenticalTo:(id _Nonnull)anObject inRange:(NSRange)range;
+- (void)getObjects:(id _Nonnull * _Nonnull)objects;
+- (void)getObjects:(id _Nonnull * _Nonnull)objects range:(NSRange)range;
+
+/* DERIVING (+1 — see the note above) */
+- (NSArray * _Nullable)arrayByAddingObject:(id _Nonnull)anObject;
+- (NSArray * _Nullable)arrayByAddingObjectsFromArray:(NSArray * _Nonnull)otherArray;
+- (NSArray * _Nullable)subarrayWithRange:(NSRange)range;
+
+/* COMPARING */
+- (BOOL)isEqualToArray:(NSArray * _Nonnull)otherArray;
+- (id _Nullable)firstObjectCommonWithArray:(NSArray * _Nonnull)otherArray;
+
+/* SENDING MESSAGES TO ELEMENTS */
+- (void)makeObjectsPerformSelector:(SEL _Nonnull)aSelector;
+- (void)makeObjectsPerformSelector:(SEL _Nonnull)aSelector withObject:(id _Nullable)argument;
+
 @end
 
 #endif	/* FNX_NSARRAY_H */

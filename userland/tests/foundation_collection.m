@@ -47,10 +47,17 @@ static void check(const char *name, int ok, const char *detail) {
 }
 
 /* The instrument for "alive" versus "quietly gone", as in the object probe: the base class cannot report its
- * own death, so a subclass counts it. */
+ * own death, so a subclass counts it. AND FOR THE TWO makeObjectsPerformSelector: DOORS the same class is the
+ * instrument for "the message actually arrived" — a counter for the no-argument form and a recorded argument
+ * for the one that takes an object, so the check can assert WHAT was sent rather than merely that something
+ * was. */
 static int probe_deallocs = 0;
+static int probe_bumps = 0;
+static id probe_last_argument = nil;
 
 @interface FNCollectionProbe : NSObject
+- (void)bump;
+- (void)bumpWith:(id)anObject;
 @end
 
 @implementation FNCollectionProbe
@@ -58,6 +65,17 @@ static int probe_deallocs = 0;
 {
 	probe_deallocs++;
 	[super dealloc];
+}
+
+- (void)bump
+{
+	probe_bumps++;
+}
+
+- (void)bumpWith:(id)anObject
+{
+	probe_bumps++;
+	probe_last_argument = anObject;
 }
 @end
 
@@ -168,10 +186,21 @@ int main(void)
 	note_value("indexOfObject:", (unsigned long)n);
 	check("indexOfObject-answers-the-position", n == 2, "the position did not match where it was placed");
 
-	n = (array != nil) ? (int)[array indexOfObject:stranger] : 0;
-	note_value("indexOfObject: for a stranger", (unsigned long)n);
-	check("and-answers-CFs-sentinel-for-a-stranger", n == (int)kCFNotFound,
-	      "a stranger did not answer kCFNotFound");
+	/* THE SENTINEL IS APPLE'S, AND THE WIDTH OF THE COMPARISON IS THE POINT. This check used to read
+	 * `(int)[array indexOfObject:stranger] == (int)kCFNotFound`, which is a trap twice over: narrowing
+	 * NSNotFound (NSIntegerMax) to `int` gives -1, the same value CF's kCFNotFound has, so an `int` comparison
+	 * cannot tell the two sentinels apart AT ALL. The door's answer is now compared as what it is —
+	 * NSUInteger against NSNotFound — and separately asserted to be the Cocoa number. */
+	{
+		NSUInteger found = (array != nil) ? (NSUInteger)[array indexOfObject:stranger] : 0;
+
+		note_value("indexOfObject: for a stranger", (unsigned long)found);
+		note_value("NSNotFound", (unsigned long)NSNotFound);
+		check("and-answers-NSNotFound-for-a-stranger", (array != nil) && (found == NSNotFound),
+		      "a stranger did not answer NSNotFound");
+		check("and-that-sentinel-is-not-CFs-minus-one", (unsigned long)NSNotFound != (unsigned long)kCFNotFound,
+		      "NSNotFound and CF's kCFNotFound are the same number, so the translation is unobservable");
+	}
 
 	{
 		NSArray *empty = [[NSArray alloc] initWithObjects:NULL count:0];
@@ -179,6 +208,146 @@ int main(void)
 		      (empty != nil) && ([empty firstObject] == nil) && ([empty lastObject] == nil) && ([empty count] == 0),
 		      "an empty array did not answer nil and zero");
 		[empty release];
+	}
+
+	/* ---------------------------------------------------------------------------------------------
+	 * THE SURFACE, PART ONE — one check per door, and every one compares against an INDEPENDENTLY KNOWN
+	 * answer rather than against another door of the same class. `array` is {a, b, c} throughout.
+	 * ------------------------------------------------------------------------------------------- */
+
+	/* THE RANGE-TAKING SEARCH, WHICH IS THE DOOR THAT NEEDS NSRange. c sits at index 2, so a search confined
+	 * to {0, 2} must MISS it while the same search for b hits — the pair is what shows the range is honoured
+	 * rather than ignored. */
+	{
+		NSUInteger inRange = (array != nil) ? (NSUInteger)[array indexOfObject:b inRange:NSMakeRange(0, 2)] : 0;
+		NSUInteger outside = (array != nil) ? (NSUInteger)[array indexOfObject:c inRange:NSMakeRange(0, 2)] : 0;
+
+		note_value("indexOfObject:inRange: of b in {0,2}", (unsigned long)inRange);
+		note_value("indexOfObject:inRange: of c in {0,2}", (unsigned long)outside);
+		check("indexOfObject-inRange-finds-inside-the-range", (array != nil) && (inRange == 1),
+		      "a member inside the range was not found");
+		check("and-misses-outside-it", (array != nil) && (outside == NSNotFound),
+		      "a member OUTSIDE the range was reported found");
+	}
+
+	/* IDENTITY SEARCH. These probe objects compare by identity, so this check can only assert the happy path
+	 * and the miss — which is enough to show the walk returns positions and the Apple sentinel. */
+	{
+		NSUInteger found = (array != nil) ? (NSUInteger)[array indexOfObjectIdenticalTo:a] : 0;
+		NSUInteger missed = (array != nil) ? (NSUInteger)[array indexOfObjectIdenticalTo:stranger] : 0;
+
+		check("indexOfObjectIdenticalTo-finds-the-same-pointer", (array != nil) && (found == 0),
+		      "the identical search did not find the object at index 0");
+		check("and-answers-NSNotFound-for-an-object-it-never-held", (array != nil) && (missed == NSNotFound),
+		      "the identical search found an object that was never placed");
+	}
+
+	/* THE BULK ACCESSOR, FILLED FROM THE MIDDLE SO A DOOR THAT IGNORED `range` WOULD FAIL: {1, 2} is {b, c}. */
+	{
+		id buffer[2];
+		int filled = 0;
+
+		buffer[0] = nil;
+		buffer[1] = nil;
+		if (array != nil) {
+			[array getObjects:buffer range:NSMakeRange(1, 2)];
+			filled = 1;
+		}
+		check("getObjects-range-fills-from-the-range-given",
+		      filled && buffer[0] == b && buffer[1] == c,
+		      "getObjects:range: did not write the range's objects into the buffer");
+	}
+
+	/* DERIVATION. The new array must have its OWN storage (one longer) and must not disturb the original. */
+	{
+		NSArray *longer = (array != nil) ? [array arrayByAddingObject:stranger] : nil;
+		NSArray *joined = (array != nil) ? [array arrayByAddingObjectsFromArray:longer] : nil;
+		NSArray *middle = (array != nil) ? [array subarrayWithRange:NSMakeRange(1, 2)] : nil;
+
+		check("arrayByAddingObject-grows-by-one-with-that-object",
+		      longer != nil && [longer count] == 4 && [longer objectAtIndex:3] == stranger
+		      && [array count] == 3,
+		      "arrayByAddingObject: did not answer a four-element array ending in the object");
+		check("arrayByAddingObjectsFromArray-appends-the-other-array",
+		      joined != nil && [joined count] == 7 && [joined objectAtIndex:6] == stranger,
+		      "arrayByAddingObjectsFromArray: did not append the other array's objects");
+		check("subarrayWithRange-takes-the-elements-in-the-range",
+		      middle != nil && [middle count] == 2 && [middle objectAtIndex:0] == b && [middle objectAtIndex:1] == c,
+		      "subarrayWithRange: did not answer the elements inside the range");
+		/* THE DERIVED ARRAYS ARE OURS TO RELEASE (+1), which is the deviation the header states. */
+		[longer release];
+		[joined release];
+		[middle release];
+	}
+
+	/* COMPARISON: an equal array built separately, a different one, and one that shares NOTHING.
+	 *
+	 * `other` IS DELIBERATELY NOT THE "NOTHING SHARED" CASE even though it differs from `array`: it is
+	 * {a, b, stranger}, so it shares a and b — and the first version of this check asserted nil against it and
+	 * failed, correctly, because the door answered `a`. A disjoint array has to be disjoint on purpose; the
+	 * first attempt at this probe got the distinction wrong and the door was right. */
+	{
+		id twins[3];
+		id different[3];
+		NSArray *same = nil;
+		NSArray *other = nil;
+		NSArray *common = nil;
+		NSArray *disjoint = nil;
+
+		twins[0] = a; twins[1] = b; twins[2] = c;
+		different[0] = a; different[1] = b; different[2] = stranger;
+		same = [[NSArray alloc] initWithObjects:twins count:3];
+		other = [[NSArray alloc] initWithObjects:different count:3];
+		common = [[NSArray alloc] initWithObjects:&c count:1];		/* {c} — shares c */
+		disjoint = [[NSArray alloc] initWithObjects:&stranger count:1];	/* {stranger} — shares nothing */
+
+		check("isEqualToArray-says-yes-for-the-same-items",
+		      (array != nil) && [array isEqualToArray:same] && [same isEqualToArray:array],
+		      "two arrays with the same items were not equal");
+		check("and-no-for-a-different-element",
+		      (array != nil) && ![array isEqualToArray:other],
+		      "arrays differing in one element were reported equal");
+		check("firstObjectCommonWithArray-answers-the-first-shared-element",
+		      (array != nil) && ([array firstObjectCommonWithArray:common] == c),
+		      "the first common element was not the one the other array holds");
+		check("and-nil-when-nothing-is-shared",
+		      (array != nil) && ([array firstObjectCommonWithArray:disjoint] == nil),
+		      "an array sharing nothing answered an element anyway");
+
+		if (same != nil) {
+			[same release];
+		}
+		if (other != nil) {
+			[other release];
+		}
+		if (common != nil) {
+			[common release];
+		}
+		if (disjoint != nil) {
+			[disjoint release];
+		}
+	}
+
+	/* THE MESSAGE-SENDING PAIR. The counter proves the message REACHED every element, and the recorded
+	 * argument proves WHAT was sent — which is the difference between the two doors. */
+	{
+		probe_bumps = 0;
+		probe_last_argument = nil;
+		if (array != nil) {
+			[array makeObjectsPerformSelector:@selector(bump)];
+		}
+		note_value("elements bumped (no argument)", (unsigned long)probe_bumps);
+		check("makeObjectsPerformSelector-reaches-every-element", probe_bumps == 3,
+		      "the no-argument form did not reach all three elements");
+
+		probe_bumps = 0;
+		if (array != nil) {
+			[array makeObjectsPerformSelector:@selector(bumpWith:) withObject:stranger];
+		}
+		note_value("elements bumped (with argument)", (unsigned long)probe_bumps);
+		check("and-withObject-passes-the-same-object-to-each",
+		      probe_bumps == 3 && probe_last_argument == stranger,
+		      "the form taking an object did not pass that object to every element");
 	}
 
 	/* OWNERSHIP BY CF. One item, our reference dropped: it must live, because the array's callbacks hold it. */

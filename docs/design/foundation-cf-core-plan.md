@@ -1487,3 +1487,65 @@ now defined in `NSObject.h`, with the note that **defining them opens no region*
 a header WRITES the macro, so the pair is a vocabulary rather than a switch. `NSException.h` is therefore the
 first header in this library that satisfies `make foundation-gate`'s nullability rule; the three older headers
 still use the keyword form and are still reported, unchanged, by that gate.
+
+
+# THE CLASS-COMPLETION STANDARD, THE VALUE TYPES, AND NSArray'S FIRST SURFACE TRANCHE
+
+**A class is not DONE until every ledger row for it is shipped or struck (user decision A,
+`dec-401590d41e81ec9c`).** That makes the `--check` output the work list, and this unit moved it:
+
+    NSArray STALE SHIPPED CLAIM   54 -> 42
+    tree-wide STALE SHIPPED CLAIM 4758 -> 4742      (16 rows: 12 NSArray selectors + 4 range symbols)
+
+## WHY THE GATE IS READABLE AT ALL, WHICH IS NOT OBVIOUS
+
+The 54 rows were already marked `shipped` — that word means *"our public headers DECLARE it, and `--check`
+fails if they stop"* — so the archive made them **claims that stopped being true**. Implementing a selector
+does not need a row "flipped": it makes the existing claim true again, and the stale list shrinks by exactly
+one per door. `--check`'s NSArray section IS the remaining work list, counted on every run.
+
+## `NSObjCRuntime.h`, AND THE RULE IT SETS FOR THE VALUE-TYPE FAMILY
+
+CF declares the same family — `CFRange {CFIndex, CFIndex}`, `CFIndex`, `CFOptionFlags`, `CFRangeMake`,
+`kCFNotFound = -1` — so the first question for any value type is "does CF already have it". Two of them
+really ARE the same type and are now ALIASES:
+
+    CFIndex == signed long == NSInteger          CFOptionFlags == unsigned long == NSUInteger
+
+**AND TWO ARE NOT, WHICH IS WHY THE HEADER IS NOT A PAGE OF TYPEDEFS TO CF** (user decision, hybrid): CF's
+`CFRange.location` is a SIGNED `CFIndex` while Apple's `NSRange.location` is `NSUInteger` — and CF's own
+functions assert a non-negative range, so aliasing would turn a wrap Cocoa accepts into a CF assertion. And CF's
+missing-index sentinel is `kCFNotFound == -1` while Apple's `NSNotFound` is `NSIntegerMax`. **Those are
+different numbers**, and the archived library's own note records the cost: *"Code written the Cocoa way —
+`if ([array indexOfObject:x] == NSNotFound)` — silently never [matched]."*
+
+**SO `-indexOfObject:` WAS RETURNING THE WRONG SENTINEL, AND THAT IS FIXED HERE** (the second decision: switch
+now). Every "not there" door translates at CF's boundary through one helper, and the probe now asserts the
+moved value AND that the two sentinels are different numbers — because a check that narrowed the result to
+`int` (which the old probe did) maps both to `-1` and cannot see the difference at all.
+
+## THE 16 ROWS THIS UNIT SATISFIED
+
+Four type rows: `struct NSRange`, `typealias NSRangePointer`, `var NSNotFound`, `func NSMakeRange`. Twelve
+selectors: `-indexOfObject:inRange:`, `-indexOfObjectIdenticalTo:`, `-indexOfObjectIdenticalTo:inRange:`,
+`-getObjects:`, `-getObjects:range:`, `-arrayByAddingObject:`, `-arrayByAddingObjectsFromArray:`,
+`-subarrayWithRange:`, `-isEqualToArray:`, `-firstObjectCommonWithArray:`, `-makeObjectsPerformSelector:`,
+`-makeObjectsPerformSelector:withObject:`. `foundation_collection` is **32/32**.
+
+**AND 38 NSArray ROWS PLUS `NSRangeFromString` REMAIN OWED.** They split two ways, and the split is the reason
+the standard is "per class" rather than "in one go": ~20 are thin CF wrappers still to come (the two sorting
+forms, `-initWithObjects:` varargs, `-componentsJoinedByString:`, the `+array` family once a pool exists), and
+~18 are BLOCKED on substrate this library does not have — `NSEnumerator` (`-objectEnumerator`), `NSIndexSet`
+(the `…AtIndexes:` doors), KVO (6 doors), `NSKeyValueCoding` (2), `NSSortDescriptor`, `NSCoder` (`-initWithCoder:`),
+plist+files (`-writeToFile:…`, `-initWithContentsOfFile:…`), `NSLocale` (the two locale descriptions). Under
+"declare only what can ship" those cannot be declared until their substrate lands.
+
+## TWO HONEST NOTES
+
+* **A CLAIM I MADE AND WITHDRAW, IN THE SAME SESSION IT WAS MADE:** I said `--check` was masking `struct NSRange`
+  behind `NSRangeException` through a missing word boundary. That was MY grep's fault, not the tool's — the
+  pattern was anchored `NSRange$`, and the tool's line ends with "... does not declare it". `struct NSRange`
+  was reported stale all along. No instrument defect exists.
+* **A PROBE BUG THE UNIT CAUGHT, KEPT AS THE PROBE'S OWN COMMENT:** the first `-firstObjectCommonWithArray:`
+  check asserted nil against `{a, b, stranger}` — an array that shares `a` and `b`. The door was right and the
+  expectation was wrong. A disjoint array has to be disjoint on purpose.

@@ -26,6 +26,7 @@
 #import <Foundation/NSArray.h>
 #import <Foundation/NSException.h>
 #include <objc/runtime.h>
+#include <objc/message.h>	/* objc_msgSend, for the two makeObjectsPerformSelector: doors — see their note */
 
 extern unsigned long CFNXBridgeClassToType(Class cls, CFTypeID typeID);
 
@@ -261,12 +262,218 @@ static const CFArrayCallBacks *fnx_array_callbacks_get(void)
 	return CFArrayContainsValue((CFArrayRef)self, CFRangeMake(0, CFArrayGetCount((CFArrayRef)self)), (const void *)anObject);
 }
 
+/*
+ * THE TWO TRANSLATIONS EVERY DOOR IN THIS BLOCK NEEDS, and both exist because CF and Cocoa disagree about a
+ * spelling rather than about a behaviour.
+ *
+ * fnx_not_found IS THE SENTINEL: CF answers kCFNotFound (-1) and Apple answers NSNotFound (NSIntegerMax), so
+ * a door that passed CF's value straight through would fail every Cocoa-style `== NSNotFound` test. The
+ * archived library's own note records that as a silent failure — a lookup that never matches and never says so.
+ *
+ * fnx_check_range IS THE VALIDATION: Apple's range doors RAISE NSRangeException on a range beyond the bounds;
+ * CF's own array functions ASSERT instead. Both mean "caller error", and the raise is the one a caller can
+ * catch, so the bounds are checked here against CF's own count before CF ever sees the range.
+ */
+static NSUInteger fnx_not_found(CFIndex found)
+{
+	return (found == kCFNotFound) ? NSNotFound : (NSUInteger)found;
+}
+
+static void fnx_check_range(NSArray *array, NSRange range)
+{
+	NSUInteger count = [array count];
+
+	/* THE ORDER MATTERS: `range.length > count - range.location` would underflow if location were already
+	 * past the end, so location is tested first and the subtraction only runs when it is safe. */
+	if (range.location > count || range.length > count - range.location) {
+		[NSException raise:NSRangeException
+		            format:@"*** -[NSArray]: range {%lu, %lu} out of bounds %lu",
+		                   (unsigned long)range.location, (unsigned long)range.length, (unsigned long)count];
+	}
+}
+
 - (NSUInteger)indexOfObject:(id _Nonnull)anObject
 {
 	if (anObject == nil) {
-		return (NSUInteger)kCFNotFound;
+		return NSNotFound;
 	}
-	return (NSUInteger)CFArrayGetFirstIndexOfValue((CFArrayRef)self, CFRangeMake(0, CFArrayGetCount((CFArrayRef)self)), (const void *)anObject);
+	return fnx_not_found(CFArrayGetFirstIndexOfValue((CFArrayRef)self, CFRangeMake(0, CFArrayGetCount((CFArrayRef)self)), (const void *)anObject));
+}
+
+- (NSUInteger)indexOfObject:(id _Nonnull)anObject inRange:(NSRange)range
+{
+	fnx_check_range(self, range);
+
+	if (anObject == nil) {
+		return NSNotFound;
+	}
+	return fnx_not_found(CFArrayGetFirstIndexOfValue((CFArrayRef)self, CFRangeMake((CFIndex)range.location, (CFIndex)range.length), (const void *)anObject));
+}
+
+/*
+ * IDENTITY, NOT EQUALITY, WHICH IS WHY THIS ONE IS A SCAN RATHER THAN A CF CALL. CF's index search compares
+ * through the array's OWN callbacks — meaning -isEqual:, which is what -indexOfObject: wants. This door wants
+ * the same POINTER, and no callback can ask that question, so the walk is ours.
+ */
+- (NSUInteger)indexOfObjectIdenticalTo:(id _Nonnull)anObject
+{
+	return [self indexOfObjectIdenticalTo:anObject inRange:NSMakeRange(0, [self count])];
+}
+
+- (NSUInteger)indexOfObjectIdenticalTo:(id _Nonnull)anObject inRange:(NSRange)range
+{
+	NSUInteger i;
+
+	fnx_check_range(self, range);
+	for (i = 0; i < range.length; i++) {
+		if ([self objectAtIndex:range.location + i] == anObject) {
+			return range.location + i;
+		}
+	}
+	return NSNotFound;
+}
+
+/* APPLE'S BULK ACCESSOR, AND CF HAS THE SAME ONE — so this delegates rather than walking the array a second
+ * time. CFArrayGetValues writes into the caller's buffer through no callbacks at all: it hands back the very
+ * pointers the array holds, which is exactly what the door promises. */
+- (void)getObjects:(id * _Nonnull)objects
+{
+	[self getObjects:objects range:NSMakeRange(0, [self count])];
+}
+
+- (void)getObjects:(id * _Nonnull)objects range:(NSRange)range
+{
+	fnx_check_range(self, range);
+	CFArrayGetValues((CFArrayRef)self, CFRangeMake((CFIndex)range.location, (CFIndex)range.length), (const void **)objects);
+}
+
+/*
+ * --- THE DERIVED ARRAYS, AND WHERE THE ITEMS' OWNERSHIP COMES FROM ---------------------------------------
+ *
+ * EVERY ONE OF THESE BUILDS THE NEW ARRAY WITH **THIS** ARRAY'S CALLBACKS, because CFArrayCreateMutableCopy
+ * copies the source's callback pair. So the items are retained by the same policy this array uses — one
+ * retention for the new array, not two — and the comparison stays ours (fnx_array_equal) rather than reverting
+ * to CF's CFEqual, which cannot compare an object this library built.
+ *
+ * AND THEY ANSWER +1 WHERE APPLE ANSWERS +0 (autoreleased). No pool exists here, so the header states the
+ * deviation once rather than each door pretending otherwise.
+ */
+- (NSArray *)arrayByAddingObject:(id _Nonnull)anObject
+{
+	CFMutableArrayRef copy = CFArrayCreateMutableCopy(kCFAllocatorDefault, (CFIndex)[self count] + 1, (CFArrayRef)self);
+
+	if (copy == NULL) {
+		return nil;
+	}
+	CFArrayAppendValue(copy, (const void *)anObject);
+	return (NSArray *)copy;
+}
+
+- (NSArray *)arrayByAddingObjectsFromArray:(NSArray * _Nonnull)otherArray
+{
+	CFMutableArrayRef copy = CFArrayCreateMutableCopy(kCFAllocatorDefault,
+	                                                  (CFIndex)([self count] + [otherArray count]),
+	                                                  (CFArrayRef)self);
+
+	if (copy == NULL) {
+		return nil;
+	}
+	/* CF APPENDS THE OTHER ARRAY'S VALUES THROUGH THIS COPY'S CALLBACKS, so an item that both arrays hold is
+	 * retained once per array — which is what ownership means — and never twice for one slot. */
+	CFArrayAppendArray(copy, (CFArrayRef)otherArray, CFRangeMake(0, CFArrayGetCount((CFArrayRef)otherArray)));
+	return (NSArray *)copy;
+}
+
+- (NSArray *)subarrayWithRange:(NSRange)range
+{
+	CFMutableArrayRef sub;
+	NSUInteger i;
+
+	fnx_check_range(self, range);
+	sub = CFArrayCreateMutable(kCFAllocatorDefault, (CFIndex)range.length, fnx_array_callbacks_get());
+	if (sub == NULL) {
+		return nil;
+	}
+	for (i = 0; i < range.length; i++) {
+		CFArrayAppendValue(sub, CFArrayGetValueAtIndex((CFArrayRef)self, (CFIndex)(range.location + i)));
+	}
+	return (NSArray *)sub;
+}
+
+/*
+ * COMPARISON DELEGATES TO CF, AND THAT IS ONLY LEGAL BECAUSE BOTH OPERANDS ARE CF-SHAPED. CFEqual's ObjC
+ * dispatch is compiled OUT of this build (CFRuntime.c:784-786), so it takes its C path: same type ID, then
+ * __CFArrayEqual, which walks the items through the array's OWN callbacks — ours. Two ordinary Foundation
+ * objects would have trapped here; two arrays cannot.
+ */
+- (BOOL)isEqualToArray:(NSArray * _Nonnull)otherArray
+{
+	if (otherArray == self) {
+		return YES;
+	}
+	if (otherArray == nil || [otherArray count] != [self count]) {
+		return NO;
+	}
+	return CFEqual((CFTypeRef)self, (CFTypeRef)otherArray) ? YES : NO;
+}
+
+- (id)firstObjectCommonWithArray:(NSArray * _Nonnull)otherArray
+{
+	NSUInteger i;
+
+	if (otherArray == nil) {
+		return nil;
+	}
+	for (i = 0; i < [self count]; i++) {
+		id candidate = [self objectAtIndex:i];
+
+		if ([otherArray containsObject:candidate]) {
+			return candidate;
+		}
+	}
+	/* APPLE ANSWERS THE FIRST ELEMENT OF SELF THAT THE OTHER ARRAY ALSO CONTAINS, and nil when there is none —
+	 * which is why the header annotates this door `_Nullable` while the derived arrays are only conditionally
+	 * so. */
+	return nil;
+}
+
+/*
+ * --- SENDING NEWS TO THE ELEMENTS -----------------------------------------------------------------------
+ *
+ * THE ENVELOPE IS SENT, NOT SKIPPED, WHICH IS APPLE'S CONTRACT AND NOT A NICETY: these doors do NOT ask
+ * -respondsToSelector: first, so an element that does not implement the selector raises
+ * doesNotRecognizeSelector — the caller's mistake, reported where it happened. A version that skipped
+ * non-responders would be silently doing less than it says.
+ *
+ * AND THE DISPATCH IS objc_msgSend RATHER THAN -performSelector:, FOR A REASON WORTH STATING: -performSelector:
+ * is an NSObject door this library does not have yet (NSObject's own surface is owed separately), and inventing
+ * it here would put a foreign method on a class that is not this file's to change. objc_msgSend IS the message
+ * send — the cast only tells the compiler the shape of the call.
+ */
+- (void)makeObjectsPerformSelector:(SEL _Nonnull)aSelector
+{
+	NSUInteger i;
+
+	if (aSelector == NULL) {
+		[NSException raise:NSInvalidArgumentException
+		            format:@"*** -[NSArray makeObjectsPerformSelector:]: NULL selector"];
+	}
+	for (i = 0; i < [self count]; i++) {
+		((void (*)(id, SEL))objc_msgSend)([self objectAtIndex:i], aSelector);
+	}
+}
+
+- (void)makeObjectsPerformSelector:(SEL _Nonnull)aSelector withObject:(id _Nullable)argument
+{
+	NSUInteger i;
+
+	if (aSelector == NULL) {
+		[NSException raise:NSInvalidArgumentException
+		            format:@"*** -[NSArray makeObjectsPerformSelector:withObject:]: NULL selector"];
+	}
+	for (i = 0; i < [self count]; i++) {
+		((void (*)(id, SEL, id))objc_msgSend)([self objectAtIndex:i], aSelector, argument);
+	}
 }
 
 /*
