@@ -25,6 +25,7 @@
  * somewhere else and the compiler would have no way to tell either of us.
  */
 #import <Foundation/NSString.h>
+#import <Foundation/NSException.h>
 #include <objc/runtime.h>
 
 /* THE FLAG THAT SAYS WHICH FORM THE BYTES ARE IN. clang has exactly two constant-string layouts and the
@@ -71,8 +72,13 @@
  * failure: a UTF-16 literal read as bytes would return half the characters and a NUL for every other one. */
 - (unsigned short)characterAtIndex:(unsigned long)index
 {
+	/* OUT OF RANGE RAISES, exactly as this class's sibling in NSString.m does — the two doors answer the same
+	 * contract and used to swallow the same mistake by answering 0. The count is this struct's own field
+	 * (clang's __CFConstantString), so nothing is consulted to know the bound. */
 	if (index >= (unsigned long)_count) {
-		return 0;
+		[NSException raise:NSRangeException
+		            format:@"*** -[NSConstantString characterAtIndex:]: index %lu beyond bounds %lu",
+		                   (unsigned long)index, (unsigned long)_count];
 	}
 	if ((_flags & FNX_CF_CONSTANT_IS_UTF16) != 0) {
 		return ((const unsigned short *)_bytes)[index];

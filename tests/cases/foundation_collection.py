@@ -30,6 +30,7 @@ CHECKS = (
     "and-count-reports-what-was-put-in",
     "objectAtIndex-returns-the-object-that-went-in",
     "the-subscript-door-agrees-with-objectAtIndex",
+    "and-an-index-past-the-end-raises",
     "firstObject-and-lastObject-are-the-two-ends",
     "containsObject-finds-a-member",
     "and-does-not-claim-a-stranger",

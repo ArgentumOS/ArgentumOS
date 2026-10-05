@@ -47,9 +47,11 @@ CHECKS = (
     "and-casts-back-to-cf",
     "and-answers-its-own-characters",
     "and-compares-equal-to-an-equal-string",
+    "and-an-out-of-range-character-raises",
     "a-cfstr-literal-is-an-object",
     "and-is-messageable",
     "and-casts-to-cfstringref",
+    "and-an-out-of-range-index-raises",
 )
 
 

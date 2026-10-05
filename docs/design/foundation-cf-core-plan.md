@@ -1423,3 +1423,67 @@ the probes recompiled against the header. They are now annotated **from the impl
 standing practice): `+ (id _Nullable)alloc` because it returns whatever `CFArrayCreate` returned, and
 `- (id _Nonnull)init` because that one answers the receiver. A full rebuild of the four class files and both
 probes is now **warning-free**.
+
+
+# `NSException` IS BACK, AND THE OUT-OF-RANGE DOORS NOW RAISE
+
+**`foundation_object` 22/22, `foundation_collection` 17/17, the sweep still 0, build still warning-free.**
+The class was PORTED from `archive/Foundation/NSException.{h,m}` and put to work at the three doors that were
+swallowing an out-of-range index.
+
+## THE PORT, AND EVERY PRUNE, BECAUSE "PULL IT IN" IS NOT "PASTE IT"
+
+The archived class was written for a Foundation that had `NSCoder`, `NSThread`, `NSDictionary`, `NSSet`,
+`NSMutableDictionary`, `+stringWithFormat:` and the assert family. **This library is five classes.** So the
+port is the CLASS, and the prunes are named in the header where a reader will meet them:
+
+| pruned | why |
+|---|---|
+| `NSCopying`/`NSCoding` + `-encodeWithCoder:`/`-initWithCoder:` | they exist upstream so an exception crosses a distributed-objects REPLY; there is no `NSCoder`, no `NSCoding` and no `NSConnection` here, so the conformance would be a promise nothing could keep |
+| `NSAssertionHandler` + `NSAssert`/`NSCAssert` | the default handler RAISES and lives in the THREAD's dictionary — and there is no `NSThread`, no `NSMutableDictionary` and no `-threadDictionary` to put it in |
+| the class-specific NAMES (`NSPort*`, `NSInvocationOperation*`, `NSUndefinedKeyException`, …) | each names a failure belonging to a class this library does not have, so declaring them would be declaring catch names for exceptions nothing here can raise |
+
+**WHAT CAME ACROSS UNCHANGED IN SPIRIT, AND ONE THING THAT COULD NOT:** `-raise` calls `objc_exception_throw`,
+so a raised exception is a real one — and the substrate is already there (measured: libobjc NEEDS `libunwind.so.1`
+and `libc++abi.so.1`, both staged in the guest, and it exports `objc_exception_throw` plus the two personalities).
+
+**THE FORMAT PATH IS THE PART THAT LOOKED SIMPLER THAN IT IS, AND IT IS THE PART WORTH READING.**
+CF's formatter wants a REAL `CFString`, and a compile-time literal is **not** one: `@"…"` is a four-word
+`__CFConstantString` whose second word is a FLAG word (0x7C8, measured by this tree's own probe) where a
+CFString keeps its info word — so handing the struct to CF's formatter would have it read a flag as a length.
+The two doors that answer for BOTH kinds of string are `-length` and `-characterAtIndex:`, so
+`+raise:format:arguments:` **rebuilds the format from its characters** into a genuine CFString and lets
+`CFStringCreateWithFormatAndArguments` do the work. One walk of the format, on an exception path, and the
+difference between the pair working and being a trap.
+
+**AND TWO DEVIATIONS, STATED AT THE DOOR RATHER THAN LEFT TO BE FOUND:** `+exceptionWithName:…` returns **+1,
+not autoreleased**, for the same basis reason `NSArray` has no factories (no pool exists); and the three fields
+are **retained, not copied**, because `-copy`/`NSCopying` is not here and every string this library can hold is
+immutable (a literal, or a CFString — there is no `NSMutableString`). Both lines say what to change when the
+missing thing arrives.
+
+## WHAT IT IS FOR: THE THREE DOORS
+
+| door | before | now |
+|---|---|---|
+| `-[NSArray objectAtIndex:]` | **no check at all** — `CFArrayGetValueAtIndex` is CF's UNCHECKED accessor, so `[array objectAtIndex:3]` on a three-element array read memory the array does not own | raises `NSRangeException`, naming the index and the bound (the bound is CF's own count) |
+| `-[NSString characterAtIndex:]` | answered 0 (this door shipped that way ONE COMMIT AGO, with the reason "this library has no NSException class to raise") | raises `NSRangeException` — the reason for the deviation is gone, so the deviation is too |
+| `-[NSConstantString characterAtIndex:]` | answered 0 | raises `NSRangeException`, same contract as its sibling |
+
+**THE CHECKS ASSERT THE NAME, NOT THE FACT.** A `@catch` that only proves SOMETHING was thrown would pass for
+a fault turned into an exception by another layer; naming `NSRangeException` is what ties the throw to the door
+under test. Three checks, one per door — and the literal gets its OWN because `NSConstantString` reads its own
+four-word struct rather than consulting CF, so it is a different implementation of the same contract:
+
+    and-an-out-of-range-index-raises        a CFSTR literal, index 99 on an 8-character string   (NSConstantString)
+    and-an-out-of-range-character-raises    a CF-native string, index 99 on 6 characters          (NSString)
+    and-an-index-past-the-end-raises        [array objectAtIndex:3] on three elements             (NSArray)
+
+## AND THE HEADER SPELLING, WHICH WAS ITS OWN SMALL GAP
+
+The ported header annotates with `NS_ASSUME_NONNULL_BEGIN`, Apple's spelling — and this library did not define
+those two macros (its older three headers annotate with the `_Nonnull`/`_Nullable` KEYWORDS instead). They are
+now defined in `NSObject.h`, with the note that **defining them opens no region**: the pragma is emitted where
+a header WRITES the macro, so the pair is a vocabulary rather than a switch. `NSException.h` is therefore the
+first header in this library that satisfies `make foundation-gate`'s nullability rule; the three older headers
+still use the keyword form and are still reported, unchanged, by that gate.

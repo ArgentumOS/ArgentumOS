@@ -24,6 +24,7 @@
  */
 
 #import <Foundation/NSArray.h>
+#import <Foundation/NSException.h>
 #include <objc/runtime.h>
 
 extern unsigned long CFNXBridgeClassToType(Class cls, CFTypeID typeID);
@@ -220,6 +221,17 @@ static const CFArrayCallBacks *fnx_array_callbacks_get(void)
 
 - (id _Nonnull)objectAtIndex:(NSUInteger)index
 {
+	/* OUT OF RANGE RAISES, WHICH IS APPLE'S CONTRACT AND THE ONLY ANSWER THAT CANNOT BE A SILENT ONE. The bound
+	 * is CF's own count, so there is one notion of how long this array is; the message names the index and the
+	 * bound because a raise that does not say WHAT was wrong costs the caller a debugger.
+	 *
+	 * AND THIS DOOR WOULD OTHERWISE READ PAST THE STORAGE: CFArrayGetValueAtIndex is CF's unchecked accessor,
+	 * so before this check an index past the end was a read of memory this array does not own. */
+	if (index >= [self count]) {
+		[NSException raise:NSRangeException
+		            format:@"*** -[NSArray objectAtIndex:]: index %lu beyond bounds %lu",
+		                   (unsigned long)index, (unsigned long)[self count]];
+	}
 	return (id)CFArrayGetValueAtIndex((CFArrayRef)self, (CFIndex)index);
 }
 

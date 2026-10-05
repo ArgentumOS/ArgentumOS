@@ -23,6 +23,7 @@
 #include <CoreFoundation/CFArray.h>
 #include <CoreFoundation/CFRuntime.h>
 #import <Foundation/NSArray.h>
+#import <Foundation/NSException.h>
 #import <Foundation/NSObject.h>
 #import <objc/runtime.h>
 
@@ -130,6 +131,28 @@ int main(void)
 	check("the-subscript-door-agrees-with-objectAtIndex",
 	      (array != nil) && ([array objectAtIndexedSubscript:1] == [array objectAtIndex:1]),
 	      "the subscript door disagreed with objectAtIndex:");
+
+	/* AND AN INDEX PAST THE END RAISES — the door's OTHER half, and the one that was missing entirely before:
+	 * CFArrayGetValueAtIndex is CF's UNCHECKED accessor, so `[array objectAtIndex:3]` on a three-element array
+	 * used to read memory the array does not own. The NAME is asserted rather than the mere fact of a throw,
+	 * because "something was thrown" would also pass for a fault turned into an exception by another layer. */
+	{
+		BOOL raised = NO;
+		NSString *raisedName = nil;
+
+		if (array != nil) {
+			@try {
+				(void)[array objectAtIndex:3];
+			} @catch (NSException *e) {
+				raised = YES;
+				raisedName = [e name];
+			}
+		}
+		note_value("[array objectAtIndex:3] raised", (unsigned long)raised);
+		check("and-an-index-past-the-end-raises",
+		      raised && raisedName != nil && [raisedName isEqual:NSRangeException],
+		      "an index past the end did not raise NSRangeException");
+	}
 
 	check("firstObject-and-lastObject-are-the-two-ends",
 	      (array != nil) && ([array firstObject] == a) && ([array lastObject] == c),

@@ -71,6 +71,21 @@
 #include <CoreFoundation/CFString.h>
 #include <stddef.h>
 
+/*
+ * APPLE'S NULLABILITY SPELLING, WHICH THIS LIBRARY DID NOT HAVE. Apple declares these two in NSObjCRuntime.h
+ * (a header this tree does not carry), and the classes written here annotate with the `_Nullable`/`_Nonnull`
+ * KEYWORDS instead — the same region note in a different spelling. They are defined anyway, because a header
+ * written to APPLE'S spelling should compile: NSException.h is the first such, and it is a port, so its
+ * annotations came across as they were rather than being rewritten into the local style.
+ *
+ * DEFINING THEM OPENS NO REGION. The pragma is emitted where a header WRITES the macro, never here — so this
+ * pair is a vocabulary, not a switch, and adding it cannot change how any existing header is read.
+ */
+#ifndef NS_ASSUME_NONNULL_BEGIN
+#define NS_ASSUME_NONNULL_BEGIN	_Pragma("clang assume_nonnull begin")
+#define NS_ASSUME_NONNULL_END		_Pragma("clang assume_nonnull end")
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

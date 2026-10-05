@@ -32,6 +32,7 @@
  */
 #include <objc/runtime.h>
 #include <CoreFoundation/CoreFoundation.h>
+#import <Foundation/NSException.h>
 
 /* THE DECLARATIONS THIS FILE NEEDS, both ours, both with the same provenance: the bridging door is this
  * tree's addition to the CF package (modification 9), and the twins are upstream's, declared in CF's INTERNAL
@@ -242,7 +243,13 @@ __attribute__((constructor)) static void _FNXRegisterBridgedClassesAtLoad(void)
 	UniChar ch = 0;
 
 	if (_CFStringCheckAndGetCharacterAtIndex((CFStringRef)self, (CFIndex)index, &ch) != 0) {
-		return 0;
+		/* THE RANGE CHECK IS CF'S AND THE RAISE IS OURS — and it IS a raise now, which closes the deviation
+		 * this door shipped with one commit ago. It answered 0 because "this library has no NSException class
+		 * to raise (it is these four classes and no more)"; there is one now, so that reason is gone and so is
+		 * the deviation. NSConstantString, the class beside this one, raises identically. */
+		[NSException raise:NSRangeException
+		            format:@"*** -[NSString characterAtIndex:]: index %lu beyond bounds %lu",
+		                   (unsigned long)index, (unsigned long)[self length]];
 	}
 	return (unsigned short)ch;
 }

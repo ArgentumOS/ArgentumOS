@@ -30,6 +30,7 @@
 
 #import <Foundation/NSObject.h>
 #import <Foundation/NSString.h>
+#import <Foundation/NSException.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include <stdio.h>
 #include <string.h>
@@ -206,6 +207,30 @@ int main(void) {
 		      "[(id)CFSTR(...) length] did not answer 8");
 		check("and-casts-to-cfstringref", constant != NULL && CFStringGetLength(constant) == 8,
 		      "CFStringGetLength on a CFSTR did not answer 8 - CF did not dispatch to the constant class");
+		/* AND THE LITERAL'S OWN BOUNDS DOOR RAISES, the same contract its NSString sibling now answers.
+		 * Before this BOTH answered 0 for an index past the end, silently. The literal is where the OTHER
+		 * implementation of that door lives -- NSConstantString reads its own four-word struct rather than
+		 * consulting CF -- so it is checked rather than assumed to follow NSString.
+		 *
+		 * THE NAME IS ASSERTED, NOT THE FACT. A catch that only proves SOMETHING was thrown would pass for a
+		 * fault turned into an exception by some other layer; naming NSRangeException is what ties the throw
+		 * to the door under test. */
+		{
+			BOOL raised = NO;
+			NSString *raisedName = nil;
+
+			if (constant != NULL) {
+				@try {
+					(void)[(id)constant characterAtIndex:99];
+				} @catch (NSException *e) {
+					raised = YES;
+					raisedName = [e name];
+				}
+			}
+			check("and-an-out-of-range-index-raises",
+			      raised && raisedName != nil && [raisedName isEqual:NSRangeException],
+			      "an index past the end of a CFSTR literal did not raise NSRangeException");
+		}
 	}
 			}
 			if (after) {
@@ -245,6 +270,24 @@ int main(void) {
 				if (twin != NULL) {
 					CFRelease(twin);
 				}
+			}
+			/* AND ITS BOUNDS DOOR RAISES, WHERE IT USED TO ANSWER 0. "native" is six characters, so 99 is past
+			 * the end by a distance nothing can accidentally satisfy; the bound itself comes from CF's own
+			 * range check (NSString.m says which twin and why), and the NAME is asserted rather than the mere
+			 * fact of a throw. */
+			{
+				BOOL raised = NO;
+				NSString *raisedName = nil;
+
+				@try {
+					(void)[(id)native characterAtIndex:99];
+				} @catch (NSException *e) {
+					raised = YES;
+					raisedName = [e name];
+				}
+				check("and-an-out-of-range-character-raises",
+				      raised && raisedName != nil && [raisedName isEqual:NSRangeException],
+				      "an index past the end of a CF-native string did not raise NSRangeException");
 			}
 		} else {
 			/* A FAILED PRECONDITION MUST NOT TAKE THE PROCESS WITH IT: messaging an object that has no class
