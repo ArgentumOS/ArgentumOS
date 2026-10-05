@@ -165,6 +165,7 @@ int main(void)
 		      [[NSString stringWithFormat:@"utf8 detected=%lu back=%@ lossy=%d ; latin1 chosen=%lu back=%@",
 			(unsigned long)detected, (back != nil) ? back : @"(nil)", (int)lossy,
 			(unsigned long)chosen, (latinBack != nil) ? latinBack : @"(nil)"] UTF8String]);
+	covers("NSString", "stringEncodingForData:encodingOptions:convertedString:usedLossyConversion:");
 	}
 
 	{
@@ -2759,6 +2760,10 @@ NULL
 		      [[NSString stringWithFormat:@"cString=%s lossy=%s cStringLength=%lu bytes=%lu copied=%d buf=%s",
 			[s cString], [s lossyCString], (unsigned long)[s cStringLength],
 			(unsigned long)[s lengthOfBytesUsingEncoding:NSUTF8StringEncoding], (int)copied, buf] UTF8String]);
+	covers("NSString", "cString");
+	covers("NSString", "lossyCString");
+	covers("NSString", "cStringLength");
+	covers("NSString", "getCString:maxLength:encoding:");
 	}
 
 	{
@@ -3422,6 +3427,81 @@ NULL
 		covers("NSString", "initWithValidatedFormat:validFormatSpecifiers:locale:error:");
 		covers("NSString", "initWithValidatedFormat:validFormatSpecifiers:locale:arguments:error:");
 		covers("NSString", "localizedStringWithValidatedFormat:validFormatSpecifiers:error:");
+	}
+
+	{
+		/* THE BYTE-OUT DOOR, NEW ASSERTIONS. The library's own note records why this door is worth
+		 * asserting: it takes its length from the CONVERSION rather than from the wrong encoding's byte
+		 * count, so every number here is the converted one. Apple's three answers are all asserted - a NULL
+		 * buffer asks for the size, a buffer big enough gets the bytes and reports the range it consumed,
+		 * and a buffer too small is refused WITH the whole range left over - plus the range's start, so a
+		 * door that copied from the beginning whatever it was asked for cannot pass. */
+		NSString *s = [NSString stringWithUTF8String:"caf\xC3\xA9"];
+		NSRange all = NSMakeRange(0, [s length]);
+		NSRange tail = NSMakeRange(1, [s length] - 1);	/* "afé": 4 bytes, so a start-offset copy differs */
+		char buf[32], offsetBuf[32], small[3];
+		NSUInteger sized = 0, copied = 0, offset = 0, refusedUsed = 0;
+		NSRange sizedLeft = NSMakeRange(NSNotFound, 0), copiedLeft = NSMakeRange(NSNotFound, 0);
+		NSRange offsetLeft = NSMakeRange(NSNotFound, 0), refusedLeft = NSMakeRange(NSNotFound, 0);
+		BOOL sizedOK, copiedOK, offsetOK, refusedOK;
+
+		memset(buf, 'Z', sizeof(buf));
+		memset(offsetBuf, 'Z', sizeof(offsetBuf));
+		memset(small, 'Z', sizeof(small));
+		sizedOK = [s getBytes:NULL maxLength:0 usedLength:&sized encoding:NSUTF8StringEncoding
+				options:0 range:all remainingRange:&sizedLeft];
+		copiedOK = [s getBytes:buf maxLength:sizeof(buf) usedLength:&copied encoding:NSUTF8StringEncoding
+				 options:0 range:all remainingRange:&copiedLeft];
+		offsetOK = [s getBytes:offsetBuf maxLength:sizeof(offsetBuf) usedLength:&offset encoding:NSUTF8StringEncoding
+				 options:0 range:tail remainingRange:&offsetLeft];
+		refusedOK = [s getBytes:small maxLength:sizeof(small) usedLength:&refusedUsed
+				  encoding:NSUTF8StringEncoding options:0 range:all remainingRange:&refusedLeft];
+
+		check("byte-out-door-sizes-copies-and-refuses",
+		      /* the size form: 5 UTF-8 bytes for 4 units, and the whole range consumed */
+		      sizedOK && sized == 5 && sizedLeft.location == 4 && sizedLeft.length == 0 &&
+		      /* the copy form: the bytes AND the consumed range, asserted together */
+		      copiedOK && copied == 5 && (unsigned char)buf[5] == 'Z' &&
+		      memcmp(buf, [s UTF8String], 5) == 0 && copiedLeft.location == 4 &&
+		      /* the RANGE IS HONOURED: starting at 1 copies "afé", 4 bytes, not the first 4 of "café" */
+		      offsetOK && offset == 4 && memcmp(offsetBuf, "af\xC3\xA9", 4) == 0 &&
+		      /* and a buffer that cannot hold the conversion is refused with the range for another try */
+		      refusedOK == NO && refusedLeft.location == 0 && refusedLeft.length == 4 &&
+		      (unsigned char)small[0] == 'Z',
+		      [[NSString stringWithFormat:
+			@"sized=%lu/%lu,%lu copied=%lu/%lu,%lu offset=%lu/%lu,%lu refused=%d/%lu,%lu"
+			@" | ok=%d,%d,%d,%d buf5=%d small0=%d wholeEq=%d tailEq=%d",
+			(unsigned long)sized, (unsigned long)sizedLeft.location, (unsigned long)sizedLeft.length,
+			(unsigned long)copied, (unsigned long)copiedLeft.location, (unsigned long)copiedLeft.length,
+			(unsigned long)offset, (unsigned long)offsetLeft.location, (unsigned long)offsetLeft.length,
+			(int)refusedOK, (unsigned long)refusedLeft.location, (unsigned long)refusedLeft.length,
+			(int)sizedOK, (int)copiedOK, (int)offsetOK, (int)refusedOK,
+			(int)(unsigned char)buf[5], (int)(unsigned char)small[0],
+			(int)(memcmp(buf, [s UTF8String], 5) == 0), (int)(memcmp(offsetBuf, "af\xC3\xA9", 4) == 0)]
+			UTF8String]);
+		covers("NSString", "getBytes:maxLength:usedLength:encoding:options:range:remainingRange:");
+	}
+
+	{
+		/* THE COMPATIBILITY FORMS OF THE NORMALIZATION DOORS, NEW ASSERTIONS: the axis that separates them
+		 * from the canonical pair is exactly the ligature the canonical pair leaves alone. The probe
+		 * already measures that split through the OTHER spellings (the NFKC/NFKD checks), so these two
+		 * doors are asserted against the same fixture and the same answer. */
+		NSString *ligature = @"\uFB01";	/* the fi ligature */
+		NSString *nfc = [ligature precomposedStringWithCanonicalMapping];
+		NSString *nfd = [ligature decomposedStringWithCanonicalMapping];
+		NSString *nfkc = [ligature precomposedStringWithCompatibilityMapping];
+		NSString *nfkd = [ligature decomposedStringWithCompatibilityMapping];
+
+		check("compatibility-normalization-folds-the-ligature-canonical-keeps",
+		      [nfc isEqualToString:ligature] && [nfd isEqualToString:ligature] &&
+		      [nfkc isEqualToString:@"fi"] && [nfkd isEqualToString:@"fi"] &&
+		      nfkc.length == 2 && nfkd.length == 2,
+		      [[NSString stringWithFormat:@"byDoor nfc=%lu nfkc=%@ nfkd=%@ canonicalKeeps=%d",
+			(unsigned long)nfc.length, nfkc, nfkd,
+			(int)([nfc isEqualToString:ligature] && [nfd isEqualToString:ligature])] UTF8String]);
+		covers("NSString", "precomposedStringWithCompatibilityMapping");
+		covers("NSString", "decomposedStringWithCompatibilityMapping");
 	}
 
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);

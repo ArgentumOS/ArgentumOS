@@ -28188,3 +28188,22 @@ python (or `printf`), reading the count from `foundation-cov --check` and pastin
 left for a shell to read, and the number is from the same command as the commit by construction. This message
 was written that way. It is one line of shell more than a heredoc and it removes both fault shapes at once -
 which is the same trade this campaign keeps making: a mechanism instead of a reminder.
+
+**§63.247m — ONE BUFFER PER ASSERTION, AND THE DETAIL IS WHAT DIAGNOSED IT (2026-10-04).** The first new check
+of §63.247l's successor - the byte-out door `getBytes:maxLength:usedLength:encoding:options:range:remainingRange:`
+- FAILED on the guest, and the failure was the probe's, not the library's. The contract held completely: the size
+form answered 5 bytes for 4 units, the copy form wrote the bytes and reported the consumed range, a copy starting
+at unit 1 wrote `afé` (4 bytes, not the first 4 of `café`), and a 3-byte buffer was refused with the whole range
+left over. What failed was `memcmp(buf, [s UTF8String], 5)`: the SAME `buf` had been handed to the ranged call
+next, so the assertion about the whole-string copy was comparing what the RANGED copy had left there.
+
+**THE RULE: ONE BUFFER PER ASSERTION.** A probe that reuses a display or output buffer across two calls asserts
+whatever the last call wrote, and the failure reads as a library bug. Here the fix was three lines
+(`char buf[32], offsetBuf[32], small[3];` + a memset + the call and its two readers).
+
+**AND THE INSTRUMENT THAT FOUND IT WAS THE DETAIL, not a guess:** the first extended detail printed the numbers
+(`sized=5/4,0 copied=5/4,0 offset=4/4,0 refused=0/0,4`) and every one of them was right, which ruled the library
+out; the second added the byte-level facts and named the clause outright - `| ok=1,1,1,0 buf5=90 small0=90
+wholeEq=0 tailEq=1`. `wholeEq=0` beside `tailEq=1` is the whole diagnosis: `buf` no longer held the whole copy,
+and it held `afé` exactly. **When a check fails and its own detail cannot say which clause, the detail is the
+first thing to extend - not the last.**
