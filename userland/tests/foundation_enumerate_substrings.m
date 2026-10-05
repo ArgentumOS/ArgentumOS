@@ -131,7 +131,11 @@ int main(void)
 		NSMutableArray *enclosing = [NSMutableArray array];
 		NSMutableArray *outer = [NSMutableArray array];
 
-		/* A LINE IS ENCLOSED BY ITS PARAGRAPH: in a two-paragraph string, the first two lines share one. */
+		/* A LINE'S ENCLOSING RANGE IS ITS PARAGRAPH - and under the paragraph rule this library was ALIGNED
+		 * to (Apple's: text "delimited by a carriage return, newline, or paragraph separator"), EVERY line
+		 * here is its own paragraph, so the enclosing range is that line plus its terminator. THE VALUES
+		 * BELOW ARE DERIVED FROM THE RULE, not read off the walk: a paragraph that owns its break is what
+		 * makes NSStringEnumerationByParagraphs "Equivalent to paragraphRangeForRange:". */
 		[twoParagraphs enumerateSubstringsInRange:NSMakeRange(0, [twoParagraphs length])
 						  options:NSStringEnumerationByLines
 					       usingBlock:^(NSString *substring, NSRange r, NSRange e, BOOL *stop) {
@@ -141,8 +145,10 @@ int main(void)
 			[outer addObject:substring];
 		}];
 		{
-			/* THE BLANK LINE IS THE THIRD UNIT AND BELONGS TO NO PARAGRAPH, so its enclosing range is
-			 * itself — that is the boundary this implementation states, and it is measured rather than assumed. */
+			/* THE BLANK LINE IS THE THIRD UNIT AND IS ITS OWN PARAGRAPH, which reconciles both readings: its
+			 * TEXT is empty (the paragraph door reports contentsEnd 8, excluding the terminator) while its
+			 * RANGE is the terminator itself (end 9, including it). BOTH halves are asserted, because a check
+			 * that looked only at the text would pass for a walk that dropped the unit entirely. */
 			/* A PROBE READS NOTHING IT HAS NOT COUNTED FIRST: indexing an array a dropped unit made shorter is
 			 * how this probe aborted with no message instead of failing with one. */
 			NSRange one = [enclosing count] > 0 ? [[enclosing objectAtIndex:0] rangeValue] : NSMakeRange(0, 0);
@@ -151,13 +157,16 @@ int main(void)
 			NSRange three = [enclosing count] > 3 ? [[enclosing objectAtIndex:3] rangeValue] : NSMakeRange(0, 0);
 			NSRange four = [enclosing count] > 4 ? [[enclosing objectAtIndex:4] rangeValue] : NSMakeRange(0, 0);
 
-			check("a-line-is-enclosed-by-its-paragraph-and-a-blank-line-by-itself",
+			check("a-lines-enclosing-range-is-its-paragraph",
 			      [outer count] == 5 && [enclosing count] == 5 &&
 			      [[outer objectAtIndex:2] length] == 0 &&
-			      one.location == 0 && one.length == 7 && two.location == 0 && two.length == 7 &&
-			      blank.location == 8 && blank.length == 0 &&
-			      three.location == 9 && three.length == 10 &&
-			      four.location == 9 && four.length == 10,
+			      /* "one\n" {0,4}, "two\n" {4,4}, the blank line's "\n" {8,1}, "three\n" {9,6}, and the
+			       * UNTERMINATED "four" {15,4} - four ranges that include a terminator and one that ends at
+			       * the string, which is the whole shape of the rule in five lines. */
+			      one.location == 0 && one.length == 4 && two.location == 4 && two.length == 4 &&
+			      blank.location == 8 && blank.length == 1 &&
+			      three.location == 9 && three.length == 6 &&
+			      four.location == 15 && four.length == 4,
 			      [NSString stringWithFormat:@"%lu lines; enclosing: %@ for %@",
 				(unsigned long)[outer count], [enclosing componentsJoinedByString:@", "],
 				[outer componentsJoinedByString:@" | "]]);
@@ -173,9 +182,17 @@ int main(void)
 				[paragraphs addObject:[NSString stringWithFormat:@"%lu..%lu",
 					(unsigned long)r.location, (unsigned long)NSMaxRange(r)]];
 			}];
-			check("paragraphs-are-runs-of-lines",
-			      [paragraphs count] == 2 && [[paragraphs objectAtIndex:0] isEqual:@"0..7"] &&
-			      [[paragraphs objectAtIndex:1] isEqual:@"9..19"],
+			check("paragraph-units-are-delimited-by-their-terminators",
+			      /* FIVE, not two: each CR/LF/PS DELIMITS a paragraph, so the blank line is a paragraph of
+			       * its own and nothing here spans a line. The ranges INCLUDE the terminator (15..19 is the
+			       * unterminated tail, which has none to include) - the same inclusion the door reports as
+			       * `end` and the reason Apple calls the two spellings equivalent. */
+			      [paragraphs count] == 5 &&
+			      [[paragraphs objectAtIndex:0] isEqual:@"0..4"] &&
+			      [[paragraphs objectAtIndex:1] isEqual:@"4..8"] &&
+			      [[paragraphs objectAtIndex:2] isEqual:@"8..9"] &&
+			      [[paragraphs objectAtIndex:3] isEqual:@"9..15"] &&
+			      [[paragraphs objectAtIndex:4] isEqual:@"15..19"],
 			      [NSString stringWithFormat:@"paragraph ranges: %@",
 				[paragraphs componentsJoinedByString:@", "]]);
 		}

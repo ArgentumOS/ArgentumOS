@@ -28309,3 +28309,13 @@ exclude the terminating newline (the runs say {0,4} with it; the probe's stale r
 a blank line's paragraph is {8,1} or {8,0}. Those are answerable from Apple's published contract for the two
 spellings - and answering them from the implementation's current output instead would enshrine whatever it does,
 which is the one thing a parity test must never do.** Handed off as the next unit, with the localization done.
+
+**§63.247q CLOSED (2026-10-04).** The two paragraph checks now expect the rule the library implements, and the
+replacements were DERIVED FROM APPLE'S CONTRACT, not read off the walk: each CR/LF/PS delimits a paragraph, and a
+paragraph OWNS ITS TERMINATOR (the door reports it as `end`, `contentsEnd` excludes it, and `paragraphRangeForRange:`
+answers `{start, end - start}` - which is why Apple calls the two spellings "Equivalent"). For the fixture
+`@"one\ntwo\n\nthree\nfour"` that gives five paragraphs - `{0,4}`, `{4,4}`, `{8,1}`, `{9,6}`, `{15,4}` - the last
+unterminated, and for the LINE enumeration five lines whose enclosing range is the paragraph above each. Guest:
+**8/8 checks, TESTS-OK 1/1 6/6.** The reconciliation the blank line needed is in the check's comment: its TEXT is
+empty (contentsEnd 8) while its RANGE is the terminator (end 9), and both halves are asserted, because a check
+that looked only at the text would pass for a walk that dropped the unit.
