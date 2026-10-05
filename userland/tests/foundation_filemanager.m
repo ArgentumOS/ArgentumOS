@@ -1030,6 +1030,13 @@ int main(void)
 			isEqualToString:[aURL path]] &&
 		      [m removeItemAtURL:dirURL error:&urlError] && ![m fileExistsAtPath:base],
 		      @"URL doors reduce to the path doors: create, copy, move, link, symlink, and a recursive remove");
+	covers("NSFileManager", "copyItemAtURL:toURL:error:");
+	covers("NSFileManager", "moveItemAtURL:toURL:error:");
+	covers("NSFileManager", "linkItemAtURL:toURL:error:");
+	covers("NSFileManager", "createSymbolicLinkAtURL:withDestinationURL:error:");
+	covers("NSFileManager", "removeItemAtURL:error:");
+	covers("NSFileManager", "fileExistsAtPath:");
+	covers("NSFileManager", "destinationOfSymbolicLinkAtPath:error:");
 	}
 
 	{
@@ -1054,6 +1061,10 @@ int main(void)
 		[m removeItemAtPath:base error:NULL];
 		check("fs-url-relationship", okRel,
 		      @"the URL relationship door answers Contains for a child and Same for the directory itself");
+	covers("NSFileManager", "getRelationship:ofDirectoryAtURL:toItemAtURL:error:");
+	covers("NSFileManager", "removeItemAtPath:error:");
+	covers("NSFileManager", "createDirectoryAtPath:withIntermediateDirectories:attributes:error:");
+	covers("NSFileManager", "createFileAtPath:contents:attributes:");
 	}
 
 	{
@@ -1073,6 +1084,9 @@ int main(void)
 		      byNameURL != nil && [[byNameURL path] isEqualToString:NSHomeDirectory()] &&
 		      [m homeDirectoryForUser:@"a-user-who-does-not-exist"] == nil,
 		      @"home/temporary/user directories answer URLs naming the FSH paths; an unknown user is nil");
+	covers("NSFileManager", "homeDirectoryForCurrentUser");
+	covers("NSFileManager", "temporaryDirectory");
+	covers("NSFileManager", "homeDirectoryForUser:");
 	}
 
 	{
@@ -1109,6 +1123,13 @@ int main(void)
 		[m removeItemAtPath:base error:NULL];
 		check("fs-deprecated-doors", okLegacy,
 		      @"the legacy doors answer through the modern ones: attributes (with the traverseLink flag), changeFileAttributes, contents, symlink target, file-system numbers");
+	covers("NSFileManager", "createDirectoryAtPath:attributes:");
+	covers("NSFileManager", "createSymbolicLinkAtPath:pathContent:");
+	covers("NSFileManager", "fileAttributesAtPath:traverseLink:");
+	covers("NSFileManager", "changeFileAttributes:atPath:");
+	covers("NSFileManager", "directoryContentsAtPath:");
+	covers("NSFileManager", "fileSystemAttributesAtPath:");
+	covers("NSFileManager", "pathContentOfSymbolicLinkAtPath:");
 	}
 
 	{
@@ -1136,6 +1157,14 @@ int main(void)
 			[m containerURLForSecurityApplicationGroupIdentifier:@"group.example"] == nil;
 		check("fs-no-icloud-answers", okCloud,
 		      @"no iCloud here: nothing is ubiquitous, no container, no token, and every item operation answers NO with an error");
+	covers("NSFileManager", "isUbiquitousItemAtURL:");
+	covers("NSFileManager", "URLForUbiquityContainerIdentifier:");
+	covers("NSFileManager", "ubiquityIdentityToken");
+	covers("NSFileManager", "URLForPublishingUbiquitousItemAtURL:expirationDate:error:");
+	covers("NSFileManager", "startDownloadingUbiquitousItemAtURL:error:");
+	covers("NSFileManager", "evictUbiquitousItemAtURL:error:");
+	covers("NSFileManager", "setUbiquitous:itemAtURL:destinationURL:error:");
+	covers("NSFileManager", "containerURLForSecurityApplicationGroupIdentifier:");
 	}
 
 	{
@@ -1177,6 +1206,10 @@ int main(void)
 		      [NSString stringWithFormat:@"calls %d/%d/%d/%d version=%@ errors %d/%d/%d/%d",
 			fetchCalls, pauseCalls, resumeCalls, uploadCalls, fetched,
 			fetchErr != nil, pauseErr != nil, resumeErr != nil, uploadErr != nil]);
+	covers("NSFileManager", "fetchLatestRemoteVersionOfItemAtURL:completionHandler:");
+	covers("NSFileManager", "pauseSyncForUbiquitousItemAtURL:completionHandler:");
+	covers("NSFileManager", "resumeSyncForUbiquitousItemAtURL:withBehavior:completionHandler:");
+	covers("NSFileManager", "uploadLocalVersionOfUbiquitousItemAtURL:withConflictResolutionPolicy:completionHandler:");
 	}
 
 	{
@@ -1200,6 +1233,8 @@ int main(void)
 		      createURL == nil && createErr != nil,
 		      [NSString stringWithFormat:@"urls=%lu dirURL=%@ err=%d createURL=%@ createErr=%d",
 			(unsigned long)[urls count], dirURL, dirErr != nil, createURL, createErr != nil]);
+	covers("NSFileManager", "URLsForDirectory:inDomains:");
+	covers("NSFileManager", "URLForDirectory:inDomain:appropriateForURL:create:error:");
 	}
 
 	{
@@ -1228,6 +1263,8 @@ int main(void)
 		      [NSString stringWithFormat:@"trashed=%d trashErr=%d resulting=%@ unmount=%d err=%d bad=%d/%d",
 			(int)trashed, trashErr != nil, resulting,
 			unmountCalls, unmountErr != nil, badCalls, badErr != nil]);
+	covers("NSFileManager", "trashItemAtURL:resultingItemURL:error:");
+	covers("NSFileManager", "unmountVolumeAtURL:options:completionHandler:");
 	}
 
 
@@ -1261,6 +1298,7 @@ int main(void)
 		      [NSString stringWithFormat:@"built=%d copied=%d handler-called=%d copy-has-two=%d",
 			built, copied, fn_probe_handler_calls,
 			[manager fileExistsAtPath:[copy stringByAppendingPathComponent:@"two.txt"]]]);
+	covers("NSFileManager", "copyPath:toPath:handler:");
 	}
 	{
 		/* AND A VETO IS A VETO: the FIRST `NO` stops everything, and nothing is left behind. */
@@ -1286,6 +1324,7 @@ int main(void)
 		      !copied && fn_probe_handler_calls == 1 && ![manager fileExistsAtPath:copy],
 		      [NSString stringWithFormat:@"copied=%d handler-called=%d destination-exists=%d",
 			copied, fn_probe_handler_calls, [manager fileExistsAtPath:copy]]);
+	covers("NSFileManager", "copyPath:toPath:handler:");
 	}
 	{
 		/* THE OTHER THREE DOORS, each asserted by its own observable: a hard link shares the bytes, a move
@@ -1311,6 +1350,9 @@ int main(void)
 		      ![manager fileExistsAtPath:linked] && ![manager fileExistsAtPath:moved],
 		      [NSString stringWithFormat:@"link=%d move=%d remove=%d source-kept=%d",
 			linkedOk, movedOk, removedOk, [manager fileExistsAtPath:file]]);
+	covers("NSFileManager", "linkPath:toPath:handler:");
+	covers("NSFileManager", "movePath:toPath:handler:");
+	covers("NSFileManager", "removeFileAtPath:handler:");
 	}
 
 	printf("FOUNDATION-FILEMANAGER RESULT ok=%d fail=%d\n", okc, failc);
