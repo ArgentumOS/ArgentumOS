@@ -71,6 +71,34 @@ static NSString *fn_render_locale_arguments(NSString *format, ...)
 	return result;
 }
 
+/* THE TWO va_list VALIDATED-FORMAT DOORS NEED A CALLER THAT OWNS A va_list, so they get one each: the
+ * variadic doors cannot be asked to prove that a va_list argument is forwarded correctly. Both are the
+ * probe's own code, at file scope, because C has no nested functions here. */
+static NSString *fn_validated_list(id obj, NSString *format, NSString *specifiers, NSError **errorPtr, ...)
+{
+	va_list arguments;
+	NSString *result;
+
+	va_start(arguments, errorPtr);
+	result = [obj initWithValidatedFormat:format validFormatSpecifiers:specifiers
+				    arguments:arguments error:errorPtr];
+	va_end(arguments);
+	return result;
+}
+
+static NSString *fn_validated_list_locale(id obj, NSString *format, NSString *specifiers, id locale,
+					  NSError **errorPtr, ...)
+{
+	va_list arguments;
+	NSString *result;
+
+	va_start(arguments, errorPtr);
+	result = [obj initWithValidatedFormat:format validFormatSpecifiers:specifiers locale:locale
+				    arguments:arguments error:errorPtr];
+	va_end(arguments);
+	return result;
+}
+
 int main(void)
 {
 	{
@@ -3285,6 +3313,115 @@ NULL
 
 		snprintf(detail, sizeof detail, "encoded=[%s]", enc != nil ? [enc UTF8String] : "(nil)");
 		check("url-query-set-encodes-only-what-must-be", [enc isEqualToString:@"a%20b/c?d%23e"], detail);
+	}
+
+	{
+		/* THE CONTENTS DOORS, NEW ASSERTIONS RATHER THAN A CLAIM ON AN EXISTING CHECK. The fixture follows
+		 * this file's URL check, AND SO DOES ITS RULE: NSTemporaryDirectory() answers the FSH's path, which
+		 * the guest has and a host build does not, so BOTH branches assert the door and neither passes
+		 * vacuously - where the bytes can be written every reader must answer them, and where they cannot
+		 * every reader must answer nil. */
+		NSString *body = @"caf\xc3\xa9 line\n";	/* non-ASCII, so an ASCII read must refuse */
+		NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"fn_string_contents.txt"];
+		NSError *werr = nil, *eerr = nil;
+		BOOL wrote = [body writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:&werr];
+		NSString *byClass = [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:NULL];
+		NSString *byInit = [[NSString alloc] initWithContentsOfFile:path encoding:NSUTF8StringEncoding error:NULL];
+		NSStringEncoding used = 0;
+		NSString *byUsed = [[NSString alloc] initWithContentsOfFile:path usedEncoding:&used error:NULL];
+		NSString *legacy = [NSString stringWithContentsOfFile:path];
+		NSString *asAscii = [NSString stringWithContentsOfFile:path encoding:NSASCIIStringEncoding error:&eerr];
+
+		check("contents-doors-round-trip-or-refuse-with-an-error",
+		      wrote
+			? ([byClass isEqualToString:body] && [byInit isEqualToString:body] &&
+			   [byUsed isEqualToString:body] && used == NSUTF8StringEncoding &&
+			   [legacy isEqualToString:body] &&
+			   /* AND A HIGH BYTE UNDER THE ASCII LABEL IS A REFUSAL THAT CARRIES ITS ERROR, which is
+			    * the half a nil alone cannot prove. */
+			   asAscii == nil && eerr != nil && [eerr.domain isEqualToString:@"NSCocoaErrorDomain"])
+			: (byClass == nil && byInit == nil && byUsed == nil && legacy == nil),
+		      [[NSString stringWithFormat:@"wrote=%d class=%@ init=%@ used=%@ legacy=%@ usedEnc=%lu asAscii=%@ err=%@",
+			(int)wrote, byClass, byInit, byUsed, legacy, (unsigned long)used, asAscii,
+			eerr != nil ? [eerr description] : @"(none)"] UTF8String]);
+		covers("NSString", "stringWithContentsOfFile:");
+		covers("NSString", "initWithContentsOfFile:encoding:error:");
+		covers("NSString", "initWithContentsOfFile:usedEncoding:error:");
+	}
+
+	{
+		/* THE SAME FIXTURE THROUGH THE URL DOORS, and the two refusals that hold in EVERY environment:
+		 * a path with no file behind it, and a scheme with nothing behind it. Both are asserted OUTSIDE
+		 * the branch, because neither depends on the temporary directory existing. */
+		NSString *body = @"caf\xc3\xa9 line\n";
+		NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"fn_string_contents.txt"];
+		NSError *werr = nil, *merr = nil, *uerr = nil;
+		BOOL wrote = [body writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:&werr];
+		NSURL *fileURL = [NSURL fileURLWithPath:path];
+		NSURL *deadScheme = [NSURL URLWithString:@"fnxnoscheme://example.invalid/x"];
+		NSString *byURL = [NSString stringWithContentsOfURL:fileURL encoding:NSUTF8StringEncoding error:NULL];
+		NSStringEncoding usedURL = 0;
+		NSString *initURL = [[NSString alloc] initWithContentsOfURL:fileURL usedEncoding:&usedURL error:NULL];
+		NSString *legacyURL = [NSString stringWithContentsOfURL:fileURL];
+		NSString *missing = [NSString stringWithContentsOfFile:@"/nonexistent/fn_string_missing"
+							      encoding:NSUTF8StringEncoding error:&merr];
+		NSString *unreachable = [NSString stringWithContentsOfURL:deadScheme
+								 encoding:NSUTF8StringEncoding error:&uerr];
+
+		check("url-contents-doors-mirror-the-path-doors",
+		      wrote
+			? ([byURL isEqualToString:body] && [initURL isEqualToString:body] &&
+			   usedURL == NSUTF8StringEncoding && [legacyURL isEqualToString:body])
+			: (byURL == nil && initURL == nil && legacyURL == nil),
+		      [[NSString stringWithFormat:@"wrote=%d url=%@ init=%@ used=%@ legacy=%@ usedEnc=%lu",
+			(int)wrote, byURL, initURL, legacyURL, (unsigned long)usedURL] UTF8String]);
+		covers("NSString", "initWithContentsOfURL:encoding:error:");
+		covers("NSString", "initWithContentsOfURL:usedEncoding:error:");
+		covers("NSString", "stringWithContentsOfURL:");
+
+		check("a-missing-file-and-a-dead-scheme-are-refused-with-an-error",
+		      missing == nil && merr != nil && unreachable == nil && uerr != nil,
+		      [[NSString stringWithFormat:@"missing=%@ missingErr=%@ unreachable=%@ schemeErr=%@",
+			missing, merr != nil ? [merr description] : @"(none)", unreachable,
+			uerr != nil ? [uerr description] : @"(none)"] UTF8String]);
+	}
+
+	{
+		/* THE VALIDATED-FORMAT INSTANCE FAMILY, NEW ASSERTIONS. One rule, four doors: the specifier list
+		 * is a WHITELIST, so a format that uses a specifier it did not list is refused WITH an error, and
+		 * a listed one renders exactly as the unvalidated door would. The locale door accepts a locale and
+		 * ignores it (the stance -initWithFormat:locale:arguments: records), which is asserted by asking
+		 * the SAME question in two locales and requiring the same answer. */
+		NSError *okErr = nil, *badErr = nil, *listErr = nil, *locErr = nil, *listLocErr = nil, *classErr = nil;
+		NSString *good = [[NSString alloc] initWithValidatedFormat:@"%d and %@"
+					 validFormatSpecifiers:@"%d %@" error:&okErr, 42, @"text"];
+		NSString *bad = [[NSString alloc] initWithValidatedFormat:@"%d and %@"
+					validFormatSpecifiers:@"%d" error:&badErr, 42, @"text"];
+		NSString *listed = fn_validated_list([[NSString alloc] init], @"%d-%@", @"%d %@", &listErr, 7, @"x");
+		NSString *localeArg = [[NSString alloc] initWithValidatedFormat:@"%d-%@"
+					  validFormatSpecifiers:@"%d %@" locale:[NSLocale currentLocale]
+					  error:&locErr, 7, @"x"];
+		NSString *localeList = fn_validated_list_locale([[NSString alloc] init], @"%d-%@", @"%d %@",
+								[NSLocale currentLocale], &listLocErr, 7, @"x");
+		NSString *localized = [NSString localizedStringWithValidatedFormat:@"%d-%@"
+					   validFormatSpecifiers:@"%d %@" error:&classErr, 7, @"x"];
+
+		check("validated-format-instance-doors-refuse-an-unlisted-specifier",
+		      good != nil && [good isEqualToString:@"42 and text"] && good.length == 11 && okErr == nil &&
+		      bad == nil && badErr != nil && [badErr.domain isEqualToString:@"NSCocoaErrorDomain"] &&
+		      listed != nil && [listed isEqualToString:@"7-x"] && listed.length == 3 && listErr == nil &&
+		      localeArg != nil && [localeArg isEqualToString:@"7-x"] && locErr == nil &&
+		      localeList != nil && [localeList isEqualToString:@"7-x"] && listLocErr == nil &&
+		      localized != nil && [localized isEqualToString:@"7-x"] && classErr == nil,
+		      [[NSString stringWithFormat:@"good=%@ okErr=%@ bad=%@ badErr=%@ list=%@ locArg=%@ locList=%@ class=%@",
+			good, okErr != nil ? [okErr description] : @"(none)", bad,
+			badErr != nil ? [badErr description] : @"(none)", listed, localeArg, localeList,
+			localized] UTF8String]);
+		covers("NSString", "initWithValidatedFormat:validFormatSpecifiers:error:");
+		covers("NSString", "initWithValidatedFormat:validFormatSpecifiers:arguments:error:");
+		covers("NSString", "initWithValidatedFormat:validFormatSpecifiers:locale:error:");
+		covers("NSString", "initWithValidatedFormat:validFormatSpecifiers:locale:arguments:error:");
+		covers("NSString", "localizedStringWithValidatedFormat:validFormatSpecifiers:error:");
 	}
 
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
