@@ -20,7 +20,6 @@
  */
 
 #import <Foundation/NSString.h>
-#import <CoreFoundation/CFString.h>
 #import "FNStringFormat.h"
 #import <Foundation/NSCoder.h>		/* §63.22: the coder PRIMITIVES the string door is written over */
 #include <stdlib.h>
@@ -4736,20 +4735,21 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
  * the UTF-8 form is materialised lazily on the way out. */
 - (id)initWithUTF8String:(const char *)utf8
 {
+	size_t n = (utf8 != NULL) ? strlen(utf8) : 0;
+	size_t units;
+
 	self = [super init];
 	if (self == nil) {
 		return nil;
 	}
-	/* THE CONVERSION IS CF'S NOW, and that is the milestone's payoff: `-dataUsingEncoding:` and this door
-	 * were both blocked on a converter/repertoire table this tree did not own, and a CFMutableString plus
-	 * CFStringAppendCString with kCFStringEncodingUTF8 is that table. */
-	_storage = (void *)CFStringCreateMutable(kCFAllocatorDefault, 0);
-	if (_storage == NULL) {
+	units = fn_utf8_to_utf16(utf8 != NULL ? utf8 : "", n, NULL);
+	_units = (unsigned short *)malloc((units + 1) * sizeof(unsigned short));
+	if (_units == NULL) {
 		return nil;
 	}
-	if (utf8 != NULL && *utf8 != '\0') {
-		CFStringAppendCString((CFMutableStringRef)_storage, utf8, kCFStringEncodingUTF8);
-	}
+	_length = fn_utf8_to_utf16(utf8 != NULL ? utf8 : "", n, _units);
+	_units[_length] = 0;		/* for a debugger's benefit, not a contract */
+	_ownsUnits = 1;
 	return self;
 }
 
@@ -4758,19 +4758,13 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 - (const char *)UTF8String
 {
 	if (_utf8 == NULL) {
-		CFIndex units = CFStringGetLength((CFStringRef)_storage);
-		CFIndex cap = CFStringGetMaximumSizeForEncoding(units, kCFStringEncodingUTF8) + 1;
-		char *buf = (char *)malloc((size_t)cap);
-
-		if (buf == NULL) {
+		_utf8size = fn_utf16_utf8_length((const unsigned char *)_units, _length);
+		_utf8 = (char *)malloc(_utf8size + 1);
+		if (_utf8 == NULL) {
 			return "";
 		}
-		if (!CFStringGetCString((CFStringRef)_storage, buf, cap, kCFStringEncodingUTF8)) {
-			free(buf);
-			return "";
-		}
-		_utf8 = buf;
-		_utf8size = strlen(buf);
+		fn_utf16_to_utf8((const unsigned char *)_units, _length, _utf8);
+		_utf8[_utf8size] = '\0';
 	}
 	return _utf8;
 }
@@ -4783,23 +4777,14 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	if (self == nil) {
 		return nil;
 	}
-	/* CFStringCreateWithBytes takes a LENGTH, which is what this door is for: an embedded NUL survives
-	 * the conversion here where the C-string door above stops at one. Then a mutable copy, because this
-	 * class's storage is the mutable kind (see the header's note on mutability). */
-	{
-		CFStringRef built = CFStringCreateWithBytes(kCFAllocatorDefault,
-			(const UInt8 *)(bytes != NULL ? bytes : ""), (CFIndex)length,
-			kCFStringEncodingUTF8, false);
-
-		if (built == NULL) {
-			return nil;
-		}
-		_storage = (void *)CFStringCreateMutableCopy(kCFAllocatorDefault, 0, built);
-		CFRelease(built);
-		if (_storage == NULL) {
-			return nil;
-		}
+	units = fn_utf8_to_utf16(bytes != NULL ? bytes : "", length, NULL);
+	_units = (unsigned short *)malloc((units + 1) * sizeof(unsigned short));
+	if (_units == NULL) {
+		return nil;
 	}
+	_length = fn_utf8_to_utf16(bytes != NULL ? bytes : "", length, _units);
+	_units[_length] = 0;
+	_ownsUnits = 1;
 	return self;
 }
 
@@ -4808,7 +4793,7 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
  * old one (docs/design/foundation-plan.md §13.6). */
 - (size_t)length
 {
-	return (size_t)CFStringGetLength((CFStringRef)_storage);
+	return _length;
 }
 
 /* THE BYTE DOOR, O(1): the materialised size, and the ASCII test walks it. */
@@ -4839,28 +4824,29 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 
 /* Scalars, counted from the UNITS — a surrogate pair is one character, which is
  * what this method has always meant. */
-/* A COPY IN - and the copy is CF's: CFStringAppendCharacters appends INTO the mutable storage this
- * constructor built, so nothing here owns a unit buffer any more. */
+/* A COPY IN, and `_ownsUnits` is set because this class allocated the buffer. */
 - (id)initWithCharacters:(const unichar *)characters length:(NSUInteger)length
 {
 	self = [super init];
 	if (self == nil) {
 		return nil;
 	}
-	_storage = (void *)CFStringCreateMutable(kCFAllocatorDefault, 0);
-	if (_storage == NULL) {
+	_units = (unsigned short *)malloc((length + 1) * sizeof(unsigned short));
+	if (_units == NULL) {
 		return nil;
 	}
 	if (length > 0 && characters != NULL) {
-		CFStringAppendCharacters((CFMutableStringRef)_storage, (const UniChar *)characters,
-			(CFIndex)length);
+		memcpy(_units, characters, length * sizeof(unsigned short));
 	}
+	_length = length;
+	_units[_length] = 0;
+	_ownsUnits = 1;
 	return self;
 }
 
-/* APPLE'S OWNERSHIP CONTRACT, and it is carried by CF's own ARGUMENT rather than by a flag: freeWhenDone
- * picks the contentsDeallocator - kCFAllocatorDefault frees the buffer when the string goes, kCFAllocatorNull
- * NEVER writes and NEVER frees it, and a later mutation takes a copy first (see -appendUTF8String:). */
+/* APPLE'S OWNERSHIP CONTRACT, and the only place `_ownsUnits` is 0: with freeWhenDone
+ * the receiver frees the buffer in -dealloc; without it the receiver NEVER writes and
+ * NEVER frees it, and a later mutation takes a copy first (see -appendUTF8String:). */
 - (id)initWithCharactersNoCopy:(unichar *)characters length:(NSUInteger)length
 	  freeWhenDone:(BOOL)freeBuffer
 {
@@ -4871,17 +4857,9 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	if (self == nil) {
 		return nil;
 	}
-	/* BOTH OWNERSHIP REGIMES ARE ONE ARGUMENT, and it is CF's own: the constructor's contentsDeallocator
-	 * says whether anyone may free the buffer - kCFAllocatorNull for "never" and kCFAllocatorDefault for
-	 * "when the string goes", which is exactly freeWhenDone. AND THE BUFFER IS ADOPTED, NOT COPIED
-	 * (measured, not assumed: see the plan's NoCopy entry), so the no-copy promise survives the re-base. */
-	const void *deallocator = freeBuffer ? (const void *)kCFAllocatorDefault : (const void *)kCFAllocatorNull;
-
-	_storage = (void *)CFStringCreateWithCharactersNoCopy(kCFAllocatorDefault,
-		(const UniChar *)characters, (CFIndex)length, (CFAllocatorRef)deallocator);
-	if (_storage == NULL) {
-		return nil;
-	}
+	_units = characters;
+	_length = length;
+	_ownsUnits = freeBuffer ? 1 : 0;
 	return self;
 }
 
@@ -4894,24 +4872,10 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 	if (buffer == NULL) {
 		return;
 	}
-	{
-		CFIndex units = CFStringGetLength((CFStringRef)_storage);
-		CFIndex inRange = 0;
+	for (i = 0; i < range.length; i++) {
+		NSUInteger at = range.location + i;
 
-		/* CF requires the range to be IN BOUNDS, where this door's contract asks anything past the end to
-		 * be answered as zero - so the in-range part goes to CF and the rest is filled here. */
-		if (range.location < (NSUInteger)units) {
-			NSUInteger avail = (NSUInteger)units - range.location;
-
-			inRange = (CFIndex)((range.length < avail) ? range.length : avail);
-			if (inRange > 0) {
-				CFStringGetCharacters((CFStringRef)_storage,
-					CFRangeMake((CFIndex)range.location, inRange), (UniChar *)buffer);
-			}
-		}
-		for (i = (NSUInteger)inRange; i < range.length; i++) {
-			buffer[i] = (unichar)0;
-		}
+		buffer[i] = (at < _length) ? (unichar)_units[at] : (unichar)0;
 	}
 }
 
@@ -4922,19 +4886,16 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
  * with the space (docs/design/foundation-plan.md §13.4). */
 - (unsigned short)characterAtIndex:(size_t)index
 {
-	if (index >= (size_t)CFStringGetLength((CFStringRef)_storage)) {
+	if (index >= _length) {
 		return 0;
 	}
-	return (unsigned short)CFStringGetCharacterAtIndex((CFStringRef)_storage, (CFIndex)index);
+	return _units[index];
 }
 
 - (void)dealloc
 {
-	if (_storage != NULL) {
-		/* ONE RELEASE, and freeWhenDone is already settled: CF frees the adopted buffer when the string
-		 * goes if -initWithCharactersNoCopy: was told to, and never otherwise. */
-		CFRelease((CFStringRef)_storage);
-		_storage = NULL;
+	if (_ownsUnits) {
+		free(_units);
 	}
 	free(_utf8);
 	[super dealloc];	/* NSObject's -dealloc is what frees the instance */
@@ -5012,48 +4973,56 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 
 - (void)setString:(NSString *)other
 {
-	/* A FRESH MUTABLE STORAGE rather than a rewrite of this one, which is the same shape as before: the
-	 * old code built a new unit buffer and freed the old. */
-	CFMutableStringRef fresh = CFStringCreateMutable(kCFAllocatorDefault, 0);
+	const char *utf8 = [other UTF8String];
+	size_t n = strlen(utf8);
+	size_t units = fn_utf8_to_utf16(utf8, n, NULL);
+	unsigned short *buf = (unsigned short *)malloc((units + 1) * sizeof(unsigned short));
 
-	if (fresh == NULL) {
+	if (buf == NULL) {
 		return;
 	}
-	if (other != nil) {
-		CFStringAppendCString(fresh, [other UTF8String], kCFStringEncodingUTF8);
-	}
-	if (_storage != NULL) {
-		CFRelease((CFStringRef)_storage);
-	}
-	_storage = (void *)fresh;
+	_length = fn_utf8_to_utf16(utf8, n, buf);
+	buf[_length] = 0;
+	free(_units);
 	free(_utf8);
+	_units = buf;
 	_utf8 = NULL;			/* THE INVALIDATION: every mutation ends here */
 	_utf8size = 0;
 }
 
 - (void)appendUTF8String:(const char *)utf8
 {
+	size_t n, add, total;
+	unsigned short *buf;
+
 	if (utf8 == NULL || *utf8 == '\0') {
 		return;
 	}
-	/* THE COPY-ON-WRITE IS NOW A TYPE QUESTION: an IMMUTABLE storage is one that was ADOPTED from a caller
-	 * (the no-copy door) and must never be written, so the storage is replaced by a mutable copy first -
-	 * the same guarantee `_ownsUnits == 0` used to carry, checked where the write is rather than tracked. */
-	/* A CFMutableString has its OWN type ID (which is why the mutable getter exists), so asking whether
-	 * this one is an IMMUTABLE CFString answers the same question with a symbol CF's PUBLIC headers do
-	 * declare: an immutable storage is the ADOPTED kind, and must be copied before it can be written. */
-	if (CFGetTypeID((CFStringRef)_storage) == CFStringGetTypeID()) {
-		CFMutableStringRef mine = CFStringCreateMutableCopy(kCFAllocatorDefault, 0,
-			(CFStringRef)_storage);
+	if (!_ownsUnits) {
+		/* A BORROWED BUFFER IS NEVER WRITTEN TO (the no-copy contract): take a copy
+		 * before anything can touch it. */
+		unsigned short *mine = (unsigned short *)malloc((_length + 1) * sizeof(unsigned short));
 
 		if (mine == NULL) {
 			return;
 		}
-		CFRelease((CFStringRef)_storage);
-		_storage = (void *)mine;
+		memcpy(mine, _units, _length * sizeof(unsigned short));
+		_units = mine;
+		_ownsUnits = 1;
 	}
-	CFStringAppendCString((CFMutableStringRef)_storage, utf8, kCFStringEncodingUTF8);
-	free(_utf8);
+	n = strlen(utf8);
+	add = fn_utf8_to_utf16(utf8, n, NULL);
+	total = _length + add;
+	buf = (unsigned short *)realloc(_units, (total + 1) * sizeof(unsigned short));
+	if (buf == NULL) {
+		return;
+	}
+	(void)fn_utf8_to_utf16(utf8, n, buf + _length);
+	_units = buf;
+	_length = total;
+	_units[_length] = 0;
+	_ownsUnits = 1;		/* realloc gave us the buffer, so we own it now */
+	free(_utf8);			/* the materialised form is stale now */
 	_utf8 = NULL;
 	_utf8size = 0;
 }
