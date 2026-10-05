@@ -28341,3 +28341,17 @@ a claim: what Apple's `-stringByStandardizingPath` answers for "" has NOT been m
 `-pathComponents` note already records that an empty path answers nil here "where Cocoa" differs, so the two
 doors may be wrong in the same place, or this may be deliberate. It is recorded rather than fixed: changing a
 door this check does not own, on an unmeasured premise, is how a real behaviour gets "fixed" into a guess.
+
+**§63.247s — THE CHEAPEST WORK IS `named` -> `asserted`, AND THE AUTHORITATIVE LIST COMES FROM THE TOOL, NOT FROM
+A DETECTOR OF MINE (2026-10-04).** The instrument reports three tiers per owner, and `--by-class` shows why the
+work list should be read that way: **NSData was 1 asserted / 38 NAMED / 3 none** - thirty-eight rows a probe
+already EXERCISES and no claim records. Promoting those is the cheapest coverage in the tree, and it closed 17
+this turn (NSData 19 -> 36 asserted, the rest left for their own conditions to be read).
+
+**AND MY PER-CHECK DETECTOR LIED TWICE BEFORE I STOPPED USING IT.** Asked "which checks carry no claim", it
+reported `foundation_archiver` 38 of 38 unclaimed and `foundation_value` 27 of 31 - while `foundation_value`
+demonstrably carries claims, in a tail longer than the window I was looking through. The first version looked
+INSIDE a check's body (claims are written AFTER its closing line); the second looked 12 lines after, which is
+short for a check with several claims. Both were my own instruments disagreeing with the tool, and the tool was
+right both times - the second lesson of §63.247o, paid for again. **ASK `--by-class` (per owner, per tier) OR
+`classify()` (per row), and stop re-deriving the tier by grep.**

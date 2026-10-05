@@ -28,8 +28,11 @@
 
 static int okc = 0, failc = 0;
 
+static int lastcheck;
+
 static void check(const char *name, BOOL held, NSString *why)
 {
+	lastcheck = held;	/* read by covers(): a claim can only follow an assertion that held */
 	if(held) {
 		okc++;
 		printf("FOUNDATION-WSASSEMBLE %s ok\n", name);
@@ -38,6 +41,17 @@ static void check(const char *name, BOOL held, NSString *why)
 		printf("FOUNDATION-WSASSEMBLE %s FAIL: %s\n", name, [[why description] UTF8String]);
 	}
 }
+
+/* covers("NSData", "length") - the behavioural claim, piggybacked on the check above it: no condition of its
+ * own, printed only when the last check's result was true. See tools/foundation-cov.py; a claim for a row the
+ * ledger does not carry is inert, so every claim is filtered before it is written. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* BUILD, PARSE, FEED - the road a frame actually travels. A codec that disagrees is reported as a probe failure
  * rather than silently turned into an assembler answer. */
@@ -70,6 +84,7 @@ int main(void)
 	      result == FNWebSocketAssemblyMessage && opcode == FNWebSocketOpcodeText &&
 	      [[[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] isEqualToString:@"hello"],
 	      [NSString stringWithFormat:@"result=%ld type=%d", (long)result, (int)opcode]);
+	covers("NSData", "initWithData:");
 
 	data = nil;
 	result = fnFeed(assembler, YES, FNWebSocketOpcodeBinary, (const uint8_t *)"\x00\x01\x02", 3, &opcode, &data);

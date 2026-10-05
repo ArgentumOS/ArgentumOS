@@ -25,8 +25,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, const char *detail)
 {
+	lastcheck = ok;	/* read by covers(): a claim can only follow an assertion that held */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-CODECS %s ok\n", name);
@@ -35,6 +38,17 @@ static void check(const char *name, int ok, const char *detail)
 		printf("FOUNDATION-CODECS %s FAIL %s\n", name, detail ? detail : "");
 	}
 }
+
+/* covers("NSData", "length") - the behavioural claim, piggybacked on the check above it: no condition of its
+ * own, printed only when the last check's result was true. See tools/foundation-cov.py; a claim for a row the
+ * ledger does not carry is inert, so every claim is filtered before it is written. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* THE DETAIL CARRIES THE MEASUREMENT: the length, and the FIRST TWO BYTES — because for a zlib
  * stream those bytes ARE the claim being tested (0x78, then the DEFLATE method in the low nibble). */
@@ -160,6 +174,8 @@ int main(void)
 		check("codec-empty",
 		      empty != nil && packed != nil && back != nil && [back length] == 0,
 		      fn_message(error));
+	covers("NSData", "compressedDataUsingAlgorithm:error:");
+	covers("NSData", "decompressedDataUsingAlgorithm:error:");
 	}
 
 	{

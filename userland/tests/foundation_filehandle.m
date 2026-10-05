@@ -58,8 +58,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers(): a claim can only follow an assertion that held */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-FILEHANDLE %s ok\n", name);
@@ -68,6 +71,17 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		printf("FOUNDATION-FILEHANDLE %s FAIL %s\n", name, detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSData", "length") - the behavioural claim, piggybacked on the check above it: no condition of its
+ * own, printed only when the last check's result was true. See tools/foundation-cov.py; a claim for a row the
+ * ledger does not carry is inert, so every claim is filtered before it is written. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* THE FIXTURE WRITER: this tree's NSString has NO `-writeToFile:atomically:` — NSData does — so the text
  * goes through its UTF-8 bytes. ATOMICALLY, which is also why the "write the file before opening a handle
@@ -309,6 +323,8 @@ int main(void)
 		      [[NSData dataWithContentsOfFile:path] length] == 4 && where == 4,
 		      [NSString stringWithFormat:@"the file holds %lu bytes and the pointer is at %llu",
 			(unsigned long)[[NSData dataWithContentsOfFile:path] length], where]);
+	covers("NSData", "dataWithContentsOfFile:");
+	covers("NSData", "dataWithContentsOfFile:options:error:");
 	}
 
 	{
@@ -477,6 +493,7 @@ int main(void)
 			[[NSString alloc] initWithData:afterWrite encoding:NSUTF8StringEncoding],
 			[[NSString alloc] initWithData:afterTruncate encoding:NSUTF8StringEncoding],
 			whereAfterTruncate, afterClose]);
+	covers("NSData", "initWithData:");
 	}
 
 		check("background-read-posts-data",

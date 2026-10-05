@@ -614,6 +614,10 @@ int main(void)
 		      [equalA isEqualToData:equalB] &&
 		      searched != nil,
 		      "subdataWithRange:, getBytes:range:, rangeOfData: (found and not found)");
+	covers("NSData", "subdataWithRange:");
+	covers("NSData", "getBytes:range:");
+	covers("NSData", "rangeOfData:options:range:");
+	covers("NSData", "isEqualToData:");
 	}
 
 	{
@@ -640,6 +644,8 @@ int main(void)
 		          isEqualToString:@"aGVsbG8="] &&
 		      [roundTrip isEqualToData:hello],
 		      "the standard vectors encode and decode back");
+	covers("NSData", "base64EncodedStringWithOptions:");
+	covers("NSData", "isEqualToData:");
 	}
 
 	{

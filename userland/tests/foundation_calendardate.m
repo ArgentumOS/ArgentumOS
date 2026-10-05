@@ -35,8 +35,11 @@ static NSTimeZone *fn_zone(void)
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers(): a claim can only follow an assertion that held */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-CALENDARDATE %s ok\n", name);
@@ -46,6 +49,17 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		       detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSData", "length") - the behavioural claim, piggybacked on the check above it: no condition of its
+ * own, printed only when the last check's result was true. See tools/foundation-cov.py; a claim for a row the
+ * ledger does not carry is inert, so every claim is filtered before it is written. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 int main(void)
 {
@@ -71,6 +85,8 @@ int main(void)
 		      back != nil && [[back name] isEqualToString:[tokyo name]] &&
 		      [[back data] isEqualToData:tokyoData],
 		      [NSString stringWithFormat:@"name=%@ data=%@", [back name], [back data]]);
+	covers("NSData", "data");
+	covers("NSData", "isEqualToData:");
 		/* ⚠ A NIL NAME IS REFUSED, LIKE ITS SIBLING -initWithName: — the name is what makes a zone and the data
 		 * describes it. THE CHECK ASSERTS THE REFUSAL RATHER THAN PASSING ON A NIL. */
 		/* ⚠⚠ AND THE CONTRACT THAT IS BOTH DECLARED AND TRUE: the header says `data:(nullable NSData *)`, so a

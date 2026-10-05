@@ -28,8 +28,11 @@
 static int okc = 0;
 static int failc = 0;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, const char *detail)
 {
+	lastcheck = ok;	/* read by covers(): a claim can only follow an assertion that held */
 	if (ok) {
 		okc++;
 		printf("  FOUNDATION-CLUSTERS %s ok\n", name);
@@ -38,6 +41,17 @@ static void check(const char *name, int ok, const char *detail)
 		printf("  FOUNDATION-CLUSTERS %s FAIL %s\n", name, detail);
 	}
 }
+
+/* covers("NSData", "length") - the behavioural claim, piggybacked on the check above it: no condition of its
+ * own, printed only when the last check's result was true. See tools/foundation-cov.py; a claim for a row the
+ * ledger does not carry is inert, so every claim is filtered before it is written. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* A BYTE-RUN SEARCH, spelled out rather than using memmem: the probe must not depend on a GNU extension
  * being present in the libc this runs over. */
@@ -1197,6 +1211,8 @@ int main(void)
 		      "the zero-length construction answers ONE shared instance, while [[NSData alloc] init] is a "
 		      "plain EMPTY instance - this family has allocate-then-fill paths, so -init must not answer the "
 		      "singleton");
+	covers("NSData", "length");
+	covers("NSData", "isEqualToData:");
 		check("nsdata-mutable-and-class-for-coder",
 		      [mutableData class] != [NSMutableData class] &&
 		      [[mutableData class] isSubclassOfClass:[NSMutableData class]] &&
@@ -1211,6 +1227,11 @@ int main(void)
 		      [[emptyData description] length] > 0 &&
 		      [[NSMutableData data] length] == 0,
 		      "the empty concrete class answers the reads a caller makes of it");
+	covers("NSData", "length");
+	covers("NSData", "bytes");
+	covers("NSData", "isEqualToData:");
+	covers("NSData", "description");
+	covers("NSData", "data");
 	}
 
 	{
@@ -1230,6 +1251,12 @@ int main(void)
 			isEqualToString:[expectedData base64EncodedStringWithOptions:0]],
 		      "equality in BOTH directions, hash, slicing, -description and base64 must be written over the "
 		      "two primitives, on a class that has no storage of its own");
+	covers("NSData", "isEqualToData:");
+	covers("NSData", "subdataWithRange:");
+	covers("NSData", "description");
+	covers("NSData", "base64EncodedStringWithOptions:");
+	covers("NSData", "dataWithData:");
+	covers("NSData", "dataWithBytes:length:");
 	}
 
 	{
@@ -1657,6 +1684,9 @@ int main(void)
 			 [[NSData dataWithContentsOfMappedFile:path] isEqualToData:read]);
 		check("data-mapped-file-door-reads-the-file",
 		      read != nil && [read length] == 10 && memcmp([read bytes], "0123456789", 10) == 0, detail);
+	covers("NSData", "bytes");
+	covers("NSData", "length");
+	covers("NSData", "dataWithContentsOfMappedFile:");
 		[[NSFileManager defaultManager] removeItemAtPath:path error:&ignored];
 	}
 
