@@ -24,8 +24,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, const char *detail)
 {
+	lastcheck = ok;	/* read by covers(): a claim can only follow an assertion that held */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-URL %s ok\n", name);
@@ -34,6 +37,24 @@ static void check(const char *name, int ok, const char *detail)
 		printf("FOUNDATION-URL %s FAIL %s\n", name, detail ? detail : "");
 	}
 }
+
+/*
+ * covers("NSURL", "absoluteString") — THE BEHAVIOURAL CLAIM, piggybacked on the check above it: it takes no
+ * condition of its own and prints only when the last check's result was true, so a claim cannot appear beside
+ * a failed assertion. tools/foundation-cov.py reads these to tell `asserted` from `named`.
+ *
+ * WHY THIS PROBE NEEDED THEM MORE THAN ANY OTHER: its 44 checks assert a wide NSURL surface, but they call
+ * every door with a message send that NAMES NOTHING, so the tool's `named` scan could not see one of them -
+ * and NSURL came out of the census with 75 of its 81 shipped rows filed as UNTOUCHED. The behaviour was
+ * always there; what was missing was the declaration, which is exactly the gap this mechanism exists for.
+ */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* THE DETAIL CARRIES THE MEASUREMENT (the plan's §9 lesson, applied from the
  * start this time): a failure says what the parts actually were. */
@@ -216,6 +237,15 @@ int main(void)
 			@"http://user@example.com:8080/a/b?q=1#frag"] &&
 		      ![u isFileURL],
 		      fn_why(u));
+	covers("NSURL", "scheme");
+	covers("NSURL", "host");
+	covers("NSURL", "port");
+	covers("NSURL", "user");
+	covers("NSURL", "path");
+	covers("NSURL", "query");
+	covers("NSURL", "fragment");
+	covers("NSURL", "absoluteString");
+	covers("NSURL", "URLWithString:");
 	}
 
 	{
@@ -229,6 +259,7 @@ int main(void)
 		      [NSURL URLWithString:@""] == nil &&
 		      [NSURL URLWithString:@":"] == nil,
 		      "a string that is not an absolute URL answers nil");
+	covers("NSURL", "URLWithString:");
 
 		/*
 		 * WHAT IS ABSENT AND WHAT IS SHIPPED, SPLIT FROM THE REFUSALS (2026-09-18).
@@ -311,6 +342,8 @@ int main(void)
 			  absoluteString] isEqualToString:@"http://h/a/b"],
 		      "relative resolution SHIPS (F13.15), and the 10.9 NSURLComponents family is REFUSED: absent, "
 		      "asserted rather than merely undeclared");
+	covers("NSURL", "URLWithString:relativeToURL:");
+	covers("NSURL", "absoluteString");
 	}
 
 	{
@@ -375,6 +408,11 @@ int main(void)
 			@"file:///System/Temporary%20Files/probe.txt"] &&
 		      [[file path] isEqualToString:@"/System/Temporary Files/probe.txt"],
 		      fn_why(file));
+	covers("NSURL", "fileURLWithPath:");
+	covers("NSURL", "scheme");
+	covers("NSURL", "host");
+	covers("NSURL", "absoluteString");
+	covers("NSURL", "path");
 	}
 
 	{
@@ -382,6 +420,7 @@ int main(void)
 		      [NSURL fileURLWithPath:@"relative/x"] == nil &&
 		      [NSURL fileURLWithPath:@""] == nil,
 		      "a relative or empty path is not a path this system names");
+	covers("NSURL", "fileURLWithPath:");
 	}
 
 	{
@@ -396,6 +435,10 @@ int main(void)
 		      extended != nil &&
 		      [[extended path] isEqualToString:@"/a/b.txt"],
 		      fn_why(added));
+	covers("NSURL", "URLByAppendingPathComponent:");
+	covers("NSURL", "URLByAppendingPathExtension:");
+	covers("NSURL", "absoluteString");
+	covers("NSURL", "path");
 	}
 
 	{
@@ -418,6 +461,9 @@ int main(void)
 		       * one — reporting `parent` (which passed) made the first run harder to
 		       * read than it needed to be. */
 		      fn_why(hiddenStem));
+	covers("NSURL", "URLByDeletingLastPathComponent");
+	covers("NSURL", "URLByDeletingPathExtension");
+	covers("NSURL", "path");
 	}
 
 	{
@@ -447,6 +493,9 @@ int main(void)
 		      [described rangeOfString:@"http://example.com/x"].location != NSNotFound,
 		      described == nil ? "(no description)"
 			: [described UTF8String]);
+	covers("NSURL", "absoluteURL");
+	covers("NSURL", "relativeString");
+	covers("NSURL", "absoluteString");
 	}
 
 	{
@@ -463,6 +512,9 @@ int main(void)
 		      [theirs isEqual:expected] &&
 		      [[theirFile path] isEqualToString:@"/System/Temporary Files/probe.txt"],
 		      fn_why(theirFile));
+	covers("NSURL", "scheme");
+	covers("NSURL", "port");
+	covers("NSURL", "path");
 	}
 
 	/* ---- THE REST OF THE VALUE SURFACE (2026-09-30) -------------------------------------------
@@ -494,6 +546,14 @@ int main(void)
 		      rel != nil && [rel isEqualToString:@"/a/b.txt?q=1#frag"] &&
 		      spec != nil && [spec isEqualToString:@"//user:secret@example.com:8080/a/b.txt?q=1#frag"],
 		      fn_why(u));
+	covers("NSURL", "baseURL");
+	covers("NSURL", "user");
+	covers("NSURL", "password");
+	covers("NSURL", "lastPathComponent");
+	covers("NSURL", "pathExtension");
+	covers("NSURL", "pathComponents");
+	covers("NSURL", "relativePath");
+	covers("NSURL", "resourceSpecifier");
 	}
 
 	{
@@ -505,6 +565,9 @@ int main(void)
 		      [[[http standardizedURL] absoluteString] isEqualToString:@"http://h/a/c/d"] &&
 		      [[[file standardizedURL] path] isEqualToString:@"/a/c"],
 		      fn_why(http));
+	covers("NSURL", "standardizedURL");
+	covers("NSURL", "absoluteString");
+	covers("NSURL", "path");
 	}
 
 	{
@@ -522,6 +585,8 @@ int main(void)
 		      !toosmall &&
 		      h != nil && [h fileSystemRepresentation] == NULL,
 		      fn_why(f));
+	covers("NSURL", "fileSystemRepresentation");
+	covers("NSURL", "getFileSystemRepresentation:maxLength:");
 	}
 
 	{
@@ -537,6 +602,10 @@ int main(void)
 		      encoded != nil && [[encoded absoluteString] isEqualToString:@"http://h/a%20b"] &&
 		      strict != nil && [[strict absoluteString] isEqualToString:@"http://h/a b"],
 		      fn_why(rel));
+	covers("NSURL", "URLWithString:relativeToURL:");
+	covers("NSURL", "initWithString:relativeToURL:");
+	covers("NSURL", "URLWithString:encodingInvalidCharacters:");
+	covers("NSURL", "absoluteString");
 	}
 
 	{
@@ -550,6 +619,10 @@ int main(void)
 		      [[back absoluteString] isEqualToString:@"http://example.com/x"] &&
 		      [[absBack absoluteString] isEqualToString:@"http://example.com/x"],
 		      fn_why(base));
+	covers("NSURL", "dataRepresentation");
+	covers("NSURL", "URLWithDataRepresentation:relativeToURL:");
+	covers("NSURL", "absoluteURLWithDataRepresentation:relativeToURL:");
+	covers("NSURL", "absoluteString");
 	}
 
 	{
@@ -567,6 +640,11 @@ int main(void)
 		      relf == nil &&
 		      absf != nil && [[absf path] isEqualToString:@"/a b/c"],
 		      fn_why(dir));
+	covers("NSURL", "fileURLWithPath:isDirectory:");
+	covers("NSURL", "fileURLWithPathComponents:");
+	covers("NSURL", "fileURLWithPath:relativeToURL:");
+	covers("NSURL", "absoluteString");
+	covers("NSURL", "path");
 	}
 
 	{
@@ -577,6 +655,8 @@ int main(void)
 		      fromRep != nil && [[fromRep absoluteString] isEqualToString:@"file:///a/b"] &&
 		      fromRepDir != nil && [[fromRepDir absoluteString] isEqualToString:@"file:///a/b/"],
 		      fn_why(fromRep));
+	covers("NSURL", "fileURLWithFileSystemRepresentation:isDirectory:relativeToURL:");
+	covers("NSURL", "absoluteString");
 	}
 
 	{
@@ -591,6 +671,10 @@ int main(void)
 		      ![f isFileReferenceURL] && ![h isFileReferenceURL] &&
 		      ![f hasDirectoryPath] && [fd hasDirectoryPath],
 		      fn_why(f));
+	covers("NSURL", "fileURL");
+	covers("NSURL", "filePathURL");
+	covers("NSURL", "isFileReferenceURL");
+	covers("NSURL", "hasDirectoryPath");
 	}
 
 	{
@@ -601,6 +685,8 @@ int main(void)
 		      ap != nil && [[ap absoluteString] isEqualToString:@"file:///a/b/"] &&
 		      ap2 != nil && [[ap2 absoluteString] isEqualToString:@"file:///a/b"],
 		      fn_why(ap));
+	covers("NSURL", "URLByAppendingPathComponent:isDirectory:");
+	covers("NSURL", "absoluteString");
 	}
 
 	{
@@ -617,6 +703,9 @@ int main(void)
 		      up != nil && [[[up URLByStandardizingPath] path] isEqualToString:@"/b"] &&
 		      dot != nil && [[[dot URLByStandardizingPath] path] isEqualToString:@"/a/b"],
 		      fn_why(resolved));
+	covers("NSURL", "URLByResolvingSymlinksInPath");
+	covers("NSURL", "URLByStandardizingPath");
+	covers("NSURL", "path");
 	}
 
 	{
@@ -630,6 +719,11 @@ int main(void)
 		      [[parts path] isEqualToString:@"/a"] &&
 		      [[parts absoluteString] isEqualToString:@"http://example.com/a"],
 		      fn_why(parts));
+	covers("NSURL", "initWithScheme:host:path:");
+	covers("NSURL", "scheme");
+	covers("NSURL", "host");
+	covers("NSURL", "path");
+	covers("NSURL", "absoluteString");
 	}
 
 	{
@@ -654,6 +748,9 @@ int main(void)
 		      roundtrip &&
 		      [[u propertyForKey:@"probe-key"] isEqual:@"seven"],
 		      "the two cached YES calls answer ONE handle, and a set property round-trips");
+	covers("NSURL", "URLHandleUsingCache:");
+	covers("NSURL", "setProperty:forKey:");
+	covers("NSURL", "propertyForKey:");
 	}
 
 	{
@@ -672,6 +769,7 @@ int main(void)
 		       * `segment` puts the ';' in the grammar, not the value) and that a path with none answers
 		       * NIL - Apple's page for this deprecated door is terse, so the guest run settles it. */
 		      ps == nil ? "(nil parameterString)" : [ps UTF8String]);
+	covers("NSURL", "parameterString");
 	}
 
 	printf("FOUNDATION-URL RESULT ok=%d fail=%d\n", okc, failc);
