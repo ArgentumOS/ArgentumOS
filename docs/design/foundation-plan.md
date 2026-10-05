@@ -28319,3 +28319,25 @@ unterminated, and for the LINE enumeration five lines whose enclosing range is t
 **8/8 checks, TESTS-OK 1/1 6/6.** The reconciliation the blank line needed is in the check's comment: its TEXT is
 empty (contentsEnd 8) while its RANGE is the terminator (end 9), and both halves are asserted, because a check
 that looked only at the text would pass for a walk that dropped the unit.
+
+**§63.247r — `-absolutePath` DECLARED AND IMPLEMENTED (the user's decision), AND THE `""` QUESTION IT TURNED UP
+(2026-10-04).** The decision on §63.247p's open row was DECLARE AND IMPLEMENT, so the door now exists:
+`- (NSString *)absolutePath` on NSString, declared in the header with the provenance stated beside it and
+implemented next to the other path doors. **THE PROVENANCE IS THE PART WORTH READING:** the shipped-selector
+surface lists it as an NSString property under "Working with Paths", and **Apple's published documentation does
+not document it** - the real NSString path predicate is the BOOLEAN `-isAbsolutePath` (which this tree has had
+all along), and the "absolute path" naming belongs to NSURL. So the row was either a door removed before the
+10.2 era cut or an artefact of the NSURL name that reached this ledger, and the header says plainly that the
+CONTRACT IS OURS: lexical standardisation, then a join to the working directory when the result is not already
+absolute, with the working directory the ONLY filesystem call (the door does not ask whether the path exists -
+Apple's own rule for the predicate it does have).
+
+**AND BUILDING IT FOUND A REAL ANOMALY ON THE OTHER DOOR, which the first guest run reported as a failure of
+mine:** `[NSString stringByStandardizingPath]` on the EMPTY string answers `"/"`, not `""` - it works on path
+COMPONENTS, and "" has none - so a door that standardised first and then asked "is this absolute?" answered "/"
+for "". The probe's clause caught it (`emptyLength=1`), and the fix was to guard BEFORE standardising, so the
+behaviour this header documents is the behaviour that happens. **THE ANOMALY ITSELF IS NOW AN OPEN QUESTION, not
+a claim: what Apple's `-stringByStandardizingPath` answers for "" has NOT been measured** - this class's
+`-pathComponents` note already records that an empty path answers nil here "where Cocoa" differs, so the two
+doors may be wrong in the same place, or this may be deliberate. It is recorded rather than fixed: changing a
+door this check does not own, on an unmeasured premise, is how a real behaviour gets "fixed" into a guess.

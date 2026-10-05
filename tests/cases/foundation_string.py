@@ -79,7 +79,7 @@ CHECKS = (
 	  "url-contents-doors-mirror-the-path-doors", "a-missing-file-and-a-dead-scheme-are-refused-with-an-error", "validated-format-instance-doors-refuse-an-unlisted-specifier", "byte-out-door-sizes-copies-and-refuses",
 	  "compatibility-normalization-folds-the-ligature-canonical-keeps", "folding-takes-case-and-marks-separately", "strip-diacritics-decomposes-then-removes-marks", "composed-sequence-ranges-name-the-base-and-its-marks",
 	  "cstring-with-length-reads-exactly-that-many-bytes", "no-copy-constructors-build-the-value-and-honour-their-buffers", "ranged-cstring-door-converts-a-range-and-reports-the-rest", "class-validated-format-door-shares-the-rule",
-	  "deprecated-cstring-spellings-copy-terminate-and-refuse-silently",
+	  "deprecated-cstring-spellings-copy-terminate-and-refuse-silently", "absolute-path-standardises-and-joins-the-working-directory",
 )
 
 

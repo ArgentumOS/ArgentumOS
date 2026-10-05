@@ -3750,6 +3750,26 @@ NULL
 		covers("NSString", "stringWithCString:");
 	}
 
+	{
+		/* OUR DOOR, NOT APPLE'S (the header says so, and the ledger question is why): the receiver as an
+		 * absolute path. EVERY CLAUSE IS A PROPERTY OF THE CONTRACT, not a literal this file would have to
+		 * guess: an already-absolute path answers the STANDARDISED one, applying the same lexical rule
+		 * -stringByStandardizingPath: states (so ".." POPS the component before it), a relative one is joined
+		 * to the working directory and standardised the same way, and the empty string is answered as itself,
+		 * because there is nothing there to make absolute. */
+		NSString *already = @"/System/Shared/../Shared/tests";
+		NSString *made = [@"relative/./path" absolutePath];
+		NSString *empty = [@"" absolutePath];
+
+		check("absolute-path-standardises-and-joins-the-working-directory",
+		      [[already absolutePath] isEqualToString:@"/System/Shared/tests"] &&
+		      [made isAbsolutePath] && [made hasSuffix:@"/relative/path"] &&
+		      [empty isEqualToString:@""],
+		      [[NSString stringWithFormat:@"already=%@ made=%@ emptyLength=%lu", [already absolutePath], made,
+			(unsigned long)[empty length]] UTF8String]);
+		covers("NSString", "absolutePath");
+	}
+
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

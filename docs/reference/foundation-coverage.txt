@@ -894,7 +894,6 @@ NSStream	setProperty:forKey:	method	-setProperty:forKey:	# needs a check
 NSStream	streamError	property	streamError	# needs a check
 NSStream	streamStatus	property	streamStatus	# needs a check
 NSStreamDelegate	stream:handleEvent:	method	-stream:handleEvent:	# needs a check
-NSString	absolutePath	property	absolutePath	# needs a check
 NSTask	arguments	property	arguments	# needs a check
 NSTask	currentDirectoryPath	property	currentDirectoryPath	# needs a check
 NSTask	currentDirectoryURL	property	currentDirectoryURL	# needs a check

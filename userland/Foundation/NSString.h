@@ -721,6 +721,14 @@ typedef enum {
 - (nullable NSArray *)pathComponents;
 - (NSString *)stringByStandardizingPath;
 - (BOOL)isAbsolutePath;
+/* ⚠ -absolutePath IS **OURS, NOT APPLE'S**, AND THE HEADER SAYS SO (the user's decision, 2026-10-04,
+ * §63.247p). The shipped-selector surface lists it as an NSString property under "Working with Paths", and
+ * Apple's PUBLISHED DOCUMENTATION DOES NOT DOCUMENT IT: the real NSString path predicate is the BOOLEAN above,
+ * and the "absolute path" naming belongs to NSURL. So the row was either a door removed before the 10.2 era cut
+ * or an artefact of the NSURL name that reached this ledger; the DECISION WAS TO DECLARE AND IMPLEMENT rather
+ * than strike it, and what follows from that is that THE CONTRACT IS OURS and is stated at the implementation:
+ * lexical standardisation, then a join to the working directory when the result is not already absolute. */
+- (NSString *)absolutePath;
 
 /* THE PATH DOORS THE LEDGER STILL HAD OPEN, each a pure string operation over FSH's slash-separated shape:
  *

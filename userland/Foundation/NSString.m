@@ -23,6 +23,7 @@
 #import "FNStringFormat.h"
 #import <Foundation/NSCoder.h>		/* §63.22: the coder PRIMITIVES the string door is written over */
 #include <stdlib.h>
+#include <unistd.h>	/* getcwd, for -absolutePath */
 #include <string.h>
 #include <objc/runtime.h>	/* class_getName, sel_getName, objc_getClass (W2a) */
 #include <stdarg.h>
@@ -3868,6 +3869,38 @@ static NSComparisonResult fn_compare_turkic(NSString *a, NSString *b, NSStringCo
 - (BOOL)isAbsolutePath
 {
 	return ([self lengthOfBytesUsingEncoding:NSUTF8StringEncoding] > 0 && [self byteAtIndex:0] == '/') ? YES : NO;
+}
+
+- (NSString *)absolutePath
+{
+	/* NOT APPLE'S DOOR, AND THIS IS THE RECORD (the header repeats it): the receiver as an ABSOLUTE PATH, which
+	 * here means the lexical standardisation this class already states - collapsing slashes, dropping "."
+	 * components and resolving ".." by popping - followed by a join to the working directory when the result is
+	 * not already absolute. ONE FILESYSTEM CALL, THE WORKING DIRECTORY, and nothing else: the door does not ask
+	 * whether the path EXISTS, which is Apple's own rule for the predicate it DOES have (-isAbsolutePath), and
+	 * the rule a caller would expect of a name like this one. The empty string is answered as itself, because
+	 * there is nothing to make absolute and a door with no failure spelling should not invent one. */
+	char cwd[4096];
+	NSString *standard;
+
+	/* THE EMPTY STRING IS ANSWERED BEFORE ANY STANDARDISATION, because the standardisation is not a no-op on
+	 * it: -stringByStandardizingPath turns "" into "/" (it works on components, and "" has none). A door that
+	 * asks the question "is this absolute, and if not, absolute against what?" has NOTHING to make absolute
+	 * here, so it answers the receiver. THAT "" -> "/" IS AN OPEN QUESTION ABOUT THE OTHER DOOR - see
+	 * §63.247r - and this guard does not depend on how it is settled. */
+	if ([self length] == 0) {
+		return self;
+	}
+	standard = [self stringByStandardizingPath];
+	if ([standard isAbsolutePath]) {
+		return standard;
+	}
+	if (getcwd(cwd, sizeof cwd) == NULL) {
+		/* No working directory to join to: the lexical answer is all that can honestly be given. */
+		return standard;
+	}
+	return [[[NSString stringWithUTF8String:cwd] stringByAppendingPathComponent:standard]
+		stringByStandardizingPath];
 }
 
 + (NSString *)pathWithComponents:(NSArray *)components
