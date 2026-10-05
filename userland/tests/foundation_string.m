@@ -103,6 +103,8 @@ int main(void)
 		      latin != nil && [latin isEqualToString:@"caf%E9"] &&
 		      [@"%2" stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding] == nil,
 		      [[NSString stringWithFormat:@"esc=%@ back=%@ latin=%@", esc, back, latin] UTF8String]);
+	covers("NSString", "stringByAddingPercentEscapesUsingEncoding:");
+	covers("NSString", "stringByReplacingPercentEscapesUsingEncoding:");
 	}
 
 	{
@@ -522,6 +524,8 @@ int main(void)
 		      [utf16 length] == [@"caf\xC3\xA9" lengthOfBytesUsingEncoding:NSUTF16StringEncoding] &&
 		      [@"caf\xC3\xA9" dataUsingEncoding:NSNEXTSTEPStringEncoding] == nil,
 		      "+localizedNameOfStringEncoding: answers \"UTF-8\" (5), \"ASCII\" (5) and a name for Latin-1, which now CONVERTS; -dataUsingEncoding:allowLossyConversion: answers the same 5 UTF-8 bytes for \"café\" whether the flag is YES or NO; UTF-16's bytes agree with its own byte count; and NeXTSTEP — no converter here — is refused");
+	covers("NSString", "localizedNameOfStringEncoding:");
+	covers("NSString", "dataUsingEncoding:allowLossyConversion:");
 	}
 
 
@@ -569,6 +573,9 @@ int main(void)
 		      [urlUsed isEqualToString:body2] && used == NSUTF8StringEncoding &&
 		      [urlDeprecated isEqualToString:body2],
 		      "writeToURL:atomically:encoding:error: writes 16 bytes and the URL read doors round-trip them, reporting UTF-8 (4)");
+	covers("NSString", "writeToURL:atomically:encoding:error:");
+	covers("NSString", "stringWithContentsOfURL:encoding:error:");
+	covers("NSString", "stringWithContentsOfURL:usedEncoding:error:");
 
 		NSURL *remote = [NSURL URLWithString:@"https://foundation.invalid/probe"];
 		NSError *refused = nil;
@@ -2255,6 +2262,8 @@ NULL
 		      [@"plain ASCII" isEqualToString:[@"plain ASCII" precomposedStringWithCanonicalMapping]] &&
 		      [@"plain ASCII" isEqualToString:[@"plain ASCII" decomposedStringWithCanonicalMapping]],
 		      "U+00E9 and e+U+0301 compose/decompose, a normalized string is a fixed point of its own form, and ASCII is untouched");
+	covers("NSString", "precomposedStringWithCanonicalMapping");
+	covers("NSString", "decomposedStringWithCanonicalMapping");
 
 		check("normalization-compatibility-folds-what-canonical-keeps",
 		      [nfkc isEqualToString:@"fi"] && [nfkd isEqualToString:@"fi"] && [nfkc length] == 2 &&
@@ -2263,6 +2272,8 @@ NULL
 		      [[ligature precomposedStringWithCanonicalMapping] isEqualToString:ligature] &&
 		      [[ligature decomposedStringWithCanonicalMapping] isEqualToString:ligature],
 		      "the fi ligature folds to \"fi\" under NFKC/NFKD while NFC/NFD keep it — the axis that separates the two pairs");
+	covers("NSString", "precomposedStringWithCanonicalMapping");
+	covers("NSString", "decomposedStringWithCanonicalMapping");
 	}
 
 	{
@@ -2810,6 +2821,7 @@ NULL
 			(int)[accents canBeConvertedToEncoding:NSUTF8StringEncoding],
 			(int)[accents canBeConvertedToEncoding:NSASCIIStringEncoding],
 			(int)[accents canBeConvertedToEncoding:NSUTF16StringEncoding]] UTF8String]);
+	covers("NSString", "canBeConvertedToEncoding:");
 	}
 
 	{
@@ -2832,6 +2844,7 @@ NULL
 			(unsigned long)[accents maximumLengthOfBytesUsingEncoding:NSUTF8StringEncoding],
 			(unsigned long)[accents maximumLengthOfBytesUsingEncoding:NSASCIIStringEncoding],
 			(unsigned long)[accents maximumLengthOfBytesUsingEncoding:NSUTF16StringEncoding]] UTF8String]);
+	covers("NSString", "maximumLengthOfBytesUsingEncoding:");
 	}
 
 	/* --- §63.46: THE PARAGRAPH DOORS, AND THE ENGINE ALIGNED TO THEM -------------------------------- */
@@ -2849,6 +2862,8 @@ NULL
 						@"(got %lu/%lu/%lu) and -paragraphRangeForRange: agrees",
 						(unsigned long)start, (unsigned long)end,
 						(unsigned long)contentsEnd] UTF8String]);
+	covers("NSString", "getParagraphStart:end:contentsEnd:forRange:");
+	covers("NSString", "paragraphRangeForRange:");
 
 		/* ⚠ A BLANK LINE IS AN EMPTY PARAGRAPH — the observable half of the decision. The engine used to
 		 * SKIP a blank line as a separator and merge the non-blank lines around it, so this string had TWO
@@ -2861,6 +2876,8 @@ NULL
 						@"contentsEnd %lu) and the text after it is the third",
 						(unsigned long)start, (unsigned long)end,
 						(unsigned long)contentsEnd] UTF8String]);
+	covers("NSString", "getParagraphStart:end:contentsEnd:forRange:");
+	covers("NSString", "paragraphRangeForRange:");
 
 		/* AND THE PARAGRAPH'S TERMINATOR SET IS NARROWER THAN A LINE'S: NEL (U+0085) and LINE SEPARATOR
 		 * (U+2028) end a LINE and NOT a paragraph, so this string is ONE paragraph and TWO lines. That
@@ -3082,6 +3099,7 @@ NULL
 		      [@"abc2" localizedStandardCompare:@"abc100"] == NSOrderedDescending,
 		      "case does not decide - and \"abc2\" still compares AFTER \"abc100\", which is the "
 		      "NSNumericSearch gap SS63.48 records rather than a claim about Apple's ordering");
+	covers("NSString", "localizedStandardCompare:");
 
 		/* THE COMPLETION DOOR: a UNIQUE prefix is NAMED, every match is listed, and filterTypes narrows by
 		 * extension. The fixtures are made here so the check does not depend on the image's own contents. */
