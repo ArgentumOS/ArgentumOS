@@ -27950,3 +27950,21 @@ been "removed from Cocoa's documented API", which is not a ground this project h
 
 **THE RULE THIS COST:** an `excluded` array is a claim about the tree, so a selector the ledger SHIPS must never
 appear in one — and the pass that checks that is the same pass that checks the claims.
+
+**§63.247c — THE COLLECTION FAMILY'S REMAINING ARRAY AND DICT CHECKS CLAIM TOO, AND WHAT THAT DID AND DID NOT
+MOVE (2026-10-04).** 40 more claims (the array block: varargs, join, subarray, sort, search, getObjects, bulk,
+copy-and-grow, identity, perform-and-common, blocks; the dictionary block: strings-file-format, constructors,
+views, bulk, getObjects). Guest: **all 72 checks ok, `RESULT ok=72 fail=0`, case `TESTS-OK 1/1, 6/6`**, and the
+guest printed every claim.
+
+**The measured tier: asserted 46 -> 73, named 571, uncovered 1,851 distinct (baseline current, rc=0, inert
+advisory still six rows).** The ledger filter kept 40 and dropped one - NSMutableDictionary's
+`-initWithObjectsAndKeys:`, not an exact shipped row under that owner - which is the filter doing its job: an
+inert claim counts for nothing and lengthens the advisory that is only useful while it is short.
+
+**AND THE HALF THAT MATTERS MOST: THE UNCOVERED COUNT DID NOT MOVE AT ALL (1,851, before and after).** These
+were assertions nobody had CLAIMED; not one of them closed a hole. That is exactly what this tier is for - it
+separates "a probe touched it" from "a probe proved it" - and it is the honest shape of this progress: the work
+list is untouched, and what improved is how much of it is now EVIDENCE rather than proximity. A pass that
+reported "73 asserted" without also reporting the unmoved work list would be measuring the instrument's comfort
+rather than the library's state.
