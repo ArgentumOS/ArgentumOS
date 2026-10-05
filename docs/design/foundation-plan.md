@@ -28046,3 +28046,10 @@ mostly by claiming what already ran. Closing the uncovered set means writing NEW
 (coherence, aliasing, ownership, sentinels, ranges) and per-selector spec cases — which is the next real unit
 rather than more of this pass. A row's `named` state is also not evidence of anything: it means a probe spelled
 the selector, nothing more.
+
+**AND A SHELL TRAP WORTH KNOWING IN THIS TREE, because its commit messages are full of backticked
+identifiers:** `git commit -m "... \`named\` ..."` runs the backticked text as a COMMAND - 723fb92e's message
+lost the word `named` that way, leaving "and  is not evidence of anything", and the shell printed `named:
+command not found` beside it. `-F -` with a QUOTED heredoc (`<<'MSG'`) does not expand anything and is the form
+every other message in this session used; the one that broke was the one written with `-m`. The rule for a
+message that names code: QUOTE THE DELIMITER, or write the message to a file.
