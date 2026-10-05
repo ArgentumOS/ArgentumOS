@@ -1204,6 +1204,9 @@ NULL
 		}
 		check("locale-current", wired,
 		      "currentLocale reads LC_ALL then LANG, defaults to en_US_POSIX, and localisedCaseInsensitiveCompare: follows it");
+	covers("NSLocale", "currentLocale");
+	covers("NSLocale", "localeIdentifier");
+	covers("NSString", "localizedCaseInsensitiveCompare:");
 	}
 
 	{
@@ -1318,6 +1321,13 @@ NULL
 			(unsigned long)(bits != nil ? [bits length] : 0), (int)(back != nil),
 			(int)(fromFile != nil), (int)[set longCharacterIsMember:0x1F600],
 			(int)[set hasMemberInPlane:0], (int)[set hasMemberInPlane:1]] UTF8String]);
+	covers("NSCharacterSet", "bitmapRepresentation");
+	covers("NSCharacterSet", "characterSetWithBitmapRepresentation:");
+	covers("NSCharacterSet", "characterSetWithContentsOfFile:");
+	covers("NSCharacterSet", "longCharacterIsMember:");
+	covers("NSCharacterSet", "hasMemberInPlane:");
+	covers("NSCharacterSet", "characterIsMember:");
+	covers("NSData", "writeToFile:atomically:");
 		remove([path UTF8String]);
 	}
 
@@ -1345,6 +1355,8 @@ NULL
 			(int)[illegal characterIsMember:(unichar)0xFDEF],
 			(int)[illegal characterIsMember:(unichar)0xD7FF],
 			(int)[illegal characterIsMember:(unichar)0xFDF0]] UTF8String]);
+	covers("NSCharacterSet", "illegalCharacterSet");
+	covers("NSCharacterSet", "characterIsMember:");
 	}
 
 	{
@@ -1740,36 +1752,43 @@ NULL
 		check("line-crlf-is-one-terminator",
 		      s == 0 && c == 3 && e == 5,
 		      "CRLF ends the text at contentsEnd 3 and the line itself at end 5 - one terminator, not two");
+	covers("NSString", "getLineStart:end:contentsEnd:forRange:");
 
 		[crlf getLineStart:&s end:&e contentsEnd:&c forRange:NSMakeRange(5, 0)];
 		check("line-after-crlf-starts-past-both-units",
 		      s == 5 && c == 8 && e == 8,
 		      "the second line starts at 5, so the CRLF was consumed whole");
+	covers("NSString", "getLineStart:end:contentsEnd:forRange:");
 
 		[nel getLineStart:&s end:&e contentsEnd:&c forRange:NSMakeRange(0, 0)];
 		check("line-nel-terminates",
 		      s == 0 && c == 3 && e == 4,
 		      "U+0085 ends a line: contentsEnd 3, end 4");
+	covers("NSString", "getLineStart:end:contentsEnd:forRange:");
 
 		[nel getLineStart:&s end:&e contentsEnd:&c forRange:NSMakeRange(4, 0)];
 		check("line-starts-after-nel",
 		      s == 4 && c == 7,
 		      "the text after a NEL is its own line");
+	covers("NSString", "getLineStart:end:contentsEnd:forRange:");
 
 		[mixed getLineStart:&s end:&e contentsEnd:&c forRange:NSMakeRange(3, 0)];
 		check("line-ls-and-ps-terminate",
 		      s == 2 && c == 3 && e == 4,
 		      "LS and PS break lines too: the middle line of \"a<LS>b<PS>c\" is b");
+	covers("NSString", "getLineStart:end:contentsEnd:forRange:");
 
 		r = [crlf lineRangeForRange:NSMakeRange(0, 0)];
 		check("line-range-includes-the-terminator",
 		      r.location == 0 && r.length == 5,
 		      "the line RANGE covers the terminator while contentsEnd does not");
+	covers("NSString", "lineRangeForRange:");
 
 		r = [crlf lineRangeForRange:NSMakeRange(1, 5)];
 		check("line-range-is-the-line-containing-the-range",
 		      r.location == 0 && r.length == 8,
 		      "a range reaching into the next line answers both lines, whole");
+	covers("NSString", "lineRangeForRange:");
 
 		{
 			NSMutableArray *lines = [NSMutableArray array];
@@ -1782,6 +1801,7 @@ NULL
 			      [[lines objectAtIndex:0] isEqualToString:@"a"] &&
 			      [[lines objectAtIndex:1] isEqualToString:@"b"],
 			      "two lines, neither carrying its terminator");
+	covers("NSString", "enumerateLinesUsingBlock:");
 
 			lines = [NSMutableArray array];
 			[@"a\n\nb" enumerateLinesUsingBlock:^(NSString *line, BOOL *stop) {
@@ -1790,6 +1810,7 @@ NULL
 			check("line-enumerator-keeps-a-blank-line",
 			      [lines count] == 3 && [[lines objectAtIndex:1] length] == 0,
 			      "a blank line is a line; dropping it would change a caller's line count");
+	covers("NSString", "enumerateLinesUsingBlock:");
 
 			lines = [NSMutableArray array];
 			[@"one\n" enumerateLinesUsingBlock:^(NSString *line, BOOL *stop) {
@@ -1798,6 +1819,7 @@ NULL
 			check("line-enumerator-has-no-trailing-empty-line",
 			      [lines count] == 1 && [[lines objectAtIndex:0] isEqualToString:@"one"],
 			      "a trailing terminator does not make a phantom final line");
+	covers("NSString", "enumerateLinesUsingBlock:");
 
 			lines = [NSMutableArray array];
 			[@"" enumerateLinesUsingBlock:^(NSString *line, BOOL *stop) {
@@ -1806,6 +1828,7 @@ NULL
 			check("line-enumerator-of-an-empty-string-yields-nothing",
 			      [lines count] == 0,
 			      "no lines at all, rather than one empty one");
+	covers("NSString", "enumerateLinesUsingBlock:");
 
 			lines = [NSMutableArray array];
 			[@"a\nb\nc" enumerateLinesUsingBlock:^(NSString *line, BOOL *stop) {
@@ -1817,6 +1840,7 @@ NULL
 			check("line-enumerator-honours-stop",
 			      [lines count] == 2,
 			      "setting *stop ends the walk");
+	covers("NSString", "enumerateLinesUsingBlock:");
 		}
 
 		{
@@ -1830,6 +1854,7 @@ NULL
 			check("line-invalid-range-raises",
 			      caught,
 			      "a range past the end raises NSRangeException, as Apple's page says it does");
+	covers("NSString", "lineRangeForRange:");
 		}
 	}
 
@@ -1847,41 +1872,49 @@ NULL
 		check("set-search-no-options-door-survives",
 		      r.location == 0 && r.length == 1,
 		      "the oldest door answers the first member - the one it delegates to kept its behaviour");
+	covers("NSString", "rangeOfCharacterFromSet:");
 
 		r = [s rangeOfCharacterFromSet:ac options:NSBackwardsSearch];
 		check("set-search-backwards-answers-the-last",
 		      r.location == 5 && r.length == 1,
 		      "NSBackwardsSearch is the other end of the same scan, not a second scan");
+	covers("NSString", "rangeOfCharacterFromSet:options:");
 
 		r = [s rangeOfCharacterFromSet:ac options:NSAnchoredSearch];
 		check("set-search-anchored-forward",
 		      r.location == 0 && r.length == 1,
 		      "anchored forward matches at the range's FIRST character");
+	covers("NSString", "rangeOfCharacterFromSet:options:");
 
 		r = [s rangeOfCharacterFromSet:onlyA options:NSAnchoredSearch range:NSMakeRange(1, 5)];
 		check("set-search-anchored-does-not-scan",
 		      r.location == NSNotFound,
 		      "an anchored search does not scan: the a at 3 is past the boundary, so there is no match");
+	covers("NSString", "rangeOfCharacterFromSet:options:range:");
 
 		r = [s rangeOfCharacterFromSet:ac options:NSAnchoredSearch | NSBackwardsSearch];
 		check("set-search-anchored-backward-at-the-end",
 		      r.location == 5 && r.length == 1,
 		      "anchored backward matches at the range's LAST character");
+	covers("NSString", "rangeOfCharacterFromSet:options:");
 
 		r = [s rangeOfCharacterFromSet:onlyA options:NSAnchoredSearch | NSBackwardsSearch];
 		check("set-search-anchored-backward-elsewhere-is-not-a-match",
 		      r.location == NSNotFound,
 		      "the last character is c, so an a anywhere else is not an anchored match");
+	covers("NSString", "rangeOfCharacterFromSet:options:");
 
 		r = [s rangeOfCharacterFromSet:onlyA options:0 range:NSMakeRange(1, 5)];
 		check("set-search-range-limits-the-scan",
 		      r.location == 3 && r.length == 1,
 		      "a range starts the scan later: the first a in {1,5} is at 3");
+	covers("NSString", "rangeOfCharacterFromSet:options:range:");
 
 		r = [s rangeOfCharacterFromSet:none];
 		check("set-search-not-found-answers-notfound",
 		      r.location == NSNotFound && r.length == 0,
 		      "nothing found is {NSNotFound, 0}");
+	covers("NSString", "rangeOfCharacterFromSet:");
 
 		/* APPLE'S OWN NO-NORMALIZATION EXAMPLE, as close as a probe can hold it: a decomposed "u" plus
 		 * COMBINING DIAERESIS is not the precomposed "u with diaeresis", and the page says so. */
@@ -1893,6 +1926,7 @@ NULL
 			check("set-search-does-not-normalize",
 			      r.location == NSNotFound,
 			      "a canonically equivalent pair does not match - no normalization is performed");
+	covers("NSString", "rangeOfCharacterFromSet:");
 		}
 
 		{
@@ -1907,6 +1941,7 @@ NULL
 			check("set-search-nil-set-raises",
 			      caughtInvalid,
 			      "a nil set raises NSInvalidArgumentException, which Apple's page names");
+	covers("NSString", "rangeOfCharacterFromSet:");
 
 			@try {
 				[s rangeOfCharacterFromSet:ac options:0 range:NSMakeRange(2, 99)];
@@ -1916,6 +1951,7 @@ NULL
 			check("set-search-invalid-range-raises",
 			      caughtRange,
 			      "a range past the end raises NSRangeException - a DIFFERENT exception from the nil set");
+	covers("NSString", "rangeOfCharacterFromSet:options:range:");
 		}
 
 		{
@@ -1925,28 +1961,33 @@ NULL
 			check("common-prefix-stops-where-they-part",
 			      [prefix isEqualToString:@"abc"],
 			      "the shared opening run and nothing more");
+	covers("NSString", "commonPrefixWithString:options:");
 
 			prefix = [@"ABCdef" commonPrefixWithString:@"abcdef" options:NSCaseInsensitiveSearch];
 			check("common-prefix-is-the-receiver-characters",
 			      [prefix isEqualToString:@"ABCdef"],
 			      "the two differ ONLY in case, so the fold makes them equal throughout and the answer is "
 			      "the RECEIVER's spelling - not the argument's lowercase one");
+	covers("NSString", "commonPrefixWithString:options:");
 
 			prefix = [@"abcdef" commonPrefixWithString:@"abcdef" options:0];
 			check("common-prefix-of-equals-is-the-whole-string",
 			      [prefix isEqualToString:@"abcdef"],
 			      "an identical argument gives everything");
+	covers("NSString", "commonPrefixWithString:options:");
 
 			prefix = [@"abc" commonPrefixWithString:@"xyz" options:0];
 			check("common-prefix-of-strangers-is-empty",
 			      [prefix length] == 0,
 			      "nothing in common is an empty prefix, not nil");
+	covers("NSString", "commonPrefixWithString:options:");
 
 			NSString *noString = nil;	/* a VARIABLE null, so no -Wnonnull constant */
 			prefix = [@"abc" commonPrefixWithString:noString options:0];
 			check("common-prefix-nil-argument-is-empty",
 			      prefix != nil && [prefix length] == 0,
 			      "a nil argument has nothing in common, and the door still answers a string");
+	covers("NSString", "commonPrefixWithString:options:");
 		}
 
 		/* (A .strings check STOOD HERE AND IS WITHDRAWN WITH ITS DOOR. The measurement it produced is
@@ -1969,17 +2010,20 @@ NULL
 		check("percent-encodes-what-the-set-excludes",
 		      [encoded isEqualToString:@"a%20b"],
 		      "the space is not in the set, so it becomes %20");
+	covers("NSString", "stringByAddingPercentEncodingWithAllowedCharacters:");
 
 		encoded = [@"a-._~" stringByAddingPercentEncodingWithAllowedCharacters:
 		           [NSCharacterSet characterSetWithCharactersInString:@"a-._~"]];
 		check("percent-leaves-the-allowed-characters-alone",
 		      [encoded isEqualToString:@"a-._~"],
 		      "every character is in the set, so nothing is encoded");
+	covers("NSString", "stringByAddingPercentEncodingWithAllowedCharacters:");
 
 		encoded = [@"caf\u00e9" stringByAddingPercentEncodingWithAllowedCharacters:alnum];
 		check("percent-encodes-by-utf8-bytes",
 		      [encoded isEqualToString:@"caf%C3%A9"],
 		      "one character became the TWO bytes UTF-8 gives it - the page's own rule");
+	covers("NSString", "stringByAddingPercentEncodingWithAllowedCharacters:");
 
 		/* THE SET HOLDS THE THREE ASCII LETTERS *AND* THE E-ACUTE, which is what makes this the rule's own
 		 * test: only the ASCII members can be honoured, so `caf` passes through untouched while the e-acute
@@ -1990,52 +2034,63 @@ NULL
 		check("percent-ignores-a-non-ascii-set-member",
 		      [encoded isEqualToString:@"caf%C3%A9"],
 		      "a set member outside 7-bit ASCII is IGNORED, so the e-acute is encoded anyway");
+	covers("NSString", "stringByAddingPercentEncodingWithAllowedCharacters:");
 
 		encoded = [@"abc" stringByAddingPercentEncodingWithAllowedCharacters:nil];
 		check("percent-encoding-with-no-set-is-nil",
 		      encoded == nil,
 		      "a nil set is the one way this door cannot do its job, and it says so with nil");
+	covers("NSString", "stringByAddingPercentEncodingWithAllowedCharacters:");
 
 		decoded = [@"a%20b" stringByRemovingPercentEncoding];
 		check("percent-decodes",
 		      [decoded isEqualToString:@"a b"],
 		      "%20 is a space again");
+	covers("NSString", "stringByRemovingPercentEncoding");
 
 		decoded = [@"caf%c3%a9" stringByRemovingPercentEncoding];
 		check("percent-decodes-lowercase-hex",
 		      [decoded isEqualToString:@"caf\u00e9"],
 		      "hex digits are accepted in either case, and the two bytes become one character");
+	covers("NSString", "stringByRemovingPercentEncoding");
 
 		encoded = [@"a b/c?d" stringByAddingPercentEncodingWithAllowedCharacters:alnum];
 		decoded = [encoded stringByRemovingPercentEncoding];
 		check("percent-round-trips",
 		      [decoded isEqualToString:@"a b/c?d"],
 		      "what the encoder escaped, the decoder gives back unchanged");
+	covers("NSString", "stringByAddingPercentEncodingWithAllowedCharacters:");
+	covers("NSString", "stringByRemovingPercentEncoding");
 
 		decoded = [@"abc%ZZ" stringByRemovingPercentEncoding];
 		check("percent-decode-nil-on-a-bad-digit",
 		      decoded == nil,
 		      "a % followed by a non-hex character is an invalid sequence");
+	covers("NSString", "stringByRemovingPercentEncoding");
 
 		decoded = [@"abc%" stringByRemovingPercentEncoding];
 		check("percent-decode-nil-on-a-truncated-tail",
 		      decoded == nil,
 		      "a % at the end has no two digits to read");
+	covers("NSString", "stringByRemovingPercentEncoding");
 
 		decoded = [@"%FF" stringByRemovingPercentEncoding];
 		check("percent-decode-nil-on-non-utf8",
 		      decoded == nil,
 		      "0xFF is not UTF-8, so there are no matching characters to answer with");
+	covers("NSString", "stringByRemovingPercentEncoding");
 
 		decoded = [@"%C0%AF" stringByRemovingPercentEncoding];
 		check("percent-decode-nil-on-an-overlong-form",
 		      decoded == nil,
 		      "C0 AF is a two-byte OVERLONG encoding of /, which no encoder produces");
+	covers("NSString", "stringByRemovingPercentEncoding");
 
 		decoded = [@"plain" stringByRemovingPercentEncoding];
 		check("percent-decode-leaves-plain-text-alone",
 		      [decoded isEqualToString:@"plain"],
 		      "nothing to decode is not an error");
+	covers("NSString", "stringByRemovingPercentEncoding");
 	}
 
 	{
