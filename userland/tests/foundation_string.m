@@ -1380,6 +1380,8 @@ NULL
 		      ![symbols characterIsMember:(unichar)' '] &&
 		      ![symbols characterIsMember:(unichar)0x0301],
 		      "S*: $ + ^ (c) in; a letter, a digit, a space and a mark out");
+	covers("NSCharacterSet", "symbolCharacterSet");
+	covers("NSCharacterSet", "characterIsMember:");
 
 		check("charset-titled",
 		      titled != nil &&
@@ -1397,6 +1399,10 @@ NULL
 			(int)[titled characterIsMember:(unichar)0x01C4],
 			(int)[titled characterIsMember:(unichar)'A'],
 			(int)[[NSCharacterSet uppercaseLetterCharacterSet] isSupersetOfSet:titled]] UTF8String]);
+	covers("NSCharacterSet", "capitalizedLetterCharacterSet");
+	covers("NSCharacterSet", "characterIsMember:");
+	covers("NSCharacterSet", "uppercaseLetterCharacterSet");
+	covers("NSCharacterSet", "isSupersetOfSet:");
 
 		check("charset-non-base",
 		      marks != nil &&
@@ -1406,6 +1412,8 @@ NULL
 		      ![marks characterIsMember:(unichar)'a'] &&
 		      ![marks characterIsMember:(unichar)0x00C0],
 		      "M*: Mn, Me and Mc in; a letter and the PRECOMPOSED A-grave out");
+	covers("NSCharacterSet", "nonBaseCharacterSet");
+	covers("NSCharacterSet", "characterIsMember:");
 
 		check("charset-decomposable",
 		      decomposable != nil &&
@@ -1414,6 +1422,8 @@ NULL
 		      ![decomposable characterIsMember:(unichar)0x00A0] &&	/* noBreak space: noBreak */
 		      ![decomposable characterIsMember:(unichar)'A'],
 		      "STANDARD decomposition only: A-grave in, the ff ligature and noBreak space out");
+	covers("NSCharacterSet", "decomposableCharacterSet");
+	covers("NSCharacterSet", "characterIsMember:");
 	}
 
 	{
@@ -1461,6 +1471,10 @@ NULL
 		      ![nl characterIsMember:(unichar)0x20] &&
 		      ![nl characterIsMember:(unichar)'a'],
 		      "Zs+TAB, Z*+the newlines (no tab), and the literal newline list");
+	covers("NSCharacterSet", "whitespaceCharacterSet");
+	covers("NSCharacterSet", "whitespaceAndNewlineCharacterSet");
+	covers("NSCharacterSet", "newlineCharacterSet");
+	covers("NSCharacterSet", "characterIsMember:");
 
 		check("charset-letter-family",
 		      up != nil && lo != nil && letters != nil && alnum != nil &&
@@ -1480,6 +1494,12 @@ NULL
 		       * the titlecase letters must be a SUBSET of it. Measured 0 before §16. */
 		      [up isSupersetOfSet:titlecase],
 		      "Lu+Lt (with Lt inside), Ll, L*&M*, and L*,M*,N* with Nl and Nd");
+	covers("NSCharacterSet", "uppercaseLetterCharacterSet");
+	covers("NSCharacterSet", "lowercaseLetterCharacterSet");
+	covers("NSCharacterSet", "letterCharacterSet");
+	covers("NSCharacterSet", "alphanumericCharacterSet");
+	covers("NSCharacterSet", "characterIsMember:");
+	covers("NSCharacterSet", "isSupersetOfSet:");
 
 		check("charset-punct-and-control",
 		      punct != nil && ctrl != nil &&
@@ -1494,6 +1514,9 @@ NULL
 		      [ctrl characterIsMember:(unichar)0x200B] &&	/* zero-width space, Cf */
 		      ![ctrl characterIsMember:(unichar)' '],
 		      "P* (including the em dash and the curly quote) and Cc+Cf (including the Cf joiners)");
+	covers("NSCharacterSet", "punctuationCharacterSet");
+	covers("NSCharacterSet", "controlCharacterSet");
+	covers("NSCharacterSet", "characterIsMember:");
 	}
 
 	{
@@ -1521,6 +1544,8 @@ NULL
 			[british displayNameForKey:NSLocaleLanguageCode value:@"fr"],
 			[british displayNameForKey:NSLocaleCountryCode value:@"GB"],
 			[british displayNameForKey:NSLocaleScriptCode value:@"Latn"]] UTF8String]);
+	covers("NSLocale", "displayNameForKey:value:");
+	covers("NSLocale", "localeWithLocaleIdentifier:");
 	}
 
 	{
