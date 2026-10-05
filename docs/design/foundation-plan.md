@@ -28382,3 +28382,29 @@ recompiling** - the `[[...] UTF8String]` detail idiom (this probe's `check()` ta
 the first new check and missed in the second, which burned a guest cycle for a cause already in hand. AND: when a
 probe dies, MARK IT FIRST - two `printf`s turned "the probe hangs somewhere" into "the death is in this
 expression", which three rounds of bracket-guessing had not.
+
+**§63.247u (CLOSED TO A PRECISE FINDING) — `-containsValueForKey:` RAISES ON A **WRITTEN** KEY, AND MY HYPOTHESIS
+WAS THE WRONG CLAUSE (2026-10-04).** One run, with a marker before and after each clause, settled what three rounds
+of reasoning had not:
+```
+FOUNDATION-CODER DIAG clause=yes
+(no further output)
+```
+**THE FIRST CLAUSE DIES: `[scalarReader containsValueForKey:@"yes"]` - a key that WAS WRITTEN.** I had expected the
+`never-written` clause, on the grounds that a missing key is where a query door would raise; isolating the clauses
+DISPROVED that in one guest cycle. What the implementation says, re-read in this light:
+`NSKeyedUnarchiver -containsValueForKey:` is `key != nil && [(NSDictionary *)[self fnCurrentEntry] objectForKey:key] != nil`,
+so it asks for the CURRENT ENTRY - and a keyed unarchiver that has finished decoding has no current entry, which
+is exactly what its neighbour's message ("nothing was written for the key") is about. **APPLE'S CONTRACT FOR A
+QUERY IS YES/NO, NEVER A RAISE**, so this is a REAL DEVIATION in the library and not a test artefact.
+
+**THE FIX DIRECTION IS NAMED BUT NOT TAKEN** (this turn's budget went to the isolation, and the probe is reverted
+so the tree stays green): the door should consult the ARCHIVE'S ENTRY TABLE for the key - which is what its name
+promises - rather than the decode cursor. Then the three NSCoder checks (the keyed scalars, the capabilities and
+copy hints, and `-failWithError:`, written and compiling in §63.247u's first two attempts) can land with the 18
+rows they assert.
+
+**AND ONE MORE LESSON ABOUT GUESSING, which this turn paid for twice:** I predicted the wrong clause, and earlier
+the wrong bracket. The instrument that fixed both was the same - PRINT THE STATE AND READ IT: markers around each
+clause named the clause; the comment/string-stripped delimiter balance named the line. Neither was reachable by
+reasoning about the code, and both took one call once attempted.
