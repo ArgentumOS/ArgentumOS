@@ -27968,3 +27968,31 @@ separates "a probe touched it" from "a probe proved it" - and it is the honest s
 list is untouched, and what improved is how much of it is now EVIDENCE rather than proximity. A pass that
 reported "73 asserted" without also reporting the unmoved work list would be measuring the instrument's comfort
 rather than the library's state.
+
+**§63.247d — THE STRING FAMILY CLAIMS, AND THE ELEVEN ROWS THAT LEFT THE WORK LIST FOR A REAL REASON
+(2026-10-04).** 92 claims across `foundation_string`'s checks. Guest: **all 167 checks ok,
+`FOUNDATION-STRING RESULT ok=167 fail=0`, case `TESTS-OK 1/1, 6/6`**, every claim printed.
+
+**Measured tier: asserted 73 -> 126, named 529, uncovered 1,851 -> 1,840 distinct** (baseline current, rc=0,
+inert advisory unchanged at six). Running total: **126 of 2,502 shipped selector rows proved**, across three
+families and three probes.
+
+**AND THE ELEVEN CLOSED ROWS ARE THE PART WORTH READING, because the baseline diff NAMES them and they were
+never really untested:** `availableStringEncodings`, `defaultCStringEncoding`, `fastestEncoding`,
+`fileSystemRepresentation`, `localizedNameOfStringEncoding:`, `localizedStringWithFormat:`,
+`pathWithComponents:`, `smallestEncoding`, `stringByAbbreviatingWithTildeInPath`,
+`stringByExpandingTildeInPath`, `stringsByAppendingPaths:`. The probes CALL all of them — but with a message
+send that names nothing, and the `named` tier cannot see one of those, so the instrument had conservatively
+filed them as untouched. THAT IS THE GAP THIS TIER EXISTS TO EXPOSE: exercised-but-unnamed, which is invisible
+to a presence check and to a name scan alike. A claim is what declares it.
+
+**TWO INSTRUMENT FAULTS THIS PASS FOUND, from one principle — an instrument that reads TEXT must decide what in
+that text is EVIDENCE:**
+ * **Claims are not naming evidence.** The first version read a `covers("NSString", "objCType")` call as naming
+   that selector as well, so writing claims CLOSED twelve "uncovered" holes as a side effect of spelling. The
+   naming scan now strips the claim lines first; the tiers are independent by construction.
+ * **Comments are stripped from both scans.** This probe's own helper DOCUMENTS the syntax with an example
+   claim, and an example in a comment is not coverage — the same trap the literal-`COVERS` scanner already paid
+   for. Stated for what it is: the fix changed NO number that day (126/529/1840 either way), because the
+   examples name selectors that are genuinely claimed elsewhere. Defensive, and the difference between a rule
+   and a coincidence.
