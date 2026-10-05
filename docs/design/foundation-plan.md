@@ -28355,3 +28355,30 @@ INSIDE a check's body (claims are written AFTER its closing line); the second lo
 short for a check with several claims. Both were my own instruments disagreeing with the tool, and the tool was
 right both times - the second lesson of §63.247o, paid for again. **ASK `--by-class` (per owner, per tier) OR
 `classify()` (per row), and stop re-deriving the tier by grep.**
+
+**§63.247u — THE DIAG LEGS NAMED THE STOP, AND THE STOP IS A REAL FINDING ABOUT A QUERY DOOR (2026-10-04).** The
+three new NSCoder checks (the keyed scalars, the capabilities + copy hints, and `-failWithError:`) compile
+cleanly and are REVERTED again, because the probe does not reach `FOUNDATION-CODER DONE`. What settled it was
+adding a `printf("FOUNDATION-CODER DIAG leg=...")` marker before each block AND between the reads and the check:
+```
+FOUNDATION-CODER DIAG leg=keyed-scalars
+FOUNDATION-CODER DIAG leg=keyed-scalars-read
+(no further output)
+```
+So the writer ran, all six reads ran, and the probe dies INSIDE the check expression - whose only calls beyond
+plain comparisons are the three `-containsValueForKey:` ones. That is as far as the evidence goes: WHICH of the
+three is not yet isolated.
+
+**AND THE IMPLEMENTATION SHOWS WHAT IS AT STAKE.** `NSKeyedUnarchiver -containsValueForKey:` (NSKeyedArchiver.m)
+is `key != nil && [(NSDictionary *)[self fnCurrentEntry] objectForKey:key] != nil`, and the door above it raises
+`@"NSKeyedUnarchiver: nothing was written for the key \"%@\""`. **A QUERY DOOR MUST ANSWER NO, NOT RAISE** - Apple's
+contract for `-containsValueForKey:` is a Yes/No question - so if `fnCurrentEntry` raises when there is no current
+entry (which is what the neighbouring door's message suggests), this is a REAL DEVIATION and not a test artefact.
+
+**NEXT, AND IT IS ONE STEP: isolate the clause** by calling the three in turn with a marker after each (`yes`,
+`double`, then `never-written`), then either fix the door to answer NO for an absent key or record the deviation
+with its grounds. **The lesson that cost this turn its progress: apply each fix to ALL occurrences before
+recompiling** - the `[[...] UTF8String]` detail idiom (this probe's `check()` takes an `NSString *`) was fixed in
+the first new check and missed in the second, which burned a guest cycle for a cause already in hand. AND: when a
+probe dies, MARK IT FIRST - two `printf`s turned "the probe hangs somewhere" into "the death is in this
+expression", which three rounds of bracket-guessing had not.
