@@ -28263,3 +28263,22 @@ definition anywhere in the library** (grep over `userland/Foundation/*.m` and `*
 `foundation-sweep --unimplemented` reports `0 NEW, 1 baselined`. So the sweep does not see it - its universe is
 our headers' declarations, and this row is declared nowhere. It needs a decision, not a grep: strike the row as a
 ledger error, or declare and implement the door. It is recorded here rather than quietly claimed.
+
+**§63.247q — AN OPEN RED SURFACED, AND THE INERTNESS ARGUMENT THAT SAYS IT IS NOT MINE (2026-10-04).** Running
+`foundation_enumerate_substrings` for the FIRST time in this campaign (to claim
+`-enumerateSubstringsInRange:options:usingBlock:` from the check that calls it) shows **6 of its 8 checks passing
+and two failing**:
+```
+a-line-is-enclosed-by-its-paragraph-and-a-blank-line-by-itself FAIL: 5 lines; enclosing: NSRange: {0, 4}, ...
+paragraphs-are-runs-of-lines                                FAIL: paragraph ranges: 0..4, 4..8, 8..9, 9..15, 15..19
+```
+**They are PRE-EXISTING, and the argument is the diff rather than a second guest run:** my change to that file
+adds a `static int lastcheck`, a `covers_` helper, `lastcheck = held;` inside `check()` (the probe names its
+parameter `held`, not `ok`), and ONE `covers("NSString", "enumerateSubstringsInRange:options:usingBlock:")` after
+the check that passes. None of those can move a paragraph range, and the failures are at lines 154 and 176 - the
+paragraph doors, which §63's own record says were REFUSED and whose NSParagraphSeparator rule FNTextBreaking's NEL
+bug touched. The check my claim rides on (`lines-come-back-whole-and-in-order`) passes.
+
+**OPEN: two paragraph checks in foundation_enumerate_substrings fail, and it is not known whether the probe's
+expectation is stale or the paragraph doors are wrong.** That is a unit of work, not a footnote - it needs the two
+checks' expectations read against the doors' published rule before anything is changed.

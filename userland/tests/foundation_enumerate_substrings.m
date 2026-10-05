@@ -26,8 +26,23 @@
 
 static int okc = 0, failc = 0;
 
+static int lastcheck;
+
+/* covers("NSString", "enumerateSubstringsInRange:options:usingBlock:") - the behavioural claim, piggybacked on
+ * the check above it: no condition of its own, printed only when the last check's result was true. See
+ * tools/foundation-cov.py; a claim for a row the ledger does not carry is inert. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
+
+
 static void check(const char *name, BOOL held, NSString *why)
 {
+	lastcheck = held;	/* read by covers(): a claim can only follow an assertion that held */
 	if(held) {
 		okc++;
 		printf("FOUNDATION-ENUMERATE %s ok\n", name);
@@ -77,6 +92,7 @@ int main(void)
 		      [[got objectAtIndex:2] isEqual:@"third line"],
 		      [NSString stringWithFormat:@"%lu call(s): %@", (unsigned long)calls,
 			[got componentsJoinedByString:@" | "]]);
+	covers("NSString", "enumerateSubstringsInRange:options:usingBlock:");
 	}
 
 	/* --- WORDS, SENTENCES, PARAGRAPHS AND COMPOSED CHARACTERS: THE ENGINE'S OTHER UNITS ---------------- */

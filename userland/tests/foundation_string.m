@@ -3009,6 +3009,7 @@ NULL
 			      [[NSString stringWithFormat:@"the caller's block ran %lu time(s) with length %lu, and the "
 						@"string it built reads as \"%@\"",
 						(unsigned long)ran, (unsigned long)ranLength, blockOwned] UTF8String]);
+	covers("NSString", "initWithCharactersNoCopy:length:deallocator:");
 		}
 
 		/* `-getBytes:…`: A NULL BUFFER IS THE SIZE FORM; a CONVERTED encoding is converted with ITS OWN
@@ -3168,6 +3169,7 @@ NULL
 						@"shared prefix with a filter answers the %lu .md matches",
 						[completed lastPathComponent],
 						(unsigned long)filteredCount] UTF8String]);
+	covers("NSString", "completePathIntoString:caseSensitive:matchesIntoArray:filterTypes:");
 		}
 	}
 
@@ -3207,6 +3209,8 @@ NULL
 						@"the same %lu token ranges",
 						(unsigned long)[tags count],
 						(unsigned long)[tokenRanges count]] UTF8String]);
+	covers("NSString", "linguisticTagsInRange:scheme:options:orthography:tokenRanges:");
+	covers("NSString", "enumerateLinguisticTagsInRange:scheme:options:orthography:usingBlock:");
 
 		/* AND THE `sentenceRange` THE BLOCK CARRIES IS THE TAGGER'S OWN DOOR, not a second notion of a
 		 * sentence: the check re-asks the tagger and compares. */
@@ -3709,6 +3713,41 @@ NULL
 			(unsigned long)good.length, okErr != nil ? [okErr description] : @"(none)", bad,
 			badErr != nil ? [badErr description] : @"(none)"] UTF8String]);
 		covers("NSString", "stringWithValidatedFormat:validFormatSpecifiers:error:");
+	}
+
+	{
+		/* NEW ASSERTION: THE THREE DEPRECATED C-STRING SPELLINGS THAT NOTHING CALLED. Each contract is stated
+		 * at its own door and they differ in exactly the ways their names say: the one-argument copy takes
+		 * the whole string and terminates it (no length is passed, so Apple's "buffer is large enough" is
+		 * followed rather than a bound only this library could know), the length-taking one DROPS the BOOL
+		 * and leaves the buffer alone when it cannot fit, and the creator fixes UTF-8 so a NULL answers nil.
+		 * The silent refusal is the half a "returns NO" test could not see, which is why the buffer's
+		 * contents are asserted rather than a return value that does not exist. */
+		NSString *s = [NSString stringWithUTF8String:"caf\xC3\xA9"];
+		char whole[16], bounded[16], small[3];
+		NSString *made = [NSString stringWithCString:"caf\xC3\xA9"];
+		const char *noBytes = NULL;
+		NSString *fromNull = [NSString stringWithCString:noBytes];
+
+		memset(whole, 'Z', sizeof(whole));
+		memset(bounded, 'Z', sizeof(bounded));
+		memset(small, 'Z', sizeof(small));
+		[s getCString:whole];
+		[s getCString:bounded maxLength:sizeof(bounded)];
+		[s getCString:small maxLength:sizeof(small)];	/* 5 bytes plus their NUL cannot fit in 3 */
+
+		check("deprecated-cstring-spellings-copy-terminate-and-refuse-silently",
+		      memcmp(whole, "caf\xC3\xA9", 5) == 0 && whole[5] == '\0' &&
+		      memcmp(bounded, "caf\xC3\xA9", 5) == 0 && bounded[5] == '\0' &&
+		      (unsigned char)small[0] == 'Z' &&
+		      made != nil && [made isEqualToString:s] && made.length == 4 &&
+		      fromNull == nil,
+		      [[NSString stringWithFormat:@"whole=%s whole5=%d bounded=%s small0=%d made=%@ fromNull=%d",
+			whole, (int)whole[5], bounded, (int)(unsigned char)small[0], made,
+			(int)(fromNull == nil)] UTF8String]);
+		covers("NSString", "getCString:");
+		covers("NSString", "getCString:maxLength:");
+		covers("NSString", "stringWithCString:");
 	}
 
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);
