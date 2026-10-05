@@ -38,8 +38,11 @@
 static int okc, failc;
 
 /* The detail is NULLABLE: every answer under test comes back through a nullable door. */
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers(): a claim can only follow an assertion that held */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-NUMBERFORMATTER %s ok\n", name);
@@ -49,6 +52,17 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		       detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSNumberFormatter", "stringFromNumber:") — the behavioural claim, piggybacked on the check above it:
+ * no condition of its own, printed only when the last check's result was true. See tools/foundation-cov.py;
+ * every claim is filtered against the ledger, since a claim for a row the ledger does not carry is inert. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 int main(void)
 {
@@ -66,6 +80,7 @@ int main(void)
 	      policy != nil && [policy scale] == 2 && [policy roundingMode] == NSRoundBankers,
 	      [NSString stringWithFormat:@"policy=%@ scale=%d mode=%ld", policy != nil ? @"built" : @"NIL",
 			(int)[policy scale], (long)[policy roundingMode]]);
+	covers("NSDecimalNumberHandler", "decimalNumberHandlerWithRoundingMode:scale:raiseOnExactness:raiseOnOverflow:raiseOnUnderflow:raiseOnDivideByZero:");
 
 	printf("NUMBERFORMATTER-DOOR-STEP-2\n"); fflush(stdout);
 	NSNumberFormatter *rf = [[NSNumberFormatter alloc] init];
@@ -77,11 +92,15 @@ int main(void)
 	check("numberformatter-door-2-setter-stores",
 	      [rf roundingBehavior] == policy,
 	      [NSString stringWithFormat:@"roundingBehavior=%@", [rf roundingBehavior] != nil ? @"stored" : @"NIL"]);
+	covers("NSNumberFormatter", "numberStyle");
+	covers("NSNumberFormatter", "roundingBehavior");
+	covers("NSNumberFormatter", "roundingBehavior");
 
 	printf("NUMBERFORMATTER-DOOR-STEP-3\n"); fflush(stdout);
 	check("numberformatter-door-3-policy-applied",
 	      [rf maximumFractionDigits] == 2,
 	      [NSString stringWithFormat:@"maxFractionDigits=%ld", (long)[rf maximumFractionDigits]]);
+	covers("NSNumberFormatter", "maximumFractionDigits");
 
 	printf("NUMBERFORMATTER-DOOR-STEP-4\n"); fflush(stdout);
 	NSNumberFormatter *rf2 = [rf copy];
@@ -104,6 +123,7 @@ int main(void)
 	      [NSString stringWithFormat:@"parsed=%@ range={%lu,%lu} refused=%d err=%@", parsed,
 			(unsigned long)range.location, (unsigned long)range.length,
 			(int)refused, err != nil ? @"raised" : @"NIL"]);
+	covers("NSNumberFormatter", "getObjectValue:forString:range:error:");
 	printf("NUMBERFORMATTER-DOOR-STEP-6-ALL-MARKERS-PASSED\n"); fflush(stdout);
 
 
@@ -152,6 +172,35 @@ int main(void)
 		      [NSString stringWithFormat:@"symbol=%@/%@ zero=%@ ctx=%lu",
 			[f positiveInfinitySymbol], [f negativeInfinitySymbol],
 			[[f attributedStringForZero] string], (unsigned long)[f formattingContext]]);
+	covers("NSNumberFormatter", "attributedStringForZero");
+	covers("NSNumberFormatter", "attributedStringForNil");
+	covers("NSNumberFormatter", "attributedStringForNotANumber");
+	covers("NSNumberFormatter", "textAttributesForZero");
+	covers("NSNumberFormatter", "textAttributesForNegativeValues");
+	covers("NSNumberFormatter", "textAttributesForPositiveValues");
+	covers("NSNumberFormatter", "textAttributesForNil");
+	covers("NSNumberFormatter", "textAttributesForNotANumber");
+	covers("NSNumberFormatter", "textAttributesForPositiveInfinity");
+	covers("NSNumberFormatter", "textAttributesForNegativeInfinity");
+	covers("NSNumberFormatter", "positiveInfinitySymbol");
+	covers("NSNumberFormatter", "negativeInfinitySymbol");
+	covers("NSNumberFormatter", "localizesFormat");
+	covers("NSNumberFormatter", "partialStringValidationEnabled");
+	covers("NSNumberFormatter", "formattingContext");
+	covers("NSNumberFormatter", "positiveInfinitySymbol");
+	covers("NSNumberFormatter", "negativeInfinitySymbol");
+	covers("NSNumberFormatter", "attributedStringForZero");
+	covers("NSNumberFormatter", "attributedStringForNil");
+	covers("NSNumberFormatter", "attributedStringForNotANumber");
+	covers("NSNumberFormatter", "textAttributesForZero");
+	covers("NSNumberFormatter", "textAttributesForNegativeValues");
+	covers("NSNumberFormatter", "textAttributesForPositiveValues");
+	covers("NSNumberFormatter", "textAttributesForNil");
+	covers("NSNumberFormatter", "textAttributesForNotANumber");
+	covers("NSNumberFormatter", "textAttributesForPositiveInfinity");
+	covers("NSNumberFormatter", "textAttributesForNegativeInfinity");
+	covers("NSNumberFormatter", "localizesFormat");
+	covers("NSNumberFormatter", "formattingContext");
 	}
 
 	NSLocale *en = [NSLocale localeWithLocaleIdentifier:@"en_US"];
@@ -171,6 +220,10 @@ int main(void)
 		enText = [formatter stringFromNumber:value];
 		check("nf-de", deText != nil && [deText isEqualToString:@"1.234.567,89"], deText);
 		check("nf-en", enText != nil && [enText isEqualToString:@"1,234,567.89"], enText);
+	covers("NSNumberFormatter", "numberStyle");
+	covers("NSNumberFormatter", "locale");
+	covers("NSNumberFormatter", "stringFromNumber:");
+	covers("NSNumberFormatter", "stringFromNumber:");
 	}
 
 	{
@@ -189,6 +242,10 @@ int main(void)
 		      enText != nil && deText != nil &&
 		      [enText hasPrefix:@"$"] && [deText containsString:@"€"],
 		      [NSString stringWithFormat:@"en=%@ de=%@", enText, deText]);
+	covers("NSNumberFormatter", "numberStyle");
+	covers("NSNumberFormatter", "locale");
+	covers("NSNumberFormatter", "stringFromNumber:");
+	covers("NSNumberFormatter", "stringFromNumber:");
 	}
 
 	{
@@ -204,6 +261,10 @@ int main(void)
 		[formatter setNumberStyle:NSNumberFormatterOrdinalStyle];
 		text = [formatter stringFromNumber:[NSNumber numberWithInt:3]];
 		check("nf-ordinal", text != nil && [text isEqualToString:@"3rd"], text);
+	covers("NSNumberFormatter", "locale");
+	covers("NSNumberFormatter", "numberStyle");
+	covers("NSNumberFormatter", "stringFromNumber:");
+	covers("NSNumberFormatter", "stringFromNumber:");
 	}
 
 	{
@@ -218,6 +279,10 @@ int main(void)
 		[formatter setNumberStyle:NSNumberFormatterScientificStyle];
 		text = [formatter stringFromNumber:[NSNumber numberWithInt:1234]];
 		check("nf-scientific", text != nil && [text containsString:@"E"], text);
+	covers("NSNumberFormatter", "locale");
+	covers("NSNumberFormatter", "numberStyle");
+	covers("NSNumberFormatter", "stringFromNumber:");
+	covers("NSNumberFormatter", "stringFromNumber:");
 	}
 
 	{
@@ -231,6 +296,10 @@ int main(void)
 		      back != nil && [back doubleValue] > 1234567.88
 		      && [back doubleValue] < 1234567.90,
 		      back != nil ? [back stringValue] : @"(nil)");
+	covers("NSNumberFormatter", "locale");
+	covers("NSNumberFormatter", "numberStyle");
+	covers("NSNumberFormatter", "numberFromString:");
+	covers("NSNumberFormatter", "numberFromString:");
 
 		{
 			NSString *text = [formatter stringFromNumber:value];
@@ -243,6 +312,8 @@ int main(void)
 			      again != nil && [again doubleValue] > 1234567.88
 			      && [again doubleValue] < 1234567.90,
 			      again != nil ? [again stringValue] : @"(nil)");
+	covers("NSNumberFormatter", "stringFromNumber:");
+	covers("NSNumberFormatter", "numberFromString:");
 		}
 	}
 
@@ -259,6 +330,10 @@ int main(void)
 				[NSNumber numberWithLongLong:9007199254740993LL]];
 		check("nf-int64-exact",
 		      text != nil && [text isEqualToString:@"9,007,199,254,740,993"], text);
+	covers("NSNumberFormatter", "locale");
+	covers("NSNumberFormatter", "numberStyle");
+	covers("NSNumberFormatter", "stringFromNumber:");
+	covers("NSNumberFormatter", "stringFromNumber:");
 	}
 
 	{
@@ -293,6 +368,11 @@ int main(void)
 		 * The FRACTION-DIGIT count is a different property and is deliberately not set here, so this check measures
 		 * the separator rule alone. */
 		check("nf-always-decimal", text != nil && [text isEqualToString:@"1,234."], text);
+	covers("NSNumberFormatter", "locale");
+	covers("NSNumberFormatter", "numberStyle");
+	covers("NSNumberFormatter", "groupingSeparator");
+	covers("NSNumberFormatter", "stringFromNumber:");
+	covers("NSNumberFormatter", "stringFromNumber:");
 
 		[formatter setAlwaysShowsDecimalSeparator:NO];
 		[formatter setNumberStyle:NSNumberFormatterDecimalStyle];
@@ -302,6 +382,10 @@ int main(void)
 		      [formatter groupingSize] == 2 && [formatter secondaryGroupingSize] == 4,
 		      [NSString stringWithFormat:@"grouping=%ld secondary=%ld",
 			(long)[formatter groupingSize], (long)[formatter secondaryGroupingSize]]);
+	covers("NSNumberFormatter", "groupingSize");
+	covers("NSNumberFormatter", "secondaryGroupingSize");
+	covers("NSNumberFormatter", "groupingSize");
+	covers("NSNumberFormatter", "secondaryGroupingSize");
 
 		[formatter setNumberStyle:NSNumberFormatterDecimalStyle];
 		[formatter setUsesSignificantDigits:YES];
@@ -317,6 +401,14 @@ int main(void)
 			(int)[formatter usesSignificantDigits],
 			(unsigned long)[formatter minimumSignificantDigits],
 			(unsigned long)[formatter maximumSignificantDigits], text]);
+	covers("NSNumberFormatter", "usesSignificantDigits");
+	covers("NSNumberFormatter", "minimumSignificantDigits");
+	covers("NSNumberFormatter", "maximumSignificantDigits");
+	covers("NSNumberFormatter", "stringFromNumber:");
+	covers("NSNumberFormatter", "usesSignificantDigits");
+	covers("NSNumberFormatter", "minimumSignificantDigits");
+	covers("NSNumberFormatter", "maximumSignificantDigits");
+	covers("NSNumberFormatter", "stringFromNumber:");
 	}
 
 	{
@@ -332,6 +424,10 @@ int main(void)
 		check("nf-rounding-increment",
 		      increment != nil && [increment doubleValue] > 0.049 && [increment doubleValue] < 0.051,
 		      increment != nil ? [increment stringValue] : @"(nil)");
+	covers("NSNumberFormatter", "locale");
+	covers("NSNumberFormatter", "numberStyle");
+	covers("NSNumberFormatter", "roundingIncrement");
+	covers("NSNumberFormatter", "roundingIncrement");
 	}
 
 	{
@@ -360,6 +456,12 @@ int main(void)
 		      [currencyGrouping isEqualToString:@"'"],
 		      [NSString stringWithFormat:@"perMill=%@ curDec=%@ curGrp=%@",
 			perMill, currencyDecimal, currencyGrouping]);
+	covers("NSNumberFormatter", "perMillSymbol");
+	covers("NSNumberFormatter", "currencyDecimalSeparator");
+	covers("NSNumberFormatter", "currencyGroupingSeparator");
+	covers("NSNumberFormatter", "perMillSymbol");
+	covers("NSNumberFormatter", "currencyDecimalSeparator");
+	covers("NSNumberFormatter", "currencyGroupingSeparator");
 
 		[formatter setThousandSeparator:@"_"];
 		grouping = [formatter groupingSeparator];
@@ -374,6 +476,12 @@ int main(void)
 		      noGrouping != nil && [noGrouping isEqualToString:@"1234567"],
 		      [NSString stringWithFormat:@"grouping=%@ plain=%@ hasThousand=%d off=%@",
 			grouping, plain, (int)separatorFlag, noGrouping]);
+	covers("NSNumberFormatter", "thousandSeparator");
+	covers("NSNumberFormatter", "hasThousandSeparators");
+	covers("NSNumberFormatter", "stringFromNumber:");
+	covers("NSNumberFormatter", "groupingSeparator");
+	covers("NSNumberFormatter", "usesGroupingSeparator");
+	covers("NSNumberFormatter", "stringFromNumber:");
 	}
 
 	{
@@ -395,6 +503,12 @@ int main(void)
 		      position == NSNumberFormatterPadAfterPrefix,
 		      [NSString stringWithFormat:@"width=%lu pad=%@ position=%d",
 			(unsigned long)[formatter formatWidth], pad, (int)position]);
+	covers("NSNumberFormatter", "formatWidth");
+	covers("NSNumberFormatter", "paddingCharacter");
+	covers("NSNumberFormatter", "paddingPosition");
+	covers("NSNumberFormatter", "formatWidth");
+	covers("NSNumberFormatter", "paddingCharacter");
+	covers("NSNumberFormatter", "paddingPosition");
 	}
 
 	{
@@ -407,6 +521,11 @@ int main(void)
 		refused = [formatter numberFromString:@"12.5"];
 		check("nf-allowsfloats-off", refused == nil,
 		      refused != nil ? [refused stringValue] : @"(nil)");
+	covers("NSNumberFormatter", "locale");
+	covers("NSNumberFormatter", "numberStyle");
+	covers("NSNumberFormatter", "allowsFloats");
+	covers("NSNumberFormatter", "numberFromString:");
+	covers("NSNumberFormatter", "numberFromString:");
 	}
 
 	{
@@ -429,6 +548,12 @@ int main(void)
 		      zero != nil && nothing != nil && [zero isEqualToString:@"none"] &&
 		      [nothing isEqualToString:@"no value"],
 		      [NSString stringWithFormat:@"zero=%@ nil=%@", zero, nothing]);
+	covers("NSNumberFormatter", "locale");
+	covers("NSNumberFormatter", "numberStyle");
+	covers("NSNumberFormatter", "zeroSymbol");
+	covers("NSNumberFormatter", "nilSymbol");
+	covers("NSNumberFormatter", "stringFromNumber:");
+	covers("NSNumberFormatter", "stringFromNumber:");
 	}
 
 	{
@@ -489,6 +614,14 @@ int main(void)
 		      [neg isEqualToString:@"(#,##0.00)"] &&
 		      out != nil && [out containsString:@"("] && [out containsString:@")"],
 		      [NSString stringWithFormat:@"pos=%@ neg=%@ out=%@", pos, neg, out]);
+	covers("NSNumberFormatter", "locale");
+	covers("NSNumberFormatter", "numberStyle");
+	covers("NSNumberFormatter", "positiveFormat");
+	covers("NSNumberFormatter", "negativeFormat");
+	covers("NSNumberFormatter", "stringFromNumber:");
+	covers("NSNumberFormatter", "positiveFormat");
+	covers("NSNumberFormatter", "negativeFormat");
+	covers("NSNumberFormatter", "stringFromNumber:");
 	}
 
 	{
@@ -512,6 +645,12 @@ int main(void)
 		      [NSString stringWithFormat:@"in=%@ low=%@ high=%@",
 			inRange, tooLow != nil ? [tooLow stringValue] : @"(nil)",
 			tooHigh != nil ? [tooHigh stringValue] : @"(nil)"]);
+	covers("NSNumberFormatter", "locale");
+	covers("NSNumberFormatter", "numberStyle");
+	covers("NSNumberFormatter", "minimum");
+	covers("NSNumberFormatter", "maximum");
+	covers("NSNumberFormatter", "numberFromString:");
+	covers("NSNumberFormatter", "numberFromString:");
 	}
 
 	{
@@ -533,6 +672,11 @@ int main(void)
 		      [decimal doubleValue] > 1234.4 && [decimal doubleValue] < 1234.6,
 		      [NSString stringWithFormat:@"plain=%@(%@) decimal=%@(%@)",
 			plain, [plain class], decimal, [decimal class]]);
+	covers("NSNumberFormatter", "locale");
+	covers("NSNumberFormatter", "numberStyle");
+	covers("NSNumberFormatter", "generatesDecimalNumbers");
+	covers("NSNumberFormatter", "numberFromString:");
+	covers("NSNumberFormatter", "numberFromString:");
 	}
 
 	{
@@ -559,6 +703,11 @@ int main(void)
 		      fromDefault == NSNumberFormatterBehavior10_0,
 		      [NSString stringWithFormat:@"default=%d got=%d seeded=%d",
 			(int)dflt, (int)got, (int)fromDefault]);
+	covers("NSNumberFormatter", "formatterBehavior");
+	covers("NSNumberFormatter", "setDefaultFormatterBehavior:");
+	covers("NSNumberFormatter", "defaultFormatterBehavior");
+	covers("NSNumberFormatter", "formatterBehavior");
+	covers("NSNumberFormatter", "setDefaultFormatterBehavior:");
 	}
 
 	printf("FOUNDATION-NUMBERFORMATTER RESULT ok=%d fail=%d\n", okc, failc);

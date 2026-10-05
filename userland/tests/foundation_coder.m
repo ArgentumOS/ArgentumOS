@@ -1027,6 +1027,10 @@ int main(void)
 		check("coder-sequential-bulk-doors",
 		      biBack == -7 && bdBack == 1.25,
 		      [NSString stringWithFormat:@"int=%d double=%g", biBack, bdBack]);
+	covers("NSCoder", "encodeValuesOfObjCTypes:");
+	covers("NSCoder", "decodeValuesOfObjCTypes:");
+	covers("NSArchiver", "initForWritingWithMutableData:");
+	covers("NSUnarchiver", "initForReadingWithData:");
 	}
 
 	printf("FOUNDATION-CODER RESULT ok=%d fail=%d\n", okc, failc);
