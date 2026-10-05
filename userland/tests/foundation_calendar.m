@@ -27,8 +27,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, const char *detail)
 {
+	lastcheck = ok;	/* read by covers(): a claim can only follow an assertion that held */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-CALENDAR %s ok\n", name);
@@ -37,6 +40,16 @@ static void check(const char *name, int ok, const char *detail)
 		printf("FOUNDATION-CALENDAR %s FAIL %s\n", name, detail ? detail : "");
 	}
 }
+
+/* covers("NSCalendar", "dateFromComponents:") — the behavioural claim, piggybacked on the check above it: no
+ * condition of its own, printed only when the last check's result was true. See tools/foundation-cov.py. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* THE DETAIL CARRIES THE MEASUREMENT, not a description of it: a failure that
  * says "y=2026 m=3 d=31" is diagnosable, one that says "the clamp is wrong" is
@@ -88,6 +101,11 @@ int main(void)
 		      [ist isEqual:same] && ![ist isEqual:west] &&
 		      [ist hash] == [same hash],
 		      "an offset, a rendered name, no DST, and equality by offset");
+	covers("NSTimeZone", "daylightSavingTime");
+	covers("NSTimeZone", "isEqualToTimeZone:");
+	covers("NSTimeZone", "secondsFromGMT");
+	covers("NSTimeZone", "name");
+	covers("NSTimeZone", "systemTimeZone");
 	}
 
 	{
@@ -103,6 +121,16 @@ int main(void)
 		      [c hour] == 0 && [c minute] == 0 && [c second] == 0 &&
 		      [c weekday] == 5 && [c quarter] == 1,
 		      fn_why(c));
+	covers("NSCalendar", "components:fromDate:");
+	covers("NSDateComponents", "era");
+	covers("NSDateComponents", "year");
+	covers("NSDateComponents", "month");
+	covers("NSDateComponents", "day");
+	covers("NSDateComponents", "hour");
+	covers("NSDateComponents", "minute");
+	covers("NSDateComponents", "second");
+	covers("NSDateComponents", "weekday");
+	covers("NSDateComponents", "quarter");
 	}
 
 	{
@@ -126,6 +154,15 @@ int main(void)
 		      [[c description] length] > 0 &&
 		      [c isValidDateInCalendar:cal],
 		      "components -> date -> components is the same fields");
+	covers("NSDateComponents", "year");
+	covers("NSDateComponents", "month");
+	covers("NSDateComponents", "day");
+	covers("NSDateComponents", "hour");
+	covers("NSDateComponents", "minute");
+	covers("NSDateComponents", "second");
+	covers("NSCalendar", "dateFromComponents:");
+	covers("NSCalendar", "components:fromDate:");
+	covers("NSDateComponents", "isValidDateInCalendar:");
 	}
 
 	{
@@ -152,6 +189,11 @@ int main(void)
 		      [got year] == 2026 && [got month] == 2 && [got day] == 28 &&
 		      [[cal components:ymd fromDate:leapPlus] day] == 29,
 		      fn_why2(got, [cal components:ymd fromDate:leapPlus]));
+	covers("NSDateComponents", "month");
+	covers("NSDateComponents", "year");
+	covers("NSDateComponents", "day");
+	covers("NSCalendar", "dateFromComponents:");
+	covers("NSCalendar", "dateByAddingComponents:toDate:options:");
 	}
 
 	{
@@ -188,6 +230,11 @@ int main(void)
 		      [[cal components:ymd fromDate:plusYear] year] == 2027 &&
 		      leapBack != nil && [leapBack day] == 28,
 		      fn_why2([cal components:ymd fromDate:plusDay], leapBack));
+	covers("NSDateComponents", "year");
+	covers("NSDateComponents", "month");
+	covers("NSDateComponents", "day");
+	covers("NSCalendar", "dateFromComponents:");
+	covers("NSCalendar", "dateByAddingUnit:value:toDate:options:");
 	}
 
 	{
@@ -225,6 +272,8 @@ int main(void)
 		      [[cal components:ymd fromDate:start] day] == 1,
 		      fn_why2([cal components:ymd fromDate:start],
 			      [cal components:ymd fromDate:d26]));
+	covers("NSCalendar", "rangeOfUnit:startDate:interval:forDate:");
+	covers("NSCalendar", "rangeOfUnit:inUnit:forDate:");
 	}
 
 	{
@@ -267,6 +316,19 @@ int main(void)
 				(long)[ca weekOfYear], (long)[ca yearForWeekOfYear],
 				(long)[ca weekday], (long)[ca weekOfMonth],
 				(long)[cb weekOfYear], (long)[cb yearForWeekOfYear]] UTF8String]);
+	covers("NSCalendar", "firstWeekday");
+	covers("NSCalendar", "minimumDaysInFirstWeek");
+	covers("NSDateComponents", "year");
+	covers("NSDateComponents", "month");
+	covers("NSDateComponents", "day");
+	covers("NSCalendar", "dateFromComponents:");
+	covers("NSCalendar", "components:fromDate:");
+	covers("NSDateComponents", "weekOfYear");
+	covers("NSDateComponents", "yearForWeekOfYear");
+	covers("NSDateComponents", "weekday");
+	covers("NSDateComponents", "weekOfMonth");
+	covers("NSCalendar", "firstWeekday");
+	covers("NSCalendar", "minimumDaysInFirstWeek");
 		[cal setFirstWeekday:1];
 		[cal setMinimumDaysInFirstWeek:1];
 	}
@@ -302,6 +364,9 @@ int main(void)
 		      [[NSString stringWithFormat:@"months=%ld days=%ld",
 				(long)(difference != nil ? [difference month] : -1),
 				(long)(difference != nil ? [difference day] : -1)] UTF8String]);
+	covers("NSCalendar", "components:fromDate:toDate:options:");
+	covers("NSDateComponents", "month");
+	covers("NSDateComponents", "day");
 	}
 
 	{
@@ -318,6 +383,13 @@ int main(void)
 		      [[cal description] length] > 0 &&
 		      [[cal copy] isEqual:cal],
 		      "the same instant is 05:30 in +05:30, and the zone is the calendar's");
+	covers("NSTimeZone", "timeZoneForSecondsFromGMT:");
+	covers("NSCalendar", "components:fromDate:");
+	covers("NSCalendar", "timeZone");
+	covers("NSCalendar", "timeZone");
+	covers("NSDateComponents", "hour");
+	covers("NSDateComponents", "minute");
+	covers("NSDateComponents", "day");
 		{
 			/* Bound and guarded: -setTimeZone: RAISES on nil (a calendar always
 			 * has a zone), so an inline nullable would be a crash, not a warning. */
@@ -498,6 +570,15 @@ int main(void)
 			(long)era, (long)year, (long)month, (long)day,
 			(long)hour, (long)minute, (long)second, (long)nano,
 			(long)[inZone hour], (long)[inZone minute]] UTF8String]);
+	covers("NSCalendar", "calendarWithIdentifier:");
+	covers("NSCalendar", "timeZone");
+	covers("NSCalendar", "locale");
+	covers("NSCalendar", "getEra:year:month:day:fromDate:");
+	covers("NSCalendar", "getHour:minute:second:nanosecond:fromDate:");
+	covers("NSCalendar", "componentsInTimeZone:fromDate:");
+	covers("NSCalendar", "component:fromDate:");
+	covers("NSDateComponents", "hour");
+	covers("NSDateComponents", "minute");
 	}
 
 	{
@@ -520,6 +601,11 @@ int main(void)
 		      d != nil && [got year] == 2025 && [got month] == 12 && [got day] == 29,
 		      [[NSString stringWithFormat:@"week1of2026 -> %ld-%02ld-%02ld",
 			(long)[got year], (long)[got month], (long)[got day]] UTF8String]);
+	covers("NSCalendar", "dateWithEra:yearForWeekOfYear:weekOfYear:weekday:hour:minute:second:nanosecond:");
+	covers("NSCalendar", "components:fromDate:");
+	covers("NSDateComponents", "year");
+	covers("NSDateComponents", "month");
+	covers("NSDateComponents", "day");
 	}
 
 	{
@@ -553,6 +639,11 @@ int main(void)
 			(unsigned long)[c2 ordinalityOfUnit:NSCalendarUnitMonth inUnit:NSCalendarUnitYear forDate:d],
 			(long)[[c2 component:NSCalendarUnitHour fromDate:sod] integerValue],
 			(long)[[c2 component:NSCalendarUnitMinute fromDate:sod] integerValue]] UTF8String]);
+	covers("NSCalendar", "maximumRangeOfUnit:");
+	covers("NSCalendar", "minimumRangeOfUnit:");
+	covers("NSCalendar", "ordinalityOfUnit:inUnit:forDate:");
+	covers("NSCalendar", "startOfDayForDate:");
+	covers("NSCalendar", "component:fromDate:");
 	}
 
 	{
@@ -589,6 +680,10 @@ int main(void)
 			(long)[[c2 component:NSCalendarUnitMinute fromDate:set] integerValue],
 			(long)[[c2 component:NSCalendarUnitDay fromDate:set] integerValue],
 			(long)[[c2 component:NSCalendarUnitDay fromDate:daySet] integerValue]] UTF8String]);
+	covers("NSCalendar", "dateBySettingHour:minute:second:ofDate:options:");
+	covers("NSCalendar", "dateBySettingUnit:value:ofDate:options:");
+	covers("NSCalendar", "isDate:equalToDate:toUnitGranularity:");
+	covers("NSCalendar", "compareDate:toDate:toUnitGranularity:");
 	}
 
 	{
@@ -619,6 +714,9 @@ int main(void)
 		      [[NSString stringWithFormat:@"today=%d wkendSat=%d wsDay=%ld wi=%.0f",
 			(int)[c2 isDateInToday:now], (int)[c2 isDateInWeekend:sat],
 			(long)[[c2 component:NSCalendarUnitDay fromDate:ws] integerValue], wi] UTF8String]);
+	covers("NSCalendar", "isDateInToday:");
+	covers("NSCalendar", "isDateInWeekend:");
+	covers("NSCalendar", "rangeOfWeekendStartDate:interval:containingDate:");
 	}
 
 	{
@@ -654,6 +752,18 @@ int main(void)
 			[c2 AMSymbol] != nil ? [c2 AMSymbol] : @"(nil)",
 			[eras count] > 0 ? (NSString *)[eras objectAtIndex:0] : @"(none)",
 			[c2 calendarIdentifier]] UTF8String]);
+	covers("NSCalendar", "calendarIdentifier");
+	covers("NSCalendar", "locale");
+	covers("NSCalendar", "autoupdatingCurrentCalendar");
+	covers("NSCalendar", "AMSymbol");
+	covers("NSCalendar", "PMSymbol");
+	covers("NSCalendar", "weekdaySymbols");
+	covers("NSCalendar", "monthSymbols");
+	covers("NSCalendar", "eraSymbols");
+	covers("NSCalendar", "longEraSymbols");
+	covers("NSCalendar", "shortWeekdaySymbols");
+	covers("NSCalendar", "quarterSymbols");
+	covers("NSCalendar", "standaloneMonthSymbols");
 	}
 
 	{
