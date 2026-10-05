@@ -28132,3 +28132,27 @@ that got MANGLED (a shell expansion, a missing terminator). It does NOT catch a 
 one was written forward from intent ("I added the geometry family") rather than read back from the filter's
 report, which had listed all ten drops in the same output. So: **read the tool's own drop list before writing
 the sentence that summarises it.**
+
+**§63.247j — CORRECTING THE CORRECTION: "NOT IN THE FILTERED SET" IS NOT "NOT IN THE LEDGER" (2026-10-04).**
+§63.247i says the CG geometry coder doors "are not in the selector ledger in ANY status". MEASURED, they ARE in
+it - as **`struck`**, with the reason `declined`:
+
+    method  struck  -encodeCGPoint:forKey:   NSCoder  …/Encoding Geometry-Based Data   declined
+    method  struck  -decodeCGPointForKey:    NSCoder  …/Decoding Geometry-Based Data   declined
+
+**THE ERROR WAS ONE OF SCOPE, AND IT IS THE KIND THAT READS AS MEASUREMENT.** The drop list came from the
+coverage tool's filter, whose universe is **SHIPPED rows only** - `shipped` is the pair set it builds - so "the
+filter dropped it" means "no SHIPPED row", and I wrote it as "not in the ledger", which is a much larger claim.
+The measurement was right; the sentence about it was not, for the SECOND time in two commits (§63.247i corrected
+a message that over-claimed what landed; this corrects the correction's own description of the ledger).
+
+**WHAT IS ACTUALLY TRUE, and it is a small tension worth recording rather than resolving here:**
+ * the two CG geometry coder families are STUCK OUT by project decision (`declined`) - consistent with the 10.2
+   cut, since Apple added them after the baseline;
+ * our headers do NOT declare them: `NSCoder.h` mentions `-encodeCGPoint:forKey:` in a COMMENT and declares
+   nothing, which is why `--check` reports no struck-name policy finding and the ledger's `method` line reads
+   `shipped 1760 open 31 struck 423` with nothing flagged;
+ * and yet the library IMPLEMENTS them and `foundation_coder` ASSERTS them, on the ground its own comment gives
+   (this tree's NSGeometry typedefs make the CG and NS spellings the same type). So a door that the ledger and
+   the headers both put OUT is implemented and tested. Whether to declare + un-strike, or to stop implementing,
+   is a decision for the ledger's owner - not a thing to settle inside a coverage pass.
