@@ -27917,3 +27917,36 @@ probe proved it" apart.
 
 State: **2,502 shipped selector rows — asserted 46, named 598, uncovered 1,851 distinct**, baseline current,
 `--check` clean, and the inert advisory still six rows (the filter added none).
+
+**§63.247b — THE VALUE FAMILY IS GUEST-VERIFIED, AND THE RUN FOUND FIVE PRE-EXISTING FALSE EXCLUSIONS
+(2026-10-04).** The NSNumber pass (`cb51473c`, 33 claims) was verified on the guest: 33 `COVERS` lines printed
+and `FOUNDATION-VALUE RESULT ok=31 fail=0`, case `TESTS-OK 1/1, 6/6`. **Asserted tier: 19 -> 46** of 2,502
+shipped selector rows.
+
+**AND THE FIRST RUN OF THAT CASE WAS RED — NOT BECAUSE OF THE CLAIMS.** The two failures were the probe's own
+inventory checks, and every offending entry was already in the file before the change (`git show cb51473c~1`
+finds them). Five selectors sat in `excluded` arrays as "deliberately not shipped" while the LEDGER ships them
+and the library implements them: NSData's `+dataWithContentsOfMappedFile:`, `-initWithContentsOfMappedFile:`,
+`-getBytes:` and NSDate's `-addTimeInterval:`, `+dateWithString:`. They were filed under *"Deprecated by Cocoa
+itself"* — **a ground RETIRED on 2026-09-26**, which is why §11's D7 already lists exactly these names as
+**kind (A): work items, "OWED rather than tolerated."** An `excluded` entry is a CLAIM about the tree, and the
+probe was announcing the claim failing out loud.
+
+**AND A SECOND DEFECT, WHICH IS WHY ONE HID.** The `excluded` loop asked only an INSTANCE
+(`[probe respondsToSelector:]`), so an entry naming a CLASS method could NEVER fire — and
+`+dataWithContentsOfMappedFile:` is a class method, so it never appeared in the failure list at all. The loop
+now consults the class table too. **A check that cannot see one shape of the thing it checks is not a weaker
+check, it is a silent one** — and this is the second time in this campaign that an instrument's blind spot, not
+the code, was the thing to fix (the first was `--bridged`'s text scan reading prose as a claim).
+
+**AND THE FIX WAS CHECKED AGAINST THE LEDGER RATHER THAN ONE ENTRY AT A TIME**, because a loop that makes old
+entries visible can keep producing reds forever. Every entry in all three of this probe's `excluded` arrays was
+tested: only two were violations, and the rest are correct for reasons now written into the file — NSNumber's
+eight are NSValue's methods (kind (C), another class's surface), NSDate's `dateWithNaturalLanguageString:` pair
+is genuinely owed and needs a parser (kind (B), ledger rows `open`), and NSDate's `dateByAddingComponents:`
+pair belongs to NSCalendar. One STALE REASON was replaced by a measurement: `-initWithString:` STAYS excluded
+(NSDate.h/.m neither declare nor implement it and the instance does not answer it) but no longer claims to have
+been "removed from Cocoa's documented API", which is not a ground this project has.
+
+**THE RULE THIS COST:** an `excluded` array is a claim about the tree, so a selector the ledger SHIPS must never
+appear in one — and the pass that checks that is the same pass that checks the claims.
