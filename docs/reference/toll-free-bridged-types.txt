@@ -11,6 +11,16 @@
 # and CFNumberRef both bridge to NSNumber). This file is a TRANSCRIPTION, not a generated artefact, which is
 # why the URL is here and why re-fetching is manual: re-diff it whenever the campaign's scope is revisited.
 #
+# AND THIS FILE IS THE SCOPE, BY USER DECISION (2026-10-04): "We will only toll-free bridge what Apple does."
+# The twenty-six rows below are therefore the whole of what a bridge in this tree may reach. A class that is
+# not in this file is NOT BRIDGED, even when a CF type with a similar name exists — NSRunLoop is Apple's own
+# example, refused in prose by the very document this table comes from. The reverse direction is progress
+# rather than a defect: the rows not yet bridged are the campaign's work list.
+#
+#   ENFORCED BY: tools/foundation-sweep.py --bridged — it fails if this library registers a class Apple does
+#   not list (registration is the `_FNXBridgeClass(` sites, which are also what the type lookup answers
+#   from), and it prints the unbridged rows as the list. It does NOT fail for an unbridged row.
+#
 # TWO READING RULES THAT MATTER MORE THAN THE ROWS DO:
 #
 #  1. THE TABLE IS CLASSES ONLY, AND BRIDGING IS ABOUT IDENTITY RATHER THAN LAYOUT. A bridged pair is ONE

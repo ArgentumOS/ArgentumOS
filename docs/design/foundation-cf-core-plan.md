@@ -155,6 +155,24 @@ clean-room: from the Apache port's own remnants (`__CFRuntimeBase`, `_cfisa`, th
 `__CFStringClass` references), from the measurements in §3, and from the behaviour the existing
 probes already assert. The standing grant for Apple's *public headers* is NOT extended here.
 
+**D9 — THE BRIDGED SET IS APPLE'S TABLE 1, EXACTLY (user decision, 2026-10-04: "We will only toll-free
+bridge what Apple does").** Apple publishes the list — Table 1 of *Toll-Free Bridged Types* — and it is
+transcribed at `docs/reference/toll-free-bridged-types.txt`. **26 CF types, 25 NS classes, and nothing else
+is in scope:**
+
+* **NOT BRIDGED: `NSRunLoop`** — which Apple refuses in prose (*"NSRunLoop is not toll-free bridged to
+  CFRunLoop"*) — **`NSOrderedSet`, `NSCountedSet`, `NSEnumerator`, `NSSortDescriptor`.** They may still be
+  SHIPPED as classes; this decision is about which classes are CF-backed, and §7's M4 and M5 listed four of
+  them as bridged work, which was wrong.
+* **AND A STRUCT IS NOT A BRIDGED TYPE AT ALL.** The table is classes, and bridging is IDENTITY — one object
+  under two names. `CFRange`/`NSRange` are two VALUES with the same layout, so "toll-free bridging a range"
+  is a category error in Apple's terms; a range gets a LAYOUT PROOF plus checked converters, and that
+  question is closed in that direction rather than left open.
+* **ENFORCED, NOT ASSERTED: `tools/foundation-sweep.py --bridged`** fails if this library registers a class
+  Apple does not list, and reports the table's unbridged classes as the work list. Registration is the
+  instrument because it is also what the type lookup answers from — `_FNXBridgeClass(` is the one place a
+  class becomes CF-backed, so "did we bridge only what Apple does" is a grep rather than a judgement.
+
 ## 6. The bridging problem, stated honestly
 
 On Darwin a bridged object *is* an ObjC object, and the header says so:
@@ -518,10 +536,15 @@ CF-backed strings.
 **M3 — NSString and the string cluster (5,569 lines, the largest single step).** Includes the
 converter/repertoire tables that unblock `-dataUsingEncoding:`.
 
-**M4 — The collections**: NSArray, NSDictionary, NSSet, NSOrderedSet, NSCountedSet, NSEnumerator.
+**M4 — The collections, and ONLY the bridged ones (D9)**: NSArray, NSDictionary, NSSet — plus their
+`NSMutable*` forms, which Apple bridges too (CFMutableArrayRef ↔ NSMutableArray, and six more, and the
+archived library implemented each one inside its immutable sibling's file). STRUCK from this milestone by D9,
+because Apple bridges none of them: **NSOrderedSet, NSCountedSet, NSEnumerator.**
 
-**M5 — The value and service types**: NSNumber, NSData, NSDate, NSURL, NSError, NSLocale,
-NSTimeZone, NSCharacterSet, NSInputStream, NSRunLoop, NSCalendar.
+**M5 — The value and service types: Apple's whole remaining table (D9)**: NSNumber, NSData, NSDate, NSURL,
+NSError, NSLocale, NSTimeZone, NSCharacterSet, NSInputStream, **NSOutputStream**, **NSTimer**, **NSNull**,
+NSCalendar, **NSAttributedString** (+ its mutable form). STRUCK by D9: **NSRunLoop**, and note Apple's own
+prose refuses it — *"NSRunLoop is not toll-free bridged to CFRunLoop."*
 
 **M6 — Expose and track**: D7's staging, sweep and ledger, plus the differential oracle (§8).
 
