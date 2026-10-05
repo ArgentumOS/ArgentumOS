@@ -27996,3 +27996,30 @@ that text is EVIDENCE:**
    for. Stated for what it is: the fix changed NO number that day (126/529/1840 either way), because the
    examples name selectors that are genuinely claimed elsewhere. Defensive, and the difference between a rule
    and a coincidence.
+
+**§63.247e — THE STRING FAMILY'S SECOND TRANCHE, AND THE THIRD VARIANT OF THE COUNTING MISTAKE (2026-10-04).**
+The line-*, set-search-*, common-prefix-* and percent-* blocks (43 claims) plus three already-read behavioural
+checks (locale-current, charset-bitmap-and-planes, charset-illegal) - 55 claims in all, giving **147 across
+the string probe**. Guest: **all 167 checks ok, `FOUNDATION-STRING RESULT ok=167 fail=0`, `TESTS-OK 1/1, 6/6`**,
+every claim printed.
+
+**Measured: asserted 126 -> 141, named 518, uncovered 1,851 -> 1,836 distinct.** Running total: **141 of 2,502
+shipped selector rows proved**, across three families.
+
+**AND A CORRECTION TO THIS UNIT'S OWN COMMIT MESSAGE, which is a NEW VARIANT of a mistake this campaign has now
+made three times.** `ab2c44d8`'s message says the tier went "126 -> 131". That number WAS measured - after the
+first of the two claim batches - but the commit contains BOTH batches, whose measured end state is 141. So the
+message quotes a measurement of a state that is not the state it committed: not head-arithmetic this time (both
+numbers were read from the instrument), but a reading taken at the WRONG MOMENT. The rule therefore grows a
+clause: **quote the instrument's number for the state you are committing, not merely a number the instrument
+produced in this session.** The first two variants were sums done in the head (§63.247, §63.247a); this one is
+the first that was measured and still wrong.
+
+**AND FOUR MORE ROWS LEFT THE WORK LIST, of the same exercised-but-unnamed kind**:
+`getLineStart:end:contentsEnd:forRange:`, `lineRangeForRange:`, `enumerateLinesUsingBlock:`,
+`rangeOfCharacterFromSet:` (with its option forms), `commonPrefixWithString:options:` and the two percent doors
+- all CALLED by these probes with message sends that name nothing, so the `named` tier could not see them.
+
+**NOT claimed, deliberately, in the same region:** `locale-api-complete` and `characterset-api-complete` assert
+that the SELECTORS EXIST, not that anything behaves. Claiming those would be exactly the vacuity the tier
+exists to prevent, so they stay `named` - and that distinction is the whole reason the tier has three levels.
