@@ -2830,6 +2830,7 @@ NULL
 		      [[NSString stringWithFormat:@"length=%lu allEqual=%d units=%04x/%04x/%04x/%04x",
 			(unsigned long)[s length], allEqual,
 			(unsigned)units[0], (unsigned)units[1], (unsigned)units[2], (unsigned)units[3]] UTF8String]);
+	covers("NSString", "getCharacters:");
 	}
 
 	{
@@ -3102,9 +3103,11 @@ NULL
 			      [resolved isEqualToString:@"link-63-48-target.txt"],
 			      [[NSString stringWithFormat:@"a symlink resolves to its REFERENT (got %@) — the lexical "
 						@"rule would have answered link-63-48.txt", resolved] UTF8String]);
+	covers("NSString", "stringByResolvingSymlinksInPath");
 		} else {
 			check("symlink-resolution-follows-a-real-link", 0,
 			      "could not create the symlink this check needs");
+	covers("NSString", "stringByResolvingSymlinksInPath");
 		}
 
 		/* AND THE UNRESOLVABLE PATH IS THE DOCUMENTED FAILURE: UNCHANGED, which is the lexical answer. */
@@ -3686,6 +3689,26 @@ NULL
 			(unsigned long)pairWhole.location, (unsigned long)pairWhole.length] UTF8String]);
 		covers("NSString", "rangeOfComposedCharacterSequenceAtIndex:");
 		covers("NSString", "rangeOfComposedCharacterSequencesForRange:");
+	}
+
+	{
+		/* NEW ASSERTION: THE CLASS-SIDE VALIDATED-FORMAT DOOR, the sibling of the instance family asserted
+		 * above. One rule through both: the specifier list is a whitelist, so a listed specifier renders as
+		 * the unvalidated door would and an unlisted one is refused WITH the error. The numbers are that
+		 * check's own, so the two doors are required to AGREE rather than each to be plausible. */
+		NSError *okErr = nil, *badErr = nil;
+		NSString *good = [NSString stringWithValidatedFormat:@"%d and %@" validFormatSpecifiers:@"%d %@"
+							       error:&okErr, 42, @"text"];
+		NSString *bad = [NSString stringWithValidatedFormat:@"%d and %@" validFormatSpecifiers:@"%d"
+							      error:&badErr, 42, @"text"];
+
+		check("class-validated-format-door-shares-the-rule",
+		      good != nil && [good isEqualToString:@"42 and text"] && good.length == 11 && okErr == nil &&
+		      bad == nil && badErr != nil && [badErr.domain isEqualToString:@"NSCocoaErrorDomain"],
+		      [[NSString stringWithFormat:@"good=%@ (%lu) okErr=%@ bad=%@ badErr=%@", good,
+			(unsigned long)good.length, okErr != nil ? [okErr description] : @"(none)", bad,
+			badErr != nil ? [badErr description] : @"(none)"] UTF8String]);
+		covers("NSString", "stringWithValidatedFormat:validFormatSpecifiers:error:");
 	}
 
 	printf("FOUNDATION-STRING RESULT ok=%d fail=%d\n", okc, failc);

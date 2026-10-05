@@ -28244,3 +28244,22 @@ the other's question, and I compared them as if they were the same one. What is 
 (a failure message and a format string were among its three false positives), and the tool's own queue is
 authoritative for the thing this campaign measures. **TWO INSTRUMENTS, TWO QUESTIONS - say which question is
 being asked before comparing their answers.**
+
+**§63.247p — THREE MALFORMED QUERIES OF MINE, AND AN OPEN LEDGER ROW (2026-10-04).** All three were the same
+fault: I asked a file a question in a shape it does not have, and believed the empty answer.
+ 1. `grep -P "^NSString\t" docs/reference/foundation-selector-surface.txt` - the surface file's FIRST field is
+    the KIND (`method`/`property`) and the owner is FOURTH, so that pattern can never match. It made me report
+    that ledger rows "do not exist" when they did. (Two turns earlier I had parsed the same file correctly in
+    Python, field by field - the bug was in the ad-hoc grep, not the knowledge.)
+ 2. Attributing a call site to the check that CONTAINS it: I searched BACKWARD for the nearest `check("`, but a
+    check's call comes AFTER its setup, so the nearest one above a call site belongs to the PREVIOUS block. Line
+    3099 (`stringByResolvingSymlinksInPath`) was attributed to `getcstring-range-form-converts-the-range` when
+    the right answer is `symlink-resolution-follows-a-real-link` at 3101. Search FORWARD.
+ 3. Grepping `.m` files only, then concluding a name is not in the tree. `absolutePath` is a PROPERTY row in the
+    ledger (`property shipped absolutePath NSString ...`), so a `^- (id)absolutePath` method pattern missed it.
+
+**THE OPEN ROW: `NSString -absolutePath` is `shipped` in the surface and has NO declaration in our headers and NO
+definition anywhere in the library** (grep over `userland/Foundation/*.m` and `*.h`: nothing), while
+`foundation-sweep --unimplemented` reports `0 NEW, 1 baselined`. So the sweep does not see it - its universe is
+our headers' declarations, and this row is declared nowhere. It needs a decision, not a grep: strike the row as a
+ledger error, or declare and implement the door. It is recorded here rather than quietly claimed.

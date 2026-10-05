@@ -738,6 +738,7 @@ int main(void)
 		}
 		check("plist-serialization", complete && behaviour,
 		      "the NSPropertyListSerialization inventory, a round trip through the public endpoints, -propertyList, and the refusal of an unknown element");
+	covers("NSString", "propertyList");
 	}
 
 	{
