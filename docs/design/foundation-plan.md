@@ -27885,3 +27885,11 @@ manufacture evidence: correct a claim by READING the check, never by pattern.**
 **NEXT.** The collection probe carries ~62 further checks (`dict-views`, `array-blocks`, the plist and NSCoding
 doors, `set-construction`, the indexset forms), then the same pass over `foundation_value` (NSNumber: 50 of 51
 selectors already named — the cheapest large win in the tree) and `foundation_string` (166 rows).
+
+**THE UNIVERSE, DECIDED (user, 2026-10-04): IT STAYS THE LEDGER.** The alternative — a second source for names
+a class implements but the ledger does not carry — was offered and DECLINED, so the gate keeps its exact link
+to Apple's documented surface and the inert claims named above stay inert PERMANENTLY. That consequence is now
+part of the tool's output rather than a footnote here: `--check` PRINTS every inert claim as
+`covers("<Class>", "<selector>")` and counts it for nothing, because an inert claim sitting in a probe's
+source otherwise looks exactly like counted coverage. Reading one is still "this gate cannot express it" —
+not "proved", and not "unproven" either; the assertion behind it may be perfectly real.

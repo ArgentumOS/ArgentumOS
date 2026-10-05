@@ -201,6 +201,21 @@ def main(argv):
         print("  NEW UNCOVERED      %-30s %s — a shipped selector with no test touching it" % (owner, sel))
     for owner, sel in gone:
         print("  STALE BASELINE ROW %-30s %s — it is covered now, or no longer shipped; drop the row" % (owner, sel))
+    # INERT CLAIMS ARE REPORTED, NOT IGNORED. THE UNIVERSE IS THE LEDGER (user decision, 2026-10-04), so a
+    # claim that names a row the ledger does not carry can never count — `-isEqual:`, `-hash` and `-copy` are
+    # the usual ones, because the ledger tracks them under NSObject/NSString rather than under every class
+    # that answers them. The probe's assertion behind such a claim is real; this gate simply cannot see it.
+    # PRINTING THEM IS THE POINT: an inert claim in a probe's source otherwise looks exactly like counted
+    # coverage, and the honest reading of one is "this gate cannot express it" — never "proved", and never
+    # "unproven" either. Reported, and NOT fatal: the decision is about the gate's universe, not a defect in
+    # the probe that made the claim.
+    shipped_pairs = {(o, s) for o, s, _k, _n, _t in rows}
+    inert = sorted({(o, s) for o, s in evidence()[0] if (o, s) not in shipped_pairs})
+    if inert:
+        print("  INERT CLAIM (%d) — a probe claims it and the ledger ships no such row, so it counts for"
+              " nothing here (the assertion behind it may still be real; this gate cannot see it):" % len(inert))
+        for owner, sel in inert:
+            print('     covers("%s", "%s")' % (owner, sel))
     report(rows)
     return 1 if (new or gone) else 0
 
