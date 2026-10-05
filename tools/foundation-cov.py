@@ -16,10 +16,9 @@ proof of divergence.
 
 THREE TIERS, AND THE MIDDLE ONE IS DELIBERATELY WEAK:
 
-  asserted  a probe CLAIMS it, and the claim can only be made beside an assertion that held:
-                covers("NSArray", "objectAtIndex:", someAssertion);
-            which prints `COVERS NSArray objectAtIndex:`. A literal `COVERS <Class> <selector>` line in a
-            probe's text counts too, for a probe that has no helper. THE ONLY TIER THAT MEANS PROVED.
+  asserted  a probe CLAIMS it beside an assertion that HELD: covers("NSArray", "objectAtIndex:"). It takes no
+            condition of its own - check() records its result and covers() prints only when that result was
+            true - so a claim CANNOT be printed beside a failed assertion. THE ONLY TIER THAT MEANS PROVED.
   named     the probe NAMES the selector — `@selector(objectAtIndex:)`, or a string literal equal to it,
             which is how the inventory arrays are written. The probe touches it. That is NOT a claim that
             anything is asserted about it, and every report says so in those words.
@@ -52,8 +51,11 @@ LEDGER = os.path.join(ROOT, "docs/reference/foundation-selector-surface.txt")
 BASELINE = os.path.join(ROOT, "docs/reference/foundation-coverage.txt")
 TESTDIRS = (os.path.join(ROOT, "userland/tests"),)
 
-# The two ways a probe can claim a selector, both literal enough to be audited by eye.
-CLAIM_LITERAL_RE = re.compile(r"COVERS\s+([A-Za-z_][A-Za-z0-9_]*)\s+([A-Za-z_][A-Za-z0-9_]*:?)")
+# THE ONE WAY A PROBE CAN CLAIM A SELECTOR: the covers() call. A SECOND FORM - scanning a probe's text for a
+# literal `COVERS <Class> <selector>` - was written first and REMOVED after it read PROSE as a claim: this
+# directory contains the phrase "COVERS HALF OF ...", and the instrument invented covers("HALF", "OF") out of
+# a sentence. That is the trap this tree's sweep has already recorded once (a comment that spells the keyword
+# steals the attribution), and the answer is the same: make the claim exactly one auditable call shape.
 CLAIM_HELPER_RE = re.compile(r'\bcovers\s*\(\s*"([A-Za-z_][A-Za-z0-9_]*)"\s*,\s*"([A-Za-z_][A-Za-z0-9_]*:?)"')
 # A selector NAMED in probe text: @selector(x:) , or a whole string literal that is exactly a selector.
 SEL_RE = re.compile(r"@selector\s*\(\s*([A-Za-z_][A-Za-z0-9_]*:?)")
@@ -91,7 +93,7 @@ def evidence():
                     continue
                 with open(os.path.join(dirpath, name), encoding="utf-8", errors="replace") as fh:
                     text = fh.read()
-                for owner, sel in CLAIM_LITERAL_RE.findall(text) + CLAIM_HELPER_RE.findall(text):
+                for owner, sel in CLAIM_HELPER_RE.findall(text):
                     asserted.add((owner, sel))
                     asserted.add((owner, sel.rstrip(":")))
                 for sel in SEL_RE.findall(text) + LIT_RE.findall(text):
@@ -127,6 +129,21 @@ def baseline():
                 if len(p) >= 2:
                     keys.add((p[0], p[1]))
     return keys
+
+
+def written_claims():
+    """The (class, selector) pairs AS WRITTEN in the probes. NOT classify()'s matching set, which also carries
+    each selector with its colon stripped: an advisory fed that set called a perfectly good claim inert, and a
+    noisy advisory is worse than none - it trains the reader to ignore the real ones."""
+    pairs = set()
+    for d in TESTDIRS:
+        for dirpath, _dirs, names in os.walk(d):
+            for name in sorted(names):
+                if not name.endswith((".m", ".c")):
+                    continue
+                with open(os.path.join(dirpath, name), encoding="utf-8", errors="replace") as fh:
+                    pairs |= set(CLAIM_HELPER_RE.findall(fh.read()))
+    return pairs
 
 
 def tiers(rows):
@@ -210,7 +227,7 @@ def main(argv):
     # "unproven" either. Reported, and NOT fatal: the decision is about the gate's universe, not a defect in
     # the probe that made the claim.
     shipped_pairs = {(o, s) for o, s, _k, _n, _t in rows}
-    inert = sorted({(o, s) for o, s in evidence()[0] if (o, s) not in shipped_pairs})
+    inert = sorted({(o, s) for o, s in written_claims() if (o, s) not in shipped_pairs})
     if inert:
         print("  INERT CLAIM (%d) — a probe claims it and the ledger ships no such row, so it counts for"
               " nothing here (the assertion behind it may still be real; this gate cannot see it):" % len(inert))
