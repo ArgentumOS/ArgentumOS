@@ -51,9 +51,11 @@
 @end
 
 static int okc, failc;
+static int lastcheck;
 
 static void check(const char *name, int ok, const char *detail)
 {
+	lastcheck = ok;	/* read by covers(): a claim can only follow an assertion that held */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-VALUE %s ok\n", name);
@@ -62,6 +64,26 @@ static void check(const char *name, int ok, const char *detail)
 		printf("FOUNDATION-VALUE %s FAIL %s\n", name, detail ? detail : "");
 	}
 }
+
+/*
+ * covers("NSNumber", "intValue") — THE BEHAVIOURAL CLAIM, and it piggybacks on the check above it.
+ *
+ * WHY IT TAKES NO CONDITION OF ITS OWN: it reports the result of the LAST check(), so an assertion that
+ * FAILED cannot produce a claim. That is what lets tools/foundation-cov.py read `asserted` as PROVED while
+ * `named` is only touched, and it is why the gate fails on a shipped selector that nothing claims.
+ *
+ * AND IT IS ONLY PLACED WHERE THE LEDGER SHIPS THE ROW: a claim for a selector the ledger tracks under
+ * another owner (NSNumber's -isEqual:, -hash - they belong to NSObject/NSString there) is INERT - it would
+ * count for nothing and show up in the gate's inert advisory as noise. The claims below were filtered
+ * against the ledger, so every one of them moves a real number.
+ */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* A nil NEEDLE ON PURPOSE: the check below asks -rangeOfData: about one to see the answer.
  * Fetching it says so; a literal at the call site would be a -Wnonnull finding of its own. */
@@ -85,6 +107,14 @@ int main(void)
 		      [yes boolValue] == YES &&
 		      [[NSNumber numberWithBool:NO] boolValue] == NO,
 		      "every scalar conversion agrees");
+	covers("NSNumber", "numberWithInt:");
+	covers("NSNumber", "numberWithDouble:");
+	covers("NSNumber", "numberWithBool:");
+	covers("NSNumber", "intValue");
+	covers("NSNumber", "longLongValue");
+	covers("NSNumber", "unsignedLongLongValue");
+	covers("NSNumber", "boolValue");
+	covers("NSNumber", "doubleValue");
 	}
 
 	{
@@ -98,6 +128,8 @@ int main(void)
 		      ![one isEqual:two] && ![one isEqual:@"1"] &&
 		      [one isEqual:one],
 		      "1 == 1.0 with equal hashes; 1 != 2; 1 != an NSString");
+	covers("NSNumber", "numberWithInt:");
+	covers("NSNumber", "numberWithDouble:");
 	}
 
 	{
@@ -108,6 +140,8 @@ int main(void)
 		      [small compare:big] == -1 && [big compare:small] == 1 &&
 		      [small compare:[NSNumber numberWithInt:1]] == 0,
 		      "-compare: returns -1/0/1");
+	covers("NSNumber", "compare:");
+	covers("NSNumber", "numberWithInt:");
 	}
 
 	{
@@ -282,6 +316,27 @@ int main(void)
 		      [[NSNumber numberWithInt:-1]
 		          isEqual:[NSNumber numberWithUnsignedLongLong:18446744073709551615ull]],
 		      "the matrix converts and -objCType reports the CREATION type");
+	covers("NSNumber", "numberWithChar:");
+	covers("NSNumber", "charValue");
+	covers("NSNumber", "numberWithShort:");
+	covers("NSNumber", "shortValue");
+	covers("NSNumber", "numberWithLong:");
+	covers("NSNumber", "longValue");
+	covers("NSNumber", "numberWithInteger:");
+	covers("NSNumber", "integerValue");
+	covers("NSNumber", "numberWithUnsignedInt:");
+	covers("NSNumber", "unsignedIntValue");
+	covers("NSNumber", "numberWithUnsignedLongLong:");
+	covers("NSNumber", "unsignedLongLongValue");
+	covers("NSNumber", "numberWithUnsignedInteger:");
+	covers("NSNumber", "unsignedIntegerValue");
+	covers("NSNumber", "numberWithUnsignedShort:");
+	covers("NSNumber", "unsignedShortValue");
+	covers("NSNumber", "numberWithFloat:");
+	covers("NSNumber", "floatValue");
+	covers("NSNumber", "numberWithBool:");
+	covers("NSNumber", "boolValue");
+	covers("NSNumber", "stringValue");
 	}
 
 
