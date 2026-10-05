@@ -28175,3 +28175,16 @@ the PREVIOUS command's output, one line above the fresh one).** All three were a
 `foundation-cov --check` line is printed by the very command that commits, so the number to quote is on screen
 at that moment and nowhere else. The rule is mechanical enough to be a rule: a number in a message comes from
 the same shell command as the commit, never from an earlier one.
+
+**§63.247l — THE MESSAGE FORM THAT SATISFIES BOTH MESSAGE RULES (2026-10-04).** §63.247g said "quote the
+delimiter, or write the message to a file"; §63.247k said "the number must come from the same command as the
+commit". FOLLOWING EITHER ALONE CAUSED A FAULT: c8e91d9e's heredoc was left UNQUOTED so `$NUM` would expand - and
+the same unquoting let the shell RUN a backticked `is` in the prose, which it substituted away (twice, on
+stderr). The session's message faults are now three, all of one of two shapes: a backtick a shell can run, or a
+number quoted from the wrong moment.
+
+**THE FORM THAT SATISFIES BOTH: GENERATE THE MESSAGE WITH A TOOL THAT TAKES THE NUMBER AS DATA.** Write it with
+python (or `printf`), reading the count from `foundation-cov --check` and pasting it in; the prose is then never
+left for a shell to read, and the number is from the same command as the commit by construction. This message
+was written that way. It is one line of shell more than a heredoc and it removes both fault shapes at once -
+which is the same trade this campaign keeps making: a mechanism instead of a reminder.
