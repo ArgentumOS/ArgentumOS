@@ -218,10 +218,12 @@ int main(void)
 		      [vend count] == 1 && [vend objectAtIndex:0] == service,
 		      [NSString stringWithFormat:@"count=%lu vend=%p service=%p", (unsigned long)[vend count],
 			(vend && [vend count]) ? [vend objectAtIndex:0] : nil, (void *)service]);
+	covers("NSConnection", "localObjects");
 		[c setRootObject:nil];
 		check("connection-local-objects-follow-the-root-object",
 		      [[c localObjects] count] == 0,
 		      [NSString stringWithFormat:@"after-clearing=%lu", (unsigned long)[[c localObjects] count]]);
+	covers("NSConnection", "localObjects");
 	}
 
 
@@ -264,16 +266,19 @@ int main(void)
 		check("connection-default-connection-is-the-same-one-twice",
 		      d1 != nil && d1 == d2,
 		      [NSString stringWithFormat:@"first=%p second=%p", (void *)d1, (void *)d2]);
+	covers("NSConnection", "defaultConnection");
 		check("connection-statistics-reports-its-own-state",
 		      [[before objectForKey:@"NSConnectionRequestModeCount"] intValue] == 1 &&
 		      [[after objectForKey:@"NSConnectionRequestModeCount"] intValue] == 2 &&
 		      [[after objectForKey:@"NSConnectionIsValid"] boolValue] &&
 		      [[after objectForKey:@"NSConnectionIsWaitingForReply"] boolValue] == NO,
 		      [NSString stringWithFormat:@"before=%@ after=%@", before, after]);
+	covers("NSConnection", "statistics");
 		check("connection-statistics-values-are-numbers",
 		      [[before objectForKey:@"NSConnectionRequestModeCount"] isKindOfClass:[NSNumber class]] &&
 		      [[before objectForKey:@"NSConnectionIsValid"] isKindOfClass:[NSNumber class]],
 		      @"the property's own type is a dictionary of numbers");
+	covers("NSConnection", "statistics");
 	}
 
 
@@ -293,12 +298,16 @@ int main(void)
 		check("connection-request-timeout-round-trips",
 		      [c requestTimeout] == 12.5,
 		      [NSString stringWithFormat:@"timeout=%g", (double)[c requestTimeout]]);
+	covers("NSConnection", "requestTimeout");
 		check("connection-conversation-queueing-round-trips",
 		      [c independentConversationQueueing],
 		      [NSString stringWithFormat:@"queueing=%d", (int)[c independentConversationQueueing]]);
+	covers("NSConnection", "independentConversationQueueing");
 		check("connection-multiple-threads-is-a-one-way-latch",
 		      [c multipleThreadsEnabled],
 		      [NSString stringWithFormat:@"enabled=%d", (int)[c multipleThreadsEnabled]]);
+	covers("NSConnection", "multipleThreadsEnabled");
+	covers("NSConnection", "enableMultipleThreads");
 		check("connection-request-modes-are-a-set-that-keeps-order",
 		      [[c requestModes] count] == 2 &&
 		      [[[c requestModes] objectAtIndex:0] isEqualToString:@"NSDefaultRunLoopMode"] &&
@@ -338,6 +347,10 @@ int main(void)
 		      [serving receivePort] != nil && published != nil,
 		      @"the connection answers for its root object, and the name it was made with resolves through the "
 		      @"default name server");
+	covers("NSConnection", "serviceConnectionWithName:rootObject:");
+	covers("NSConnection", "rootObject");
+	covers("NSConnection", "valid");
+	covers("NSConnection", "receivePort");
 	}
 
 	{
@@ -346,6 +359,7 @@ int main(void)
 		check("a-client-gets-a-proxy-for-the-published-name",
 		      proxy != nil && [proxy connectionForProxy] != nil,
 		      @"the name answers a proxy, and the proxy knows the connection it travels over");
+	covers("NSConnection", "rootProxyForConnectionWithRegisteredName:host:");
 
 		/* A CLIENT'S PROXY IS TOLD ITS PROTOCOL, which is what Apple's `-setProtocolForProxy:` is for and what
 		 * this library needs it for too: an invocation is built from a SIGNATURE, and nothing but the protocol
@@ -468,6 +482,7 @@ int main(void)
 		      [NSString stringWithFormat:@"+allConnections answered %lu connection(s) and the serving connection "
 			@"is %@ among them", (unsigned long)[all count],
 			([all containsObject:serving] ? @"one of them" : @"NOT one of them")]);
+	covers("NSConnection", "allConnections");
 
 		check("a-registered-name-answers-a-self-contained-connection-and-an-absent-one-answers-nil",
 		      found != nil && found != serving && [found receivePort] != nil && [found sendPort] != nil &&
@@ -477,6 +492,9 @@ int main(void)
 			[found receivePort] != nil ? @"yes" : @"no",
 			[found sendPort] != nil ? @"yes" : @"no",
 			absent == nil ? @"nil" : @"a connection"]);
+	covers("NSConnection", "connectionWithRegisteredName:host:");
+	covers("NSConnection", "receivePort");
+	covers("NSConnection", "sendPort");
 
 		check("a-connections-reply-timeout-defaults-to-60-and-round-trips",
 		      [found replyTimeout] == 60.0 && ([found setReplyTimeout:12.5], [found replyTimeout] == 12.5),
@@ -491,6 +509,7 @@ int main(void)
 		check("an-unregistered-name-answers-no-proxy",
 		      absent == nil,
 		      @"a name nobody published is not a connection, so there is no proxy for it");
+	covers("NSConnection", "rootProxyForConnectionWithRegisteredName:host:");
 
 		[serving invalidate];
 		check("invalidating-a-connection-posts-its-notification-and-withdraws-its-name",
@@ -498,6 +517,8 @@ int main(void)
 		      [[NSPortNameServer defaultPortNameServer] portForName:@"probe.echo"] == nil,
 		      [NSString stringWithFormat:@"isValid=%d, the die notification fired %d time(s), and the name now "
 			@"resolves to nothing", (int)[serving isValid], [watcher died]]);
+	covers("NSConnection", "invalidate");
+	covers("NSConnection", "valid");
 	}
 
 	{
