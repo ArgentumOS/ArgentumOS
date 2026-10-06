@@ -157,6 +157,8 @@ int main(void)
 		check("url-security-scoped-pair-answers-no",
 		      granted == NO && again == NO && [[s path] isEqualToString:@"/System"],
 		      [[NSString stringWithFormat:@"granted=%d again=%d path=%@", (int)granted, (int)again, [s path]] UTF8String]);
+	covers("NSURL", "startAccessingSecurityScopedResource");
+	covers("NSURL", "stopAccessingSecurityScopedResource");
 		check("url-security-scoped-stop-balances-nothing",
 		      [s isFileURL],
 		      [[NSString stringWithFormat:@"isFileURL=%d after an unbalanced stop", (int)[s isFileURL]] UTF8String]);

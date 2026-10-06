@@ -76,8 +76,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers(): a claim can only follow an assertion that held */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-URLRESOURCEVALUES %s ok\n", name);
@@ -87,6 +90,16 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		       detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSURL", "selector") — the behavioural claim, piggybacked on the check above it: no claim can be
+ * placed unless that check's condition actually held. */
+static void covers_(const char *owner, const char *selector)
+{
+	if (!lastcheck) return;
+	printf("COVERS %s %s\n", owner, selector);
+}
+#define covers(o, s) covers_(o, s)
+
 
 /* NULLABLE CONSTRUCTORS AND LOOKUPS ROUTED THROUGH `id`, which is this tier's rule for
  * -Werror=nullable-to-nonnull-conversion: `+fileURLWithPath:` and a dictionary lookup are both declared
@@ -339,8 +352,10 @@ int main(void)
 		      first == 10 && second == 10 && third == 20,
 		      [NSString stringWithFormat:@"read=%lld after-append=%lld after-remove=%lld",
 			first, second, third]);
+	covers("NSURL", "removeCachedResourceValueForKey:");
 		check("rv-removing-everything-clears-everything", fourth == 25,
 		      [NSString stringWithFormat:@"after-removeAll=%lld, disk says 25", fourth]);
+	covers("NSURL", "removeAllCachedResourceValues");
 	}
 
 	/* ---- A TEMPORARY VALUE IS NOT ON DISK ------------------------------------------------------ */
@@ -361,6 +376,7 @@ int main(void)
 			      [NSString stringWithFormat:@"temporary=%@ other=%lld after-nil=%lld",
 				value, fn_number_key(other, NSURLFileSizeKey),
 				fn_number_key(file, NSURLFileSizeKey)]);
+	covers("NSURL", "setTemporaryResourceValue:forKey:");
 		}
 	}
 
@@ -375,6 +391,8 @@ int main(void)
 		      value != nil && [value isEqual:fn_lookup(attributes, NSFileModificationDate)],
 		      [NSString stringWithFormat:@"url=%@ attributes=%@", value,
 			fn_lookup(attributes, NSFileModificationDate)]);
+	covers("NSURL", "getResourceValue:forKey:error:");
+	covers("NSURL", "resourceValuesForKeys:error:");
 	}
 
 	/* ---- W8 SLICE 6b: THE WRITE SIDE, WHERE THE REFUSAL IS A NO-OP ----------------------------- */
@@ -396,6 +414,7 @@ int main(void)
 		      ![afterWrite isEqual:beforeWrite],
 		      [NSString stringWithFormat:@"wrote=%d before=%@ after=%@ wanted=%@",
 			(int)wrote, beforeWrite, afterWrite, when]);
+	covers("NSURL", "setResourceValue:forKey:error:");
 
 		{
 			/* THE SAME FACT THROUGH THE OTHER DOOR, which is the whole point of a resource value. */
@@ -454,6 +473,7 @@ int main(void)
 		      applied && error == nil && [readBack isEqual:when] && fn_number_key(fresh, NSURLFileSizeKey) == 5,
 		      [NSString stringWithFormat:@"applied=%d error=%@ date=%@ size=%lld",
 			(int)applied, error, readBack, fn_number_key(fresh, NSURLFileSizeKey)]);
+	covers("NSURL", "setResourceValues:error:");
 
 		{
 			/* AND THE ONE ERROR SHAPE APPLE PUBLISHES, PRODUCED BY A WRITE THAT REALLY FAILED: the
