@@ -826,19 +826,19 @@ func	shipped	CGContextTranslateCTM	-	Opaque Types / Working with the Current Tra
 func	struck	CGConvertColorDataWithFormat	-	Reference / Functions	post-10.6	objc
 func	struck	CGCursorIsDrawnInFramebuffer	-	Services / Controlling the Mouse Cursor	x11-territory	objc
 func	struck	CGCursorIsVisible	-	Services / Controlling the Mouse Cursor	x11-territory	objc
-func	open	CGDataConsumerCreate	-	Opaque Types / Creating Data Consumers	-	objc
-func	open	CGDataConsumerCreateWithCFData	-	Opaque Types / Creating Data Consumers	-	objc
-func	open	CGDataConsumerCreateWithURL	-	Opaque Types / Creating Data Consumers	-	objc
-func	open	CGDataConsumerGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
-func	open	CGDataConsumerRelease	-	Opaque Types / Retaining and Releasing Data Consumers	-	objc
-func	open	CGDataConsumerRetain	-	Opaque Types / Retaining and Releasing Data Consumers	-	objc
+func	shipped	CGDataConsumerCreate	-	Opaque Types / Creating Data Consumers	-	shipped with the callback families (§18)
+func	shipped	CGDataConsumerCreateWithCFData	-	Opaque Types / Creating Data Consumers	-	shipped with the callback families (§18)
+func	shipped	CGDataConsumerCreateWithURL	-	Opaque Types / Creating Data Consumers	-	shipped with the callback families (§18)
+func	shipped	CGDataConsumerGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	shipped with the callback families (§18)
+func	shipped	CGDataConsumerRelease	-	Opaque Types / Retaining and Releasing Data Consumers	-	shipped with the callback families (§18)
+func	shipped	CGDataConsumerRetain	-	Opaque Types / Retaining and Releasing Data Consumers	-	shipped with the callback families (§18)
 func	shipped	CGDataProviderCopyData	-	Opaque Types / Getting Data from a Data Provider	-	objc
-func	open	CGDataProviderCreateDirect	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
-func	open	CGDataProviderCreateSequential	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
+func	shipped	CGDataProviderCreateDirect	-	Opaque Types / Creating Direct-Access Data Providers	-	shipped with the callback families (§18)
+func	shipped	CGDataProviderCreateSequential	-	Opaque Types / Creating Sequential-Access Data Providers	-	shipped with the callback families (§18)
 func	shipped	CGDataProviderCreateWithCFData	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 func	shipped	CGDataProviderCreateWithData	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 func	shipped	CGDataProviderCreateWithFilename	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
-func	open	CGDataProviderCreateWithURL	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
+func	shipped	CGDataProviderCreateWithURL	-	Opaque Types / Creating Direct-Access Data Providers	-	shipped with the callback families (§18)
 func	struck	CGDataProviderGetInfo	-	Reference / Functions	after-10.6	objc
 func	shipped	CGDataProviderGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGDataProviderRelease	-	Opaque Types / Retaining and Releasing Data Providers	-	objc
@@ -1434,9 +1434,9 @@ struct	struck	CGColorBufferFormat	-	Reference / Structures	post-10.6	objc
 struct	struck	CGColorDataFormat	-	Reference / Structures	post-10.6	objc
 struct	struck	CGContentInfo	-	Structures	post-10.6	objc
 struct	struck	CGContentToneMappingInfo	-	Structures	post-10.6	objc
-struct	open	CGDataConsumerCallbacks	-	Opaque Types / Creating Data Consumers	-	objc
-struct	open	CGDataProviderDirectCallbacks	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
-struct	open	CGDataProviderSequentialCallbacks	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
+struct	shipped	CGDataConsumerCallbacks	-	Opaque Types / Creating Data Consumers	-	shipped with the callback families (§18)
+struct	shipped	CGDataProviderDirectCallbacks	-	Opaque Types / Creating Direct-Access Data Providers	-	shipped with the callback families (§18)
+struct	shipped	CGDataProviderSequentialCallbacks	-	Opaque Types / Creating Sequential-Access Data Providers	-	shipped with the callback families (§18)
 struct	struck	CGDeviceColor	-	Reference / Structures	x11-territory	objc
 struct	shipped	CGFunctionCallbacks	-	Opaque Types / Callbacks	-	objc
 struct	deferred	CGPSConverterCallbacks	-	Opaque Types / Callbacks	no-consumer	objc
@@ -1454,18 +1454,18 @@ typealias	struck	CGColorConversionInfoRef	-	Opaque Types	post-10.6	objc
 typealias	shipped	CGColorRef	-	Opaque Types	-	objc
 typealias	shipped	CGColorSpaceRef	-	Opaque Types	-	objc
 typealias	shipped	CGContextRef	-	Opaque Types	-	objc
-typealias	open	CGDataConsumerPutBytesCallback	-	Opaque Types / Creating Data Consumers	-	objc
-typealias	open	CGDataConsumerRef	-	Opaque Types	-	objc
-typealias	open	CGDataConsumerReleaseInfoCallback	-	Opaque Types / Creating Data Consumers	-	objc
-typealias	open	CGDataProviderGetBytePointerCallback	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
-typealias	open	CGDataProviderGetBytesAtPositionCallback	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
-typealias	open	CGDataProviderGetBytesCallback	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
+typealias	shipped	CGDataConsumerPutBytesCallback	-	Opaque Types / Creating Data Consumers	-	shipped with the callback families (§18)
+typealias	shipped	CGDataConsumerRef	-	Opaque Types	-	shipped with the callback families (§18)
+typealias	shipped	CGDataConsumerReleaseInfoCallback	-	Opaque Types / Creating Data Consumers	-	shipped with the callback families (§18)
+typealias	shipped	CGDataProviderGetBytePointerCallback	-	Opaque Types / Creating Direct-Access Data Providers	-	shipped with the callback families (§18)
+typealias	shipped	CGDataProviderGetBytesAtPositionCallback	-	Opaque Types / Creating Direct-Access Data Providers	-	shipped with the callback families (§18)
+typealias	shipped	CGDataProviderGetBytesCallback	-	Opaque Types / Creating Sequential-Access Data Providers	-	shipped with the callback families (§18)
 typealias	shipped	CGDataProviderRef	-	Opaque Types	-	objc
-typealias	open	CGDataProviderReleaseBytePointerCallback	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
+typealias	shipped	CGDataProviderReleaseBytePointerCallback	-	Opaque Types / Creating Direct-Access Data Providers	-	shipped with the callback families (§18)
 typealias	shipped	CGDataProviderReleaseDataCallback	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
-typealias	open	CGDataProviderReleaseInfoCallback	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
-typealias	open	CGDataProviderRewindCallback	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
-typealias	open	CGDataProviderSkipForwardCallback	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
+typealias	shipped	CGDataProviderReleaseInfoCallback	-	Opaque Types / Creating Sequential-Access Data Providers	-	shipped with the callback families (§18)
+typealias	shipped	CGDataProviderRewindCallback	-	Opaque Types / Creating Sequential-Access Data Providers	-	shipped with the callback families (§18)
+typealias	shipped	CGDataProviderSkipForwardCallback	-	Opaque Types / Creating Sequential-Access Data Providers	-	shipped with the callback families (§18)
 typealias	struck	CGDirectDisplayID	-	Services / Data Types	x11-territory	objc
 typealias	struck	CGDisplayBlendFraction	-	Services / Data Types	x11-territory	objc
 typealias	struck	CGDisplayConfigRef	-	Services / Data Types	x11-territory	objc

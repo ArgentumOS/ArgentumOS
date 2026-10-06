@@ -1459,6 +1459,12 @@ both the glyph's OWN paint and the rect (red 351, black 320).
 
 ## 17. The provider's callback forms: implemented, one check red, STASHED at `stash@{0}`
 
+**CORRECTED BELOW (see §18): THE CACHING WAS NEVER BROKEN.** The failing check was the PROBE's, not the
+library's — one materialisation of a 28-byte sequential source calls `getBytes` TWICE (once for the data,
+once to be told the source has ended, since a sequential source says "no more" by answering zero), and the
+check asserted an absolute 1. The readout `calls before/after=2/2` is what proved the source is NOT read
+again. Everything the stash message blamed is retired there.
+
 **THE UNIT IS WRITTEN AND BUILT, 17 OF ITS 18 CHECKS PASS, AND IT IS STASHED RATHER THAN COMMITTED** because
 one check is red and a red gate is not shippable. What works, measured: a **sequential** source's callbacks
 are really called (`getBytes` counted), its bytes come back through `CGDataProviderCopyData`, `rewind` runs
@@ -1479,3 +1485,38 @@ header promises.
 
 To resume: `git stash pop` (stash@{0}) and run `make host-coregraphics-run`; the failing check's readout is in
 `userland/tests/coregraphics_dataprovider.m`.
+
+## 18. The data family landed: both callback families, both convenience forms (22 rows)
+
+**THE WHOLE `CGDataProvider`/`CGDataConsumer` UNIT IS IN**: the provider's two callback families (sequential
+and direct), the consumer's sink, the Foundation-backed convenience forms on both sides, and their type ids.
+The 22 ledger rows the sweep's own stale list named are flipped to `shipped` and the ledger is consistent
+(`--check`) with `--strict` at 0. The gate is `host-coregraphics-run`: **all 19 probes pass**, including the
+new `coregraphics_dataprovider`, whose checks are about more than the bytes — they count the CALLS.
+
+**WHAT MAKES A CALLBACK FAMILY REAL RATHER THAN DECLARED**: the bytes are not enough, because a provider
+could hold the right pointer and never call anything. So the probe counts: a sequential source's `getBytes`
+is called and its `rewind` runs ONCE afterwards (the source is left usable), a direct source's
+`getBytePointer` is called exactly once with `getBytesAtPosition` NEVER (the borrowed zero-copy path, and the
+borrow is returned at release), a direct source with no pointer is read by position and the loop iterates
+when the source answers short, and `releaseInfo`/`releaseConsumer` run at release on both sides. The refusals
+are measured too: no `getBytes`, no accessor at all, a negative size, no `putBytes`.
+
+**ONE MECHANISM, TWO CONVENIENCE FORMS, AND THE CONTRACT DOES NOT GROW**: both Foundation forms are the
+callback form with an object behind it — the mutable data appends, the file writes — so `CGDataConsumer.h`'s
+general door is the whole API and `…WithCFData`/`…WithURL` add only a lifetime rule. The file sink answers
+WHAT ACTUALLY LANDED (`write(2)` returning short is ordinary; the loop exists so the count is not a lie), and
+both Foundation forms REFUSE a non-file URL by name, as the provider's URL form does. One check ties the two
+halves together: the consumer writes a file, and a provider over the SAME URL reads back exactly that.
+
+**FOUR THINGS READING THE 10.6 HEADER SETTLED**, each of which remembering would have got wrong:
+`CGDataConsumerCallbacks` HAS NO `version` FIELD (its provider siblings are `version`-first); the direct
+callbacks' order is `getBytePointer, releaseBytePointer, getBytesAtPosition, releaseInfo`; `off_t` (the
+callbacks' positions and sizes) has to be included, not inherited; and **`CGDataConsumerPutBytes` IS NOT IN
+THE 10.6 HEADER** — while the ledger does not carry it either. It ships anyway as a DOCUMENTED DEVIATION,
+because a sink with no way to take bytes cannot be used at all; the header says exactly that, having said the
+opposite for one build before the check itself contradicted it.
+
+**THE ONE THING THE UNIT DID NOT NEED TOUCH**: the decoders. They ask `cg_dataprovider_bytes`, which is now
+the single place a callback provider becomes a buffer, so PNG and JPEG read a callback source without knowing
+it is one — the materialisation is lazy, once, and cached, which is the claim §17 wrongly reported as broken.

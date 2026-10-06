@@ -14,6 +14,7 @@
  * `CGLayer` — and a type id for a type that does not exist would be a number with nothing to identify.
  */
 #include <CoreGraphics/CGTypeID_internal.h>
+#include <CoreGraphics/CGDataConsumer.h>
 
 CGTypeID CGColorGetTypeID(void)
 {
@@ -28,6 +29,11 @@ CGTypeID CGColorSpaceGetTypeID(void)
 CGTypeID CGContextGetTypeID(void)
 {
 	return (CGTypeID)CG_TYPE_ID_CGCONTEXT;
+}
+
+CGTypeID CGDataConsumerGetTypeID(void)
+{
+	return (CGTypeID)CG_TYPE_ID_CGDATACONSUMER;
 }
 
 CGTypeID CGDataProviderGetTypeID(void)

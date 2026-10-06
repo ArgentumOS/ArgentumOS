@@ -55,6 +55,23 @@ CGDataProviderRef CGDataProviderCreateWithCFData(NSData *data)
 	return provider;
 }
 
+/* A PROVIDER OVER A URL'S BYTES: `file:` only, and the rest refused by name. The reading itself is the
+ * filename form's — the same code that already reads a font or a profile — so this door is a URL-to-path
+ * step and a refusal, and NOT a second file reader.
+ *
+ * WHY NOT MORE: `http:` and its family would put a network stack under a type whose whole promise is
+ * "these bytes are here, and who lets go of them", and every byte this library reads is local. A caller who
+ * wants a downloaded body has NSURLConnection for that, one layer above. */
+CGDataProviderRef CGDataProviderCreateWithURL(NSURL *url)
+{
+	if (url == nil || ![url isFileURL]) {
+		fprintf(stderr, "CG-REFUSE: CGDataProviderCreateWithURL reads FILE URLs only; this library "
+			"has no network layer under a provider\n");
+		return NULL;
+	}
+	return CGDataProviderCreateWithFilename([[url path] fileSystemRepresentation]);
+}
+
 NSData *CGDataProviderCopyData(CGDataProviderRef provider)
 {
 	const void *bytes;

@@ -25,6 +25,9 @@
 #define CORE_GRAPHICS_CGDATAPROVIDER_H
 
 #include <CoreGraphics/CGBase.h>
+/* `off_t` IS NAMED BY THE CALLBACK FAMILY BELOW — Apple's own header takes it from CoreFoundation's
+ * includes, and this library says where it comes from instead of inheriting a coincidence. */
+#include <sys/types.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -78,5 +81,59 @@ NSData *CGDataProviderCopyData(CGDataProviderRef provider) CG_RETURNS_RETAINED;
  * published nowhere), which is why the header says so rather than implying a constant someone could
  * port; identity is the whole of what the door promises. See CGTypeID_internal.h. */
 CGTypeID CGDataProviderGetTypeID(void);
+
+/* ------------------------------------------------------------------------- */
+/* The callback forms: a provider whose bytes come from somewhere else        */
+/* ------------------------------------------------------------------------- */
+
+/* APPLE'S TWO FAMILIES, TRANSCRIBED WITH THEIR FIELD NAMES AND THEIR ORDER (version first, then the
+ * callbacks as the header lists them), because THE STRUCT LAYOUT IS THE INTERFACE here: a caller fills one
+ * of these in and hands it over. `version` is 0, in the 10.6 header's own words. */
+typedef size_t (*CGDataProviderGetBytesCallback)(void *info, void *buffer, size_t count);
+typedef off_t (*CGDataProviderSkipForwardCallback)(void *info, off_t count);
+typedef void (*CGDataProviderRewindCallback)(void *info);
+typedef void (*CGDataProviderReleaseInfoCallback)(void *info);
+typedef const void *(*CGDataProviderGetBytePointerCallback)(void *info);
+typedef void (*CGDataProviderReleaseBytePointerCallback)(void *info, const void *pointer);
+typedef size_t (*CGDataProviderGetBytesAtPositionCallback)(void *info, void *buffer, off_t position,
+							   size_t count);
+
+/* SEQUENTIAL: A CURSOR. getBytes reads forward from it, skipForward moves it, rewind sends it back. THIS
+ * LIBRARY CANNOT ASK SUCH A SOURCE FOR BYTES IT HAS ALREADY PASSED, so the provider READS IT ONCE into its
+ * own buffer the first time anything asks for the bytes and every later reader sees that buffer — which is
+ * what makes `CGDataProviderCopyData` and the decoders work on a sequential source at all. `rewind` is
+ * called after that read, so the caller's source is left usable. */
+typedef struct CGDataProviderSequentialCallbacks {
+	unsigned int version;
+	CGDataProviderGetBytesCallback getBytes;
+	CGDataProviderSkipForwardCallback skipForward;
+	CGDataProviderRewindCallback rewind;
+	CGDataProviderReleaseInfoCallback releaseInfo;
+} CGDataProviderSequentialCallbacks;
+
+/* DIRECT: RANDOM ACCESS, `size` bytes, and AT LEAST ONE of the two access callbacks — Apple's header says so
+ * and this library refuses a provider made with neither. `getBytePointer` returns the WHOLE block, and this
+ * library BORROWS it for the provider's life (returning it through `releaseBytePointer` at the end), because
+ * that is what the pointer is for; without it, `getBytesAtPosition` is called as bytes are needed. */
+typedef struct CGDataProviderDirectCallbacks {
+	unsigned int version;
+	CGDataProviderGetBytePointerCallback getBytePointer;
+	CGDataProviderReleaseBytePointerCallback releaseBytePointer;
+	CGDataProviderGetBytesAtPositionCallback getBytesAtPosition;
+	CGDataProviderReleaseInfoCallback releaseInfo;
+} CGDataProviderDirectCallbacks;
+
+/* A SEQUENTIAL SOURCE WITH NO `getBytes` IS REFUSED: a provider that cannot answer the only question it
+ * exists for answers NULL later, far from the call that was wrong. */
+CGDataProviderRef CGDataProviderCreateSequential(void *info,
+						 const CGDataProviderSequentialCallbacks *callbacks);
+CGDataProviderRef CGDataProviderCreateDirect(void *info, off_t size,
+					     const CGDataProviderDirectCallbacks *callbacks);
+
+/* A PROVIDER OVER A URL'S BYTES: FILE URLs only, everything else REFUSED BY NAME. The reading is the
+ * filename form's — the same code that already reads a font or a profile — so this door is a URL-to-path
+ * step and a refusal, not a second file reader. Declared here and implemented with the Foundation object it
+ * takes, like the CF-typed form above. */
+CGDataProviderRef CGDataProviderCreateWithURL(NSURL *url);
 
 #endif /* CORE_GRAPHICS_CGDATAPROVIDER_H */
