@@ -67,6 +67,10 @@ CGGlyph cg_font_glyph_for_byte(CGFontRef font, unsigned char code, int macroman)
 CGFontRef cg_font_create_with_name(const char *name);
 
 /* ONE GLYPH RASTERISED ... see CGContext.c for how it is placed. */
+/* `delta` IS THE SUBPIXEL FRACTION OF THE PEN, IN DEVICE UNITS (x right, y down — the engine's own
+ * frame is handled inside). A whole-pixel caller passes (0,0) and gets the old behaviour; a caller
+ * that has been asked not to subpixel-position passes (0,0) too, because rounding the pen IS that
+ * setting. */
 int cg_font_render_glyph(CGFontRef font, CGGlyph glyph, CGFloat pixel_size,
                          CGAffineTransform matrix, CGPoint delta, unsigned char **coverage,
                          int *width, int *height, int *left, int *top, double *advance);

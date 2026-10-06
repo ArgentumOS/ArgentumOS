@@ -72,6 +72,32 @@ static void count_ink(int *n, int *x0, int *y0, int *x1, int *y1)
 	}
 }
 
+/* THE INSTRUMENT FOR SUBPIXEL SHIFTS: the ink's COVERAGE-WEIGHTED CENTROID. An integer pixel count is
+ * too coarse to see a half-pixel move, and the weighting is EXACT here rather than approximate: the
+ * surface is white, the ink is black, and a composite of black over white is linear in the red channel,
+ * so (255 - R)/255 IS the coverage. */
+static void ink_centroid(double *cx, double *cy, int *weight)
+{
+	double sx = 0.0, sy = 0.0, w = 0.0;
+	int x, y;
+
+	for (y = 0; y < H; y++) {
+		for (x = 0; x < W; x++) {
+			const unsigned char *p = paint + ((size_t)y * W + x) * 4;
+			double cov = (255.0 - (double)p[2]) / 255.0;
+
+			if (cov > 0.0) {
+				sx += cov * (double)x;
+				sy += cov * (double)y;
+				w += cov;
+			}
+		}
+	}
+	*cx = w > 0.0 ? sx / w : 0.0;
+	*cy = w > 0.0 ? sy / w : 0.0;
+	*weight = (int)(w + 0.5);
+}
+
 static void repaint(CGContextRef ctx)
 {
 	CGContextSetRGBFillColor(ctx, 1.0, 1.0, 1.0, 1.0);
@@ -489,6 +515,109 @@ int main(void)
 		count_ink(&n, &x0, &y0, &x1, &y1);
 		check("a name that cannot be resolved refuses and leaves the working font in place", n > 20);
 		CGContextSetFont(ctx, font);
+	}
+
+	/* --- SUBPIXEL PEN POSITIONS, AND THE FOUR DOORS THAT GOVERN THEM ----------------- */
+	/* THE FRACTION IS MEASURED BY A COVERAGE-WEIGHTED CENTROID, in both axes. THE Y CHECK IS SIGNED ON
+	 * PURPOSE: a subpixel offset travels through the engine's frame, which the mirror correction turned
+	 * around, and a sign error there is a glyph that moves the wrong way — invisible in a whole-pixel
+	 * picture and caught only here. The ROUNDING checks use 10.4 rather than 10.5 so that "rounded" does
+	 * not depend on which way a half rounds. */
+	{
+		double cx0, cy0, cx1, cy1, cxa, cya, cxb, cyb, cx2, cy2;
+		int w0, w1, wa, wb, w2;
+		CGPoint at;
+
+		repaint(ctx);
+		at = CGPointMake(10.0, 10.0);
+		CGContextShowGlyphsAtPositions(ctx, &a, &at, 1);
+		ink_centroid(&cx0, &cy0, &w0);
+
+		repaint(ctx);
+		at = CGPointMake(10.5, 10.0);
+		CGContextShowGlyphsAtPositions(ctx, &a, &at, 1);
+		ink_centroid(&cx1, &cy1, &w1);
+		check("a HALF-PIXEL pen in x moves the ink half a pixel",
+		      w0 > 50 && fabs((cx1 - cx0) - 0.5) < 0.2);
+		check("...and an x-only shift leaves the vertical centroid alone", fabs(cy1 - cy0) < 0.2);
+
+		repaint(ctx);
+		at = CGPointMake(10.0, 10.5);	/* +0.5 in USER y, which is -0.5 in device rows */
+		CGContextShowGlyphsAtPositions(ctx, &a, &at, 1);
+		ink_centroid(&cxa, &cya, &wa);
+		check("a HALF-PIXEL pen in y moves the ink half a pixel UP the surface (the signed check)",
+		      wa > 50 && (cya - cy0) < -0.2 && (cya - cy0) > -0.8);
+
+		/* THE CONTEXT'S GATE: with `allows' off a fractional pen is rounded to a whole one, so 10.4 and
+		 * 10.0 must give the SAME pixels — which is what this library did before it could do better. */
+		CGContextSetAllowsFontSubpixelPositioning(ctx, 0);
+		repaint(ctx);
+		at = CGPointMake(10.0, 10.0);
+		CGContextShowGlyphsAtPositions(ctx, &a, &at, 1);
+		ink_centroid(&cxb, &cyb, &wb);
+		repaint(ctx);
+		at = CGPointMake(10.4, 10.0);
+		CGContextShowGlyphsAtPositions(ctx, &a, &at, 1);
+		ink_centroid(&cx2, &cy2, &w2);
+		check("with `allows' off, a fractional pen draws the SAME pixels as a whole one",
+		      w2 == wb && fabs(cx2 - cxb) < 0.01);
+
+		/* THE STATE'S GATE, and the header's AND: `allows' back on, the state's flag off, same answer. */
+		CGContextSetAllowsFontSubpixelPositioning(ctx, 1);
+		CGContextSetShouldSubpixelPositionFonts(ctx, 0);
+		repaint(ctx);
+		at = CGPointMake(10.4, 10.0);
+		CGContextShowGlyphsAtPositions(ctx, &a, &at, 1);
+		ink_centroid(&cx2, &cy2, &w2);
+		check("with the STATE's flag off the pen is rounded as well (the header's AND)",
+		      fabs(cx2 - cxb) < 0.01);
+
+		/* AND THE ASYMMETRY THE HEADER STATES: the state flag is saved and restored, the context's is
+		 * not. The state one comes back (which RESUMES the fractional pen), and the context's does not
+		 * (so turning it off inside a save/restore frame cannot be undone by restoring). */
+		CGContextSetShouldSubpixelPositionFonts(ctx, 1);
+		CGContextSaveGState(ctx);
+		CGContextSetShouldSubpixelPositionFonts(ctx, 0);
+		CGContextRestoreGState(ctx);
+		repaint(ctx);
+		at = CGPointMake(10.4, 10.0);
+		CGContextShowGlyphsAtPositions(ctx, &a, &at, 1);
+		ink_centroid(&cx2, &cy2, &w2);
+		check("RESTORE brings the state flag back, so the fractional pen returns",
+		      w2 > 50 && fabs(cx2 - cx0) > 0.2);
+
+		CGContextSetAllowsFontSubpixelPositioning(ctx, 0);
+		CGContextSaveGState(ctx);
+		CGContextSetAllowsFontSubpixelPositioning(ctx, 1);
+		CGContextRestoreGState(ctx);
+		repaint(ctx);
+		at = CGPointMake(10.4, 10.0);
+		CGContextShowGlyphsAtPositions(ctx, &a, &at, 1);
+		ink_centroid(&cx2, &cy2, &w2);
+		/* THE OBSERVATION IS THE OPPOSITE OF THE STATE FLAG'S, and that is the asymmetry: the context's
+		 * flag was set INSIDE the frame and SURVIVED the restore, so the fractional pen is honoured
+		 * afterwards — it is not in the graphics state to be brought back. */
+		check("...and does NOT bring the CONTEXT's flag back: the one set inside the frame survives it",
+		      w2 > 50 && fabs(cx2 - cxb) > 0.2);
+
+		printf("CG-TEXT %-68s (cx 10.0=%g 10.5=%g 10.4rounded=%g)\n", "...the measured centroids",
+		       cx0, cx1, cxb);
+
+		/* THE FOUR REFUSING SETTERS ARE CALLED, so their messages land in the gate's log; nothing they do
+		 * may change the picture. */
+		CGContextSetAllowsFontSmoothing(ctx, 1);
+		CGContextSetShouldSmoothFonts(ctx, 0);
+		CGContextSetAllowsFontSubpixelQuantization(ctx, 1);
+		CGContextSetShouldSubpixelQuantizeFonts(ctx, 0);
+
+		CGContextSetAllowsFontSubpixelPositioning(ctx, 1);
+		CGContextSetShouldSubpixelPositionFonts(ctx, 1);
+		repaint(ctx);
+		at = CGPointMake(10.0, 10.0);
+		CGContextShowGlyphsAtPositions(ctx, &a, &at, 1);
+		ink_centroid(&cx2, &cy2, &w2);
+		check("the refusing setters changed nothing about the picture",
+		      w2 == w0 && fabs(cx2 - cx0) < 0.01);
 	}
 
 	/* --- the state stack carries the font, which is the ownership this added --------- */

@@ -649,9 +649,14 @@ int cg_font_render_glyph(CGFontRef font, CGGlyph glyph, CGFloat pixel_size, CGAf
 	m.xy = (FT_Fixed)(matrix.b * 65536.0);
 	m.yx = (FT_Fixed)(matrix.c * 65536.0);
 	m.yy = (FT_Fixed)(matrix.d * 65536.0);
-	(void)delta;
-	d.x = 0;
-	d.y = 0;
+	/* THE DELTA IS THE SUBPIXEL FRACTION, and it is applied AFTER the matrix in 26.6 pixels — which is
+	 * what makes a fractional pen land between pixels instead of being rounded away. THE Y IS NEGATED
+	 * WHEN THE REFLECTION WAS: the delta lives in the engine's frame, and taking the bitmap context's
+	 * flip out of the matrix (above) turned that frame's y around, so a device-space downward dy is an
+	 * upward dy here. Getting this wrong is a glyph that moves the wrong way for half-pixel pens and
+	 * sits still for whole ones, which the probe's fractional-y bracket check catches. */
+	d.x = (FT_Pos)(delta.x * 64.0);
+	d.y = (FT_Pos)((mirror ? -delta.y : delta.y) * 64.0);
 	FT_Set_Transform(font->face, &m, &d);
 
 	if (FT_Load_Glyph(font->face, (FT_UInt)glyph, FT_LOAD_DEFAULT) != 0) {

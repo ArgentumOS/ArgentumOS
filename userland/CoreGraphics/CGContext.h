@@ -443,6 +443,27 @@ CGAffineTransform CGContextGetTextMatrix(CGContextRef context);
 void CGContextSetTextPosition(CGContextRef context, CGFloat x, CGFloat y);
 CGPoint CGContextGetTextPosition(CGContextRef context);
 void CGContextSetCharacterSpacing(CGContextRef context, CGFloat spacing);
+
+/* SUBPIXEL PEN POSITIONS, AND THE FOUR DOORS THAT GOVERN THEM. Apple's rule, from the 10.6 header's
+ * own comment: a context places glyphs at subpixel positions IF fonts will be antialiased when drawn AND
+ * `allowsFontSubpixelPositioning` AND `shouldSubpixelPositionFonts` are true. All four terms are
+ * implemented — the two antialiasing settings this library already had, and the two flags — and the
+ * ASYMMETRY IN WHERE THEY LIVE IS TRANSCRIBED: the header says the `Allows` parameter "is not part of
+ * the graphics state", so that flag is the context's, while its `Should` twin is saved and restored with
+ * everything else. WITH POSITIONING OFF THE PEN IS ROUNDED TO WHOLE DEVICE PIXELS, which is exactly what
+ * this library did before it could do better.
+ *
+ * THE OTHER FOUR SETTERS EXIST AND REFUSE BY NAME, because each is a rendering path this library does
+ * not have rather than a flag it forgot: smoothing is LCD subpixel ANTIALIASING (three samples per pixel
+ * and a filter along their order), and quantisation is refused because the header says a context
+ * "quantizes subpixel positions" and NEVER SAYS TO WHAT — choosing a quantum would be inventing a
+ * contract rather than duplicating one. */
+void CGContextSetAllowsFontSubpixelPositioning(CGContextRef context, bool allows);
+void CGContextSetShouldSubpixelPositionFonts(CGContextRef context, bool should);
+void CGContextSetAllowsFontSmoothing(CGContextRef context, bool allows);
+void CGContextSetShouldSmoothFonts(CGContextRef context, bool should);
+void CGContextSetAllowsFontSubpixelQuantization(CGContextRef context, bool allows);
+void CGContextSetShouldSubpixelQuantizeFonts(CGContextRef context, bool should);
 void CGContextSetTextDrawingMode(CGContextRef context, CGTextDrawingMode mode);
 
 /* POSITIONS ARE IN USER SPACE — AND THAT IS A CORRECTION, NOT A CHOICE. This door first shipped with

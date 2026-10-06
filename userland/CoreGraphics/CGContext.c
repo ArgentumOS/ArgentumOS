@@ -96,6 +96,9 @@ typedef struct cg_state {
 	/* THE ENCODING THE BYTE DOORS READ A BYTE WITH, set only by `CGContextSelectFont` — because that is
  	 * the door Apple gives it, and the font-specific value is what `CGContextSetFont` leaves. */
 	CGTextEncoding text_encoding;
+	/* THE GRAPHICS-STATE HALF OF THE SUBPIXEL PAIR. See the context's `allows_` flag above for why
+	 * this one is here and that one is not. */
+	int should_subpixel_position_fonts;
 	/* THE LINE STATE LIVES IN THE GRAPHICS STATE, which is why `CGContextSaveGState` and
 	 * `CGContextRestoreGState` needed NO change to carry it: they copy this struct, so
 	 * the width, the caps, the joins and the stroke colour are saved and restored with
@@ -149,6 +152,11 @@ struct CGContext {
 	uint32_t bitmap_info;
 
 	int allows_antialiasing;
+	/* THE TWO "ALLOWS" FONT FLAGS LIVE ON THE CONTEXT, NOT IN THE GRAPHICS STATE — Apple's own
+	 * comment on those three setters says "this parameter is not part of the graphics state" — while
+	 * their `Should` twins ARE in the state below. THAT ASYMMETRY IS THE INTERFACE, and the probe
+	 * checks it by saving, turning the state flag off, drawing, and restoring. */
+	int allows_subpixel_positioning;
 	cg_state state;
 	cg_state *stack;
 	int depth;
@@ -277,6 +285,7 @@ static void cg_state_init_full(cg_state *st, int width, int height)
 	st->character_spacing = 0.0;
 	st->text_mode = kCGTextFill;
 	st->text_encoding = kCGEncodingFontSpecific;
+	st->should_subpixel_position_fonts = 1;
 	st->pattern_phase = CGSizeMake(0.0, 0.0);
 }
 
@@ -338,6 +347,11 @@ CGContextRef CGBitmapContextCreate(void *data, size_t width, size_t height,
 	c->space = CGColorSpaceRetain(space);
 	c->bitmap_info = bitmap_info;
 	c->allows_antialiasing = 1;
+	/* APPLE'S RULE FOR SUBPIXEL POSITIONING IS AN AND OF FOUR THINGS, and all four exist here: the
+	 * two flags the header names (the context's and the state's) and the two antialiasing settings
+	 * its comment adds ("fonts will be antialiased when drawn"). Written out rather than
+	 * abbreviated, because each term is a door somebody can close. */
+	c->allows_subpixel_positioning = 1;
 	c->refcount = 1;
 	cg_state_init_full(&c->state, (int)width, (int)height);
 	c->path = (struct CGPath *)CGPathCreateMutable();
@@ -2869,6 +2883,63 @@ void CGContextSetFont(CGContextRef c, CGFontRef font)
 	c->state.font = font;
 }
 
+/* THE SUBPIXEL PAIR, IN FULL: the context's gate and the state's, which the header says must BOTH be
+ * true. The effective question is asked in one place (cg_subpixel_positioning below) so the drawing
+ * path cannot get it half right. */
+void CGContextSetAllowsFontSubpixelPositioning(CGContextRef c, bool allows)
+{
+	if (c != NULL) {
+		c->allows_subpixel_positioning = allows ? 1 : 0;
+	}
+}
+
+void CGContextSetShouldSubpixelPositionFonts(CGContextRef c, bool should)
+{
+	if (c != NULL) {
+		c->state.should_subpixel_position_fonts = should ? 1 : 0;
+	}
+}
+
+/* THE FOUR DOORS THIS LIBRARY REFUSES BY NAME, and each is a real gap rather than a formality.
+ * SMOOTHING is LCD subpixel ANTIALIASING: the engine renders 8-bit grey coverage here, and a
+ * smoothed glyph needs three samples per pixel and a filter applied along their order, which is a
+ * different rendering path rather than a flag. QUANTIZATION is refused because THE 10.6 HEADER NEVER
+ * SAYS WHAT IT QUANTIZES — it says a context "quantizes subpixel positions" and stops — and picking a
+ * quantum (a third of a pixel is the usual one) would be this library inventing a contract. The
+ * setters still exist and still record nothing, which is the same shape as every other refusal here:
+ * a caller who asked for something gets a message, not a silent no-op that looks like it worked. */
+void CGContextSetAllowsFontSmoothing(CGContextRef c, bool allows)
+{
+	(void)c;
+	(void)allows;
+	fprintf(stderr, "CG-REFUSE: font smoothing is LCD subpixel antialiasing, which needs a filtered "
+			"three-sample path; this library renders 8-bit grey coverage only\n");
+}
+
+void CGContextSetShouldSmoothFonts(CGContextRef c, bool should)
+{
+	(void)c;
+	(void)should;
+	fprintf(stderr, "CG-REFUSE: font smoothing (the state's half) is refused for the reason above\n");
+}
+
+void CGContextSetAllowsFontSubpixelQuantization(CGContextRef c, bool allows)
+{
+	(void)c;
+	(void)allows;
+	fprintf(stderr, "CG-REFUSE: subpixel quantisation is not implemented: the 10.6 header says a "
+			"context quantizes subpixel positions and never says to what, so this library either "
+			"honours the fraction or rounds the pen\n");
+}
+
+void CGContextSetShouldSubpixelQuantizeFonts(CGContextRef c, bool should)
+{
+	(void)c;
+	(void)should;
+	fprintf(stderr, "CG-REFUSE: subpixel quantisation (the state's half) is refused for the reason "
+			"above\n");
+}
+
 void CGContextSelectFont(CGContextRef c, const char *name, CGFloat size, CGTextEncoding textEncoding)
 {
 	CGFontRef font;
@@ -2951,6 +3022,15 @@ static int cg_glyph_pen(double v)
 
 /* THE ONE PLACE A GLYPH IS PUT ON A SURFACE, and every text door below is a loop over it: the pen is in
  * USER SPACE and the CTM places it, the TEXT MATRIX transforms the glyph itself (see the header). */
+/* IS A FRACTIONAL PEN HONOURED? Apple's rule, with every term a door: the context's gate, the state's
+ * gate, and that fonts are antialiased when drawn — the last two of which this context already
+ * tracks. ONE PLACE ASKS IT, so the fraction and its rounding cannot disagree. */
+static int cg_subpixel_positioning(CGContextRef c)
+{
+	return c->allows_subpixel_positioning && c->state.should_subpixel_position_fonts
+	       && c->allows_antialiasing && c->state.antialias;
+}
+
 static void cg_show_one_glyph(CGContextRef c, CGGlyph glyph, CGPoint pen, pixman_op_t op)
 {
 	unsigned char *coverage = NULL;
@@ -2958,6 +3038,7 @@ static void cg_show_one_glyph(CGContextRef c, CGGlyph glyph, CGPoint pen, pixman
 	pixman_color_t solid;
 	CGAffineTransform linear;
 	CGPoint device;
+	CGPoint fraction;
 	double a;
 	int w = 0, h = 0, left = 0, top = 0, dx, dy;
 	double advance = 0.0;
@@ -2971,8 +3052,14 @@ static void cg_show_one_glyph(CGContextRef c, CGGlyph glyph, CGPoint pen, pixman
 	linear = CGAffineTransformConcat(c->state.text_matrix, c->state.ctm);
 	linear.tx = 0.0;
 	linear.ty = 0.0;
-	if (!cg_font_render_glyph(c->state.font, glyph, c->state.font_size, linear,
-				  CGPointMake(0.0, 0.0), &coverage, &w, &h, &left, &top, &advance)) {
+	/* THE FRACTION GOES TO THE ENGINE AND THE WHOLE PART PLACES THE BITMAP: the pen's whole device
+	 * pixels position the mask (below, as before), and the leftover fraction is what the engine renders
+	 * the outline with — so a half-pixel pen draws a half-pixel-shifted glyph rather than the same one
+	 * twice. WITH POSITIONING OFF THE FRACTION IS ZERO, which is what rounding the pen IS. */
+	fraction.x = cg_subpixel_positioning(c) ? device.x - (CGFloat)cg_glyph_pen(device.x) : 0.0;
+	fraction.y = cg_subpixel_positioning(c) ? device.y - (CGFloat)cg_glyph_pen(device.y) : 0.0;
+	if (!cg_font_render_glyph(c->state.font, glyph, c->state.font_size, linear, fraction,
+				  &coverage, &w, &h, &left, &top, &advance)) {
 		return;
 	}
 	if (w <= 0 || h <= 0) {
