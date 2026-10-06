@@ -173,6 +173,11 @@ struct CGContext {
 	cg_state state;
 	cg_state *stack;
 	int depth;
+	/* THE OPEN TRANSPARENCY LAYERS, as a chain rather than a fixed array because Apple's doors nest as
+	 * deep as a caller likes. Each entry holds THE SURFACE IT REPLACED — data, stride, pixman image and
+	 * who owned the bytes — plus THE OUTER ALPHA AND BLEND, which are read when the layer BEGINS because
+	 * the group's own state has them set to 1 and normal. */
+	struct cg_group *groups;
 	int stack_cap;
 
 	struct CGPath *path;
@@ -492,6 +497,23 @@ CGContextRef CGContextRetain(CGContextRef c)
 	return c;
 }
 
+struct cg_group {
+	struct cg_group *next;
+	unsigned char *saved_data;
+	int saved_stride;
+	pixman_image_t *saved_image;
+	int saved_owns_data;
+	unsigned char *data;		/* the group's own surface: OURS */
+	pixman_image_t *image;
+	CGFloat alpha;			/* the OUTER alpha, applied once at the end */
+	CGBlendMode blend;		/* and the outer blend, which must be normal (see CGContext.h) */
+};
+
+/* THE WAY BACK, WITH OR WITHOUT A COMPOSITE: `composite` is what `CGContextEndTransparencyLayer` asks
+ * for, and the release path asks for the other, because a context freed with a layer still open has to
+ * let go of the group's surface and put the outer one back before the final free looks at it. */
+static void cg_group_pop(CGContextRef c, int composite);
+
 void CGContextRelease(CGContextRef c)
 {
 	int i;
@@ -535,6 +557,12 @@ void CGContextRelease(CGContextRef c)
 	if (c->release_data != NULL) {
 		c->release_data(c->release_info, c->data);
 	}
+	/* AN UNCLOSED TRANSPARENCY LAYER IS NOT A REFUSAL AT RELEASE — the context is going away either way —
+	 * but its surfaces must be freed and the OUTER surface put back first, or this last free would act on
+	 * a group's buffer while the group's own record still pointed at the real one. */
+	while (c->groups != NULL) {
+		cg_group_pop(c, 0);
+	}
 	if (c->owns_data) {
 		free(c->data);
 	}
@@ -558,6 +586,136 @@ void CGContextSynchronize(CGContextRef c)
 /* ------------------------------------------------------------------------- */
 /* the graphics state                                                        */
 /* ------------------------------------------------------------------------- */
+
+/* ------------------------------------------------------------------------- */
+/* Transparency layers                                                         */
+/* ------------------------------------------------------------------------- */
+
+static void cg_group_pop(CGContextRef c, int composite)
+{
+	struct cg_group *g = c->groups;
+	CGFloat outer_alpha;
+	CGBlendMode outer_blend;
+
+	if (g == NULL) {
+		return;
+	}
+	outer_alpha = g->alpha;
+	outer_blend = g->blend;
+	c->groups = g->next;
+	/* THE COMPOSITE HAPPENS OVER THE WHOLE SURFACE AND IS BOUNDED BY THE CLIP, which the paint path below
+	 * already relies on: `pixman_image_set_clip_region32` is what makes "this operation respects the
+	 * clipping region" true, for the group and for every shape drawn inside it. THE OUTER ALPHA IS A 1x1
+	 * MASK SOURCE, the same shape a solid colour's composite uses. */
+	if (composite) {
+		pixman_image_t *mask;
+		unsigned char level = (unsigned char)(outer_alpha <= 0.0 ? 0
+						      : (outer_alpha >= 1.0 ? 255
+							 : outer_alpha * 255.0 + 0.5));
+
+		mask = pixman_image_create_bits(PIXMAN_a8, 1, 1, (uint32_t *)&level, 4);
+		if (mask != NULL) {
+			pixman_image_set_repeat(mask, PIXMAN_REPEAT_NORMAL);
+			pixman_image_set_clip_region32(c->image, &c->state.clip);
+			pixman_image_composite32(cg_op(outer_blend), g->image, mask, c->image, 0, 0, 0, 0,
+						 0, 0, c->width, c->height);
+			pixman_image_unref(mask);
+		}
+	}
+	pixman_image_unref(g->image);
+	free(g->data);
+	c->data = g->saved_data;
+	c->stride = g->saved_stride;
+	c->image = g->saved_image;
+	c->owns_data = g->saved_owns_data;
+	free(g);
+}
+
+static void cg_group_begin(CGContextRef c, NSDictionary *auxiliaryInfo)
+{
+	struct cg_group *g;
+	size_t stride;
+
+	(void)auxiliaryInfo;	/* Apple's reserved parameter, as on CGLayer */
+	if (c == NULL || c->data == NULL) {
+		return;
+	}
+	if (c->state.blend != kCGBlendModeNormal) {
+		fprintf(stderr, "CG-REFUSE: a transparency layer under a non-normal blend mode has no answer in "
+				"the header: the group is composited ONCE, so an operator like Multiply would reach "
+				"every pixel of the clip rather than the ones the layer drew\n");
+		return;
+	}
+	stride = (size_t)c->stride;
+	g = calloc(1, sizeof(struct cg_group));
+	if (g == NULL) {
+		return;
+	}
+	/* "A FULLY TRANSPARENT BACKDROP", which calloc gives: premultiplied zero is transparent whatever the
+	 * colour would have been. */
+	g->data = calloc(1, stride * (size_t)c->height);
+	if (g->data == NULL) {
+		free(g);
+		return;
+	}
+	g->image = pixman_image_create_bits(PIXMAN_a8r8g8b8, c->width, c->height, (uint32_t *)g->data,
+					    (int)stride);
+	if (g->image == NULL) {
+		free(g->data);
+		free(g);
+		return;
+	}
+	g->saved_data = c->data;
+	g->saved_stride = c->stride;
+	g->saved_image = c->image;
+	g->saved_owns_data = c->owns_data;
+	g->alpha = c->state.alpha;
+	g->blend = c->state.blend;
+	g->next = c->groups;
+	c->groups = g;
+	/* AND THE THREE EXCEPTIONS, WHICH ARE THE POINT OF THE DOOR: inside the layer the alpha is 1, the
+	 * shadow is off (this library has none to turn off) and the blend mode is normal — so that the OUTER
+	 * alpha, applied once at the end, is not applied again to everything drawn in between. */
+	c->data = g->data;
+	c->stride = (int)stride;
+	c->image = g->image;
+	c->owns_data = 0;	/* the group's record owns it, and frees it on the way out */
+	c->state.alpha = 1.0;
+	c->state.blend = kCGBlendModeNormal;
+}
+
+void CGContextBeginTransparencyLayer(CGContextRef c, NSDictionary *auxiliaryInfo)
+{
+	cg_group_begin(c, auxiliaryInfo);
+}
+
+void CGContextBeginTransparencyLayerWithRect(CGContextRef c, CGRect rect, NSDictionary *auxiliaryInfo)
+{
+	/* "IDENTICAL EXCEPT THAT THE CONTENT WILL BE BOUNDED BY `rect`" — and the CLIP is what bounds both
+	 * halves, since the group's drawing and the final composite both respect it. `CGContextClipToRect` is
+	 * the door that intersects the clip with a rectangle, and using it means a rotated CTM refuses here
+	 * exactly as it does there rather than being approximated. */
+	if (c == NULL) {
+		return;
+	}
+	cg_group_begin(c, auxiliaryInfo);
+	if (c->groups != NULL) {
+		CGContextClipToRect(c, rect);
+	}
+}
+
+void CGContextEndTransparencyLayer(CGContextRef c)
+{
+	if (c == NULL) {
+		return;
+	}
+	if (c->groups == NULL) {
+		fprintf(stderr, "CG-REFUSE: CGContextEndTransparencyLayer without a matching begin has no layer "
+				"to end\n");
+		return;
+	}
+	cg_group_pop(c, 1);
+}
 
 void CGContextSaveGState(CGContextRef c)
 {

@@ -136,6 +136,34 @@ void CGContextSynchronize(CGContextRef context);
 
 /* The graphics state. */
 void CGContextSaveGState(CGContextRef context);
+
+/* ------------------------------------------------------------------------- */
+/* Transparency layers                                                         */
+/* ------------------------------------------------------------------------- */
+
+/* APPLE'S OWN DESCRIPTION, AND EVERY CLAUSE OF IT IS A DECISION: "All subsequent drawing operations until a
+ * corresponding `CGContextEndTransparencyLayer` are composited into a fully transparent backdrop (WHICH IS
+ * TREATED AS A SEPARATE DESTINATION BUFFER FROM THE CONTEXT). After the transparency layer is ended, THE RESULT
+ * IS COMPOSITED INTO THE CONTEXT USING THE GLOBAL ALPHA ... OF THE CONTEXT. THIS OPERATION RESPECTS THE
+ * CLIPPING REGION of the context. After a call to this function, all of the parameters in the graphics state
+ * remain unchanged WITH THE EXCEPTION OF THE FOLLOWING: the global alpha is set to 1, the shadow is turned off,
+ * and the blend mode is set to normal."
+ *
+ * SO THE GROUP IS A SECOND SURFACE, THE OUTER ALPHA APPLIES ONCE AT THE END, THE CLIP BOUNDS BOTH HALVES, and
+ * THE THREE EXCEPTIONS ARE WHAT MAKES THE GROUP WORTH HAVING: inside it, drawing is not attenuated by an alpha
+ * that will be applied to the whole result. The probe measures exactly that difference.
+ *
+ * A NON-NORMAL BLEND MODE IS REFUSED BY NAME AT THE BEGINNING, not supported badly at the end: compositing a
+ * group ONCE with an operator like Multiply would apply it to every pixel of the clip — including the ones the
+ * group never touched — and Apple's sentence names "the global alpha and shadow state" and not the blend mode,
+ * so what a non-normal outer blend should do to the group is a question the header does not answer.
+ *
+ * `auxiliaryInfo` is Apple's reserved parameter and is accepted and ignored, as the same parameter is on
+ * CGLayer. `...WithRect` is "identical except that the content of the transparency layer will be bounded by
+ * `rect`", which is implemented by intersecting the clip, since the clip is what bounds both halves. */
+void CGContextBeginTransparencyLayer(CGContextRef c, NSDictionary *auxiliaryInfo);
+void CGContextBeginTransparencyLayerWithRect(CGContextRef c, CGRect rect, NSDictionary *auxiliaryInfo);
+void CGContextEndTransparencyLayer(CGContextRef c);
 void CGContextRestoreGState(CGContextRef context);
 
 /* The CTM. `CGContextGetCTM` returns the USER-TO-DEVICE transform including the
