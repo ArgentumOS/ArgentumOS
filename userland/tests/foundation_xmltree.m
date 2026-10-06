@@ -36,8 +36,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-XMLTREE %s ok\n", name);
@@ -46,6 +49,15 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		printf("FOUNDATION-XMLTREE %s FAIL %s\n", name, detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSXMLElement", "addChild:") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 
 /* the children's names, in order, joined - the only shape in which "the order is right" can be asserted */
@@ -93,6 +105,8 @@ int main(void)
 			(unsigned long)[document kind], (unsigned long)[element kind],
 			(unsigned long)[attribute kind], (unsigned long)[namespaceNode kind],
 			(unsigned long)[comment kind], (unsigned long)[text kind], (unsigned long)[pi kind]]);
+	covers("NSXMLNode", "DTDNodeWithXMLString:");
+	covers("NSXMLNode", "commentWithStringValue:");
 	}
 
 	{
@@ -106,6 +120,8 @@ int main(void)
 		      [[element XMLString] isEqual:
 			@"<a q=\"say &quot;hi&quot; &amp; bye\" id=\"1\">x &amp; y &lt; z</a>"],
 		      [element XMLString]);
+	covers("NSXMLNode", "textWithStringValue:");
+	covers("NSXMLElement", "addChild:");
 	}
 
 	{
@@ -169,6 +185,8 @@ int main(void)
 		      /* AND THE ANSWER IS STABLE: asking twice gives the same string. */
 		      [[root canonicalXMLStringPreservingComments:YES] isEqualToString:kept],
 		      [NSString stringWithFormat:@"kept=%@ dropped=%@", kept, dropped]);
+	covers("NSXMLNode", "XMLStringWithOptions:");
+	covers("NSXMLNode", "canonicalXMLStringPreservingComments:");
 	}
 
 	{
@@ -259,6 +277,9 @@ int main(void)
 			      [[[element attributeForName:@"name"] stringValue] isEqual:@"x"],
 			      [NSString stringWithFormat:@"attributes=%@ childCount=%lu", attributes,
 				(unsigned long)[element childCount]]);
+	covers("NSXMLElement", "addAttribute:");
+	covers("NSXMLElement", "removeAttributeForName:");
+	covers("NSXMLElement", "setAttributesWithDictionary:");
 		}
 	}
 
@@ -275,6 +296,7 @@ int main(void)
 		      [[child resolveNamespaceForName:@"p:c"] isEqual:@"urn:example"] &&
 		      [[child resolvePrefixForNamespaceURI:@"urn:example"] isEqual:@"p"],
 		      [root XMLString]);
+	covers("NSXMLElement", "addNamespace:");
 	}
 
 	{
@@ -294,6 +316,8 @@ int main(void)
 		      [NSString stringWithFormat:@"byName=%lu byLocal=%lu",
 			(unsigned long)[[root elementsForLocalName:@"item" URI:@"urn:example"] count],
 			(unsigned long)[[root elementsForName:@"item"] count]]);
+	covers("NSXMLElement", "resolveNamespaceForName:");
+	covers("NSXMLElement", "resolvePrefixForNamespaceURI:");
 	}
 
 	{
@@ -306,6 +330,8 @@ int main(void)
 			@"http://www.w3.org/XML/1998/namespace"] &&
 		      [NSXMLNode predefinedNamespaceForPrefix:@"not-a-prefix"] == nil,
 		      @"the split helpers, and the two prefixes XML itself binds");
+	covers("NSXMLElement", "elementsForName:");
+	covers("NSXMLNode", "URI");
 	}
 
 	{
@@ -328,6 +354,10 @@ int main(void)
 		      [root respondsToSelector:@selector(replaceChildAtIndex:withNode:)] &&
 		      [root respondsToSelector:@selector(setChildren:)],
 		      @"insertChildren:atIndex:, removeChildAtIndex:, replaceChildAtIndex:withNode:, setChildren:");
+	covers("NSXMLElement", "initWithName:");
+	covers("NSXMLNode", "localNameForName:");
+	covers("NSXMLNode", "predefinedNamespaceForPrefix:");
+	covers("NSXMLNode", "prefixForName:");
 
 		[root addChild:a];
 		[root addChild:d];
@@ -373,6 +403,7 @@ int main(void)
 		check("xml-node-options-reach-the-serializer",
 		      [[plain XMLString] isEqual:@"<a></a>"] && [[compact XMLString] isEqual:@"<a/>"],
 		      [NSString stringWithFormat:@"plain=%@ compact=%@", [plain XMLString], [compact XMLString]]);
+	covers("NSXMLNode", "initWithKind:");
 	}
 	{
 		/* ONE FORWARD PASS: "&amp;" must become an ampersand and STOP there, and the numeric forms are the

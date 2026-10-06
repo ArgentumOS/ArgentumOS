@@ -37,8 +37,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-XMLDTD %s ok\n", name);
@@ -47,6 +50,15 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		printf("FOUNDATION-XMLDTD %s FAIL %s\n", name, detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSXMLElement", "addChild:") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 static id fn_url(NSString *path)
 {
@@ -163,6 +175,10 @@ int main(void)
 		      [amp DTDKind] == NSXMLEntityGeneralKind &&
 		      [NSXMLDTD predefinedEntityDeclarationForName:@"nosuch"] == nil,
 		      [NSString stringWithFormat:@"amp=%@", [amp stringValue]]);
+	covers("NSXMLDTD", "elementDeclarationForName:");
+	covers("NSXMLDTD", "entityDeclarationForName:");
+	covers("NSXMLDTD", "notationDeclarationForName:");
+	covers("NSXMLDTD", "predefinedEntityDeclarationForName:");
 	}
 
 	{
