@@ -547,6 +547,12 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 		userland/tests/objc_smoke.m -o .build/objc-smoke-main.o
 	$(MUSL64_OBJC) .build/objc-smoke-support.o .build/objc-smoke-main.o \
 		-o "$(ROOTFS64)/System/Shared/tests/objc_smoke"
+	# cgtext_demo: Core Graphics AND text on the guest's own screen (a combined demonstration of
+	# C1-C6 plus the text door). ONE translation unit, no ARC (it calls C doors and does not need it),
+	# and it links the two libraries a caller of this API links.
+	$(MUSL64_OBJC) -Iuserland userland/tests/cgtext_demo.m \
+		-L$(FNXLIB) -lcoregraphics -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/cgtext_demo"
 	# sterlingc K1, the guest half (docs/design/sterling-plan.md §4). The four
 	# host legs (make sterlingc-check) prove the emitted TEXT - the golden diff,
 	# the corpus, the rejects, and that it compiles. None of them RUNS anything,
