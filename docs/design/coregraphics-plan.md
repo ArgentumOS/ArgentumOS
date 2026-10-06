@@ -1615,3 +1615,31 @@ ARE BOTH OPAQUE, and a fill here is antialiased, so `alpha_s < 1` along every ed
 case needs the PDF composite applied to UNPREMULTIPLIED components per pixel, which this substrate does not
 expose. So the choice is still between something close and something right, the row stays `open`, and the
 reason now includes the half that was missing rather than only the half that was obvious.
+
+## 22. The mask doors are written and STASHED at `stash@{0}`: the object level passes, the pixels do not
+
+**THE UNIT IS IMPLEMENTED AND THE TREE IS GREEN WITHOUT IT.** `CGImageCreateWithMask` and
+`CGImageCreateWithMaskingColors` are written — the struct's `mask`/`mask_colors`/`mask_color_count` fields, the
+release and the structure-copy that deep-copies the range array, Apple's four refusals (a picture that is
+already masked, a mask as the picture, a mask image that is not DeviceGray, a mask image with an alpha
+channel), the two accessors in `CGImage_internal.h`, and **the drawing path's application of both rules** in
+`CGContextDrawImage` — an IMAGE MASK's sample is an INVERSE alpha while a gray PICTURE used as a mask is the
+alpha itself, and masking colours NOT-PAINT rather than blend.
+
+**WHAT PASSED, MEASURED:** every object-level check in `coregraphics_imagederive` — the derived picture is made,
+it SHARES the original's bytes, it is a picture and not a mask, masking it again is refused, a mask is refused
+as the picture, a mask image with an alpha channel is refused, a range outside 0..255 is refused — and every
+earlier check in that probe (the masks, the copies, the subrectangle).
+
+**WHAT FAILED: FOUR PIXEL-LEVEL CHECKS, all in the section that paints through a mask into a 2x2 context.** The
+canvas is made (that check passes) and the section RUNS, so the failures are the four *comparisons*: the
+picture alone painting both columns, the masked draw painting the zero column and not the 255 one, and the two
+masking-colours draws. **THE FIRST CANDIDATE IS THE PROBE, NOT THE LIBRARY:** a fresh `CGBitmapContextCreate`'s
+initial contents and the byte position of alpha in its device buffer are BOTH assumptions the checks make and
+neither has been measured — the alpha index used is `canvas[3]` and "not painted" is asserted as `0x00`, and
+this library's device pixels are BGRA while the context was asked for `kCGImageAlphaPremultipliedLast`. The
+next measurement is therefore **what a fresh bitmap context contains, byte by byte**, and where its alpha
+lands — before any conclusion about the mask is drawn from those four numbers.
+
+To resume: `git stash pop` (stash@{0}), then read a freshly created context's bytes in the probe before
+asserting anything about a draw.
