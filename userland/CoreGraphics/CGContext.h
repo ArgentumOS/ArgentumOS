@@ -445,9 +445,29 @@ CGPoint CGContextGetTextPosition(CGContextRef context);
 void CGContextSetCharacterSpacing(CGContextRef context, CGFloat spacing);
 void CGContextSetTextDrawingMode(CGContextRef context, CGTextDrawingMode mode);
 
-/* POSITIONS ARE IN TEXT SPACE, which is the reading this slice pins; the probe asserts it by moving
- * the text matrix and watching the ink move with it. */
+/* POSITIONS ARE IN USER SPACE — AND THAT IS A CORRECTION, NOT A CHOICE. This door first shipped with
+ * "positions are in text space" pinned in this very comment, on the reasoning that Core Text sets the
+ * text matrix and passes positions along a line. THE 10.6 HEADER SAYS OTHERWISE, in its own words and
+ * twice: "Draw `glyphs` ... at the points specified by `positions` ... the positions are specified in
+ * user space", and the same for `ShowGlyphsAtPoint`'s point and `ShowGlyphsWithAdvances`' advances.
+ * The PUBLIC HEADER IS THE CONTRACT THIS LIBRARY DUPLICATES, so user space it is: the TEXT MATRIX
+ * TRANSFORMS THE GLYPH (its outline, its size), and the CTM alone places the pen. A pure TRANSLATION
+ * in the text matrix moves the ink under either reading — which is why the probe's original check could
+ * not tell them apart — so the probe now distinguishes them the only way that works: a SCALED text
+ * matrix must scale the glyph WITHOUT moving it. */
 void CGContextShowGlyphsAtPositions(CGContextRef context, const CGGlyph glyphs[],
 				    const CGPoint positions[], size_t count);
+
+/* THE THREE ADVANCE DOORS: the pen starts at the TEXT POSITION (in user space, see above), each glyph
+ * is drawn where the pen is, and the pen then moves. `ShowGlyphs` uses the FONT'S OWN advances, scaled
+ * from font units by the font size; `ShowGlyphsWithAdvances` uses the caller's, which the header above
+ * says are in user space; `ShowGlyphsAtPoint` sets the text position first. CHARACTER SPACING IS ADDED
+ * AFTER EACH GLYPH IN ALL THREE, which is what `CGContextSetCharacterSpacing` promises — that door was
+ * recorded-but-unapplied until these existed, and the probe now measures the widening. */
+void CGContextShowGlyphs(CGContextRef context, const CGGlyph glyphs[], size_t count);
+void CGContextShowGlyphsAtPoint(CGContextRef context, CGFloat x, CGFloat y, const CGGlyph glyphs[],
+				 size_t count);
+void CGContextShowGlyphsWithAdvances(CGContextRef context, const CGGlyph glyphs[],
+				      const CGSize advances[], size_t count);
 
 #endif /* CORE_GRAPHICS_CGCONTEXT_H */

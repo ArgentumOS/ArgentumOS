@@ -2926,104 +2926,187 @@ static int cg_glyph_pen(double v)
 	return (int)(v < 0.0 ? v - 0.5 : v + 0.5);
 }
 
-void CGContextShowGlyphsAtPositions(CGContextRef c, const CGGlyph glyphs[], const CGPoint positions[],
-				    size_t count)
+/* THE ONE PLACE A GLYPH IS PUT ON A SURFACE, and every text door below is a loop over it: the pen is in
+ * USER SPACE and the CTM places it, the TEXT MATRIX transforms the glyph itself (see the header). */
+static void cg_show_one_glyph(CGContextRef c, CGGlyph glyph, CGPoint pen, pixman_op_t op)
 {
-	CGAffineTransform place;
-	pixman_op_t op;
-	size_t i;
+	unsigned char *coverage = NULL;
+	pixman_image_t *src, *cover;
+	pixman_color_t solid;
+	CGAffineTransform linear;
+	CGPoint device;
+	double a;
+	int w = 0, h = 0, left = 0, top = 0, dx, dy;
+	double advance = 0.0;
 
-	if (c == NULL || c->data == NULL || glyphs == NULL || positions == NULL) {
+	/* THE PEN, PLUS THE TEXT MATRIX'S TRANSLATION: the matrix's SCALE and ROTATION are already in
+	 * `linear` below (they rasterise the glyph), and its TRANSLATION is the one part that moves the
+	 * glyph relative to the pen — which is what a caller shifting text within a line means by it. */
+	pen.x += c->state.text_matrix.tx;
+	pen.y += c->state.text_matrix.ty;
+	device = CGPointApplyAffineTransform(pen, c->state.ctm);
+	linear = CGAffineTransformConcat(c->state.text_matrix, c->state.ctm);
+	linear.tx = 0.0;
+	linear.ty = 0.0;
+	if (!cg_font_render_glyph(c->state.font, glyph, c->state.font_size, linear,
+				  CGPointMake(0.0, 0.0), &coverage, &w, &h, &left, &top, &advance)) {
 		return;
+	}
+	if (w <= 0 || h <= 0) {
+		/* NO INK, WHICH IS NOT A FAILURE: a space advances and draws nothing. */
+		free(coverage);
+		return;
+	}
+	dx = cg_glyph_pen(device.x) + left;
+	dy = cg_glyph_pen(device.y) - top;
+	cover = pixman_image_create_bits(PIXMAN_a8, c->width, c->height, NULL, 0);
+	if (cover == NULL) {
+		free(coverage);
+		return;
+	}
+	{
+		uint8_t *cd = (uint8_t *)pixman_image_get_data(cover);
+		int cs = pixman_image_get_stride(cover);
+		int row, col;
+
+		for (row = 0; row < h; row++) {
+			int y = dy + row;
+
+			if (y < 0 || y >= c->height) {
+				continue;
+			}
+			for (col = 0; col < w; col++) {
+				int x = dx + col;
+
+				if (x < 0 || x >= c->width) {
+					continue;
+				}
+				cd[(size_t)y * (size_t)cs + (size_t)x] =
+					coverage[(size_t)row * (size_t)w + (size_t)col];
+			}
+		}
+	}
+	free(coverage);
+	a = c->state.rgba[3] * c->state.alpha;
+	solid.red = (uint16_t)(cg_text_clamp01(c->state.rgba[0] * a) * 65535.0 + 0.5);
+	solid.green = (uint16_t)(cg_text_clamp01(c->state.rgba[1] * a) * 65535.0 + 0.5);
+	solid.blue = (uint16_t)(cg_text_clamp01(c->state.rgba[2] * a) * 65535.0 + 0.5);
+	solid.alpha = (uint16_t)(cg_text_clamp01(a) * 65535.0 + 0.5);
+	src = pixman_image_create_solid_fill(&solid);
+	if (src == NULL) {
+		pixman_image_unref(cover);
+		return;
+	}
+	pixman_image_set_clip_region32(c->image, &c->state.clip);
+	if (c->state.clip_mask != NULL) {
+		pixman_image_composite32(PIXMAN_OP_IN, c->state.clip_mask, NULL, cover, 0, 0, 0, 0, 0, 0,
+					 c->width, c->height);
+	}
+	pixman_image_composite32(op, src, cover, c->image, 0, 0, 0, 0, 0, 0, c->width, c->height);
+	pixman_image_unref(src);
+	pixman_image_unref(cover);
+}
+
+/* THE REFUSALS, IN ONE PLACE: every text door draws through `cg_show_one_glyph`, so the conditions are
+ * asked once here rather than four times. */
+static int cg_text_can_draw(CGContextRef c)
+{
+	if (c == NULL || c->data == NULL) {
+		return 0;
 	}
 	if (c->state.font == NULL) {
 		fprintf(stderr, "CG-REFUSE: no font is set on this context (CGContextSetFont)\n");
-		return;
+		return 0;
 	}
 	if (c->state.font_size <= 0.0) {
 		fprintf(stderr, "CG-REFUSE: the font size is not positive (CGContextSetFontSize)\n");
-		return;
+		return 0;
 	}
 	if (c->state.text_mode != kCGTextFill) {
 		fprintf(stderr, "CG-REFUSE: text drawing mode %d is not implemented; kCGTextFill only\n",
 			(int)c->state.text_mode);
+		return 0;
+	}
+	return 1;
+}
+
+/* THE FONT'S OWN ADVANCE FOR ONE GLYPH, IN USER SPACE: font units scaled by the font size, because the
+ * size IS in user-space units. Zero for a font with no units-per-em or a glyph the engine cannot measure
+ * — a call that draws the glyph where it is and then does not move, rather than a refusal. */
+static double cg_glyph_advance(CGContextRef c, CGGlyph glyph)
+{
+	int units = CGFontGetUnitsPerEm(c->state.font);
+	int advance = 0;
+
+	if (units <= 0 || !CGFontGetGlyphAdvances(c->state.font, &glyph, 1, &advance)) {
+		return 0.0;
+	}
+	return (double)advance * c->state.font_size / (double)units;
+}
+
+void CGContextShowGlyphsAtPositions(CGContextRef c, const CGGlyph glyphs[], const CGPoint positions[],
+				    size_t count)
+{
+	pixman_op_t op;
+	size_t i;
+
+	if (c == NULL || glyphs == NULL || positions == NULL || !cg_text_can_draw(c)) {
 		return;
 	}
-	place = CGAffineTransformConcat(c->state.text_matrix, c->state.ctm);
 	op = cg_op(c->state.blend);
 	pixman_image_set_clip_region32(c->image, &c->state.clip);
-
 	for (i = 0; i < count; i++) {
-		unsigned char *coverage = NULL;
-		pixman_image_t *src, *cover;
-		pixman_color_t solid;
-		CGPoint device;
-		CGAffineTransform linear;
-		double a;
-		int w = 0, h = 0, left = 0, top = 0, dx, dy;
-		double advance = 0.0;
-
-		device = CGPointApplyAffineTransform(positions[i], place);
-		linear = place;
-		linear.tx = 0.0;
-		linear.ty = 0.0;
-		if (!cg_font_render_glyph(c->state.font, glyphs[i], c->state.font_size, linear,
-					  CGPointMake(0.0, 0.0), &coverage, &w, &h, &left, &top,
-					  &advance)) {
-			continue;
-		}
-		if (w <= 0 || h <= 0) {
-			free(coverage);
-			continue;
-		}
-		dx = cg_glyph_pen(device.x) + left;
-		dy = cg_glyph_pen(device.y) - top;
-		cover = pixman_image_create_bits(PIXMAN_a8, c->width, c->height, NULL, 0);
-		if (cover == NULL) {
-			free(coverage);
-			continue;
-		}
-		{
-			uint8_t *cd = (uint8_t *)pixman_image_get_data(cover);
-			int cs = pixman_image_get_stride(cover);
-			int row, col;
-
-			for (row = 0; row < h; row++) {
-				int y = dy + row;
-
-				if (y < 0 || y >= c->height) {
-					continue;
-				}
-				for (col = 0; col < w; col++) {
-					int x = dx + col;
-
-					if (x < 0 || x >= c->width) {
-						continue;
-					}
-					cd[(size_t)y * (size_t)cs + (size_t)x] =
-						coverage[(size_t)row * (size_t)w + (size_t)col];
-				}
-			}
-		}
-		free(coverage);
-		a = c->state.rgba[3] * c->state.alpha;
-		solid.red = (uint16_t)(cg_text_clamp01(c->state.rgba[0] * a) * 65535.0 + 0.5);
-		solid.green = (uint16_t)(cg_text_clamp01(c->state.rgba[1] * a) * 65535.0 + 0.5);
-		solid.blue = (uint16_t)(cg_text_clamp01(c->state.rgba[2] * a) * 65535.0 + 0.5);
-		solid.alpha = (uint16_t)(cg_text_clamp01(a) * 65535.0 + 0.5);
-		src = pixman_image_create_solid_fill(&solid);
-		if (src == NULL) {
-			pixman_image_unref(cover);
-			continue;
-		}
-		pixman_image_set_clip_region32(c->image, &c->state.clip);
-		if (c->state.clip_mask != NULL) {
-			pixman_image_composite32(PIXMAN_OP_IN, c->state.clip_mask, NULL, cover, 0, 0, 0, 0,
-						 0, 0, c->width, c->height);
-		}
-		pixman_image_composite32(op, src, cover, c->image, 0, 0, 0, 0, 0, 0, c->width, c->height);
-		pixman_image_unref(src);
-		pixman_image_unref(cover);
-		(void)advance;
+		cg_show_one_glyph(c, glyphs[i], positions[i], op);
 	}
+}
+
+void CGContextShowGlyphs(CGContextRef c, const CGGlyph glyphs[], size_t count)
+{
+	CGPoint pen;
+	pixman_op_t op;
+	size_t i;
+
+	if (c == NULL || glyphs == NULL || !cg_text_can_draw(c)) {
+		return;
+	}
+	op = cg_op(c->state.blend);
+	pen = c->state.text_position;
+	pixman_image_set_clip_region32(c->image, &c->state.clip);
+	for (i = 0; i < count; i++) {
+		cg_show_one_glyph(c, glyphs[i], pen, op);
+		pen.x += (CGFloat)(cg_glyph_advance(c, glyphs[i]) + (double)c->state.character_spacing);
+	}
+	/* THE PEN IS THE TEXT POSITION'S, SO IT MOVES: that is what makes the position state worth having,
+	 * and the probe reads it back with `CGContextGetTextPosition`. */
+	c->state.text_position = pen;
+}
+
+void CGContextShowGlyphsAtPoint(CGContextRef c, CGFloat x, CGFloat y, const CGGlyph glyphs[], size_t count)
+{
+	if (c == NULL) {
+		return;
+	}
+	c->state.text_position = CGPointMake(x, y);
+	CGContextShowGlyphs(c, glyphs, count);
+}
+
+void CGContextShowGlyphsWithAdvances(CGContextRef c, const CGGlyph glyphs[], const CGSize advances[],
+				     size_t count)
+{
+	CGPoint pen;
+	pixman_op_t op;
+	size_t i;
+
+	if (c == NULL || glyphs == NULL || advances == NULL || !cg_text_can_draw(c)) {
+		return;
+	}
+	op = cg_op(c->state.blend);
+	pen = c->state.text_position;
+	pixman_image_set_clip_region32(c->image, &c->state.clip);
+	for (i = 0; i < count; i++) {
+		cg_show_one_glyph(c, glyphs[i], pen, op);
+		pen.x += advances[i].width + c->state.character_spacing;
+		pen.y += advances[i].height;
+	}
+	c->state.text_position = pen;
 }

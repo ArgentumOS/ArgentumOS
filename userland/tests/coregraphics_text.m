@@ -28,6 +28,7 @@
 #include <CoreGraphics/CGDataProvider.h>
 
 #include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -169,20 +170,11 @@ int main(void)
 	{
 		CGGlyph l = CGFontGetGlyphWithGlyphName(font, @"L");
 		CGPoint at = CGPointMake(10.0, 20.0);
-		int x, y, at_baseline = 0;
+		int x, y;
 
 		check("the glyph named L was found", l != 0);
 		repaint(ctx);
 		CGContextShowGlyphsAtPositions(ctx, &l, &at, 1);
-		for (y = 56; y <= 62; y++) {
-			for (x = 8; x < 60; x++) {
-				const unsigned char *p = paint + ((size_t)y * W + x) * 4;
-
-				if (p[2] < 128) {
-					at_baseline++;
-				}
-			}
-		}
 		{
 			int top_cols = 0, foot_cols = 0;
 			int wide_top[W], wide_foot[W];
@@ -238,8 +230,23 @@ int main(void)
 		CGContextSetTextMatrix(ctx, CGAffineTransformMakeTranslation(60.0, 0.0));
 		CGContextShowGlyphsAtPositions(ctx, &a, &pen, 1);
 		count_ink(&n, &x0, &y0, &x1, &y1);
-		check("the text matrix moves the glyph (positions are in text space)",
+		/* A TRANSLATION IN THE TEXT MATRIX MOVES THE GLYPH. Under EITHER reading of "where is the
+		 * position" (text space or user space) a pure translation shifts the ink, so this check
+		 * cannot tell the two apart — the one after it can. */
+		check("a TRANSLATION in the text matrix moves the glyph",
 		      n == base_ink && x0 - base_x0 >= 58 && x0 - base_x0 <= 62);
+
+		/* AND ITS SCALE MUST NOT MOVE IT — the case that separates Apple's published reading ("the
+		 * positions are specified in user space", which is what this library now implements, having
+		 * first shipped the text-space one) from the reading it was corrected FROM. A scaled text
+		 * matrix makes the glyph bigger and leaves the pen where it was: same left edge, more ink. */
+		CGContextSetTextMatrix(ctx, CGAffineTransformIdentity);
+		repaint(ctx);
+		CGContextSetTextMatrix(ctx, CGAffineTransformMakeScale(1.5, 1.5));
+		CGContextShowGlyphsAtPositions(ctx, &a, &pen, 1);
+		count_ink(&n, &x0, &y0, &x1, &y1);
+		check("a SCALED text matrix scales the glyph and does NOT move the pen",
+		      n > base_ink && x0 >= base_x0 - 1 && x0 <= base_x0 + 1);
 		CGContextSetTextMatrix(ctx, CGAffineTransformIdentity);
 
 		/* AND THE CTM: the same glyph at 16pt, once plain and once through a 2x CTM, with the pen
@@ -282,6 +289,68 @@ int main(void)
 		h32 = y1 - y0;
 		check("two sizes on ONE font both draw, and the larger one is taller",
 		      h16 > 4 && h32 > h16 + 4);
+	}
+
+	/* --- THE ADVANCE DOORS: the pen arithmetic, measured exactly --------------------- */
+	/* `ShowGlyphs` moves the text position by the FONT'S OWN advance (font units scaled by the font
+	 * size, which is in user space) plus the character spacing; `ShowGlyphsAtPoint` sets the position
+	 * first; `ShowGlyphsWithAdvances` uses the caller's advances. THE CHECKS BELOW READ THE PEN BACK
+	 * — the text position is the state these doors exist to move — and each is compared with the
+	 * arithmetic the caller can do itself, so a door that drew but did not advance fails. */
+	{
+		CGGlyph pair[2];
+		CGSize advances[2];
+		CGPoint after;
+		int advance = 0;
+		double step;
+
+		pair[0] = a;
+		pair[1] = a;
+		check("the font reports an advance for the test glyph",
+		      CGFontGetGlyphAdvances(font, &a, 1, &advance) && advance > 0);
+		step = (double)advance * 32.0 / (double)CGFontGetUnitsPerEm(font);
+
+		repaint(ctx);
+		CGContextSetCharacterSpacing(ctx, 0.0);
+		CGContextSetTextPosition(ctx, 10.0, 10.0);
+		CGContextShowGlyphs(ctx, pair, 2);
+		after = CGContextGetTextPosition(ctx);
+		count_ink(&n, &x0, &y0, &x1, &y1);
+		check("ShowGlyphs draws the glyphs AND advances the pen by the font's own advance",
+		      n > 50 && fabs(after.x - (10.0 + 2.0 * step)) < 0.01 && after.y == 10.0);
+
+		repaint(ctx);
+		CGContextSetCharacterSpacing(ctx, 12.0);
+		CGContextSetTextPosition(ctx, 10.0, 10.0);
+		CGContextShowGlyphs(ctx, pair, 2);
+		after = CGContextGetTextPosition(ctx);
+		check("the character spacing is ADDED to each advance, which is what the setter promises",
+		      fabs(after.x - (10.0 + 2.0 * (step + 12.0))) < 0.01);
+
+		repaint(ctx);
+		CGContextShowGlyphsAtPoint(ctx, 20.0, 30.0, pair, 2);
+		after = CGContextGetTextPosition(ctx);
+		check("ShowGlyphsAtPoint sets the position and then advances from there",
+		      fabs(after.x - (20.0 + 2.0 * (step + 12.0))) < 0.01 && after.y == 30.0);
+
+		repaint(ctx);
+		advances[0] = CGSizeMake(40.0, 0.0);
+		advances[1] = CGSizeMake(40.0, 0.0);
+		CGContextSetTextPosition(ctx, 10.0, 10.0);
+		CGContextShowGlyphsWithAdvances(ctx, pair, advances, 2);
+		after = CGContextGetTextPosition(ctx);
+		check("ShowGlyphsWithAdvances uses the CALLER'S advances (user space) rather than the font's",
+		      fabs(after.x - (10.0 + 2.0 * (40.0 + 12.0))) < 0.01);
+
+		/* AND THE REFUSAL IS SHARED BY EVERY TEXT DOOR, since they all draw through one path. */
+		repaint(ctx);
+		CGContextSetFont(ctx, NULL);
+		CGContextShowGlyphs(ctx, pair, 2);
+		count_ink(&n, &x0, &y0, &x1, &y1);
+		check("ShowGlyphs refuses with no font, like the door it shares its drawing with", n == 0);
+		CGContextSetFont(ctx, font);
+		CGContextSetCharacterSpacing(ctx, 0.0);
+		CGContextSetFontSize(ctx, 32.0);
 	}
 
 	/* --- the state stack carries the font, which is the ownership this added --------- */

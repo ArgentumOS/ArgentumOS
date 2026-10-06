@@ -77,7 +77,7 @@
 # why the struck rows are struck: after-10.6 253, post-10.6 178, x11-territory 475
 #
 # counts by kind:
-#   func       shipped  220   open  107   struck  310   deferred   98
+#   func       shipped  223   open  104   struck  310   deferred   98
 #   macro      shipped    7   open    8   struck   92   deferred    0
 #   enum       shipped   13   open    3   struck   38   deferred    3
 #   case       shipped   93   open    9   struck  325   deferred   17
@@ -809,10 +809,10 @@ func	shipped	CGContextSetStrokePattern	-	Opaque Types / Setting Fill, Stroke, an
 func	shipped	CGContextSetTextDrawingMode	-	Opaque Types / Drawing Text	-	objc
 func	shipped	CGContextSetTextMatrix	-	Opaque Types / Drawing Text	-	objc
 func	shipped	CGContextSetTextPosition	-	Opaque Types / Drawing Text	-	objc
-func	open	CGContextShowGlyphs	-	Opaque Types / Drawing Text	deprecated	objc
-func	open	CGContextShowGlyphsAtPoint	-	Opaque Types / Drawing Text	deprecated	objc
+func	shipped	CGContextShowGlyphs	-	Opaque Types / Drawing Text	deprecated	objc
+func	shipped	CGContextShowGlyphsAtPoint	-	Opaque Types / Drawing Text	deprecated	objc
 func	shipped	CGContextShowGlyphsAtPositions	-	Opaque Types / Drawing Text	-	objc
-func	open	CGContextShowGlyphsWithAdvances	-	Opaque Types / Drawing Text	deprecated	objc
+func	shipped	CGContextShowGlyphsWithAdvances	-	Opaque Types / Drawing Text	deprecated	objc
 func	open	CGContextShowText	-	Opaque Types / Drawing Text	deprecated	objc
 func	open	CGContextShowTextAtPoint	-	Opaque Types / Drawing Text	deprecated	objc
 func	open	CGContextStrokeEllipseInRect	-	Opaque Types / Drawing Shapes	-	objc
