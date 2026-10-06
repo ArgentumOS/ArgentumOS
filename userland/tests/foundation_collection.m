@@ -1574,6 +1574,7 @@ NULL
 				     return [left compare:right];
 			     }] == 3,
 		      "enumerateObjectsUsingBlock: (index and stop), both comparator sorts, and the sorted-range search");
+	covers("NSArray", "reverseObjectEnumerator");
 	covers("NSSet", "enumerateObjectsUsingBlock:");
 	covers("NSArray", "sortedArrayUsingComparator:");
 	covers("NSArray", "enumerateObjectsUsingBlock:");
@@ -1791,6 +1792,8 @@ NULL
 		      wrote && back != nil && [back isEqualToArray:out],
 		      [[NSString stringWithFormat:@"wrote=%d back=%lu",
 			(int)wrote, (unsigned long)(back != nil ? [back count] : 0)] UTF8String]);
+	covers("NSArray", "arrayWithContentsOfURL:error:");
+	covers("NSArray", "writeToURL:error:");
 	covers("NSArray", "writeToURL:atomically:");
 	covers("NSArray", "arrayWithContentsOfURL:");
 		remove([path UTF8String]);
@@ -2166,6 +2169,7 @@ NULL
 			      [[NSString stringWithFormat:@"NSEnumerationReverse walks from the END (indexes came back "
 						@"as %@ for a three-element array)",
 						[order componentsJoinedByString:@","]] UTF8String]);
+	covers("NSArray", "enumerateObjectsWithOptions:usingBlock:");
 		}
 
 		/* THE INDEX-SET FORMS walk the SET, not the array, and the reverse form must do the same. */
@@ -2214,6 +2218,11 @@ NULL
 						[reverseSeen componentsJoinedByString:@","],
 						(unsigned long)[found firstIndex],
 						(unsigned long)[found lastIndex]] UTF8String]);
+	covers("NSArray", "enumerateObjectsAtIndexes:options:usingBlock:");
+	covers("NSArray", "indexesOfObjectsAtIndexes:options:passingTest:");
+	covers("NSArray", "indexOfObjectAtIndexes:options:passingTest:");
+	covers("NSArray", "indexesOfObjectsWithOptions:passingTest:");
+	covers("NSArray", "indexOfObjectWithOptions:passingTest:");
 		}
 
 		/* THE LOCALE DESCRIPTION: Apple's contract is the PROPERTY-LIST layout, which is multi-line and
@@ -2264,6 +2273,7 @@ NULL
 			      [[NSString stringWithFormat:@"a 64-element shuffle is a PERMUTATION (sum %lu of 2016), "
 						@"the receiver keeps its order, and the answer is a new array",
 						(unsigned long)total] UTF8String]);
+	covers("NSArray", "shuffledArray");
 		}
 
 		/* THE SORT HINT: the contract is "speeds the sorting", so what is asserted is that the ANSWER IS
@@ -2284,6 +2294,8 @@ NULL
 			      [[plain objectAtIndex:0] isEqualToString:@"alpha"] &&
 			      [foreign count] == 1,
 			      "the hint neither changes the ANSWER nor breaks on an array it did not come from");
+	covers("NSArray", "sortedArrayHint");
+	covers("NSArray", "sortedArrayUsingFunction:context:hint:");
 	covers("NSArray", "sortedArrayUsingFunction:context:");
 		}
 
