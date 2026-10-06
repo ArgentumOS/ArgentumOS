@@ -3090,6 +3090,42 @@ void CGContextShowGlyphsAtPoint(CGContextRef c, CGFloat x, CGFloat y, const CGGl
 	CGContextShowGlyphs(c, glyphs, count);
 }
 
+/* THE BYTE PATH, WHICH IS THE GLYPH PATH WITH A MAPPING IN FRONT OF IT: each byte becomes a glyph
+ * through the engine's character map and then the loop is the one above. A byte with no glyph is
+ * SKIPPED (see the header) — that is a `continue`, not an advance. */
+void CGContextShowText(CGContextRef c, const char *string, size_t length)
+{
+	CGPoint pen;
+	pixman_op_t op;
+	size_t i;
+
+	if (c == NULL || string == NULL || !cg_text_can_draw(c)) {
+		return;
+	}
+	op = cg_op(c->state.blend);
+	pen = c->state.text_position;
+	pixman_image_set_clip_region32(c->image, &c->state.clip);
+	for (i = 0; i < length; i++) {
+		CGGlyph g = cg_font_glyph_for_byte(c->state.font, (unsigned char)string[i]);
+
+		if (g == (CGGlyph)kCGFontIndexInvalid) {
+			continue;
+		}
+		cg_show_one_glyph(c, g, pen, op);
+		pen.x += (CGFloat)(cg_glyph_advance(c, g) + (double)c->state.character_spacing);
+	}
+	c->state.text_position = pen;
+}
+
+void CGContextShowTextAtPoint(CGContextRef c, CGFloat x, CGFloat y, const char *string, size_t length)
+{
+	if (c == NULL) {
+		return;
+	}
+	c->state.text_position = CGPointMake(x, y);
+	CGContextShowText(c, string, length);
+}
+
 void CGContextShowGlyphsWithAdvances(CGContextRef c, const CGGlyph glyphs[], const CGSize advances[],
 				     size_t count)
 {

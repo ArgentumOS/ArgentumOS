@@ -428,6 +428,22 @@ int cg_font_glyph_name(CGFontRef font, CGGlyph glyph, char *buf, size_t size)
 	return (int)strlen(buf);
 }
 
+CGGlyph cg_font_glyph_for_byte(CGFontRef font, unsigned char code)
+{
+	FT_UInt index;
+
+	if (font == NULL || font->face == NULL) {
+		return (CGGlyph)kCGFontIndexInvalid;
+	}
+	index = FT_Get_Char_Index(font->face, (FT_ULong)code);
+	if (index == 0) {
+		/* ZERO IS "THIS FONT HAS NO GLYPH FOR THAT CODE" — and it is also .notdef's index, which is
+		 * why it travels as kCGFontIndexInvalid and not as a glyph to draw. */
+		return (CGGlyph)kCGFontIndexInvalid;
+	}
+	return (CGGlyph)index;
+}
+
 CGGlyph cg_font_glyph_with_name(CGFontRef font, const char *name)
 {
 	FT_UInt index;

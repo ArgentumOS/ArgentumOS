@@ -353,6 +353,74 @@ int main(void)
 		CGContextSetFontSize(ctx, 32.0);
 	}
 
+	/* --- THE STRING DOORS: a byte path that must agree with the glyph path ----------- */
+	/* THE DECISIVE CHECK IS AN AGREEMENT: `ShowText` of "Hi" must draw EXACTLY the ink that the two
+	 * glyphs draw at the same pen, because the byte is read as a CHARACTER CODE through the font's own
+	 * map (the reading CGContext.h states). If the mapping were the byte-as-glyph-index one, DejaVu's
+	 * glyph order is not ASCII-aligned and this could not come out equal. */
+	{
+		CGGlyph pair[2];
+		CGPoint at_hi[2], after;
+		int adv_h = 0, adv_i = 0, units = CGFontGetUnitsPerEm(font);
+		int ink_glyphs, ink_bytes, ink_short, ink_unmapped;
+		int gx0, gy0, gx1, gy1, bx0, by0, bx1, by1, sx0, sy0, sx1, sy1, ux0, uy0, ux1, uy1;
+		double step_h, step_i, before_x;
+
+		pair[0] = CGFontGetGlyphWithGlyphName(font, @"H");
+		pair[1] = CGFontGetGlyphWithGlyphName(font, @"i");
+		check("the glyphs named H and i were found", pair[0] != 0 && pair[1] != 0
+		      && pair[0] != (CGGlyph)kCGFontIndexInvalid
+		      && pair[1] != (CGGlyph)kCGFontIndexInvalid);
+		CGFontGetGlyphAdvances(font, &pair[0], 1, &adv_h);
+		CGFontGetGlyphAdvances(font, &pair[1], 1, &adv_i);
+		step_h = (double)adv_h * 32.0 / (double)units;
+		step_i = (double)adv_i * 32.0 / (double)units;
+		at_hi[0] = CGPointMake(10.0, 10.0);
+		at_hi[1] = CGPointMake((CGFloat)(10.0 + step_h), 10.0);
+
+		repaint(ctx);
+		CGContextSetCharacterSpacing(ctx, 0.0);
+		CGContextShowGlyphsAtPositions(ctx, pair, at_hi, 2);
+		count_ink(&ink_glyphs, &gx0, &gy0, &gx1, &gy1);
+
+		repaint(ctx);
+		CGContextSetTextPosition(ctx, 10.0, 10.0);
+		CGContextShowText(ctx, "Hi", 2);
+		count_ink(&ink_bytes, &bx0, &by0, &bx1, &by1);
+		after = CGContextGetTextPosition(ctx);
+		check("ShowText draws exactly what the two glyphs draw: the byte is read as a CHARACTER",
+		      ink_glyphs > 50 && ink_bytes == ink_glyphs && bx0 == gx0 && bx1 == gx1
+		      && by0 == gy0 && by1 == gy1);
+		check("...and it advances the pen by the font's own advances, like the glyph door",
+		      fabs(after.x - (10.0 + step_h + step_i)) < 0.02 && after.y == 10.0);
+
+		/* `length` IS THE COUNT AND NOT A TERMINATOR: the same two bytes drawn from a buffer with a NUL
+		 * inside it must give the same picture as "Hi" alone. */
+		repaint(ctx);
+		CGContextSetTextPosition(ctx, 10.0, 10.0);
+		CGContextShowText(ctx, "Hi\0XY", 2);
+		count_ink(&ink_short, &sx0, &sy0, &sx1, &sy1);
+		check("length wins over a NUL inside the buffer", ink_short == ink_bytes && sx0 == bx0
+		      && sx1 == bx1);
+
+		repaint(ctx);
+		CGContextShowTextAtPoint(ctx, 30.0, 12.0, "Hi", 2);
+		count_ink(&n, &x0, &y0, &x1, &y1);
+		after = CGContextGetTextPosition(ctx);
+		check("ShowTextAtPoint sets the position first, then advances from there",
+		      n == ink_bytes && fabs(after.x - (30.0 + step_h + step_i)) < 0.02 && after.y == 12.0);
+
+		/* AND A BYTE THIS FONT HAS NO GLYPH FOR IS SKIPPED: no ink, no advance, no refusal. */
+		repaint(ctx);
+		CGContextSetTextPosition(ctx, 10.0, 10.0);
+		before_x = 10.0;
+		CGContextShowText(ctx, "\0", 1);
+		count_ink(&ink_unmapped, &ux0, &uy0, &ux1, &uy1);
+		after = CGContextGetTextPosition(ctx);
+		check("a byte with no glyph in this font is skipped rather than refused",
+		      ink_unmapped == 0 && after.x == before_x);
+	}
+
 	/* --- the state stack carries the font, which is the ownership this added --------- */
 	repaint(ctx);
 	CGContextSaveGState(ctx);

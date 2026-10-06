@@ -470,4 +470,24 @@ void CGContextShowGlyphsAtPoint(CGContextRef context, CGFloat x, CGFloat y, cons
 void CGContextShowGlyphsWithAdvances(CGContextRef context, const CGGlyph glyphs[],
 				      const CGSize advances[], size_t count);
 
+/* THE TWO STRING DOORS, AND THE ENCODING THEY READ A BYTE WITH. Apple's own words: "each byte of the
+ * string is mapped through the encoding vector of the current font to obtain the glyph to display".
+ * THE ENUM BELOW CARRIES APPLE'S TWO VALUES, TRANSCRIBED IN APPLE'S ORDER (the 10.6 header leaves
+ * them implicit: 0 and 1). AND ONLY ONE OF THE TWO IS REACHABLE TODAY: the door that SELECTS an
+ * encoding is `CGContextSelectFont`, which needs the font registry and is therefore owed — so these
+ * two doors read a byte as a CHARACTER CODE through the font's own map (see
+ * `cg_font_glyph_for_byte`), which is this library's implementation of the font-specific encoding and
+ * is stated rather than assumed. THE MACROMAN TABLE WAITS FOR THE DOOR THAT CAN CHOOSE IT. */
+typedef enum {
+	kCGEncodingFontSpecific = 0,
+	kCGEncodingMacRoman = 1
+} CGTextEncoding;
+
+/* `length` IS THE COUNT, NOT A TERMINATOR: these doors draw exactly the bytes they are given, which
+ * is what makes them usable on a slice of a buffer. A BYTE THIS FONT HAS NO GLYPH FOR IS SKIPPED —
+ * no ink, no advance, no refusal — because a missing glyph is a font fact, not a caller error. */
+void CGContextShowText(CGContextRef context, const char *string, size_t length);
+void CGContextShowTextAtPoint(CGContextRef context, CGFloat x, CGFloat y, const char *string,
+			      size_t length);
+
 #endif /* CORE_GRAPHICS_CGCONTEXT_H */

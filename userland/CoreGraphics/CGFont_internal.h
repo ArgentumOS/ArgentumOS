@@ -48,6 +48,15 @@ int cg_font_glyph_name(CGFontRef font, CGGlyph glyph, char *buf, size_t size);
  * PostScript encoding) reaches a glyph without a character map. `kCGFontIndexInvalid` = not found. */
 CGGlyph cg_font_glyph_with_name(CGFontRef font, const char *name);
 
+/* A BYTE TO A GLYPH THROUGH THE FONT'S OWN CHARACTER MAP, which is what the string-drawing doors
+ * need and what a caller without a character map cannot do for itself. THE BYTE IS READ AS A
+ * CHARACTER CODE, not as a glyph index: this library implements the font-specific encoding that way
+ * and SAYS SO (see CGContext.h's note on CGTextEncoding), because the alternative — byte as glyph
+ * index — gives garbage for every font whose glyph order is not ASCII-aligned, which is all of
+ * them. A byte this font has no glyph for answers kCGFontIndexInvalid, which the caller SKIPS
+ * rather than drawing .notdef for. */
+CGGlyph cg_font_glyph_for_byte(CGFontRef font, unsigned char code);
+
 /* ONE GLYPH RASTERISED ... see CGContext.c for how it is placed. */
 int cg_font_render_glyph(CGFontRef font, CGGlyph glyph, CGFloat pixel_size,
                          CGAffineTransform matrix, CGPoint delta, unsigned char **coverage,

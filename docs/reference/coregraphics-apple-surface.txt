@@ -77,10 +77,10 @@
 # why the struck rows are struck: after-10.6 253, post-10.6 178, x11-territory 475
 #
 # counts by kind:
-#   func       shipped  223   open  104   struck  310   deferred   98
+#   func       shipped  225   open  102   struck  310   deferred   98
 #   macro      shipped    7   open    8   struck   92   deferred    0
-#   enum       shipped   13   open    3   struck   38   deferred    3
-#   case       shipped   93   open    9   struck  325   deferred   17
+#   enum       shipped   14   open    2   struck   38   deferred    3
+#   case       shipped   95   open    7   struck  325   deferred   17
 #   var        shipped   14   open   11   struck   87   deferred   23
 #   typealias  shipped   20   open   12   struck   45   deferred   23
 #   struct     shipped    7   open    3   struck    9   deferred    1
@@ -257,8 +257,8 @@ case	struck	kCGDisplayStreamUpdateRefreshedRects	-	Services / Constants / Consta
 case	struck	kCGDisplayUnMirrorFlag	-	Services / Constants / Constants	x11-territory	objc
 case	struck	kCGDockWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
 case	struck	kCGDraggingWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
-case	open	kCGEncodingFontSpecific	-	Opaque Types / Constants / Constants	deprecated	objc
-case	open	kCGEncodingMacRoman	-	Opaque Types / Constants / Constants	deprecated	objc
+case	shipped	kCGEncodingFontSpecific	-	Opaque Types / Constants / Constants	deprecated	objc
+case	shipped	kCGEncodingMacRoman	-	Opaque Types / Constants / Constants	deprecated	objc
 case	struck	kCGErrorCannotComplete	-	Reference / Enumerations / Constants	x11-territory	objc
 case	struck	kCGErrorFailure	-	Reference / Enumerations / Constants	x11-territory	objc
 case	struck	kCGErrorIllegalArgument	-	Reference / Enumerations / Constants	x11-territory	objc
@@ -578,7 +578,7 @@ enum	struck	CGScreenUpdateOperation	-	Services / Constants	x11-territory	objc
 enum	struck	CGScrollEventUnit	-	Services / Constants	x11-territory	objc
 enum	struck	CGScrollPhase	-	Reference / Enumerations	post-10.6	objc
 enum	shipped	CGTextDrawingMode	-	Opaque Types / Drawing Text	-	objc
-enum	open	CGTextEncoding	-	Opaque Types / Constants	deprecated	objc
+enum	shipped	CGTextEncoding	-	Opaque Types / Constants	deprecated	objc
 enum	struck	CGToneMapping	-	Reference / Enumerations	after-10.6	objc
 enum	struck	CGWindowBackingType	-	Services / Data Types	x11-territory	objc
 enum	struck	CGWindowImageOption	-	Services / Data Types	x11-territory	objc
@@ -813,8 +813,8 @@ func	shipped	CGContextShowGlyphs	-	Opaque Types / Drawing Text	deprecated	objc
 func	shipped	CGContextShowGlyphsAtPoint	-	Opaque Types / Drawing Text	deprecated	objc
 func	shipped	CGContextShowGlyphsAtPositions	-	Opaque Types / Drawing Text	-	objc
 func	shipped	CGContextShowGlyphsWithAdvances	-	Opaque Types / Drawing Text	deprecated	objc
-func	open	CGContextShowText	-	Opaque Types / Drawing Text	deprecated	objc
-func	open	CGContextShowTextAtPoint	-	Opaque Types / Drawing Text	deprecated	objc
+func	shipped	CGContextShowText	-	Opaque Types / Drawing Text	deprecated	objc
+func	shipped	CGContextShowTextAtPoint	-	Opaque Types / Drawing Text	deprecated	objc
 func	open	CGContextStrokeEllipseInRect	-	Opaque Types / Drawing Shapes	-	objc
 func	shipped	CGContextStrokeLineSegments	-	Opaque Types / Drawing Shapes	-	objc
 func	shipped	CGContextStrokePath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
