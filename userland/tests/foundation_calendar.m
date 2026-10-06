@@ -986,6 +986,87 @@ int main(void)
 	}
 
 
+	printf("FOUNDATION-CALENDAR DIAG leg=symbol-families\n");
+	{
+		/* NEW ASSERTIONS: THE TEN SYMBOL FAMILIES NOTHING HAD ASKED FOR. The law is COUNT plus FIRST ENTRY
+		 * against a locale whose names are CLDR's, so a door that answered the WRONG ARRAY - a short list where
+		 * the standalone one was asked, say - cannot pass. "Januar" and "Sonntag" are the same German values
+		 * the date formatter's own probe asserts, so the two probes agree by construction rather than against a
+		 * literal invented here. */
+		NSCalendar *german = [[NSCalendar alloc] initWithCalendarIdentifier:NSCalendarIdentifierGregorian];
+		NSLocale *de = [[NSLocale alloc] initWithLocaleIdentifier:@"de_DE"];
+		NSUInteger shortMonths, veryShortMonths, shortQuarters, standaloneQuarter;
+		NSUInteger shortStandaloneMonths, veryShortStandaloneMonths, standaloneWeekdays;
+		NSUInteger shortStandaloneWeekdays, veryShortStandaloneWeekdays;
+
+		[german setLocale:de];
+		shortMonths = [[german shortMonthSymbols] count];
+		veryShortMonths = [[german veryShortMonthSymbols] count];
+		shortQuarters = [[german shortQuarterSymbols] count];
+		standaloneQuarter = [[german standaloneQuarterSymbols] count];
+		shortStandaloneMonths = [[german shortStandaloneMonthSymbols] count];
+		veryShortStandaloneMonths = [[german veryShortStandaloneMonthSymbols] count];
+		standaloneWeekdays = [[german standaloneWeekdaySymbols] count];
+		shortStandaloneWeekdays = [[german shortStandaloneWeekdaySymbols] count];
+		veryShortStandaloneWeekdays = [[german veryShortStandaloneWeekdaySymbols] count];
+
+		check("calendar-symbol-families-are-all-present",
+		      shortMonths >= 12 && veryShortMonths >= 12 &&
+		      shortQuarters >= 4 && standaloneQuarter >= 4 &&
+		      shortStandaloneMonths >= 12 && veryShortStandaloneMonths >= 12 &&
+		      standaloneWeekdays >= 7 && shortStandaloneWeekdays >= 7 && veryShortStandaloneWeekdays >= 7 &&
+		      [[[german shortStandaloneMonthSymbols] objectAtIndex:0] isEqualToString:@"Jan"] &&
+		      [[[german standaloneWeekdaySymbols] objectAtIndex:0] isEqualToString:@"Sonntag"],
+		      [[NSString stringWithFormat:
+			@"mon=%lu/%lu qtr=%lu/%lu mon=%lu/%lu wd=%lu/%lu/%lu first=%@/%@",
+			(unsigned long)shortMonths, (unsigned long)veryShortMonths,
+			(unsigned long)shortQuarters, (unsigned long)standaloneQuarter,
+			(unsigned long)shortStandaloneMonths, (unsigned long)veryShortStandaloneMonths,
+			(unsigned long)standaloneWeekdays, (unsigned long)shortStandaloneWeekdays,
+			(unsigned long)veryShortStandaloneWeekdays,
+			[[german shortStandaloneMonthSymbols] objectAtIndex:0],
+			[[german standaloneWeekdaySymbols] objectAtIndex:0]] UTF8String]);
+		covers("NSCalendar", "shortMonthSymbols");
+		covers("NSCalendar", "veryShortMonthSymbols");
+		covers("NSCalendar", "shortQuarterSymbols");
+		covers("NSCalendar", "standaloneQuarterSymbols");
+		covers("NSCalendar", "shortStandaloneMonthSymbols");
+		covers("NSCalendar", "veryShortStandaloneMonthSymbols");
+		covers("NSCalendar", "standaloneWeekdaySymbols");
+		covers("NSCalendar", "shortStandaloneWeekdaySymbols");
+		covers("NSCalendar", "veryShortStandaloneWeekdaySymbols");
+		printf("FOUNDATION-CALENDAR DIAG leg=symbol-families-done\n");
+	}
+
+	printf("FOUNDATION-CALENDAR DIAG leg=relative-days\n");
+	{
+		/* NEW ASSERTIONS: THE RELATIVE-DAY DOORS AND THE CLASS DOOR THAT FEEDS THEM. TOMORROW AND YESTERDAY ARE
+		 * DERIVED FROM THE CALENDAR, not from +/- seconds: an hour count that lands comfortably in the future
+		 * is NOT tomorrow when the run happens near midnight, and a check that guessed one would fail for a
+		 * reason that has nothing to do with these doors. */
+		NSCalendar *cal = [NSCalendar currentCalendar];
+		NSDate *now = [NSDate date];
+		NSDate *tomorrow = [cal dateByAddingUnit:NSCalendarUnitDay value:1 toDate:now options:0];
+		NSDate *yesterday = [cal dateByAddingUnit:NSCalendarUnitDay value:-1 toDate:now options:0];
+
+		check("calendar-relative-days-answer-for-today-tomorrow-and-yesterday",
+		      cal != nil && [[cal calendarIdentifier] length] > 0 &&
+		      [cal isDate:now inSameDayAsDate:now] &&
+		      !(tomorrow != nil && [cal isDate:now inSameDayAsDate:tomorrow]) &&
+		      ![cal isDateInTomorrow:now] && tomorrow != nil && [cal isDateInTomorrow:tomorrow] &&
+		      ![cal isDateInYesterday:now] && yesterday != nil && [cal isDateInYesterday:yesterday],
+		      [[NSString stringWithFormat:@"cal=%@ tomorrow=%d yesterday=%d sameDayWithTomorrow=%d",
+			[cal calendarIdentifier],
+			(int)(tomorrow != nil ? [cal isDateInTomorrow:tomorrow] : -1),
+			(int)(yesterday != nil ? [cal isDateInYesterday:yesterday] : -1),
+			(int)(tomorrow != nil && [cal isDate:now inSameDayAsDate:tomorrow])] UTF8String]);
+		covers("NSCalendar", "currentCalendar");
+		covers("NSCalendar", "isDate:inSameDayAsDate:");
+		covers("NSCalendar", "isDateInTomorrow:");
+		covers("NSCalendar", "isDateInYesterday:");
+		printf("FOUNDATION-CALENDAR DIAG leg=relative-days-done\n");
+	}
+
 	printf("FOUNDATION-CALENDAR RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

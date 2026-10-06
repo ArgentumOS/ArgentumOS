@@ -33,15 +33,16 @@ import re
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_calendar"
-CHECKS = ("tz-offset", "calendar-convert", "calendar-roundtrip",
-          "calendar-add-months", "calendar-add-units", "calendar-ranges",
-          "calendar-weeks", "calendar-timezone", "calendar-refusals",
-          "calendar-non-gregorian", "calendar-difference", "tz-names-present",
-          "calendar-formatter-present", "cross-tu", "calendar-alias-and-wire-values",
-          "calendar-extraction", "calendar-date-with-week", "calendar-range-and-ordinality",
-          "calendar-setting-and-granularity", "calendar-today-and-weekend",
-          "calendar-symbols", "calendar-matches-and-comp-diff", "datecomponents-unit-accessors",
-          "datecomponents-calendar-and-date", "datecomponents-invalid-day", "calendar-next-date-matching-components", "calendar-next-date-keeps-the-start-time", "calendar-next-date-matching-unit-and-time", "calendar-enumerate-next-dates")
+CHECKS = (
+	  "tz-offset", "calendar-convert", "calendar-roundtrip", "calendar-add-months",
+	  "calendar-add-units", "calendar-ranges", "calendar-weeks", "calendar-timezone",
+	  "calendar-refusals", "calendar-non-gregorian", "calendar-difference", "tz-names-present",
+	  "calendar-formatter-present", "cross-tu", "calendar-alias-and-wire-values", "calendar-extraction",
+	  "calendar-date-with-week", "calendar-range-and-ordinality", "calendar-setting-and-granularity", "calendar-today-and-weekend",
+	  "calendar-symbols", "calendar-matches-and-comp-diff", "datecomponents-unit-accessors", "datecomponents-calendar-and-date",
+	  "datecomponents-invalid-day", "calendar-next-date-matching-components", "calendar-next-date-keeps-the-start-time", "calendar-next-date-matching-unit-and-time",
+	  "calendar-enumerate-next-dates", "calendar-relative-days-answer-for-today-tomorrow-and-yesterday", "calendar-symbol-families-are-all-present",
+)
 
 
 class Case(BaseCase):
