@@ -41,8 +41,11 @@ static int okc, failc;
 /* The DETAIL IS NULLABLE because every answer this probe inspects comes back from a nullable
  * door (-stringFromDate:, -dateFormat, …) and the FAIL text is exactly where a nil must be able
  * to print as "". */
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-DATEFORMATTER %s ok\n", name);
@@ -52,6 +55,15 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		       detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSDateFormatter", "dateFormat") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* 2021-03-04T00:00:00Z. Every check that depends on an instant uses this one. */
 #define WHEN (1614816000.0)
@@ -74,6 +86,9 @@ int main(void)
 		check("df-style-medium-en",
 		      text != nil && [text containsString:@"Mar"] && [text containsString:@"2021"],
 		      text);
+	covers("NSDateFormatter", "dateStyle");
+	covers("NSDateFormatter", "timeStyle");
+	covers("NSDateFormatter", "stringFromDate:");
 	}
 
 	{
@@ -124,6 +139,7 @@ int main(void)
 		      back != nil && [back timeIntervalSince1970] == WHEN,
 		      [NSString stringWithFormat:@"back=%f wanted=%f",
 						back != nil ? [back timeIntervalSince1970] : -1.0, WHEN]);
+	covers("NSDateFormatter", "dateFormat");
 	}
 
 	{
@@ -138,6 +154,7 @@ int main(void)
 		      parsed != nil && [parsed timeIntervalSince1970] == WHEN,
 		      [NSString stringWithFormat:@"parsed=%f wanted=%f",
 						parsed != nil ? [parsed timeIntervalSince1970] : -1.0, WHEN]);
+	covers("NSDateFormatter", "dateFromString:");
 	}
 
 	{
@@ -162,6 +179,7 @@ int main(void)
 		      [minus isEqualToString:@"16:00"],
 		      [NSString stringWithFormat:@"+00:00=%@ +05:30=%@ -08:00=%@",
 						zero, plus, minus]);
+	covers("NSDateFormatter", "timeZone");
 	}
 
 	{
@@ -177,6 +195,7 @@ int main(void)
 		      enPattern != nil && dePattern != nil &&
 		      [enPattern hasPrefix:@"M"] && [dePattern hasPrefix:@"d"],
 		      [NSString stringWithFormat:@"en=%@ de=%@", enPattern, dePattern]);
+	covers("NSDateFormatter", "dateFormatFromTemplate:options:locale:");
 	}
 
 	{
@@ -217,6 +236,7 @@ int main(void)
 		      [NSString stringWithFormat:@"strict=%@ lenient=%@",
 						strict != nil ? [strict description] : @"(nil)",
 						lenient != nil ? [lenient description] : @"(nil)"]);
+	covers("NSDateFormatter", "lenient");
 	}
 
 	{
@@ -312,6 +332,8 @@ int main(void)
 				? [deWeekdays objectAtIndex:0] : @"?",
 			enMonths != nil && [enMonths count] > 0
 				? [enMonths objectAtIndex:0] : @"?"]);
+	covers("NSDateFormatter", "monthSymbols");
+	covers("NSDateFormatter", "weekdaySymbols");
 	}
 
 	{
@@ -338,6 +360,7 @@ int main(void)
 		      months != nil && [months count] >= 12,
 		      [NSString stringWithFormat:@"year=%@ months=%lu", text,
 			(unsigned long)(months != nil ? [months count] : 0)]);
+	covers("NSDateFormatter", "calendar");
 	}
 
 	{
@@ -356,6 +379,7 @@ int main(void)
 		      [pattern containsString:@"M"] && [pattern containsString:@"d"] &&
 		      rendered != nil && [rendered containsString:@"2021"],
 		      [NSString stringWithFormat:@"pattern=%@ rendered=%@", pattern, rendered]);
+	covers("NSDateFormatter", "setLocalizedDateFormatFromTemplate:");
 	}
 
 	{
@@ -390,6 +414,8 @@ int main(void)
 			[shortMonths count] > 0 ? (NSString *)[shortMonths objectAtIndex:0] : @"(nil)",
 			(unsigned long)(weekdays != nil ? [weekdays count] : 0),
 			(unsigned long)(quarters != nil ? [quarters count] : 0)]);
+	covers("NSDateFormatter", "standaloneMonthSymbols");
+	covers("NSDateFormatter", "shortStandaloneMonthSymbols");
 	}
 
 	{
@@ -413,6 +439,8 @@ int main(void)
 		      [NSString stringWithFormat:@"long0=%@ short0=%@",
 			[longEras count] > 0 ? (NSString *)[longEras objectAtIndex:0] : @"(nil)",
 			[shortEras count] > 0 ? (NSString *)[shortEras objectAtIndex:0] : @"(nil)"]);
+	covers("NSDateFormatter", "longEraSymbols");
+	covers("NSDateFormatter", "eraSymbols");
 	}
 
 	{
@@ -426,6 +454,8 @@ int main(void)
 		      [NSString stringWithFormat:@"AM=%@ PM=%@",
 			[formatter AMSymbol] != nil ? [formatter AMSymbol] : @"(nil)",
 			[formatter PMSymbol] != nil ? [formatter PMSymbol] : @"(nil)"]);
+	covers("NSDateFormatter", "AMSymbol");
+	covers("NSDateFormatter", "PMSymbol");
 	}
 
 	{
@@ -439,6 +469,8 @@ int main(void)
 		      [NSString stringWithFormat:@"default=%d instance=%d",
 			(int)[NSDateFormatter defaultFormatterBehavior],
 			(int)[formatter formatterBehavior]]);
+	covers("NSDateFormatter", "defaultFormatterBehavior");
+	covers("NSDateFormatter", "formatterBehavior");
 	}
 
 	{
@@ -457,6 +489,8 @@ int main(void)
 		      text != nil && [text length] > 0,
 		      [NSString stringWithFormat:@"allowsNL=%d pattern=%@ text=%@",
 			(int)[formatter allowsNaturalLanguage], pattern, text]);
+	covers("NSDateFormatter", "allowsNaturalLanguage");
+	covers("NSDateFormatter", "initWithDateFormat:allowNaturalLanguage:");
 	}
 
 	{
@@ -480,6 +514,7 @@ int main(void)
 		      [NSString stringWithFormat:@"out=%@ sub=%@",
 			out != nil ? [out description] : @"(nil)",
 			outRange != nil ? [outRange description] : @"(nil)"]);
+	covers("NSDateFormatter", "getObjectValue:forString:range:error:");
 	}
 
 	{
@@ -502,6 +537,9 @@ int main(void)
 			(int)[formatter formattingContext],
 			[[formatter twoDigitStartDate] timeIntervalSince1970],
 			[[formatter gregorianStartDate] timeIntervalSince1970]]);
+	covers("NSDateFormatter", "formattingContext");
+	covers("NSDateFormatter", "twoDigitStartDate");
+	covers("NSDateFormatter", "gregorianStartDate");
 	}
 
 	printf("FOUNDATION-DATEFORMATTER RESULT ok=%d fail=%d\n", okc, failc);
