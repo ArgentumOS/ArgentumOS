@@ -77,10 +77,10 @@
 # why the struck rows are struck: after-10.6 253, post-10.6 178, x11-territory 475
 #
 # counts by kind:
-#   func       shipped  211   open  116   struck  310   deferred   98
+#   func       shipped  220   open  107   struck  310   deferred   98
 #   macro      shipped    7   open    8   struck   92   deferred    0
-#   enum       shipped   12   open    4   struck   38   deferred    3
-#   case       shipped   85   open   17   struck  325   deferred   17
+#   enum       shipped   13   open    3   struck   38   deferred    3
+#   case       shipped   93   open    9   struck  325   deferred   17
 #   var        shipped   14   open   11   struck   87   deferred   23
 #   typealias  shipped   20   open   12   struck   45   deferred   23
 #   struct     shipped    7   open    3   struck    9   deferred    1
@@ -496,14 +496,14 @@ case	struck	kCGTabletProximityEventVendorPointerSerialNumber	-	Services / Consta
 case	struck	kCGTabletProximityEventVendorPointerType	-	Services / Constants / Constants	x11-territory	objc
 case	struck	kCGTabletProximityEventVendorUniqueID	-	Services / Constants / Constants	x11-territory	objc
 case	struck	kCGTailAppendEventTap	-	Services / Constants / Constants	x11-territory	objc
-case	open	kCGTextClip	-	Opaque Types / Drawing Text / Constants	-	objc
-case	open	kCGTextFill	-	Opaque Types / Drawing Text / Constants	-	objc
-case	open	kCGTextFillClip	-	Opaque Types / Drawing Text / Constants	-	objc
-case	open	kCGTextFillStroke	-	Opaque Types / Drawing Text / Constants	-	objc
-case	open	kCGTextFillStrokeClip	-	Opaque Types / Drawing Text / Constants	-	objc
-case	open	kCGTextInvisible	-	Opaque Types / Drawing Text / Constants	-	objc
-case	open	kCGTextStroke	-	Opaque Types / Drawing Text / Constants	-	objc
-case	open	kCGTextStrokeClip	-	Opaque Types / Drawing Text / Constants	-	objc
+case	shipped	kCGTextClip	-	Opaque Types / Drawing Text / Constants	-	objc
+case	shipped	kCGTextFill	-	Opaque Types / Drawing Text / Constants	-	objc
+case	shipped	kCGTextFillClip	-	Opaque Types / Drawing Text / Constants	-	objc
+case	shipped	kCGTextFillStroke	-	Opaque Types / Drawing Text / Constants	-	objc
+case	shipped	kCGTextFillStrokeClip	-	Opaque Types / Drawing Text / Constants	-	objc
+case	shipped	kCGTextInvisible	-	Opaque Types / Drawing Text / Constants	-	objc
+case	shipped	kCGTextStroke	-	Opaque Types / Drawing Text / Constants	-	objc
+case	shipped	kCGTextStrokeClip	-	Opaque Types / Drawing Text / Constants	-	objc
 case	struck	kCGToneMappingDefault	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
 case	struck	kCGToneMappingEXRGamma	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
 case	struck	kCGToneMappingHeadroomAdaptiveGainCurve	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
@@ -577,7 +577,7 @@ enum	shipped	CGRectEdge	-	CoreFoundation, CG-named / Reference / Enumerations	-	
 enum	struck	CGScreenUpdateOperation	-	Services / Constants	x11-territory	objc
 enum	struck	CGScrollEventUnit	-	Services / Constants	x11-territory	objc
 enum	struck	CGScrollPhase	-	Reference / Enumerations	post-10.6	objc
-enum	open	CGTextDrawingMode	-	Opaque Types / Drawing Text	-	objc
+enum	shipped	CGTextDrawingMode	-	Opaque Types / Drawing Text	-	objc
 enum	open	CGTextEncoding	-	Opaque Types / Constants	deprecated	objc
 enum	struck	CGToneMapping	-	Reference / Enumerations	after-10.6	objc
 enum	struck	CGWindowBackingType	-	Services / Data Types	x11-territory	objc
@@ -750,8 +750,8 @@ func	struck	CGContextGetEDRTargetHeadroom	-	Reference / Functions	after-10.6	obj
 func	shipped	CGContextGetInterpolationQuality	-	Opaque Types / Drawing Images and PDF Content	-	objc
 func	shipped	CGContextGetPathBoundingBox	-	Opaque Types / Examining the Current Graphics Path	-	objc
 func	shipped	CGContextGetPathCurrentPoint	-	Opaque Types / Examining the Current Graphics Path	-	objc
-func	open	CGContextGetTextMatrix	-	Opaque Types / Drawing Text	-	objc
-func	open	CGContextGetTextPosition	-	Opaque Types / Drawing Text	-	objc
+func	shipped	CGContextGetTextMatrix	-	Opaque Types / Drawing Text	-	objc
+func	shipped	CGContextGetTextPosition	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGContextGetUserSpaceToDeviceSpaceTransform	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
 func	shipped	CGContextIsPathEmpty	-	Opaque Types / Examining the Current Graphics Path	-	objc
@@ -774,7 +774,7 @@ func	shipped	CGContextSetAlpha	-	Opaque Types / Setting Fill, Stroke, and Shadow
 func	shipped	CGContextSetBlendMode	-	Opaque Types / Managing a Graphics Context	-	objc
 func	open	CGContextSetCMYKFillColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetCMYKStrokeColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
-func	open	CGContextSetCharacterSpacing	-	Opaque Types / Drawing Text	-	objc
+func	shipped	CGContextSetCharacterSpacing	-	Opaque Types / Drawing Text	-	objc
 func	struck	CGContextSetContentToneMappingInfo	-	Functions	after-10.6	objc
 func	struck	CGContextSetEDRTargetHeadroom	-	Reference / Functions	after-10.6	objc
 func	open	CGContextSetFillColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
@@ -782,8 +782,8 @@ func	open	CGContextSetFillColorSpace	-	Opaque Types / Setting Fill, Stroke, and 
 func	shipped	CGContextSetFillColorWithColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	shipped	CGContextSetFillPattern	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	open	CGContextSetFlatness	-	Opaque Types / Setting Path Drawing Options	-	objc
-func	open	CGContextSetFont	-	Opaque Types / Drawing Text	-	objc
-func	open	CGContextSetFontSize	-	Opaque Types / Drawing Text	-	objc
+func	shipped	CGContextSetFont	-	Opaque Types / Drawing Text	-	objc
+func	shipped	CGContextSetFontSize	-	Opaque Types / Drawing Text	-	objc
 func	shipped	CGContextSetGrayFillColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	shipped	CGContextSetGrayStrokeColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	shipped	CGContextSetInterpolationQuality	-	Opaque Types / Drawing Images and PDF Content	-	objc
@@ -806,12 +806,12 @@ func	open	CGContextSetStrokeColor	-	Opaque Types / Setting Fill, Stroke, and Sha
 func	open	CGContextSetStrokeColorSpace	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	shipped	CGContextSetStrokeColorWithColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	shipped	CGContextSetStrokePattern	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
-func	open	CGContextSetTextDrawingMode	-	Opaque Types / Drawing Text	-	objc
-func	open	CGContextSetTextMatrix	-	Opaque Types / Drawing Text	-	objc
-func	open	CGContextSetTextPosition	-	Opaque Types / Drawing Text	-	objc
+func	shipped	CGContextSetTextDrawingMode	-	Opaque Types / Drawing Text	-	objc
+func	shipped	CGContextSetTextMatrix	-	Opaque Types / Drawing Text	-	objc
+func	shipped	CGContextSetTextPosition	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextShowGlyphs	-	Opaque Types / Drawing Text	deprecated	objc
 func	open	CGContextShowGlyphsAtPoint	-	Opaque Types / Drawing Text	deprecated	objc
-func	open	CGContextShowGlyphsAtPositions	-	Opaque Types / Drawing Text	-	objc
+func	shipped	CGContextShowGlyphsAtPositions	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextShowGlyphsWithAdvances	-	Opaque Types / Drawing Text	deprecated	objc
 func	open	CGContextShowText	-	Opaque Types / Drawing Text	deprecated	objc
 func	open	CGContextShowTextAtPoint	-	Opaque Types / Drawing Text	deprecated	objc

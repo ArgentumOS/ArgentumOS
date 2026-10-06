@@ -1,0 +1,270 @@
+/*
+ * coregraphics_text — the text state, and the one drawing door.
+ *
+ * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
+ * SPDX-License-Identifier: MIT
+ *
+ * WHAT THIS PROBE MEASURES THAT A COMPILE CANNOT: that a glyph's INK lands where the text matrix, the
+ * CTM and the pen say; that the two matrices MULTIPLY rather than one being read once; that the modes
+ * this slice does not draw are REFUSED rather than silently filled; and that the font survives the
+ * graphics-state stack — the ownership the context now has, checked by putting NULL in the current
+ * state and restoring it out of the stack.
+ *
+ * THE SURFACE IS READ THROUGH `CGBitmapContextGetData`, WHICH IS A LESSON THIS PROBE COST: the array
+ * handed to `CGBitmapContextCreate` is the one the context paints into today (the probe asserts the
+ * two pointers are equal), but a probe that reads its OWN array is asserting an implementation
+ * detail of the context, and the first version of this file measured an empty surface for reasons
+ * that had nothing to do with the drawing.
+ *
+ * AND ONE CHECK IS A REGRESSION GUARD FOR A MEASURED GUEST DEFECT: two sizes on ONE font (16 then 32).
+ * The toolkit's face-per-size arrangement hit the guest's open limit and failed with FreeType error 2
+ * on a byte-perfect font; this library sizes one face per use, and the check that the 32pt glyph is
+ * TALLER than the 16pt one is what says so from the outside.
+ */
+#import <Foundation/Foundation.h>
+#include <CoreGraphics/CGContext.h>
+#include <CoreGraphics/CGBitmapContext.h>
+#include <CoreGraphics/CGFont.h>
+#include <CoreGraphics/CGDataProvider.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define W 160
+#define H 80
+
+static unsigned char *surface;	/* the caller's array; the context's data is checked against it */
+static const unsigned char *paint;
+static int failures;
+
+static void check(const char *name, int ok)
+{
+	printf("CG-TEXT %-68s %s\n", name, ok ? "ok" : "FAIL");
+	if (!ok) {
+		failures++;
+	}
+}
+
+/* BGRA IN MEMORY (kCGImageAlphaPremultipliedFirst | 32Little), so byte 2 is red. */
+static void count_ink(int *n, int *x0, int *y0, int *x1, int *y1)
+{
+	int x, y;
+
+	*n = 0;
+	*x0 = W;
+	*y0 = H;
+	*x1 = -1;
+	*y1 = -1;
+	for (y = 0; y < H; y++) {
+		for (x = 0; x < W; x++) {
+			const unsigned char *p = paint + ((size_t)y * W + x) * 4;
+
+			if (p[2] < 128) {
+				(*n)++;
+				if (x < *x0) *x0 = x;
+				if (y < *y0) *y0 = y;
+				if (x > *x1) *x1 = x;
+				if (y > *y1) *y1 = y;
+			}
+		}
+	}
+}
+
+static void repaint(CGContextRef ctx)
+{
+	CGContextSetRGBFillColor(ctx, 1.0, 1.0, 1.0, 1.0);
+	CGContextFillRect(ctx, CGRectMake(0.0, 0.0, (CGFloat)W, (CGFloat)H));
+	CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 1.0);
+}
+
+int main(void)
+{
+	CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
+	CGDataProviderRef provider = CGDataProviderCreateWithFilename("userland/fonts/DejaVuSans.ttf");
+	CGContextRef ctx;
+	CGFontRef font;
+	CGGlyph a = 0, space_glyph = 0;
+	CGPoint pen;
+	CGAffineTransform t;
+	int n, x0, y0, x1, y1;
+
+	surface = calloc((size_t)W * H, 4);
+	if (surface == NULL || provider == NULL) {
+		printf("CG-TEXT: cannot allocate the surface or read the font\n");
+		return 1;
+	}
+	ctx = CGBitmapContextCreate(surface, W, H, 8, W * 4, space,
+				    kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
+	check("a bitmap context is created", ctx != NULL);
+	if (ctx == NULL) {
+		printf("CG-TEXT: FAILURES\n");
+		return 1;
+	}
+	paint = (const unsigned char *)CGBitmapContextGetData(ctx);
+	check("the context paints into the array it was handed (so the probe reads the real surface)",
+	      paint == surface);
+	if (paint == NULL) {
+		printf("CG-TEXT: FAILURES\n");
+		return failures + 1;
+	}
+	font = CGFontCreateWithDataProvider(provider);
+	check("the font is created", font != NULL);
+
+	/* --- the defaults, and the round trips ------------------------------------------- */
+	t = CGContextGetTextMatrix(ctx);
+	check("the text matrix defaults to the IDENTITY, not to a singular zero matrix",
+	      t.a == 1.0 && t.b == 0.0 && t.c == 0.0 && t.d == 1.0 && t.tx == 0.0 && t.ty == 0.0);
+	pen = CGContextGetTextPosition(ctx);
+	check("the text position defaults to the origin", pen.x == 0.0 && pen.y == 0.0);
+	CGContextSetTextPosition(ctx, 12.0, 34.0);
+	pen = CGContextGetTextPosition(ctx);
+	check("the text position round-trips", pen.x == 12.0 && pen.y == 34.0);
+	CGContextSetTextMatrix(ctx, CGAffineTransformMakeTranslation(5.0, 6.0));
+	t = CGContextGetTextMatrix(ctx);
+	check("the text matrix round-trips", t.tx == 5.0 && t.ty == 6.0);
+	CGContextSetTextMatrix(ctx, CGAffineTransformIdentity);
+	CGContextSetTextPosition(ctx, 0.0, 0.0);
+	CGContextSetCharacterSpacing(ctx, 2.0);
+
+	/* --- what is refused, before anything is drawn ----------------------------------- */
+	repaint(ctx);
+	CGContextSetFontSize(ctx, 32.0);
+	pen = CGPointMake(10.0, 10.0);
+	CGContextShowGlyphsAtPositions(ctx, &a, &pen, 1);	/* NO FONT SET */
+	count_ink(&n, &x0, &y0, &x1, &y1);
+	check("with no font set, drawing REFUSES and paints nothing", n == 0);
+
+	CGContextSetFont(ctx, font);
+	a = CGFontGetGlyphWithGlyphName(font, @"A");
+	space_glyph = CGFontGetGlyphWithGlyphName(font, @"space");
+	check("the glyphs named A and space were found", a != 0 && space_glyph != 0);
+
+	CGContextSetTextDrawingMode(ctx, kCGTextStroke);
+	CGContextShowGlyphsAtPositions(ctx, &a, &pen, 1);
+	count_ink(&n, &x0, &y0, &x1, &y1);
+	check("kCGTextStroke is REFUSED rather than filled", n == 0);
+	CGContextSetTextDrawingMode(ctx, kCGTextInvisible);
+	CGContextShowGlyphsAtPositions(ctx, &a, &pen, 1);
+	count_ink(&n, &x0, &y0, &x1, &y1);
+	check("kCGTextInvisible is refused (the advance doors it needs are owed)", n == 0);
+	CGContextSetTextDrawingMode(ctx, kCGTextFill);
+
+	/* --- the ink, and where it lands ------------------------------------------------- */
+	repaint(ctx);
+	CGContextShowGlyphsAtPositions(ctx, &a, &pen, 1);
+	count_ink(&n, &x0, &y0, &x1, &y1);
+	check("a glyph draws INK on the surface", n > 50);
+	/* THE PEN IS AT USER (10,10), WHICH IS DEVICE (10,70) — the surface's y runs DOWN — so the
+	 * glyph's ink occupies the rows just ABOVE 70 and the columns just right of 10. Both
+	 * expectations below are device coordinates, and the first version of this check was written
+	 * for the unflipped reading and measured nothing. */
+	check("...and the ink is where the pen is, inside the em, not mirrored",
+	      n > 0 && x0 >= 8 && x1 <= 10 + 32 && y0 >= 70 - 32 && y1 <= 72);
+	check("...and nothing was painted far from the pen", n > 0 && x1 < 60 && y1 < H);
+
+	/* THE ORIENTATION, WITH A GLYPH THAT CANNOT HIDE IT: 'L' has a foot along the baseline, and a
+	 * MIRRORED 'L' has it at the top instead. The pen is in user space (y up) at 20, so the device
+	 * baseline is at 60 (the surface's y runs down). */
+	{
+		CGGlyph l = CGFontGetGlyphWithGlyphName(font, @"L");
+		CGPoint at = CGPointMake(10.0, 20.0);
+		int x, y, at_baseline = 0;
+
+		check("the glyph named L was found", l != 0);
+		repaint(ctx);
+		CGContextShowGlyphsAtPositions(ctx, &l, &at, 1);
+		for (y = 56; y <= 62; y++) {
+			for (x = 8; x < 60; x++) {
+				const unsigned char *p = paint + ((size_t)y * W + x) * 4;
+
+				if (p[2] < 128) {
+					at_baseline++;
+				}
+			}
+		}
+		check("an L has ink AT the baseline (its foot), so nothing is mirrored", at_baseline > 5);
+	}
+
+	/* THE SPACE HAS NO INK AND IS NOT A FAILURE: every line of text contains one. */
+	repaint(ctx);
+	CGContextShowGlyphsAtPositions(ctx, &space_glyph, &pen, 1);
+	count_ink(&n, &x0, &y0, &x1, &y1);
+	check("a space draws nothing and is not refused", n == 0);
+
+	/* --- the two matrices, each measured by the ink moving --------------------------- */
+	{
+		int base_ink, base_x0;
+
+		repaint(ctx);
+		CGContextShowGlyphsAtPositions(ctx, &a, &pen, 1);
+		count_ink(&base_ink, &x0, &y0, &x1, &y1);
+		base_x0 = x0;
+
+		repaint(ctx);
+		CGContextSetTextMatrix(ctx, CGAffineTransformMakeTranslation(60.0, 0.0));
+		CGContextShowGlyphsAtPositions(ctx, &a, &pen, 1);
+		count_ink(&n, &x0, &y0, &x1, &y1);
+		check("the text matrix moves the glyph (positions are in text space)",
+		      n == base_ink && x0 - base_x0 >= 58 && x0 - base_x0 <= 62);
+		CGContextSetTextMatrix(ctx, CGAffineTransformIdentity);
+
+		/* AND THE CTM: the same glyph at 16pt, once plain and once through a 2x CTM, with the pen
+		 * chosen so that BOTH land on the surface WITH THEIR INK: the ink rises from the pen, and
+		 * the surface's rows run down, so a pen too near the top loses it — at user (5,50) the
+		 * device origin is (5,30) and at 2x it is (10,60), both with room above. */
+		{
+			CGPoint near = CGPointMake(5.0, 50.0);
+			int plain_h;
+
+			repaint(ctx);
+			CGContextSetFontSize(ctx, 16.0);
+			CGContextShowGlyphsAtPositions(ctx, &a, &near, 1);
+			count_ink(&n, &x0, &y0, &x1, &y1);
+			plain_h = y1 - y0;
+			repaint(ctx);
+			CGContextScaleCTM(ctx, 2.0, 2.0);
+			CGContextShowGlyphsAtPositions(ctx, &a, &near, 1);
+			count_ink(&n, &x0, &y0, &x1, &y1);
+			check("the CTM applies to text as well: at 2x the glyph is markedly taller",
+			      plain_h > 4 && y1 - y0 > plain_h + 4);
+			CGContextScaleCTM(ctx, 0.5, 0.5);
+			CGContextSetFontSize(ctx, 32.0);
+		}
+	}
+
+	/* --- one face, TWO SIZES: the measured guest defect's regression guard ----------- */
+	{
+		int h16, h32;
+
+		repaint(ctx);
+		CGContextSetFontSize(ctx, 16.0);
+		CGContextShowGlyphsAtPositions(ctx, &a, &pen, 1);
+		count_ink(&n, &x0, &y0, &x1, &y1);
+		h16 = y1 - y0;
+		repaint(ctx);
+		CGContextSetFontSize(ctx, 32.0);
+		CGContextShowGlyphsAtPositions(ctx, &a, &pen, 1);
+		count_ink(&n, &x0, &y0, &x1, &y1);
+		h32 = y1 - y0;
+		check("two sizes on ONE font both draw, and the larger one is taller",
+		      h16 > 4 && h32 > h16 + 4);
+	}
+
+	/* --- the state stack carries the font, which is the ownership this added --------- */
+	repaint(ctx);
+	CGContextSaveGState(ctx);
+	CGContextSetFont(ctx, NULL);
+	CGContextShowGlyphsAtPositions(ctx, &a, &pen, 1);
+	count_ink(&n, &x0, &y0, &x1, &y1);
+	check("a NULL font in the current state refuses", n == 0);
+	CGContextRestoreGState(ctx);
+	CGContextShowGlyphsAtPositions(ctx, &a, &pen, 1);
+	count_ink(&n, &x0, &y0, &x1, &y1);
+	check("...and restoring the state brings the font back, not a dangling one", n > 50);
+
+	printf("CG-TEXT: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
+	CGFontRelease(font);
+	CGDataProviderRelease(provider);
+	return failures;
+}

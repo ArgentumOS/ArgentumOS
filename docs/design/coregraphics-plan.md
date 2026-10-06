@@ -1332,3 +1332,29 @@ exercises. That route also unlocks the two modes this slice refused (`kCGTextStr
 mask can never draw as a stroke. The mask route's advantage is that it is what Apple's own text path uses for
 hinting and subpixel positioning, so the two are not equivalent; but a working path route beats an elegant
 mask route that paints nothing.
+
+### §15's open question is CLOSED: the door paints, and the earlier reading was the probe's own
+
+**THE SLICE IS NOW IN THE TREE AND ITS PROBE PASSES EVERY CHECK** (`coregraphics_text`, 20 checks, 17 CG
+probes green). The mask composite was never broken: with the cover's content and the destination's own clip
+region both measured, the A/B showed the composite painting on the first call — `AFTERDIAG withclip[15,52] =
+79 79 79 ff`, i.e. an antialiased glyph edge blended over white — and a minimal instrument then counted **181
+dark pixels** with `CGBitmapContextGetData(ctx) == the caller's array`. What the earlier attempt measured
+instead was its own expectations: **both failing checks had been written for the UNFLIPPED reading** (the ink
+box asserted rows `2..42` where a pen at user y=10 puts the ink at rows 47..70, and the 2x-CTM check put the
+glyph's device origin at y=140 on an 80-row surface, off the surface entirely). The one lesson worth keeping
+is in the probe's own header: **read the surface through the API and write every expectation in DEVICE
+coordinates** — a bitmap context's y runs down, and a check phrased in user space silently measures nothing.
+
+**WHAT THE SLICE SHIPS:** the text state (`SetFont`, `SetFontSize`, `SetTextMatrix`/`Get`, `SetTextPosition`/
+`Get`, `SetCharacterSpacing`, `SetTextDrawingMode`, `CGTextDrawingMode` with Apple's eight values) with the
+font RETAINED on the graphics state at the five sites the pattern paint taught, and ONE drawing door,
+`CGContextShowGlyphsAtPositions`, rasterising each glyph at the DEVICE resolution through FreeType's own
+transform (so a scaled or rotated text matrix is a correct rasterisation, not a resample) and compositing it
+through a surface-sized a8 coverage with a pixman solid-fill source.
+
+**WHAT IS STILL OWED, NAMED:** the advance doors (`ShowGlyphs`, `ShowGlyphsAtPoint`,
+`ShowGlyphsWithAdvances`) and `ShowText`/`ShowTextAtPoint` (which need a character map and, for MacRoman, a
+table); `CGContextSelectFont` and `CreateWithFontName` (the font-registry decision); the six drawing modes
+this slice refuses; subpixel pen positions; the font-smoothing and subpixel-positioning knobs; and HarfBuzz
+shaping, which no door here needs yet because every position is given.

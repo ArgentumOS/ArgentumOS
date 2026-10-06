@@ -446,3 +446,92 @@ CGGlyph cg_font_glyph_with_name(CGFontRef font, const char *name)
 	}
 	return (CGGlyph)index;
 }
+
+/* ------------------------------------------------------------------------- */
+/* Rasterisation: the one door that asks the engine for pixels                */
+/* ------------------------------------------------------------------------- */
+
+int cg_font_render_glyph(CGFontRef font, CGGlyph glyph, CGFloat pixel_size, CGAffineTransform matrix,
+			 CGPoint delta, unsigned char **coverage, int *width, int *height, int *left,
+			 int *top, double *advance)
+{
+	FT_Matrix m;
+	FT_Vector d;
+	FT_GlyphSlot slot;
+	unsigned char *buf;
+	int w, h, row, mirror = 0;
+
+	if (font == NULL || font->face == NULL || coverage == NULL || width == NULL || height == NULL) {
+		return 0;
+	}
+	if (pixel_size <= 0.0) {
+		return 0;
+	}
+	/* THE RESOLUTIONS ARE 72 DPI, WHICH IS THE 1:1 CASE — measured: passing 0 ("the default") is
+	 * REFUSED by the engine in this tree and every glyph came back as a silent nothing. */
+	if (FT_Set_Char_Size(font->face, 0, (FT_F26Dot6)(pixel_size * 64.0 + 0.5), 72, 72) != 0) {
+		fprintf(stderr, "CG-REFUSE: the engine would not set the font size (%.2f)\n",
+			(double)pixel_size);
+		return 0;
+	}
+	/* A REFLECTION IS TAKEN OUT OF THE ENGINE'S MATRIX AND PUT BACK INTO THE ROWS, because a bitmap
+	 * context's CTM is flipped and handing that flip to FreeType makes it report bitmap_top = 0 for
+	 * every glyph (measured): the ink then lands at the pen and runs off the surface. */
+	if (matrix.a * matrix.d - matrix.b * matrix.c < 0.0) {
+		if (matrix.b != 0.0 || matrix.c != 0.0) {
+			fprintf(stderr, "CG-REFUSE: a mirrored text matrix with a shear or rotation is not "
+					"implemented; this library handles a pure reflection\n");
+			return 0;
+		}
+		mirror = 1;
+		matrix.d = -matrix.d;
+	}
+	m.xx = (FT_Fixed)(matrix.a * 65536.0);
+	m.xy = (FT_Fixed)(matrix.b * 65536.0);
+	m.yx = (FT_Fixed)(matrix.c * 65536.0);
+	m.yy = (FT_Fixed)(matrix.d * 65536.0);
+	(void)delta;
+	d.x = 0;
+	d.y = 0;
+	FT_Set_Transform(font->face, &m, &d);
+
+	if (FT_Load_Glyph(font->face, (FT_UInt)glyph, FT_LOAD_DEFAULT) != 0) {
+		fprintf(stderr, "CG-REFUSE: the engine would not load glyph %u\n", (unsigned)glyph);
+		return 0;
+	}
+	slot = font->face->glyph;
+	if (FT_Render_Glyph(slot, FT_RENDER_MODE_NORMAL) != 0) {
+		fprintf(stderr, "CG-REFUSE: the engine would not render glyph %u\n", (unsigned)glyph);
+		return 0;
+	}
+	if (slot->bitmap.pixel_mode != FT_PIXEL_MODE_GRAY) {
+		fprintf(stderr, "CG-REFUSE: this font renders glyph coverage this library cannot use "
+				"(pixel mode %d)\n", slot->bitmap.pixel_mode);
+		return 0;
+	}
+	w = (int)slot->bitmap.width;
+	h = (int)slot->bitmap.rows;
+	buf = malloc((size_t)(w > 0 && h > 0 ? w * h : 1));
+	if (buf == NULL) {
+		return 0;
+	}
+	for (row = 0; row < h; row++) {
+		memcpy(buf + (size_t)(mirror ? h - 1 - row : row) * (size_t)w,
+		       slot->bitmap.buffer + (size_t)row * (size_t)(slot->bitmap.pitch < 0
+								    ? -slot->bitmap.pitch : slot->bitmap.pitch),
+		       (size_t)w);
+	}
+	*coverage = buf;
+	*width = w;
+	*height = h;
+	if (left != NULL) {
+		*left = slot->bitmap_left;
+	}
+	if (top != NULL) {
+		*top = slot->bitmap_top;
+	}
+	if (advance != NULL) {
+		*advance = slot->advance.x / 64.0;
+	}
+	return 1;
+}

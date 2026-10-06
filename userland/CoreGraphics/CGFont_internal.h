@@ -22,6 +22,7 @@
 #define CORE_GRAPHICS_CGFONT_INTERNAL_H
 
 #include <CoreGraphics/CGFont.h>
+#include <CoreGraphics/CGAffineTransform.h>
 #include <stddef.h>
 
 /* THE ENGINE'S FACE, OR NULL. NULL is not a gap: it is what a font with no engine representation
@@ -46,5 +47,10 @@ int cg_font_glyph_name(CGFontRef font, CGGlyph glyph, char *buf, size_t size);
 /* AND THE OTHER WAY: the glyph index for a name, which is how a caller with a name (or the
  * PostScript encoding) reaches a glyph without a character map. `kCGFontIndexInvalid` = not found. */
 CGGlyph cg_font_glyph_with_name(CGFontRef font, const char *name);
+
+/* ONE GLYPH RASTERISED ... see CGContext.c for how it is placed. */
+int cg_font_render_glyph(CGFontRef font, CGGlyph glyph, CGFloat pixel_size,
+                         CGAffineTransform matrix, CGPoint delta, unsigned char **coverage,
+                         int *width, int *height, int *left, int *top, double *advance);
 
 #endif /* CORE_GRAPHICS_CGFONT_INTERNAL_H */

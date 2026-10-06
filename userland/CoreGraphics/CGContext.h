@@ -415,4 +415,39 @@ void CGContextReplacePathWithStrokedPath(CGContextRef context);
 }
 #endif
 
+/* ------------------------------------------------------------------------- */
+/* Text: the state, and one drawing door                                     */
+/* ------------------------------------------------------------------------- */
+
+/* THE FONT TYPE IS NAMED BY THE DOORS BELOW, so this header includes the header that defines it. */
+#include <CoreGraphics/CGFont.h>
+
+/* APPLE'S EIGHT MODES, IN APPLE'S ORDER — the values are written out although Apple's own header
+ * leaves them IMPLICIT. THIS SLICE DRAWS ONE OF THEM (Fill, which is also the default) and REFUSES
+ * the rest by name. */
+typedef enum {
+	kCGTextFill = 0,
+	kCGTextStroke = 1,
+	kCGTextFillStroke = 2,
+	kCGTextInvisible = 3,
+	kCGTextFillClip = 4,
+	kCGTextStrokeClip = 5,
+	kCGTextFillStrokeClip = 6,
+	kCGTextClip = 7
+} CGTextDrawingMode;
+
+void CGContextSetFont(CGContextRef context, CGFontRef font);
+void CGContextSetFontSize(CGContextRef context, CGFloat size);
+void CGContextSetTextMatrix(CGContextRef context, CGAffineTransform t);
+CGAffineTransform CGContextGetTextMatrix(CGContextRef context);
+void CGContextSetTextPosition(CGContextRef context, CGFloat x, CGFloat y);
+CGPoint CGContextGetTextPosition(CGContextRef context);
+void CGContextSetCharacterSpacing(CGContextRef context, CGFloat spacing);
+void CGContextSetTextDrawingMode(CGContextRef context, CGTextDrawingMode mode);
+
+/* POSITIONS ARE IN TEXT SPACE, which is the reading this slice pins; the probe asserts it by moving
+ * the text matrix and watching the ink move with it. */
+void CGContextShowGlyphsAtPositions(CGContextRef context, const CGGlyph glyphs[],
+				    const CGPoint positions[], size_t count);
+
 #endif /* CORE_GRAPHICS_CGCONTEXT_H */

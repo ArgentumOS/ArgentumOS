@@ -40,6 +40,8 @@
  */
 #include <CoreGraphics/CGBitmapContext.h>
 #include <CoreGraphics/CGContext.h>
+#include <CoreGraphics/CGFont.h>
+#include <CoreGraphics/CGFont_internal.h>
 #include <CoreGraphics/CGContext_internal.h>
 #include <CoreGraphics/CGGradient_internal.h>
 #include <CoreGraphics/CGPath.h>
@@ -82,6 +84,15 @@ typedef struct cg_state {
 	CGFloat alpha;
 	CGBlendMode blend;
 	int antialias;
+	/* THE TEXT STATE: four values plus a font. The font is retained and released at the same
+	 * five sites the pattern paint is; the matrix defaults to the IDENTITY because a zeroed one
+	 * is singular and an untouched context would draw nothing at all. */
+	CGFontRef font;
+	CGFloat font_size;
+	CGAffineTransform text_matrix;
+	CGPoint text_position;
+	CGFloat character_spacing;
+	CGTextDrawingMode text_mode;
 	/* THE LINE STATE LIVES IN THE GRAPHICS STATE, which is why `CGContextSaveGState` and
 	 * `CGContextRestoreGState` needed NO change to carry it: they copy this struct, so
 	 * the width, the caps, the joins and the stroke colour are saved and restored with
@@ -256,6 +267,12 @@ static void cg_state_init_full(cg_state *st, int width, int height)
 	st->stroke_pattern = NULL;
 	st->fill_pattern_alpha = 1.0;
 	st->stroke_pattern_alpha = 1.0;
+	st->font = NULL;
+	st->font_size = 0.0;
+	st->text_matrix = CGAffineTransformIdentity;
+	st->text_position = CGPointMake(0.0, 0.0);
+	st->character_spacing = 0.0;
+	st->text_mode = kCGTextFill;
 	st->pattern_phase = CGSizeMake(0.0, 0.0);
 }
 
@@ -404,6 +421,7 @@ void CGContextRelease(CGContextRef c)
 		 * `releaseInfo` called. */
 		CGPatternRelease(c->stack[i].fill_pattern);
 		CGPatternRelease(c->stack[i].stroke_pattern);
+		CGFontRelease(c->stack[i].font);
 		if (c->stack[i].clip_mask != NULL) {
 			pixman_image_unref(c->stack[i].clip_mask);
 		}
@@ -412,6 +430,7 @@ void CGContextRelease(CGContextRef c)
 	free(c->stack);
 	CGPatternRelease(c->state.fill_pattern);
 	CGPatternRelease(c->state.stroke_pattern);
+	CGFontRelease(c->state.font);
 	if (c->state.clip_mask != NULL) {
 		pixman_image_unref(c->state.clip_mask);
 	}
@@ -471,6 +490,7 @@ void CGContextSaveGState(CGContextRef c)
 	 * first of the two to be replaced or released would take the other's pattern away. */
 	CGPatternRetain(slot->fill_pattern);
 	CGPatternRetain(slot->stroke_pattern);
+	CGFontRetain(slot->font);
 	/* SHARED BY REFCOUNT, which is right for an image that clips are only ever ADDED to: a restore can
 	 * hand the same mask back without copying it. */
 	if (slot->clip_mask != NULL) {
@@ -499,6 +519,7 @@ void CGContextRestoreGState(CGContextRef c)
 	 * in that the release must not be of the very pointers about to be installed. */
 	CGPatternRelease(c->state.fill_pattern);
 	CGPatternRelease(c->state.stroke_pattern);
+	CGFontRelease(c->state.font);
 	if (c->state.clip_mask != NULL) {
 		pixman_image_unref(c->state.clip_mask);
 	}
@@ -2828,4 +2849,181 @@ void CGContextSetInterpolationQuality(CGContextRef c, CGInterpolationQuality qua
 CGInterpolationQuality CGContextGetInterpolationQuality(CGContextRef c)
 {
 	return c == NULL ? kCGInterpolationNone : c->state.interpolation;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Text: the state, and one drawing door                                     */
+/* ------------------------------------------------------------------------- */
+
+void CGContextSetFont(CGContextRef c, CGFontRef font)
+{
+	if (c == NULL) {
+		return;
+	}
+	CGFontRetain(font);		/* retain first, so SetFont(c, c->state.font) is safe */
+	CGFontRelease(c->state.font);
+	c->state.font = font;
+}
+
+void CGContextSetFontSize(CGContextRef c, CGFloat size)
+{
+	if (c != NULL) {
+		c->state.font_size = size;
+	}
+}
+
+void CGContextSetTextMatrix(CGContextRef c, CGAffineTransform t)
+{
+	if (c != NULL) {
+		c->state.text_matrix = t;
+	}
+}
+
+CGAffineTransform CGContextGetTextMatrix(CGContextRef c)
+{
+	return c == NULL ? CGAffineTransformIdentity : c->state.text_matrix;
+}
+
+void CGContextSetTextPosition(CGContextRef c, CGFloat x, CGFloat y)
+{
+	if (c != NULL) {
+		c->state.text_position = CGPointMake(x, y);
+	}
+}
+
+CGPoint CGContextGetTextPosition(CGContextRef c)
+{
+	return c == NULL ? CGPointMake(0.0, 0.0) : c->state.text_position;
+}
+
+void CGContextSetCharacterSpacing(CGContextRef c, CGFloat spacing)
+{
+	if (c != NULL) {
+		c->state.character_spacing = spacing;
+	}
+}
+
+void CGContextSetTextDrawingMode(CGContextRef c, CGTextDrawingMode mode)
+{
+	if (c != NULL) {
+		c->state.text_mode = mode;
+	}
+}
+
+static double cg_text_clamp01(double v)
+{
+	if (v < 0.0) {
+		return 0.0;
+	}
+	if (v > 1.0) {
+		return 1.0;
+	}
+	return v;
+}
+
+static int cg_glyph_pen(double v)
+{
+	return (int)(v < 0.0 ? v - 0.5 : v + 0.5);
+}
+
+void CGContextShowGlyphsAtPositions(CGContextRef c, const CGGlyph glyphs[], const CGPoint positions[],
+				    size_t count)
+{
+	CGAffineTransform place;
+	pixman_op_t op;
+	size_t i;
+
+	if (c == NULL || c->data == NULL || glyphs == NULL || positions == NULL) {
+		return;
+	}
+	if (c->state.font == NULL) {
+		fprintf(stderr, "CG-REFUSE: no font is set on this context (CGContextSetFont)\n");
+		return;
+	}
+	if (c->state.font_size <= 0.0) {
+		fprintf(stderr, "CG-REFUSE: the font size is not positive (CGContextSetFontSize)\n");
+		return;
+	}
+	if (c->state.text_mode != kCGTextFill) {
+		fprintf(stderr, "CG-REFUSE: text drawing mode %d is not implemented; kCGTextFill only\n",
+			(int)c->state.text_mode);
+		return;
+	}
+	place = CGAffineTransformConcat(c->state.text_matrix, c->state.ctm);
+	op = cg_op(c->state.blend);
+	pixman_image_set_clip_region32(c->image, &c->state.clip);
+
+	for (i = 0; i < count; i++) {
+		unsigned char *coverage = NULL;
+		pixman_image_t *src, *cover;
+		pixman_color_t solid;
+		CGPoint device;
+		CGAffineTransform linear;
+		double a;
+		int w = 0, h = 0, left = 0, top = 0, dx, dy;
+		double advance = 0.0;
+
+		device = CGPointApplyAffineTransform(positions[i], place);
+		linear = place;
+		linear.tx = 0.0;
+		linear.ty = 0.0;
+		if (!cg_font_render_glyph(c->state.font, glyphs[i], c->state.font_size, linear,
+					  CGPointMake(0.0, 0.0), &coverage, &w, &h, &left, &top,
+					  &advance)) {
+			continue;
+		}
+		if (w <= 0 || h <= 0) {
+			free(coverage);
+			continue;
+		}
+		dx = cg_glyph_pen(device.x) + left;
+		dy = cg_glyph_pen(device.y) - top;
+		cover = pixman_image_create_bits(PIXMAN_a8, c->width, c->height, NULL, 0);
+		if (cover == NULL) {
+			free(coverage);
+			continue;
+		}
+		{
+			uint8_t *cd = (uint8_t *)pixman_image_get_data(cover);
+			int cs = pixman_image_get_stride(cover);
+			int row, col;
+
+			for (row = 0; row < h; row++) {
+				int y = dy + row;
+
+				if (y < 0 || y >= c->height) {
+					continue;
+				}
+				for (col = 0; col < w; col++) {
+					int x = dx + col;
+
+					if (x < 0 || x >= c->width) {
+						continue;
+					}
+					cd[(size_t)y * (size_t)cs + (size_t)x] =
+						coverage[(size_t)row * (size_t)w + (size_t)col];
+				}
+			}
+		}
+		free(coverage);
+		a = c->state.rgba[3] * c->state.alpha;
+		solid.red = (uint16_t)(cg_text_clamp01(c->state.rgba[0] * a) * 65535.0 + 0.5);
+		solid.green = (uint16_t)(cg_text_clamp01(c->state.rgba[1] * a) * 65535.0 + 0.5);
+		solid.blue = (uint16_t)(cg_text_clamp01(c->state.rgba[2] * a) * 65535.0 + 0.5);
+		solid.alpha = (uint16_t)(cg_text_clamp01(a) * 65535.0 + 0.5);
+		src = pixman_image_create_solid_fill(&solid);
+		if (src == NULL) {
+			pixman_image_unref(cover);
+			continue;
+		}
+		pixman_image_set_clip_region32(c->image, &c->state.clip);
+		if (c->state.clip_mask != NULL) {
+			pixman_image_composite32(PIXMAN_OP_IN, c->state.clip_mask, NULL, cover, 0, 0, 0, 0,
+						 0, 0, c->width, c->height);
+		}
+		pixman_image_composite32(op, src, cover, c->image, 0, 0, 0, 0, 0, 0, c->width, c->height);
+		pixman_image_unref(src);
+		pixman_image_unref(cover);
+		(void)advance;
+	}
 }
