@@ -428,14 +428,157 @@ int cg_font_glyph_name(CGFontRef font, CGGlyph glyph, char *buf, size_t size)
 	return (int)strlen(buf);
 }
 
-CGGlyph cg_font_glyph_for_byte(CGFontRef font, unsigned char code)
+/* THE MACROMAN HIGH HALF, GENERATED FROM THE STANDARD MAPPING RATHER THAN RECALLED: 0x00-0x7F is
+ * ASCII and 0x80-0xFF is what Mac OS Roman defines (0x80 = A-diaeresis, 0xA9 = copyright,
+ * 0xFF = caron). Python's codec IS that standard table, which is what generated these 128
+ * constants. */
+static const unsigned short fn_macroman_high[128] = {
+	0x00C4, /* 0x80 */
+	0x00C5, /* 0x81 */
+	0x00C7, /* 0x82 */
+	0x00C9, /* 0x83 */
+	0x00D1, /* 0x84 */
+	0x00D6, /* 0x85 */
+	0x00DC, /* 0x86 */
+	0x00E1, /* 0x87 */
+	0x00E0, /* 0x88 */
+	0x00E2, /* 0x89 */
+	0x00E4, /* 0x8A */
+	0x00E3, /* 0x8B */
+	0x00E5, /* 0x8C */
+	0x00E7, /* 0x8D */
+	0x00E9, /* 0x8E */
+	0x00E8, /* 0x8F */
+	0x00EA, /* 0x90 */
+	0x00EB, /* 0x91 */
+	0x00ED, /* 0x92 */
+	0x00EC, /* 0x93 */
+	0x00EE, /* 0x94 */
+	0x00EF, /* 0x95 */
+	0x00F1, /* 0x96 */
+	0x00F3, /* 0x97 */
+	0x00F2, /* 0x98 */
+	0x00F4, /* 0x99 */
+	0x00F6, /* 0x9A */
+	0x00F5, /* 0x9B */
+	0x00FA, /* 0x9C */
+	0x00F9, /* 0x9D */
+	0x00FB, /* 0x9E */
+	0x00FC, /* 0x9F */
+	0x2020, /* 0xA0 */
+	0x00B0, /* 0xA1 */
+	0x00A2, /* 0xA2 */
+	0x00A3, /* 0xA3 */
+	0x00A7, /* 0xA4 */
+	0x2022, /* 0xA5 */
+	0x00B6, /* 0xA6 */
+	0x00DF, /* 0xA7 */
+	0x00AE, /* 0xA8 */
+	0x00A9, /* 0xA9 */
+	0x2122, /* 0xAA */
+	0x00B4, /* 0xAB */
+	0x00A8, /* 0xAC */
+	0x2260, /* 0xAD */
+	0x00C6, /* 0xAE */
+	0x00D8, /* 0xAF */
+	0x221E, /* 0xB0 */
+	0x00B1, /* 0xB1 */
+	0x2264, /* 0xB2 */
+	0x2265, /* 0xB3 */
+	0x00A5, /* 0xB4 */
+	0x00B5, /* 0xB5 */
+	0x2202, /* 0xB6 */
+	0x2211, /* 0xB7 */
+	0x220F, /* 0xB8 */
+	0x03C0, /* 0xB9 */
+	0x222B, /* 0xBA */
+	0x00AA, /* 0xBB */
+	0x00BA, /* 0xBC */
+	0x03A9, /* 0xBD */
+	0x00E6, /* 0xBE */
+	0x00F8, /* 0xBF */
+	0x00BF, /* 0xC0 */
+	0x00A1, /* 0xC1 */
+	0x00AC, /* 0xC2 */
+	0x221A, /* 0xC3 */
+	0x0192, /* 0xC4 */
+	0x2248, /* 0xC5 */
+	0x2206, /* 0xC6 */
+	0x00AB, /* 0xC7 */
+	0x00BB, /* 0xC8 */
+	0x2026, /* 0xC9 */
+	0x00A0, /* 0xCA */
+	0x00C0, /* 0xCB */
+	0x00C3, /* 0xCC */
+	0x00D5, /* 0xCD */
+	0x0152, /* 0xCE */
+	0x0153, /* 0xCF */
+	0x2013, /* 0xD0 */
+	0x2014, /* 0xD1 */
+	0x201C, /* 0xD2 */
+	0x201D, /* 0xD3 */
+	0x2018, /* 0xD4 */
+	0x2019, /* 0xD5 */
+	0x00F7, /* 0xD6 */
+	0x25CA, /* 0xD7 */
+	0x00FF, /* 0xD8 */
+	0x0178, /* 0xD9 */
+	0x2044, /* 0xDA */
+	0x20AC, /* 0xDB */
+	0x2039, /* 0xDC */
+	0x203A, /* 0xDD */
+	0xFB01, /* 0xDE */
+	0xFB02, /* 0xDF */
+	0x2021, /* 0xE0 */
+	0x00B7, /* 0xE1 */
+	0x201A, /* 0xE2 */
+	0x201E, /* 0xE3 */
+	0x2030, /* 0xE4 */
+	0x00C2, /* 0xE5 */
+	0x00CA, /* 0xE6 */
+	0x00C1, /* 0xE7 */
+	0x00CB, /* 0xE8 */
+	0x00C8, /* 0xE9 */
+	0x00CD, /* 0xEA */
+	0x00CE, /* 0xEB */
+	0x00CF, /* 0xEC */
+	0x00CC, /* 0xED */
+	0x00D3, /* 0xEE */
+	0x00D4, /* 0xEF */
+	0xF8FF, /* 0xF0 */
+	0x00D2, /* 0xF1 */
+	0x00DA, /* 0xF2 */
+	0x00DB, /* 0xF3 */
+	0x00D9, /* 0xF4 */
+	0x0131, /* 0xF5 */
+	0x02C6, /* 0xF6 */
+	0x02DC, /* 0xF7 */
+	0x00AF, /* 0xF8 */
+	0x02D8, /* 0xF9 */
+	0x02D9, /* 0xFA */
+	0x02DA, /* 0xFB */
+	0x00B8, /* 0xFC */
+	0x02DD, /* 0xFD */
+	0x02DB, /* 0xFE */
+	0x02C7, /* 0xFF */
+};
+
+/* THE BYTE, THROUGH THE ENCODING THE CALLER CHOSE. The font-specific reading is the byte AS a character
+ * code (see CGContext.h); the MacRoman one is the byte as a MAC OS ROMAN character, whose code point the
+ * table above gives — so one byte reaches two different glyphs, which is the whole reason the encoding is
+ * a parameter and not a constant. */
+CGGlyph cg_font_glyph_for_byte(CGFontRef font, unsigned char code, int macroman)
 {
+	FT_ULong ch = (FT_ULong)code;
 	FT_UInt index;
 
 	if (font == NULL || font->face == NULL) {
 		return (CGGlyph)kCGFontIndexInvalid;
 	}
-	index = FT_Get_Char_Index(font->face, (FT_ULong)code);
+	if (macroman && code >= 0x80) {
+		ch = (FT_ULong)fn_macroman_high[code - 0x80];
+	}
+	index = FT_Get_Char_Index(font->face, ch);
 	if (index == 0) {
 		/* ZERO IS "THIS FONT HAS NO GLYPH FOR THAT CODE" — and it is also .notdef's index, which is
 		 * why it travels as kCGFontIndexInvalid and not as a glyph to draw. */
@@ -557,4 +700,141 @@ int cg_font_render_glyph(CGFontRef font, CGGlyph glyph, CGFloat pixel_size, CGAf
 	}
 	(void)mirror;
 	return 1;
+}
+
+/* ------------------------------------------------------------------------- */
+/* The registry: a name, and the directories that can answer for it           */
+/* ------------------------------------------------------------------------- */
+/* THE INCLUDES RIDE WITH THE CODE THAT NEEDS THEM, which is a habit this file keeps: `dirent.h` is here
+ * because a directory scan is here, and a reader does not have to look at the top of a 500-line file to
+ * learn why. */
+#include <dirent.h>
+#include <strings.h>
+
+/* THE FSH DIRECTORIES A FONT MAY LIVE IN, in the order they are searched: the shared fonts this tree
+ * stages, then the two system locations a Mac-shaped filesystem would use, then the flat one. */
+static const char *fn_font_dirs[] = {
+	"/System/Shared/Fonts",
+	"/System/Library/Fonts",
+	"/Library/Fonts",
+	"/System/Fonts"
+};
+
+static int fn_has_font_suffix(const char *name)
+{
+	size_t n = strlen(name);
+
+	if (n > 4 && (strcasecmp(name + n - 4, ".ttf") == 0 || strcasecmp(name + n - 4, ".otf") == 0)) {
+		return 1;
+	}
+	return n > 4 && strcasecmp(name + n - 4, ".ttc") == 0;
+}
+
+/* DOES THIS FACE ANSWER TO THAT NAME? The POSTSCRIPT NAME and the FULL name are Apple's contract; the
+ * family and `family style` forms are a kindness this library adds and the header says so — they are what
+ * makes "DejaVu Sans" find DejaVuSans.ttf without the caller knowing the PostScript spelling. */
+static int fn_face_is_named(FT_Face face, const char *name)
+{
+	char buf[256];
+	const char *ps = FT_Get_Postscript_Name(face);
+
+	if (ps != NULL && strcasecmp(ps, name) == 0) {
+		return 1;
+	}
+	if (face->family_name != NULL && face->style_name != NULL) {
+		snprintf(buf, sizeof buf, "%s %s", face->family_name, face->style_name);
+		if (strcasecmp(buf, name) == 0) {
+			return 1;
+		}
+	}
+	if (face->family_name != NULL && strcasecmp(face->family_name, name) == 0) {
+		return 1;
+	}
+	return face->style_name != NULL && strcasecmp(face->style_name, name) == 0;
+}
+
+static CGFontRef fn_try_file(const char *path, const char *name)
+{
+	CGDataProviderRef provider = CGDataProviderCreateWithFilename(path);
+	CGFontRef font;
+	char buf[256];
+	int match;
+
+	if (provider == NULL) {
+		return NULL;
+	}
+	font = CGFontCreateWithDataProvider(provider);
+	CGDataProviderRelease(provider);
+	if (font == NULL) {
+		return NULL;
+	}
+	match = fn_face_is_named(font->face, name);
+	if (!match && cg_font_full_name(font, buf, sizeof buf) > 0 && strcasecmp(buf, name) == 0) {
+		match = 1;
+	}
+	if (!match) {
+		CGFontRelease(font);
+		return NULL;
+	}
+	return font;
+}
+
+CGFontRef cg_font_create_with_name(const char *name)
+{
+	char override_buf[1024];
+	const char *dirs[8];
+	int ndirs = 0;
+	int i;
+
+	if (name == NULL || name[0] == '\0') {
+		return NULL;
+	}
+	{
+		/* THE OVERRIDE IS THE PROBE'S DOOR IN, AND THE ONLY WAY TO SEARCH ELSEWHERE: this library has no
+		 * settings domain of its own — system.fonts.conf belongs to the X11 stack's fontconfig, and
+		 * reading it here would put libconfig inside CoreGraphics. */
+		const char *env = getenv("FN_FONT_PATH");
+
+		if (env != NULL && env[0] != '\0' && strlen(env) < sizeof override_buf) {
+			char *p;
+
+			strcpy(override_buf, env);
+			p = strtok(override_buf, ":");
+			while (p != NULL && ndirs < 8) {
+				dirs[ndirs++] = p;
+				p = strtok(NULL, ":");
+			}
+		}
+	}
+	if (ndirs == 0) {
+		for (i = 0; i < (int)(sizeof fn_font_dirs / sizeof fn_font_dirs[0]); i++) {
+			dirs[ndirs++] = fn_font_dirs[i];
+		}
+	}
+	for (i = 0; i < ndirs; i++) {
+		DIR *d = opendir(dirs[i]);
+		struct dirent *e;
+
+		if (d == NULL) {
+			continue;
+		}
+		while ((e = readdir(d)) != NULL) {
+			char path[1024];
+			CGFontRef font;
+
+			if (!fn_has_font_suffix(e->d_name)) {
+				continue;
+			}
+			if (snprintf(path, sizeof path, "%s/%s", dirs[i], e->d_name) >= (int)sizeof path) {
+				continue;
+			}
+			font = fn_try_file(path, name);
+			if (font != NULL) {
+				closedir(d);
+				return font;
+			}
+		}
+		closedir(d);
+	}
+	return NULL;
 }

@@ -77,7 +77,7 @@
 # why the struck rows are struck: after-10.6 253, post-10.6 178, x11-territory 475
 #
 # counts by kind:
-#   func       shipped  225   open  102   struck  310   deferred   98
+#   func       shipped  227   open  100   struck  310   deferred   98
 #   macro      shipped    7   open    8   struck   92   deferred    0
 #   enum       shipped   14   open    2   struck   38   deferred    3
 #   case       shipped   95   open    7   struck  325   deferred   17
@@ -765,7 +765,7 @@ func	shipped	CGContextRetain	-	Opaque Types / Retaining and Releasing Graphics C
 func	shipped	CGContextRotateCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
 func	shipped	CGContextSaveGState	-	Opaque Types / Saving and Restoring Graphics State	-	objc
 func	shipped	CGContextScaleCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
-func	open	CGContextSelectFont	-	Opaque Types / Drawing Text	deprecated	objc
+func	shipped	CGContextSelectFont	-	Opaque Types / Drawing Text	deprecated	objc
 func	shipped	CGContextSetAllowsAntialiasing	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	open	CGContextSetAllowsFontSmoothing	-	Opaque Types / Drawing Text	-	objc
 func	open	CGContextSetAllowsFontSubpixelPositioning	-	Opaque Types / Drawing Text	-	objc
@@ -984,7 +984,7 @@ func	open	CGFontCreateCopyWithVariations	-	Opaque Types / Working with Variation
 func	open	CGFontCreatePostScriptEncoding	-	Opaque Types / Working with PostScript Fonts	-	objc
 func	open	CGFontCreatePostScriptSubset	-	Opaque Types / Working with PostScript Fonts	-	objc
 func	shipped	CGFontCreateWithDataProvider	-	Opaque Types / Creating Font Objects	-	objc
-func	open	CGFontCreateWithFontName	-	Opaque Types / Creating Font Objects	-	objc
+func	shipped	CGFontCreateWithFontName	-	Opaque Types / Creating Font Objects	-	objc
 func	open	CGFontCreateWithPlatformFont	-	Opaque Types / Creating Font Objects	deprecated	objc
 func	shipped	CGFontGetAscent	-	Opaque Types / Examining Font Metrics	-	objc
 func	shipped	CGFontGetCapHeight	-	Opaque Types / Examining Font Metrics	-	objc

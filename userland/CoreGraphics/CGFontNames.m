@@ -30,6 +30,14 @@
  * over Foundation VALUES, so this file is Objective-C because of the two string
  * conversions and for no other reason. */
 
+CGFontRef CGFontCreateWithFontName(NSString *name)
+{
+	if (name == nil) {
+		return NULL;
+	}
+	return cg_font_create_with_name([name UTF8String]);
+}
+
 NSString *CGFontCopyPostScriptName(CGFontRef font)
 {
 	const char *name = cg_font_postscript_name(font);

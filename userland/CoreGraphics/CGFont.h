@@ -75,6 +75,21 @@ enum {
  * that is not the one the caller asked for is a different font. */
 CGFontRef CGFontCreateWithDataProvider(CGDataProviderRef provider);
 
+/* A FONT BY NAME, FROM THE FONT DIRECTORIES — THE REGISTRY, AND IT IS A CHOICE THIS LIBRARY MAKES
+ * RATHER THAN ONE APPLE PUBLISHES. A name is matched, case-insensitively, against the face's
+ * POSTSCRIPT name and its FULL name (Apple's contract), and also against `family style` and the family
+ * alone (this library's kindness, so a caller need not know the PostScript spelling). The directories
+ * are the FSH ones, searched in order: /System/Shared/Fonts, /System/Library/Fonts, /Library/Fonts,
+ * /System/Fonts; `FN_FONT_PATH` (colon-separated) replaces that list, which is how a host probe
+ * reaches this tree's own directory. A NAME THAT MATCHES NOTHING ANSWERS NULL: substituting a fallback
+ * font would draw the wrong glyphs in the right places, which is worse than drawing nothing.
+ *
+ * FONTCONFIG IS DELIBERATELY NOT IN THIS PATH. The X11 stack has it and this library does not need it:
+ * Apple's door takes a NAME, not a pattern, so a scan over the font directories answers it exactly —
+ * at the cost of opening candidate files, which the one-face-per-style rule bounds. If pattern
+ * matching is ever wanted, fontconfig can be layered behind this door rather than in place of it. */
+CGFontRef CGFontCreateWithFontName(NSString *name);
+
 CGFontRef CGFontRetain(CGFontRef font);
 void CGFontRelease(CGFontRef font);
 

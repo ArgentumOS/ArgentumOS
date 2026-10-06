@@ -55,7 +55,16 @@ CGGlyph cg_font_glyph_with_name(CGFontRef font, const char *name);
  * index — gives garbage for every font whose glyph order is not ASCII-aligned, which is all of
  * them. A byte this font has no glyph for answers kCGFontIndexInvalid, which the caller SKIPS
  * rather than drawing .notdef for. */
-CGGlyph cg_font_glyph_for_byte(CGFontRef font, unsigned char code);
+CGGlyph cg_font_glyph_for_byte(CGFontRef font, unsigned char code, int macroman);
+
+/* A FONT BY NAME, FROM THE CONFIGURED FONT DIRECTORIES: the door Apple calls
+ * `CGFontCreateWithFontName` needs a REGISTRY — a name has to resolve to a file — and this is this
+ * library's: the directories are the FSH ones below, a name matches the face's POSTSCRIPT name, its
+ * FULL name or `family style` (case-insensitively, which is a kindness Apple's documentation does not
+ * promise), and a name that matches nothing ANSWERS NULL rather than substituting a font the caller did
+ * not ask for. `FN_FONT_PATH` overrides the directory list with a colon-separated one, which is how the
+ * host probe reaches the tree's own directory. */
+CGFontRef cg_font_create_with_name(const char *name);
 
 /* ONE GLYPH RASTERISED ... see CGContext.c for how it is placed. */
 int cg_font_render_glyph(CGFontRef font, CGGlyph glyph, CGFloat pixel_size,

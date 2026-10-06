@@ -483,6 +483,15 @@ typedef enum {
 	kCGEncodingMacRoman = 1
 } CGTextEncoding;
 
+/* AND THE DOOR THAT NAMES A FONT **AND** AN ENCODING, which is why the encoding is a parameter HERE and
+ * nowhere else — and why the MacRoman half of the enum was unreachable until this door existed.
+ * A name this library cannot resolve is REFUSED BY NAME and the context keeps the font it had:
+ * setting the font to nothing would turn a typo into a silent blank line. AND THE DECLARATION
+ * SITS AFTER THE ENUM because it NAMES it — the trap CGPath.h records for `CGAffineTransform`,
+ * met in a header of this library's own. */
+void CGContextSelectFont(CGContextRef context, const char *name, CGFloat size,
+			 CGTextEncoding textEncoding);
+
 /* `length` IS THE COUNT, NOT A TERMINATOR: these doors draw exactly the bytes they are given, which
  * is what makes them usable on a slice of a buffer. A BYTE THIS FONT HAS NO GLYPH FOR IS SKIPPED —
  * no ink, no advance, no refusal — because a missing glyph is a font fact, not a caller error. */

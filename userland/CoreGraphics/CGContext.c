@@ -93,6 +93,9 @@ typedef struct cg_state {
 	CGPoint text_position;
 	CGFloat character_spacing;
 	CGTextDrawingMode text_mode;
+	/* THE ENCODING THE BYTE DOORS READ A BYTE WITH, set only by `CGContextSelectFont` — because that is
+ 	 * the door Apple gives it, and the font-specific value is what `CGContextSetFont` leaves. */
+	CGTextEncoding text_encoding;
 	/* THE LINE STATE LIVES IN THE GRAPHICS STATE, which is why `CGContextSaveGState` and
 	 * `CGContextRestoreGState` needed NO change to carry it: they copy this struct, so
 	 * the width, the caps, the joins and the stroke colour are saved and restored with
@@ -273,6 +276,7 @@ static void cg_state_init_full(cg_state *st, int width, int height)
 	st->text_position = CGPointMake(0.0, 0.0);
 	st->character_spacing = 0.0;
 	st->text_mode = kCGTextFill;
+	st->text_encoding = kCGEncodingFontSpecific;
 	st->pattern_phase = CGSizeMake(0.0, 0.0);
 }
 
@@ -2865,6 +2869,25 @@ void CGContextSetFont(CGContextRef c, CGFontRef font)
 	c->state.font = font;
 }
 
+void CGContextSelectFont(CGContextRef c, const char *name, CGFloat size, CGTextEncoding textEncoding)
+{
+	CGFontRef font;
+
+	if (c == NULL) {
+		return;
+	}
+	font = cg_font_create_with_name(name);
+	if (font == NULL) {
+		fprintf(stderr, "CG-REFUSE: no font named \"%s\" in this system's font directories; the "
+			"context keeps the font it had\n", name);
+		return;
+	}
+	CGContextSetFont(c, font);	/* the context retains it */
+	CGFontRelease(font);
+	CGContextSetFontSize(c, size);
+	c->state.text_encoding = textEncoding;
+}
+
 void CGContextSetFontSize(CGContextRef c, CGFloat size)
 {
 	if (c != NULL) {
@@ -3106,7 +3129,8 @@ void CGContextShowText(CGContextRef c, const char *string, size_t length)
 	pen = c->state.text_position;
 	pixman_image_set_clip_region32(c->image, &c->state.clip);
 	for (i = 0; i < length; i++) {
-		CGGlyph g = cg_font_glyph_for_byte(c->state.font, (unsigned char)string[i]);
+		CGGlyph g = cg_font_glyph_for_byte(c->state.font, (unsigned char)string[i],
+						   c->state.text_encoding == kCGEncodingMacRoman);
 
 		if (g == (CGGlyph)kCGFontIndexInvalid) {
 			continue;

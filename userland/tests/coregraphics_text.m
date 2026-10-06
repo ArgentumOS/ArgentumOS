@@ -421,6 +421,76 @@ int main(void)
 		      ink_unmapped == 0 && after.x == before_x);
 	}
 
+	/* --- THE REGISTRY, AND THE ENCODING IT IS THE ONLY WAY TO REACH ------------------ */
+	{
+		CGFontRef by_ps, by_full, by_bogus;
+		CGGlyph adieresis;
+		CGPoint at = CGPointMake(10.0, 10.0);
+		int ink_macroman, ink_specific, ink_named;
+		int mx0, my0, mx1, my1, nx0, ny0, nx1, ny1;
+
+		/* THE DIRECTORIES ARE THE REGISTRY'S CHOICE AND THE OVERRIDE IS THE PROBE'S DOOR IN (see
+		 * CGFont.h): this points the scan at the tree's own fonts. */
+		setenv("FN_FONT_PATH", "userland/fonts", 1);
+		by_ps = CGFontCreateWithFontName(@"DejaVuSans");
+		by_full = CGFontCreateWithFontName(@"DejaVu Sans");
+		by_bogus = CGFontCreateWithFontName(@"NoSuchFontAnywhere");
+		check("CGFontCreateWithFontName finds the face by its PostScript name", by_ps != NULL);
+		check("...and by its full name, which lives in the font's own name table", by_full != NULL);
+		check("...and both spellings name the SAME face",
+		      by_ps != NULL && by_full != NULL
+		      && CGFontGetUnitsPerEm(by_ps) == CGFontGetUnitsPerEm(by_full)
+		      && CGFontGetNumberOfGlyphs(by_ps) == CGFontGetNumberOfGlyphs(by_full));
+		check("a name that matches nothing answers NULL rather than a substitute", by_bogus == NULL);
+		if (by_ps != NULL) {
+			CGFontRelease(by_ps);
+		}
+		if (by_full != NULL) {
+			CGFontRelease(by_full);
+		}
+
+		/* THE SAME BYTE, TWO ENCODINGS, TWO ANSWERS: 0x80 is A-diaeresis in Mac OS Roman and a bare
+		 * control code in the font-specific reading — which is the whole reason `SelectFont` carries the
+		 * encoding, and the only door that can reach the Mac Roman half of the enum. */
+		repaint(ctx);
+		CGContextSelectFont(ctx, "DejaVuSans", 32.0, kCGEncodingMacRoman);
+		CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 1.0);
+		CGContextSetTextPosition(ctx, 10.0, 10.0);
+		CGContextShowText(ctx, "\x80", 1);
+		count_ink(&ink_macroman, &mx0, &my0, &mx1, &my1);
+
+		repaint(ctx);
+		CGContextSelectFont(ctx, "DejaVuSans", 32.0, kCGEncodingFontSpecific);
+		CGContextSetTextPosition(ctx, 10.0, 10.0);
+		CGContextShowText(ctx, "\x80", 1);
+		count_ink(&ink_specific, &n, &y0, &x1, &y1);
+		check("under Mac Roman the byte 0x80 reaches a glyph", ink_macroman > 20);
+		check("...and under the font-specific reading the same byte has no glyph and is skipped",
+		      ink_specific == 0);
+
+		/* AND IT IS THE RIGHT GLYPH: Mac OS Roman 0x80 is A-DIAERESIS, so the ink must equal what the
+		 * glyph NAMED Adieresis draws at the same pen. That is the table's standard-ness, measured. */
+		repaint(ctx);
+		adieresis = CGFontGetGlyphWithGlyphName(font, @"Adieresis");
+		check("the glyph named Adieresis was found", adieresis != 0
+		      && adieresis != (CGGlyph)kCGFontIndexInvalid);
+		CGContextSetFont(ctx, font);
+		CGContextSetFontSize(ctx, 32.0);
+		CGContextShowGlyphsAtPositions(ctx, &adieresis, &at, 1);
+		count_ink(&ink_named, &nx0, &ny0, &nx1, &ny1);
+		check("Mac Roman 0x80 draws EXACTLY the glyph Adieresis, so the table is the standard one",
+		      ink_macroman == ink_named && mx0 == nx0 && mx1 == nx1 && my0 == ny0 && my1 == ny1);
+
+		/* A NAME THAT CANNOT BE RESOLVED REFUSES AND KEEPS THE FONT THE CONTEXT HAD. */
+		repaint(ctx);
+		CGContextSelectFont(ctx, "NoSuchFontAnywhere", 32.0, kCGEncodingFontSpecific);
+		CGContextSetTextPosition(ctx, 10.0, 10.0);
+		CGContextShowText(ctx, "H", 1);
+		count_ink(&n, &x0, &y0, &x1, &y1);
+		check("a name that cannot be resolved refuses and leaves the working font in place", n > 20);
+		CGContextSetFont(ctx, font);
+	}
+
 	/* --- the state stack carries the font, which is the ownership this added --------- */
 	repaint(ctx);
 	CGContextSaveGState(ctx);
