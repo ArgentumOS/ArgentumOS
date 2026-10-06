@@ -126,7 +126,15 @@ STATUS_STRUCK = "struck"
 # exist yet. What that leaves is a 10.6-shaped surface -- and the tail it cuts is where most of this ledger's rows
 # live (the HDR/content-headroom family, the tone-mapping colour-conversion object, the PDF structure/marked-content
 # family, the Swift-era tags and enums).
-STRIKE_REASONS = ("swift-only", "after-10.6")
+# THE THIRD REASON, `post-10.6`, IS THE SDK GROUND (user, 2026-10-05): "use the CoreGraphics SDK
+# headers from 10.6 to identify currently-owed rows which can be struck as post-10.6". It exists
+# because the documentation ground has a HOLE the headers do not: MEASURED, Apple's pages carry an
+# introduction version for the FUNCTION and VAR kinds and almost nothing else (enum cases 86 of 444,
+# macros 2 of 107, typealiases 1 of 100), which left 582 owed rows undecided. A HEADER needs no
+# version to settle presence: a name the 10.6 headers mention existed then, and a name they do not is
+# post-10.6.
+POST_106 = "post-10.6"
+STRIKE_REASONS = ("swift-only", "after-10.6", POST_106)
 
 # THE ERA GROUND'S ARTEFACT AND ITS RULE. The file is `name<TAB>introducedAt<TAB>deprecatedAt<TAB>page`, one line
 # per ledger name, written by the fetch tool above. An ABSENT FILE IS AN EMPTY MAP AND NOTHING IS STRUCK ON THIS
@@ -135,6 +143,38 @@ STRIKE_REASONS = ("swift-only", "after-10.6")
 ERA_STRIKE = "after-10.6"
 ERA_MAX = (10, 6)                       # "after Mac OS X 10.6" — 10.7 and later are out
 ERA_UNKNOWN = (None, "")                # no page, or a page with no macOS entry: NOT assumed old
+
+# THE SECOND ERA SOURCE, AND THE ONE THAT CLOSES THE FIRST ONE'S HOLE: the 10.6 SDK's OWN HEADERS.
+# `docs/reference/coregraphics-sdk106.txt` is a NAME LIST — `name<TAB>present|absent<TAB>where` —
+# written by tools/coregraphics-sdk-scan.py, and THE SDK ITSELF IS NOT IN THIS TREE AND IS NOT
+# REDISTRIBUTABLE: shipping the list and keeping the generator is the same rule the deprecation
+# policy already states (`ship the LIST, never the header text`).
+#
+# PRESENCE, NOT MEANING, AND THAT IS WHY BOTH GROUNDS STAY: the SDK settles whether a name existed
+# at 10.6 and says nothing about what it meant or when it was deprecated (the deprecation ground's
+# business), and the documentation ground carries the replacement Apple names. A row is struck when
+# EITHER ground excludes it.
+#
+# THE ASYMMETRY THE OTHER GROUND ALREADY HAS APPLIES HERE TOO: this strikes OWED work. A row this
+# tree already SHIPS and the 10.6 headers do not have is REPORTED rather than struck, because a
+# symbol that is already implemented is not owed and removing it is a different decision.
+SDK106_FILE = os.path.join(ROOT, "docs/reference/coregraphics-sdk106.txt")
+
+
+def read_sdk106():
+    """{name: 'present' | 'absent'} from the artefact tools/coregraphics-sdk-scan.py writes.
+    The ABSENT-FILE RULE IS THE ERA GROUND'S: an empty map strikes nothing, because an instrument
+    that was never built must not delete work."""
+    out = {}
+    if not os.path.exists(SDK106_FILE):
+        return out
+    for line in open(SDK106_FILE, encoding="utf-8"):
+        if line.startswith("#") or not line.strip():
+            continue
+        f = line.rstrip("\n").split("\t")
+        if len(f) >= 2:
+            out[f[0]] = f[1]
+    return out
 
 
 def era_version(s):
@@ -277,6 +317,12 @@ def struck_reason(row):
     v = (row.get("era") or ERA_UNKNOWN)[0]
     if v is not None and v > ERA_MAX:
         return ERA_STRIKE
+    # AND THE SDK GROUND, WHICH IS THE ONE THAT CAN ANSWER FOR THE KINDS THE PAGES CANNOT: `sdk` is
+    # the verdict tools/coregraphics-sdk-scan.py reached from the 10.6 headers — 'present', 'absent',
+    # or None when the artefact does not carry the name. ABSENT IS THE STRIKE; present and unlisted
+    # both leave the row where it was, because an absence of data is not an absence of a symbol.
+    if (row.get("sdk") or "") == "absent":
+        return POST_106
     return None
 
 
@@ -298,6 +344,8 @@ def status_of(kind, name, why, text, names=None):
     CUTS work, it does not delete shipped API.)
     """
     if why == ERA_STRIKE and declared(kind, name, text, names):
+        return STATUS_SHIPPED
+    if why == POST_106 and declared(kind, name, text, names):
         return STATUS_SHIPPED
     if why in STRIKE_REASONS:
         return STATUS_STRUCK
@@ -406,6 +454,7 @@ def refresh():
     text = public_header_text()
     declared_set = declared_names(text)     # ONE pass for every row (§62.112); see declared_names()
     era = read_era()
+    sdk = read_sdk106()
     out = []
     counts = {}
     reasons = {}
@@ -413,6 +462,7 @@ def refresh():
     for key in sorted(rows):
         r = rows[key]
         r["era"] = era.get(r["name"], ERA_UNKNOWN)
+        r["sdk"] = sdk.get(r["name"])
         why = why_of(r)
         if why == "deprecated":
             deprecated = deprecated + 1
@@ -528,7 +578,8 @@ def check(strict=False):
     # row is a genuine finding and still fails.
     live_names = {r[2] for r in rows if r[1] != STATUS_STRUCK}
     era = read_era()
-    out_of_era, no_era = [], []
+    sdk = read_sdk106()
+    out_of_era, no_era, sdk_in_era = [], [], []
     for kind, status, name, owner, family, why, src in rows:
         counts[(kind, status)] = counts.get((kind, status), 0) + 1
         found = bool(declared(kind, name, text, declared_set))
@@ -555,7 +606,25 @@ def check(strict=False):
         if v is not None and v > ERA_MAX and status == STATUS_SHIPPED:
             out_of_era.append("%-9s %s — introduced %d.%d, and we ship it" % (kind, name, v[0], v[1]))
         if v is None and status == STATUS_OPEN:
-            no_era.append("%-9s %s" % (kind, name))
+            # AND THE SDK GROUND DECIDES MOST OF WHAT THE PAGES COULD NOT: a row with no introduction
+            # version whose name IS in the 10.6 headers is DECIDED IN ERA (it stays owed), so it does
+            # not belong in the "no ground can date it" report below. What is left there is the
+            # genuine remainder: no version from Apple's pages AND no verdict from the headers.
+            if sdk.get(name) is None:
+                no_era.append("%-9s %s" % (kind, name))
+            else:
+                sdk_in_era.append("%-9s %s" % (kind, name))
+        # THE SDK GROUND'S OWN CONSISTENCY AND ITS OWN REPORT, in the same shape: the artefact is the
+        # only thing that may strike for `post-10.6`, so a row struck that way with a verdict other
+        # than `absent` behind it is a real inconsistency. A SHIPPED row the 10.6 headers do not have
+        # is NOT struck either — status_of keeps it — and is REPORTED: this tree implements API that
+        # is later than the surface it duplicates, which is a decision rather than a drift. MEASURED
+        # by the first run: exactly ten such rows, and they are listed below with what they are.
+        if why == POST_106 and status == STATUS_STRUCK and sdk.get(name) != "absent":
+            bad.append("SDK STRIKE WITH NO EVIDENCE %-9s %s — struck as %s and the 10.6 artefact says %s"
+                       % (kind, name, POST_106, sdk.get(name) or "nothing"))
+        if sdk.get(name) == "absent" and status == STATUS_SHIPPED:
+            out_of_era.append("%-9s %s — NOT in the 10.6 headers, and we ship it" % (kind, name))
     kinds = sorted({k for k, _ in counts})
     print("coregraphics-sweep: %d symbols in the ledger" % len(rows))
     for kind in kinds:
@@ -572,11 +641,19 @@ def check(strict=False):
         for line in policy:
             print("  " + line)
     if out_of_era:
-        print("\n%d SHIPPED ROW(S) THE ERA GROUND WOULD STRIKE — built, so not owed; a decision, not a drift:\n" % len(out_of_era))
+        print("\n%d SHIPPED ROW(S) NO ERA GROUND HOLDS — built, so not owed; a decision, not a drift:\n" % len(out_of_era))
         for line in out_of_era:
             print("  " + line)
+    if sdk_in_era:
+        print("\nAND %d OPEN ROW(S) THE PAGES COULD NOT DATE ARE DECIDED IN ERA BY THE 10.6 HEADERS —"
+              % len(sdk_in_era))
+        print("they stay owed, which is what the header list is for:\n")
+        for line in sdk_in_era[:20]:
+            print("  " + line)
+        if len(sdk_in_era) > 20:
+            print("  ... and %d more" % (len(sdk_in_era) - 20))
     if no_era:
-        print("\n%d OPEN ROW(S) WITH NO ERA DATA — NOT struck (unmeasured is not old):\n" % len(no_era))
+        print("\n%d OPEN ROW(S) NO GROUND CAN DATE — NOT struck (unmeasured is not old):\n" % len(no_era))
         for line in no_era[:30]:
             print("  " + line)
         if len(no_era) > 30:

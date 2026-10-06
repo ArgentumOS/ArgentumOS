@@ -10,7 +10,7 @@
 #
 # kind	status	name	owner	family	why	src
 #
-# AND 70 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
+# AND 68 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): to support porting older Mac applications, all items removed for being
 # deprecated are un-deprecated and added to the work list. They carry `deprecated` in the
 # `why` column, which says what KIND of work a row is, and they are open/shipped like any other.
@@ -51,16 +51,16 @@
 # counted, NOT excluded: 0 distinct names Apple documents on a `swift.` page
 # but which carry the CG spelling.
 #
-# why the struck rows are struck: after-10.6 253
+# why the struck rows are struck: after-10.6 253, post-10.6 168
 #
 # counts by kind:
-#   func       shipped  195   open  417   struck  123
-#   macro      shipped    7   open  100   struck    0
-#   enum       shipped   13   open   41   struck    3
-#   case       shipped   84   open  296   struck   64
-#   var        shipped    9   open   64   struck   62
-#   typealias  shipped   17   open   82   struck    1
-#   struct     shipped    8   open   12   struck    0
+#   func       shipped  195   open  399   struck  141
+#   macro      shipped    7   open   76   struck   24
+#   enum       shipped   13   open   29   struck   15
+#   case       shipped   84   open  213   struck  147
+#   var        shipped    9   open   52   struck   74
+#   typealias  shipped   17   open   69   struck   14
+#   struct     shipped    8   open    6   struck    6
 case	open	CGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
 case	open	CGGlyphMin	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
 case	open	CGPDFDataFormatJPEG2000	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
@@ -134,24 +134,24 @@ case	open	kCGBitmapByteOrder16Little	-	Opaque Types / Examining an image / Const
 case	open	kCGBitmapByteOrder32Big	-	Opaque Types / Examining an image / Constants	deprecated	objc
 case	open	kCGBitmapByteOrder32Little	-	Opaque Types / Examining an image / Constants	deprecated	objc
 case	open	kCGBitmapByteOrderDefault	-	Opaque Types / Examining an image / Constants	deprecated	objc
-case	shipped	kCGBitmapByteOrderInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	-	objc
+case	shipped	kCGBitmapByteOrderInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	post-10.6	objc
 case	open	kCGBitmapByteOrderMask	-	Opaque Types / Examining an image / Enumeration Cases	deprecated	objc
-case	open	kCGBitmapComponentInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	-	objc
+case	struck	kCGBitmapComponentInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	post-10.6	objc
 case	open	kCGBitmapFloatComponents	-	Opaque Types / Examining an image / Constants	deprecated	objc
-case	open	kCGBitmapFloatInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	deprecated	objc
-case	open	kCGBitmapLayoutABGR	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGBitmapLayoutARGB	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGBitmapLayoutAlphaOnly	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGBitmapLayoutBGRA	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGBitmapLayoutBGRX	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGBitmapLayoutCMYK	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGBitmapLayoutGray	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGBitmapLayoutGrayAlpha	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGBitmapLayoutRGBA	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGBitmapLayoutRGBX	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGBitmapLayoutXBGR	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGBitmapLayoutXRGB	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGBitmapPixelFormatInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	-	objc
+case	struck	kCGBitmapFloatInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	post-10.6	objc
+case	struck	kCGBitmapLayoutABGR	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGBitmapLayoutARGB	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGBitmapLayoutAlphaOnly	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGBitmapLayoutBGRA	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGBitmapLayoutBGRX	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGBitmapLayoutCMYK	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGBitmapLayoutGray	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGBitmapLayoutGrayAlpha	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGBitmapLayoutRGBA	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGBitmapLayoutRGBX	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGBitmapLayoutXBGR	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGBitmapLayoutXRGB	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGBitmapPixelFormatInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	post-10.6	objc
 case	shipped	kCGBlendModeClear	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
 case	shipped	kCGBlendModeColor	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
 case	shipped	kCGBlendModeColorBurn	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
@@ -182,15 +182,15 @@ case	shipped	kCGBlendModeSourceOut	-	Opaque Types / Managing a Graphics Context 
 case	shipped	kCGBlendModeXOR	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
 case	open	kCGCaptureNoFill	-	Services / Constants / Constants	-	objc
 case	open	kCGCaptureNoOptions	-	Services / Constants / Constants	-	objc
-case	open	kCGColorConversionTransformApplySpace	-	Opaque Types / Creating a Color Conversion / Enumeration Cases	-	objc
-case	open	kCGColorConversionTransformFromSpace	-	Opaque Types / Creating a Color Conversion / Enumeration Cases	-	objc
-case	open	kCGColorConversionTransformToSpace	-	Opaque Types / Creating a Color Conversion / Enumeration Cases	-	objc
-case	open	kCGColorModelCMYK	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGColorModelDeviceN	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGColorModelGray	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGColorModelLab	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGColorModelNoColorant	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGColorModelRGB	-	Enumerations / Enumeration Cases	-	objc
+case	struck	kCGColorConversionTransformApplySpace	-	Opaque Types / Creating a Color Conversion / Enumeration Cases	post-10.6	objc
+case	struck	kCGColorConversionTransformFromSpace	-	Opaque Types / Creating a Color Conversion / Enumeration Cases	post-10.6	objc
+case	struck	kCGColorConversionTransformToSpace	-	Opaque Types / Creating a Color Conversion / Enumeration Cases	post-10.6	objc
+case	struck	kCGColorModelCMYK	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGColorModelDeviceN	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGColorModelGray	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGColorModelLab	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGColorModelNoColorant	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGColorModelRGB	-	Enumerations / Enumeration Cases	post-10.6	objc
 case	shipped	kCGColorSpaceModelCMYK	-	Opaque Types / Examining a Color Space / Constants	-	objc
 case	shipped	kCGColorSpaceModelDeviceN	-	Opaque Types / Examining a Color Space / Constants	-	objc
 case	shipped	kCGColorSpaceModelIndexed	-	Opaque Types / Examining a Color Space / Constants	-	objc
@@ -199,14 +199,14 @@ case	shipped	kCGColorSpaceModelMonochrome	-	Opaque Types / Examining a Color Spa
 case	shipped	kCGColorSpaceModelPattern	-	Opaque Types / Examining a Color Space / Constants	-	objc
 case	shipped	kCGColorSpaceModelRGB	-	Opaque Types / Examining a Color Space / Constants	-	objc
 case	shipped	kCGColorSpaceModelUnknown	-	Opaque Types / Examining a Color Space / Constants	-	objc
-case	shipped	kCGColorSpaceModelXYZ	-	Opaque Types / Examining a Color Space / Constants	-	objc
-case	open	kCGComponentFloat16Bit	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGComponentFloat32Bit	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGComponentInteger10Bit	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGComponentInteger16Bit	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGComponentInteger32Bit	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGComponentInteger8Bit	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGComponentUnknown	-	Enumerations / Enumeration Cases	-	objc
+case	shipped	kCGColorSpaceModelXYZ	-	Opaque Types / Examining a Color Space / Constants	post-10.6	objc
+case	struck	kCGComponentFloat16Bit	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGComponentFloat32Bit	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGComponentInteger10Bit	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGComponentInteger16Bit	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGComponentInteger32Bit	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGComponentInteger8Bit	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGComponentUnknown	-	Enumerations / Enumeration Cases	post-10.6	objc
 case	open	kCGConfigureForAppOnly	-	Services / Constants / Type Properties	-	objc
 case	open	kCGConfigureForSession	-	Services / Constants / Type Properties	-	objc
 case	open	kCGConfigurePermanently	-	Services / Constants / Type Properties	-	objc
@@ -223,14 +223,14 @@ case	open	kCGDisplayMovedFlag	-	Services / Constants / Constants	-	objc
 case	open	kCGDisplayRemoveFlag	-	Services / Constants / Constants	-	objc
 case	open	kCGDisplaySetMainFlag	-	Services / Constants / Constants	-	objc
 case	open	kCGDisplaySetModeFlag	-	Services / Constants / Constants	-	objc
-case	open	kCGDisplayStreamFrameStatusFrameBlank	-	Services / Constants / Constants	-	objc
-case	open	kCGDisplayStreamFrameStatusFrameComplete	-	Services / Constants / Constants	-	objc
-case	open	kCGDisplayStreamFrameStatusFrameIdle	-	Services / Constants / Constants	-	objc
-case	open	kCGDisplayStreamFrameStatusStopped	-	Services / Constants / Constants	-	objc
-case	open	kCGDisplayStreamUpdateDirtyRects	-	Services / Constants / Constants	-	objc
-case	open	kCGDisplayStreamUpdateMovedRects	-	Services / Constants / Constants	-	objc
-case	open	kCGDisplayStreamUpdateReducedDirtyRects	-	Services / Constants / Constants	-	objc
-case	open	kCGDisplayStreamUpdateRefreshedRects	-	Services / Constants / Constants	-	objc
+case	struck	kCGDisplayStreamFrameStatusFrameBlank	-	Services / Constants / Constants	post-10.6	objc
+case	struck	kCGDisplayStreamFrameStatusFrameComplete	-	Services / Constants / Constants	post-10.6	objc
+case	struck	kCGDisplayStreamFrameStatusFrameIdle	-	Services / Constants / Constants	post-10.6	objc
+case	struck	kCGDisplayStreamFrameStatusStopped	-	Services / Constants / Constants	post-10.6	objc
+case	struck	kCGDisplayStreamUpdateDirtyRects	-	Services / Constants / Constants	post-10.6	objc
+case	struck	kCGDisplayStreamUpdateMovedRects	-	Services / Constants / Constants	post-10.6	objc
+case	struck	kCGDisplayStreamUpdateReducedDirtyRects	-	Services / Constants / Constants	post-10.6	objc
+case	struck	kCGDisplayStreamUpdateRefreshedRects	-	Services / Constants / Constants	post-10.6	objc
 case	open	kCGDisplayUnMirrorFlag	-	Services / Constants / Constants	-	objc
 case	open	kCGDockWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
 case	open	kCGDraggingWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
@@ -295,18 +295,18 @@ case	open	kCGEventTapOptionDefault	-	Services / Constants / Constants	-	objc
 case	open	kCGEventTapOptionListenOnly	-	Services / Constants / Constants	-	objc
 case	open	kCGEventTargetProcessSerialNumber	-	Services / Constants / Constants	-	objc
 case	open	kCGEventTargetUnixProcessID	-	Services / Constants / Constants	-	objc
-case	open	kCGEventUnacceleratedPointerMovementX	-	Services / Constants / Enumeration Cases	-	objc
-case	open	kCGEventUnacceleratedPointerMovementY	-	Services / Constants / Enumeration Cases	-	objc
+case	struck	kCGEventUnacceleratedPointerMovementX	-	Services / Constants / Enumeration Cases	post-10.6	objc
+case	struck	kCGEventUnacceleratedPointerMovementY	-	Services / Constants / Enumeration Cases	post-10.6	objc
 case	open	kCGFloatingWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
 case	open	kCGFontPostScriptFormatType1	-	Opaque Types / Working with PostScript Fonts / Constants	-	objc
 case	open	kCGFontPostScriptFormatType3	-	Opaque Types / Working with PostScript Fonts / Constants	-	objc
 case	open	kCGFontPostScriptFormatType42	-	Opaque Types / Working with PostScript Fonts / Constants	-	objc
-case	open	kCGGesturePhaseBegan	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGGesturePhaseCancelled	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGGesturePhaseChanged	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGGesturePhaseEnded	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGGesturePhaseMayBegin	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGGesturePhaseNone	-	Reference / Enumerations / Constants	-	objc
+case	struck	kCGGesturePhaseBegan	-	Reference / Enumerations / Constants	post-10.6	objc
+case	struck	kCGGesturePhaseCancelled	-	Reference / Enumerations / Constants	post-10.6	objc
+case	struck	kCGGesturePhaseChanged	-	Reference / Enumerations / Constants	post-10.6	objc
+case	struck	kCGGesturePhaseEnded	-	Reference / Enumerations / Constants	post-10.6	objc
+case	struck	kCGGesturePhaseMayBegin	-	Reference / Enumerations / Constants	post-10.6	objc
+case	struck	kCGGesturePhaseNone	-	Reference / Enumerations / Constants	post-10.6	objc
 case	shipped	kCGGradientDrawsAfterEndLocation	-	Opaque Types / Drawing Gradients and Shadings / Constants	-	objc
 case	shipped	kCGGradientDrawsBeforeStartLocation	-	Opaque Types / Drawing Gradients and Shadings / Constants	-	objc
 case	open	kCGHIDEventTap	-	Services / Constants / Constants	-	objc
@@ -320,16 +320,16 @@ case	shipped	kCGImageAlphaNoneSkipLast	-	Opaque Types / Examining an image / Con
 case	shipped	kCGImageAlphaOnly	-	Opaque Types / Examining an image / Constants	-	objc
 case	shipped	kCGImageAlphaPremultipliedFirst	-	Opaque Types / Examining an image / Constants	-	objc
 case	shipped	kCGImageAlphaPremultipliedLast	-	Opaque Types / Examining an image / Constants	-	objc
-case	open	kCGImageByteOrder16Big	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGImageByteOrder16Host	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	open	kCGImageByteOrder16Little	-	Reference / Enumerations / Constants	-	objc
-case	shipped	kCGImageByteOrder32Big	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGImageByteOrder32Host	-	Reference / Enumerations / Enumeration Cases	-	objc
-case	shipped	kCGImageByteOrder32Little	-	Reference / Enumerations / Constants	-	objc
-case	shipped	kCGImageByteOrderDefault	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGImageByteOrderMask	-	Reference / Enumerations / Constants	deprecated	objc
-case	open	kCGImageComponentFloat	-	Enumerations / Enumeration Cases	-	objc
-case	open	kCGImageComponentInteger	-	Enumerations / Enumeration Cases	-	objc
+case	struck	kCGImageByteOrder16Big	-	Reference / Enumerations / Constants	post-10.6	objc
+case	struck	kCGImageByteOrder16Host	-	Reference / Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGImageByteOrder16Little	-	Reference / Enumerations / Constants	post-10.6	objc
+case	shipped	kCGImageByteOrder32Big	-	Reference / Enumerations / Constants	post-10.6	objc
+case	struck	kCGImageByteOrder32Host	-	Reference / Enumerations / Enumeration Cases	post-10.6	objc
+case	shipped	kCGImageByteOrder32Little	-	Reference / Enumerations / Constants	post-10.6	objc
+case	shipped	kCGImageByteOrderDefault	-	Reference / Enumerations / Constants	post-10.6	objc
+case	struck	kCGImageByteOrderMask	-	Reference / Enumerations / Constants	post-10.6	objc
+case	struck	kCGImageComponentFloat	-	Enumerations / Enumeration Cases	post-10.6	objc
+case	struck	kCGImageComponentInteger	-	Enumerations / Enumeration Cases	post-10.6	objc
 case	struck	kCGImagePixelFormatMask	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
 case	struck	kCGImagePixelFormatPacked	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
 case	struck	kCGImagePixelFormatRGB101010	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
@@ -354,10 +354,10 @@ case	open	kCGMainMenuWindowLevelKey	-	Services / Data Types / Window levels / Co
 case	open	kCGMaximumWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
 case	open	kCGMinimumWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
 case	open	kCGModalPanelWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
-case	open	kCGMomentumScrollPhaseBegin	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGMomentumScrollPhaseContinue	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGMomentumScrollPhaseEnd	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGMomentumScrollPhaseNone	-	Reference / Enumerations / Constants	-	objc
+case	struck	kCGMomentumScrollPhaseBegin	-	Reference / Enumerations / Constants	post-10.6	objc
+case	struck	kCGMomentumScrollPhaseContinue	-	Reference / Enumerations / Constants	post-10.6	objc
+case	struck	kCGMomentumScrollPhaseEnd	-	Reference / Enumerations / Constants	post-10.6	objc
+case	struck	kCGMomentumScrollPhaseNone	-	Reference / Enumerations / Constants	post-10.6	objc
 case	open	kCGMouseButtonCenter	-	Services / Constants / Constants	-	objc
 case	open	kCGMouseButtonLeft	-	Services / Constants / Constants	-	objc
 case	open	kCGMouseButtonRight	-	Services / Constants / Constants	-	objc
@@ -369,20 +369,20 @@ case	open	kCGMouseEventInstantMouser	-	Services / Constants / Constants	-	objc
 case	open	kCGMouseEventNumber	-	Services / Constants / Constants	-	objc
 case	open	kCGMouseEventPressure	-	Services / Constants / Constants	-	objc
 case	open	kCGMouseEventSubtype	-	Services / Constants / Constants	-	objc
-case	open	kCGMouseEventWindowUnderMousePointer	-	Services / Constants / Constants	-	objc
-case	open	kCGMouseEventWindowUnderMousePointerThatCanHandleThisEvent	-	Services / Constants / Constants	-	objc
+case	struck	kCGMouseEventWindowUnderMousePointer	-	Services / Constants / Constants	post-10.6	objc
+case	struck	kCGMouseEventWindowUnderMousePointerThatCanHandleThisEvent	-	Services / Constants / Constants	post-10.6	objc
 case	open	kCGNormalWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
 case	open	kCGNumberOfEventSuppressionStates	-	Services / Constants / Constants	-	objc
 case	open	kCGNumberOfWindowLevelKeys	-	Services / Data Types / Window levels / Constants	-	objc
 case	open	kCGOverlayWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
-case	open	kCGPDFAllowsCommenting	-	Reference / Structures / Type Properties	-	objc
-case	open	kCGPDFAllowsContentAccessibility	-	Reference / Structures / Type Properties	-	objc
-case	open	kCGPDFAllowsContentCopying	-	Reference / Structures / Type Properties	-	objc
-case	open	kCGPDFAllowsDocumentAssembly	-	Reference / Structures / Type Properties	-	objc
-case	open	kCGPDFAllowsDocumentChanges	-	Reference / Structures / Type Properties	-	objc
-case	open	kCGPDFAllowsFormFieldEntry	-	Reference / Structures / Type Properties	-	objc
-case	open	kCGPDFAllowsHighQualityPrinting	-	Reference / Structures / Type Properties	-	objc
-case	open	kCGPDFAllowsLowQualityPrinting	-	Reference / Structures / Type Properties	-	objc
+case	struck	kCGPDFAllowsCommenting	-	Reference / Structures / Type Properties	post-10.6	objc
+case	struck	kCGPDFAllowsContentAccessibility	-	Reference / Structures / Type Properties	post-10.6	objc
+case	struck	kCGPDFAllowsContentCopying	-	Reference / Structures / Type Properties	post-10.6	objc
+case	struck	kCGPDFAllowsDocumentAssembly	-	Reference / Structures / Type Properties	post-10.6	objc
+case	struck	kCGPDFAllowsDocumentChanges	-	Reference / Structures / Type Properties	post-10.6	objc
+case	struck	kCGPDFAllowsFormFieldEntry	-	Reference / Structures / Type Properties	post-10.6	objc
+case	struck	kCGPDFAllowsHighQualityPrinting	-	Reference / Structures / Type Properties	post-10.6	objc
+case	struck	kCGPDFAllowsLowQualityPrinting	-	Reference / Structures / Type Properties	post-10.6	objc
 case	open	kCGPDFArtBox	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
 case	open	kCGPDFBleedBox	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
 case	open	kCGPDFCropBox	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
@@ -422,13 +422,13 @@ case	open	kCGScreenUpdateOperationReducedDirtyRectangleCount	-	Services / Consta
 case	open	kCGScreenUpdateOperationRefresh	-	Services / Constants / Constants	-	objc
 case	open	kCGScrollEventUnitLine	-	Services / Constants / Constants	-	objc
 case	open	kCGScrollEventUnitPixel	-	Services / Constants / Constants	-	objc
-case	open	kCGScrollPhaseBegan	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGScrollPhaseCancelled	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGScrollPhaseChanged	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGScrollPhaseEnded	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGScrollPhaseMayBegin	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGScrollWheelEventAcceleratedDeltaAxis1	-	Services / Constants / Enumeration Cases	-	objc
-case	open	kCGScrollWheelEventAcceleratedDeltaAxis2	-	Services / Constants / Enumeration Cases	-	objc
+case	struck	kCGScrollPhaseBegan	-	Reference / Enumerations / Constants	post-10.6	objc
+case	struck	kCGScrollPhaseCancelled	-	Reference / Enumerations / Constants	post-10.6	objc
+case	struck	kCGScrollPhaseChanged	-	Reference / Enumerations / Constants	post-10.6	objc
+case	struck	kCGScrollPhaseEnded	-	Reference / Enumerations / Constants	post-10.6	objc
+case	struck	kCGScrollPhaseMayBegin	-	Reference / Enumerations / Constants	post-10.6	objc
+case	struck	kCGScrollWheelEventAcceleratedDeltaAxis1	-	Services / Constants / Enumeration Cases	post-10.6	objc
+case	struck	kCGScrollWheelEventAcceleratedDeltaAxis2	-	Services / Constants / Enumeration Cases	post-10.6	objc
 case	open	kCGScrollWheelEventDeltaAxis1	-	Services / Constants / Constants	-	objc
 case	open	kCGScrollWheelEventDeltaAxis2	-	Services / Constants / Constants	-	objc
 case	open	kCGScrollWheelEventDeltaAxis3	-	Services / Constants / Constants	-	objc
@@ -437,15 +437,15 @@ case	open	kCGScrollWheelEventFixedPtDeltaAxis2	-	Services / Constants / Constant
 case	open	kCGScrollWheelEventFixedPtDeltaAxis3	-	Services / Constants / Constants	-	objc
 case	open	kCGScrollWheelEventInstantMouser	-	Services / Constants / Constants	-	objc
 case	open	kCGScrollWheelEventIsContinuous	-	Services / Constants / Constants	-	objc
-case	open	kCGScrollWheelEventMomentumOptionPhase	-	Services / Constants / Enumeration Cases	-	objc
-case	open	kCGScrollWheelEventMomentumPhase	-	Services / Constants / Constants	-	objc
+case	struck	kCGScrollWheelEventMomentumOptionPhase	-	Services / Constants / Enumeration Cases	post-10.6	objc
+case	struck	kCGScrollWheelEventMomentumPhase	-	Services / Constants / Constants	post-10.6	objc
 case	open	kCGScrollWheelEventPointDeltaAxis1	-	Services / Constants / Constants	-	objc
 case	open	kCGScrollWheelEventPointDeltaAxis2	-	Services / Constants / Constants	-	objc
 case	open	kCGScrollWheelEventPointDeltaAxis3	-	Services / Constants / Constants	-	objc
-case	open	kCGScrollWheelEventRawDeltaAxis1	-	Services / Constants / Enumeration Cases	-	objc
-case	open	kCGScrollWheelEventRawDeltaAxis2	-	Services / Constants / Enumeration Cases	-	objc
-case	open	kCGScrollWheelEventScrollCount	-	Services / Constants / Constants	-	objc
-case	open	kCGScrollWheelEventScrollPhase	-	Services / Constants / Constants	-	objc
+case	struck	kCGScrollWheelEventRawDeltaAxis1	-	Services / Constants / Enumeration Cases	post-10.6	objc
+case	struck	kCGScrollWheelEventRawDeltaAxis2	-	Services / Constants / Enumeration Cases	post-10.6	objc
+case	struck	kCGScrollWheelEventScrollCount	-	Services / Constants / Constants	post-10.6	objc
+case	struck	kCGScrollWheelEventScrollPhase	-	Services / Constants / Constants	post-10.6	objc
 case	open	kCGSessionEventTap	-	Services / Constants / Constants	-	objc
 case	open	kCGStatusWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
 case	open	kCGTabletEventDeviceID	-	Services / Constants / Constants	-	objc
@@ -490,10 +490,10 @@ case	struck	kCGToneMappingNone	-	Reference / Enumerations / Enumeration Cases	af
 case	struck	kCGToneMappingReferenceWhiteBased	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
 case	open	kCGTornOffMenuWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
 case	open	kCGUtilityWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
-case	open	kCGWindowImageBestResolution	-	Services / Data Types / Type Properties	-	objc
+case	struck	kCGWindowImageBestResolution	-	Services / Data Types / Type Properties	post-10.6	objc
 case	open	kCGWindowImageBoundsIgnoreFraming	-	Services / Data Types / Type Properties	-	objc
 case	open	kCGWindowImageDefault	-	Services / Data Types / Type Properties	-	objc
-case	open	kCGWindowImageNominalResolution	-	Services / Data Types / Type Properties	-	objc
+case	struck	kCGWindowImageNominalResolution	-	Services / Data Types / Type Properties	post-10.6	objc
 case	open	kCGWindowImageOnlyShadows	-	Services / Data Types / Type Properties	-	objc
 case	open	kCGWindowImageShouldBeOpaque	-	Services / Data Types / Type Properties	-	objc
 case	open	kCGWindowListExcludeDesktopElements	-	Services / Data Types / Type Properties	-	objc
@@ -506,18 +506,18 @@ case	open	kCGWindowSharingNone	-	Services / Data Types / Constants	-	objc
 case	open	kCGWindowSharingReadOnly	-	Services / Data Types / Constants	-	objc
 case	open	kCGWindowSharingReadWrite	-	Services / Data Types / Constants	-	objc
 enum	open	CGBitmapInfo	-	Opaque Types / Examining an image	-	objc
-enum	open	CGBitmapLayout	-	Enumerations	-	objc
+enum	struck	CGBitmapLayout	-	Enumerations	post-10.6	objc
 enum	shipped	CGBlendMode	-	Opaque Types / Managing a Graphics Context	-	objc
 enum	open	CGCaptureOptions	-	Services / Constants	-	objc
-enum	open	CGColorConversionInfoTransformType	-	Opaque Types / Creating a Color Conversion	-	objc
-enum	open	CGColorModel	-	Enumerations	-	objc
+enum	struck	CGColorConversionInfoTransformType	-	Opaque Types / Creating a Color Conversion	post-10.6	objc
+enum	struck	CGColorModel	-	Enumerations	post-10.6	objc
 enum	shipped	CGColorRenderingIntent	-	Opaque Types / Data Types	-	objc
 enum	shipped	CGColorSpaceModel	-	Opaque Types / Examining a Color Space	-	objc
-enum	open	CGComponent	-	Enumerations	-	objc
+enum	struck	CGComponent	-	Enumerations	post-10.6	objc
 enum	open	CGConfigureOption	-	Services / Constants	-	objc
 enum	open	CGDisplayChangeSummaryFlags	-	Services / Constants	-	objc
-enum	open	CGDisplayStreamFrameStatus	-	Services / Constants	-	objc
-enum	open	CGDisplayStreamUpdateRectType	-	Services / Constants	-	objc
+enum	struck	CGDisplayStreamFrameStatus	-	Services / Constants	post-10.6	objc
+enum	struck	CGDisplayStreamUpdateRectType	-	Services / Constants	post-10.6	objc
 enum	open	CGError	-	Reference / Enumerations	-	objc
 enum	open	CGEventField	-	Services / Constants	-	objc
 enum	open	CGEventFilterMask	-	Services / Constants	-	objc
@@ -530,19 +530,19 @@ enum	open	CGEventTapOptions	-	Services / Constants	-	objc
 enum	open	CGEventTapPlacement	-	Services / Constants	-	objc
 enum	open	CGEventType	-	Services / Constants	-	objc
 enum	open	CGFontPostScriptFormat	-	Opaque Types / Working with PostScript Fonts	-	objc
-enum	open	CGGesturePhase	-	Reference / Enumerations	-	objc
-enum	open	CGGlyphDeprecatedEnum	-	Reference / Enumerations	-	objc
+enum	struck	CGGesturePhase	-	Reference / Enumerations	post-10.6	objc
+enum	struck	CGGlyphDeprecatedEnum	-	Reference / Enumerations	post-10.6	objc
 enum	shipped	CGGradientDrawingOptions	-	Opaque Types / Drawing Gradients and Shadings	-	objc
 enum	shipped	CGImageAlphaInfo	-	Opaque Types / Examining an image	-	objc
-enum	shipped	CGImageByteOrderInfo	-	Reference / Enumerations	-	objc
-enum	open	CGImageComponentInfo	-	Enumerations	-	objc
+enum	shipped	CGImageByteOrderInfo	-	Reference / Enumerations	post-10.6	objc
+enum	struck	CGImageComponentInfo	-	Enumerations	post-10.6	objc
 enum	struck	CGImagePixelFormatInfo	-	Reference / Enumerations	after-10.6	objc
 enum	shipped	CGInterpolationQuality	-	Opaque Types / Drawing Images and PDF Content	-	objc
 enum	shipped	CGLineCap	-	Opaque Types / Constants	-	objc
 enum	shipped	CGLineJoin	-	Opaque Types / Constants	-	objc
-enum	open	CGMomentumScrollPhase	-	Reference / Enumerations	-	objc
+enum	struck	CGMomentumScrollPhase	-	Reference / Enumerations	post-10.6	objc
 enum	open	CGMouseButton	-	Services / Constants	-	objc
-enum	open	CGPDFAccessPermissions	-	Reference / Structures	-	objc
+enum	struck	CGPDFAccessPermissions	-	Reference / Structures	post-10.6	objc
 enum	open	CGPDFBox	-	Opaque Types / Abstract Types for PDF Document Content / Constants	-	objc
 enum	open	CGPDFDataFormat	-	Opaque Types / Abstract Types for PDF Document Content / Constants	-	objc
 enum	open	CGPDFObjectType	-	Opaque Types / Abstract Types for PDF Document Content / Constants	-	objc
@@ -553,7 +553,7 @@ enum	shipped	CGPatternTiling	-	Opaque Types / Constants	-	objc
 enum	shipped	CGRectEdge	-	CoreFoundation, CG-named / Reference / Enumerations	-	objc
 enum	open	CGScreenUpdateOperation	-	Services / Constants	-	objc
 enum	open	CGScrollEventUnit	-	Services / Constants	-	objc
-enum	open	CGScrollPhase	-	Reference / Enumerations	-	objc
+enum	struck	CGScrollPhase	-	Reference / Enumerations	post-10.6	objc
 enum	open	CGTextDrawingMode	-	Opaque Types / Drawing Text	-	objc
 enum	open	CGTextEncoding	-	Opaque Types / Constants	deprecated	objc
 enum	struck	CGToneMapping	-	Reference / Enumerations	after-10.6	objc
@@ -601,7 +601,7 @@ func	struck	CGColorConversionInfoCreateForToneMapping	-	Functions	after-10.6	obj
 func	struck	CGColorConversionInfoCreateFromList	-	Opaque Types / Creating a Color Conversion	after-10.6	objc
 func	struck	CGColorConversionInfoCreateFromListWithArguments	-	Reference / Functions	after-10.6	objc
 func	struck	CGColorConversionInfoCreateWithOptions	-	Opaque Types / Creating a Color Conversion	after-10.6	objc
-func	open	CGColorConversionInfoGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
+func	struck	CGColorConversionInfoGetTypeID	-	Opaque Types / Working with Core Foundation Types	post-10.6	objc
 func	shipped	CGColorCreate	-	Opaque Types / Creating Colors	-	objc
 func	shipped	CGColorCreateCopy	-	Opaque Types / Creating Colors	-	objc
 func	struck	CGColorCreateCopyByMatchingToColorSpace	-	Opaque Types / Converting Between Color Spaces	after-10.6	objc
@@ -736,7 +736,7 @@ func	shipped	CGContextMoveToPoint	-	Opaque Types / Constructing a Current Graphi
 func	open	CGContextPathContainsPoint	-	Opaque Types / Examining the Current Graphics Path	-	objc
 func	shipped	CGContextRelease	-	Opaque Types / Retaining and Releasing Graphics Contexts	-	objc
 func	shipped	CGContextReplacePathWithStrokedPath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
-func	shipped	CGContextResetClip	-	Reference / Functions	-	objc
+func	shipped	CGContextResetClip	-	Reference / Functions	post-10.6	objc
 func	shipped	CGContextRestoreGState	-	Opaque Types / Saving and Restoring Graphics State	-	objc
 func	shipped	CGContextRetain	-	Opaque Types / Retaining and Releasing Graphics Contexts	-	objc
 func	shipped	CGContextRotateCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
@@ -800,7 +800,7 @@ func	shipped	CGContextStrokeRectWithWidth	-	Opaque Types / Drawing Shapes	-	objc
 func	shipped	CGContextSynchronize	-	Opaque Types / Managing a Graphics Context	-	objc
 func	struck	CGContextSynchronizeAttributes	-	Functions	after-10.6	objc
 func	shipped	CGContextTranslateCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
-func	open	CGConvertColorDataWithFormat	-	Reference / Functions	-	objc
+func	struck	CGConvertColorDataWithFormat	-	Reference / Functions	post-10.6	objc
 func	open	CGCursorIsDrawnInFramebuffer	-	Services / Controlling the Mouse Cursor	deprecated	objc
 func	open	CGCursorIsVisible	-	Services / Controlling the Mouse Cursor	deprecated	objc
 func	open	CGDataConsumerCreate	-	Opaque Types / Creating Data Consumers	-	objc
@@ -878,24 +878,24 @@ func	open	CGDisplaySerialNumber	-	Services / Getting the Display Configuration	-
 func	open	CGDisplaySetDisplayMode	-	Services / Creating and Managing Display Modes	-	objc
 func	open	CGDisplaySetStereoOperation	-	Services / Configuring Displays	-	objc
 func	open	CGDisplayShowCursor	-	Services / Controlling the Mouse Cursor	-	objc
-func	open	CGDisplayStreamCreate	-	Functions	-	objc
-func	open	CGDisplayStreamCreateWithDispatchQueue	-	Functions	-	objc
-func	open	CGDisplayStreamGetRunLoopSource	-	Functions	-	objc
-func	open	CGDisplayStreamGetTypeID	-	Functions	-	objc
-func	open	CGDisplayStreamStart	-	Functions	-	objc
-func	open	CGDisplayStreamStop	-	Functions	-	objc
-func	open	CGDisplayStreamUpdateCreateMergedUpdate	-	Functions	-	objc
-func	open	CGDisplayStreamUpdateGetDropCount	-	Functions	-	objc
-func	open	CGDisplayStreamUpdateGetMovedRectsDelta	-	Functions	-	objc
-func	open	CGDisplayStreamUpdateGetRects	-	Functions	-	objc
-func	open	CGDisplayStreamUpdateGetTypeID	-	Functions	-	objc
+func	struck	CGDisplayStreamCreate	-	Functions	post-10.6	objc
+func	struck	CGDisplayStreamCreateWithDispatchQueue	-	Functions	post-10.6	objc
+func	struck	CGDisplayStreamGetRunLoopSource	-	Functions	post-10.6	objc
+func	struck	CGDisplayStreamGetTypeID	-	Functions	post-10.6	objc
+func	struck	CGDisplayStreamStart	-	Functions	post-10.6	objc
+func	struck	CGDisplayStreamStop	-	Functions	post-10.6	objc
+func	struck	CGDisplayStreamUpdateCreateMergedUpdate	-	Functions	post-10.6	objc
+func	struck	CGDisplayStreamUpdateGetDropCount	-	Functions	post-10.6	objc
+func	struck	CGDisplayStreamUpdateGetMovedRectsDelta	-	Functions	post-10.6	objc
+func	struck	CGDisplayStreamUpdateGetRects	-	Functions	post-10.6	objc
+func	struck	CGDisplayStreamUpdateGetTypeID	-	Functions	post-10.6	objc
 func	open	CGDisplaySwitchToMode	-	Services / Creating and Managing Display Modes	deprecated	objc
 func	open	CGDisplayUnitNumber	-	Services / Getting the Display Configuration	-	objc
 func	open	CGDisplayUsesOpenGLAcceleration	-	Services / Getting the Display Configuration	-	objc
 func	open	CGDisplayVendorNumber	-	Services / Getting the Display Configuration	-	objc
 func	struck	CGEXRToneMappingGammaGetDefaultOptions	-	Functions	after-10.6	objc
 func	open	CGEnableEventStateCombining	-	Services / Deprecated Functions	deprecated	objc
-func	open	CGErrorSetCallback	-	Reference / Functions	-	objc
+func	struck	CGErrorSetCallback	-	Reference / Functions	post-10.6	objc
 func	open	CGEventCreate	-	Services / Working With Events	-	objc
 func	open	CGEventCreateCopy	-	Services / Working With Events	-	objc
 func	open	CGEventCreateData	-	Services / Working With Events	-	objc
@@ -1080,10 +1080,10 @@ func	struck	CGPDFContextEndObjectReference	-	Functions	after-10.6	objc
 func	open	CGPDFContextEndPage	-	Opaque Types / Managing a PDF Graphics Context	-	objc
 func	struck	CGPDFContextEndTag	-	Reference / Functions	after-10.6	objc
 func	open	CGPDFContextSetDestinationForRect	-	Opaque Types / Managing a PDF Graphics Context	-	objc
-func	open	CGPDFContextSetIDTree	-	Reference / Functions	-	objc
+func	struck	CGPDFContextSetIDTree	-	Reference / Functions	post-10.6	objc
 func	struck	CGPDFContextSetOutline	-	Reference / Functions	after-10.6	objc
-func	open	CGPDFContextSetPageTagStructureTree	-	Reference / Functions	-	objc
-func	open	CGPDFContextSetParentTree	-	Reference / Functions	-	objc
+func	struck	CGPDFContextSetPageTagStructureTree	-	Reference / Functions	post-10.6	objc
+func	struck	CGPDFContextSetParentTree	-	Reference / Functions	post-10.6	objc
 func	open	CGPDFContextSetURLForRect	-	Opaque Types / Managing a PDF Graphics Context	-	objc
 func	struck	CGPDFDictionaryApplyBlock	-	Reference / Functions	after-10.6	objc
 func	open	CGPDFDictionaryApplyFunction	-	Opaque Types / Applying a Function to All Entries	-	objc
@@ -1152,7 +1152,7 @@ func	open	CGPDFScannerPopString	-	Opaque Types / Abstract Types for PDF Document
 func	open	CGPDFScannerRelease	-	Opaque Types / Abstract Types for PDF Document Content / Retaining and Releasing PDF Scanner Objects	-	objc
 func	open	CGPDFScannerRetain	-	Opaque Types / Abstract Types for PDF Document Content / Retaining and Releasing PDF Scanner Objects	-	objc
 func	open	CGPDFScannerScan	-	Opaque Types / Abstract Types for PDF Document Content / Parsing Content	-	objc
-func	open	CGPDFScannerStop	-	Reference / Functions	-	objc
+func	struck	CGPDFScannerStop	-	Reference / Functions	post-10.6	objc
 func	open	CGPDFStreamCopyData	-	Opaque Types / Abstract Types for PDF Document Content / Getting Data from a PDF Stream	-	objc
 func	open	CGPDFStreamGetDictionary	-	Opaque Types / Abstract Types for PDF Document Content / Getting Data from a PDF Stream	-	objc
 func	open	CGPDFStringCopyDate	-	Opaque Types / Abstract Types for PDF Document Content / Converting PDF Strings	-	objc
@@ -1194,7 +1194,7 @@ func	open	CGPathCreateMutableCopy	-	Opaque Types / Copying a Graphics Path	-	obj
 func	struck	CGPathCreateMutableCopyByTransformingPath	-	Opaque Types / Copying a Graphics Path	after-10.6	objc
 func	struck	CGPathCreateSeparateComponents	-	Reference / Functions	after-10.6	objc
 func	struck	CGPathCreateWithEllipseInRect	-	Opaque Types / Creating Graphics Paths	after-10.6	objc
-func	shipped	CGPathCreateWithRect	-	Opaque Types / Creating Graphics Paths	-	objc
+func	shipped	CGPathCreateWithRect	-	Opaque Types / Creating Graphics Paths	post-10.6	objc
 func	struck	CGPathCreateWithRoundedRect	-	Opaque Types / Creating Graphics Paths	after-10.6	objc
 func	open	CGPathEqualToPath	-	Opaque Types / Examining a Graphics Path	-	objc
 func	shipped	CGPathGetBoundingBox	-	Opaque Types / Examining a Graphics Path	-	objc
@@ -1285,7 +1285,7 @@ func	shipped	CGSizeEqualToSize	-	Reference / Functions	deprecated	objc
 func	shipped	CGSizeMake	-	Reference / Creating a Geometric Primitive from Values	-	objc
 func	open	CGSizeMakeWithDictionaryRepresentation	-	Reference / Creating a Geometric Primitive from a Dictionary Representation	-	objc
 func	open	CGUnregisterScreenRefreshCallback	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
-func	shipped	CGVectorMake	-	Reference / Creating a Geometric Primitive from Values	-	objc
+func	shipped	CGVectorMake	-	Reference / Creating a Geometric Primitive from Values	post-10.6	objc
 func	open	CGWaitForScreenRefreshRects	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
 func	open	CGWaitForScreenUpdateRects	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
 func	open	CGWarpMouseCursorPosition	-	Services / Controlling the Mouse Cursor	-	objc
@@ -1303,7 +1303,7 @@ macro	open	CGEventMaskBit	-	Services / Working With Event Taps	-	objc
 macro	open	CGEventNoErr	-	Reference / Constants	-	objc
 macro	open	CGEventSupressionState	-	Reference / Macros	-	objc
 macro	open	CGFLOAT_DEFINED	-	CoreFoundation, CG-named / Reference / Macros	-	objc
-macro	open	CGFLOAT_EPSILON	-	CoreFoundation, CG-named / Reference / Constants	-	objc
+macro	struck	CGFLOAT_EPSILON	-	CoreFoundation, CG-named / Reference / Constants	post-10.6	objc
 macro	open	CGFLOAT_IS_DOUBLE	-	CoreFoundation, CG-named / Reference / Constants	-	objc
 macro	open	CGFLOAT_MAX	-	CoreFoundation, CG-named / Reference / Constants	-	objc
 macro	open	CGFLOAT_MIN	-	CoreFoundation, CG-named / Reference / Constants	-	objc
@@ -1313,33 +1313,33 @@ macro	shipped	CGPointEqualToPoint	-	Reference / Comparing Values	-	objc
 macro	open	CGSetLocalEventsFilterDuringSupressionState	-	Services / Deprecated Functions	-	objc
 macro	shipped	CGSizeApplyAffineTransform	-	Reference / Macros	-	objc
 macro	shipped	CGSizeEqualToSize	-	Reference / Comparing Values	-	objc
-macro	open	CGVECTOR_DEFINED	-	CoreFoundation, CG-named / Reference / Macros	-	objc
-macro	open	CG_BOXABLE	-	Reference / Macros	-	objc
-macro	open	CG_BRIDGE_VERSION	-	Reference / Macros	-	objc
-macro	open	CG_ENUM_SOFT_DEPRECATED_WITH_REPLACEMENT	-	Macros	-	objc
+macro	struck	CGVECTOR_DEFINED	-	CoreFoundation, CG-named / Reference / Macros	post-10.6	objc
+macro	struck	CG_BOXABLE	-	Reference / Macros	post-10.6	objc
+macro	struck	CG_BRIDGE_VERSION	-	Reference / Macros	post-10.6	objc
+macro	struck	CG_ENUM_SOFT_DEPRECATED_WITH_REPLACEMENT	-	Macros	post-10.6	objc
 macro	shipped	CG_EXTERN	-	Reference / Macros	-	objc
-macro	open	CG_EXTERN_32	-	Reference / Macros	-	objc
-macro	open	CG_EXTERN_64	-	Reference / Macros	-	objc
-macro	open	CG_HDR_BT_2100	-	Reference / Constants	-	objc
+macro	struck	CG_EXTERN_32	-	Reference / Macros	post-10.6	objc
+macro	struck	CG_EXTERN_64	-	Reference / Macros	post-10.6	objc
+macro	struck	CG_HDR_BT_2100	-	Reference / Constants	post-10.6	objc
 macro	shipped	CG_INLINE	-	Reference / Macros	-	objc
-macro	open	CG_IOS_VERSION	-	Reference / Macros	-	objc
+macro	struck	CG_IOS_VERSION	-	Reference / Macros	post-10.6	objc
 macro	open	CG_LOCAL	-	Reference / Macros	-	objc
-macro	open	CG_LOCAL_32	-	Reference / Macros	-	objc
-macro	open	CG_LOCAL_64	-	Reference / Macros	-	objc
-macro	open	CG_NONNULL_ARRAY	-	Reference / Macros	-	objc
-macro	open	CG_NULLABLE_ARRAY	-	Reference / Macros	-	objc
+macro	struck	CG_LOCAL_32	-	Reference / Macros	post-10.6	objc
+macro	struck	CG_LOCAL_64	-	Reference / Macros	post-10.6	objc
+macro	struck	CG_NONNULL_ARRAY	-	Reference / Macros	post-10.6	objc
+macro	struck	CG_NULLABLE_ARRAY	-	Reference / Macros	post-10.6	objc
 macro	open	CG_OBSOLETE	-	Reference / Macros	-	objc
-macro	open	CG_OSX_VERSION	-	Reference / Macros	-	objc
-macro	open	CG_OS_VERSION_2020	-	Reference / Macros	-	objc
+macro	struck	CG_OSX_VERSION	-	Reference / Macros	post-10.6	objc
+macro	struck	CG_OS_VERSION_2020	-	Reference / Macros	post-10.6	objc
 macro	open	CG_PRIVATE_EXTERN	-	Reference / Macros	-	objc
-macro	open	CG_PURE	-	Reference / Macros	-	objc
-macro	open	CG_SKYLIGHT_EXTERN_64	-	Reference / Macros	-	objc
-macro	open	CG_SOFT_DEPRECATED_WITH_REPLACEMENT	-	Macros	-	objc
-macro	open	CG_TV_VERSION	-	Reference / Macros	-	objc
-macro	open	CG_WATCH_VERSION	-	Reference / Macros	-	objc
-macro	open	NS_RETURNS_RETAINED	-	Reference / Macros	-	objc
-macro	open	SCREEN_CAPTURE_OBSOLETE	-	Reference / Macros	-	objc
-macro	open	cg_nullable	-	Reference / Macros	-	objc
+macro	struck	CG_PURE	-	Reference / Macros	post-10.6	objc
+macro	struck	CG_SKYLIGHT_EXTERN_64	-	Reference / Macros	post-10.6	objc
+macro	struck	CG_SOFT_DEPRECATED_WITH_REPLACEMENT	-	Macros	post-10.6	objc
+macro	struck	CG_TV_VERSION	-	Reference / Macros	post-10.6	objc
+macro	struck	CG_WATCH_VERSION	-	Reference / Macros	post-10.6	objc
+macro	struck	NS_RETURNS_RETAINED	-	Reference / Macros	post-10.6	objc
+macro	struck	SCREEN_CAPTURE_OBSOLETE	-	Reference / Macros	post-10.6	objc
+macro	struck	cg_nullable	-	Reference / Macros	post-10.6	objc
 macro	open	kCGAnyInputEventType	-	Services / Constants / Constants	-	objc
 macro	open	kCGAssistiveTechHighWindowLevel	-	Reference / Constants	-	objc
 macro	open	kCGBackstopMenuLevel	-	Reference / Constants	-	objc
@@ -1387,7 +1387,7 @@ macro	open	kCGNotifyGUIConsoleSessionChanged	-	Reference / Constants	-	objc
 macro	open	kCGNotifyGUISessionUserChanged	-	Reference / Constants	-	objc
 macro	open	kCGNullDirectDisplay	-	Services / Constants / Constants	-	objc
 macro	open	kCGNullWindowID	-	Services / Constants / Constants	-	objc
-macro	open	kCGNumReservedBaseWindowLevels	-	Reference / Constants	-	objc
+macro	struck	kCGNumReservedBaseWindowLevels	-	Reference / Constants	post-10.6	objc
 macro	open	kCGNumReservedWindowLevels	-	Services / Constants / Constants	-	objc
 macro	open	kCGNumberOfEventSupressionStates	-	Reference / Macros	-	objc
 macro	open	kCGOverlayWindowLevel	-	Reference / Constants	-	objc
@@ -1405,12 +1405,12 @@ macro	open	kCGWindowBackingCFNumberType	-	Services / Constants / Constants	-	obj
 macro	open	kCGWindowIDCFNumberType	-	Services / Constants / Constants	-	objc
 macro	open	kCGWindowSharingCFNumberType	-	Services / Constants / Constants	-	objc
 struct	shipped	CGAffineTransform	-	CoreFoundation, CG-named / Reference / Structures	-	objc
-struct	open	CGAffineTransformComponents	-	CoreFoundation, CG-named / Reference / Structures	-	objc
-struct	open	CGBitmapParameters	-	Structures	-	objc
-struct	open	CGColorBufferFormat	-	Reference / Structures	-	objc
-struct	open	CGColorDataFormat	-	Reference / Structures	-	objc
-struct	open	CGContentInfo	-	Structures	-	objc
-struct	open	CGContentToneMappingInfo	-	Structures	-	objc
+struct	struck	CGAffineTransformComponents	-	CoreFoundation, CG-named / Reference / Structures	post-10.6	objc
+struct	struck	CGBitmapParameters	-	Structures	post-10.6	objc
+struct	struck	CGColorBufferFormat	-	Reference / Structures	post-10.6	objc
+struct	struck	CGColorDataFormat	-	Reference / Structures	post-10.6	objc
+struct	struck	CGContentInfo	-	Structures	post-10.6	objc
+struct	struck	CGContentToneMappingInfo	-	Structures	post-10.6	objc
 struct	open	CGDataConsumerCallbacks	-	Opaque Types / Creating Data Consumers	-	objc
 struct	open	CGDataProviderDirectCallbacks	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 struct	open	CGDataProviderSequentialCallbacks	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
@@ -1423,11 +1423,11 @@ struct	shipped	CGPoint	-	CoreFoundation, CG-named / Reference / Structures	-	obj
 struct	shipped	CGRect	-	CoreFoundation, CG-named / Reference / Structures	-	objc
 struct	open	CGScreenUpdateMoveDelta	-	Services / Data Types	-	objc
 struct	shipped	CGSize	-	CoreFoundation, CG-named / Reference / Structures	-	objc
-struct	shipped	CGVector	-	CoreFoundation, CG-named / Reference / Structures	-	objc
+struct	shipped	CGVector	-	CoreFoundation, CG-named / Reference / Structures	post-10.6	objc
 typealias	open	CGBitmapContextReleaseDataCallback	-	Opaque Types / Creating Bitmap Graphics Contexts	-	objc
 typealias	open	CGButtonCount	-	Services / Data Types	-	objc
 typealias	open	CGCharCode	-	Services / Data Types	-	objc
-typealias	open	CGColorConversionInfoRef	-	Opaque Types	-	objc
+typealias	struck	CGColorConversionInfoRef	-	Opaque Types	post-10.6	objc
 typealias	shipped	CGColorRef	-	Opaque Types	-	objc
 typealias	shipped	CGColorSpaceRef	-	Opaque Types	-	objc
 typealias	shipped	CGContextRef	-	Opaque Types	-	objc
@@ -1453,10 +1453,10 @@ typealias	open	CGDisplayFadeReservationToken	-	Services / Data Types	-	objc
 typealias	open	CGDisplayModeRef	-	Services / Data Types	-	objc
 typealias	open	CGDisplayReconfigurationCallBack	-	Services / Callbacks	-	objc
 typealias	open	CGDisplayReservationInterval	-	Services / Data Types	-	objc
-typealias	open	CGDisplayStreamFrameAvailableHandler	-	Services / Data Types	-	objc
-typealias	open	CGDisplayStreamRef	-	Services / Data Types	-	objc
-typealias	open	CGDisplayStreamUpdateRef	-	Services / Data Types	-	objc
-typealias	open	CGErrorCallback	-	Reference / Data Types	-	objc
+typealias	struck	CGDisplayStreamFrameAvailableHandler	-	Services / Data Types	post-10.6	objc
+typealias	struck	CGDisplayStreamRef	-	Services / Data Types	post-10.6	objc
+typealias	struck	CGDisplayStreamUpdateRef	-	Services / Data Types	post-10.6	objc
+typealias	struck	CGErrorCallback	-	Reference / Data Types	post-10.6	objc
 typealias	open	CGEventErr	-	Reference / Data Types	-	objc
 typealias	open	CGEventMask	-	Services / Data Types	-	objc
 typealias	open	CGEventRef	-	Services / Data Types	-	objc
@@ -1479,11 +1479,11 @@ typealias	shipped	CGImageRef	-	Opaque Types	-	objc
 typealias	open	CGKeyCode	-	Services / Data Types	-	objc
 typealias	open	CGLayerRef	-	Opaque Types	-	objc
 typealias	open	CGOpenGLDisplayMask	-	Services / Data Types	-	objc
-typealias	open	CGPDFArrayApplierBlock	-	Reference / Data Types	-	objc
+typealias	struck	CGPDFArrayApplierBlock	-	Reference / Data Types	post-10.6	objc
 typealias	open	CGPDFArrayRef	-	Opaque Types / Data Types	-	objc
 typealias	open	CGPDFBoolean	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	-	objc
 typealias	open	CGPDFContentStreamRef	-	Opaque Types / Data Types	-	objc
-typealias	open	CGPDFDictionaryApplierBlock	-	Reference / Data Types	-	objc
+typealias	struck	CGPDFDictionaryApplierBlock	-	Reference / Data Types	post-10.6	objc
 typealias	open	CGPDFDictionaryApplierFunction	-	Opaque Types / Callbacks	-	objc
 typealias	open	CGPDFDictionaryRef	-	Opaque Types / Data Types	-	objc
 typealias	open	CGPDFDocumentRef	-	Opaque Types	-	objc
@@ -1497,8 +1497,8 @@ typealias	open	CGPDFReal	-	Opaque Types / Abstract Types for PDF Document Conten
 typealias	open	CGPDFScannerRef	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	-	objc
 typealias	open	CGPDFStreamRef	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	-	objc
 typealias	open	CGPDFStringRef	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	-	objc
-typealias	open	CGPDFStructureElementRef	-	Type Aliases	-	objc
-typealias	open	CGPDFTagProperty	-	Reference / Data Types	-	objc
+typealias	struck	CGPDFStructureElementRef	-	Type Aliases	post-10.6	objc
+typealias	struck	CGPDFTagProperty	-	Reference / Data Types	post-10.6	objc
 typealias	open	CGPSConverterBeginDocumentCallback	-	Opaque Types / Callbacks	-	objc
 typealias	open	CGPSConverterBeginPageCallback	-	Opaque Types / Callbacks	-	objc
 typealias	open	CGPSConverterEndDocumentCallback	-	Opaque Types / Callbacks	-	objc
@@ -1508,22 +1508,22 @@ typealias	open	CGPSConverterProgressCallback	-	Opaque Types / Callbacks	-	objc
 typealias	open	CGPSConverterRef	-	Opaque Types	-	objc
 typealias	open	CGPSConverterReleaseInfoCallback	-	Opaque Types / Callbacks	-	objc
 typealias	shipped	CGPathApplierFunction	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
-typealias	open	CGPathApplyBlock	-	Reference / Data Types	-	objc
+typealias	struck	CGPathApplyBlock	-	Reference / Data Types	post-10.6	objc
 typealias	shipped	CGPathRef	-	Opaque Types	-	objc
 typealias	shipped	CGPatternDrawPatternCallback	-	Opaque Types / Callbacks	-	objc
 typealias	shipped	CGPatternRef	-	Opaque Types	-	objc
 typealias	shipped	CGPatternReleaseInfoCallback	-	Opaque Types / Callbacks	-	objc
 typealias	open	CGRectCount	-	Services / Data Types	-	objc
 typealias	open	CGRefreshRate	-	Services / Data Types	-	objc
-typealias	open	CGRenderingBufferProviderRef	-	Type Aliases	-	objc
+typealias	struck	CGRenderingBufferProviderRef	-	Type Aliases	post-10.6	objc
 typealias	open	CGScreenRefreshCallback	-	Services / Callbacks	-	objc
 typealias	open	CGScreenUpdateMoveCallback	-	Services / Callbacks	-	objc
 typealias	shipped	CGShadingRef	-	Opaque Types	-	objc
 typealias	open	CGWheelCount	-	Services / Data Types	-	objc
 typealias	open	CGWindowID	-	Services / Data Types	-	objc
 typealias	open	CGWindowLevel	-	Services / Data Types	-	objc
-typealias	open	ColorSyncProfileRef	-	Reference / Structures	-	objc
-typealias	open	IOSurfaceRef	-	Reference / Structures	-	objc
+typealias	struck	ColorSyncProfileRef	-	Reference / Structures	post-10.6	objc
+typealias	struck	IOSurfaceRef	-	Reference / Structures	post-10.6	objc
 var	shipped	CGAffineTransformIdentity	-	Reference / Constants	-	objc
 var	shipped	CGPointZero	-	Reference / Constants / Constants	-	objc
 var	shipped	CGRectInfinite	-	Reference / Constants	-	objc
@@ -1552,7 +1552,7 @@ var	struck	kCGColorSpaceExtendedLinearDisplayP3	-	Opaque Types / Accessing Syste
 var	struck	kCGColorSpaceExtendedLinearGray	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
 var	struck	kCGColorSpaceExtendedLinearITUR_2020	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
 var	struck	kCGColorSpaceExtendedLinearSRGB	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
-var	open	kCGColorSpaceExtendedRange	-	Reference / Constants	-	objc
+var	struck	kCGColorSpaceExtendedRange	-	Reference / Constants	post-10.6	objc
 var	struck	kCGColorSpaceExtendedSRGB	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
 var	open	kCGColorSpaceGenericCMYK	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	open	kCGColorSpaceGenericGray	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
@@ -1582,17 +1582,17 @@ var	struck	kCGContentAverageLightLevel	-	Variables	after-10.6	objc
 var	struck	kCGContentAverageLightLevelNits	-	Variables	after-10.6	objc
 var	struck	kCGDefaultHDRImageContentHeadroom	-	Reference / Constants	after-10.6	objc
 var	struck	kCGDisplayShowDuplicateLowResolutionModes	-	Reference / Constants	after-10.6	objc
-var	open	kCGDisplayStreamColorSpace	-	Variables	-	objc
-var	open	kCGDisplayStreamDestinationRect	-	Variables	-	objc
-var	open	kCGDisplayStreamMinimumFrameTime	-	Variables	-	objc
-var	open	kCGDisplayStreamPreserveAspectRatio	-	Variables	-	objc
-var	open	kCGDisplayStreamQueueDepth	-	Variables	-	objc
-var	open	kCGDisplayStreamShowCursor	-	Variables	-	objc
-var	open	kCGDisplayStreamSourceRect	-	Variables	-	objc
-var	open	kCGDisplayStreamYCbCrMatrix	-	Variables	-	objc
-var	open	kCGDisplayStreamYCbCrMatrix_ITU_R_601_4	-	Services / Data Types / Type Properties	-	objc
-var	open	kCGDisplayStreamYCbCrMatrix_ITU_R_709_2	-	Services / Data Types / Type Properties	-	objc
-var	open	kCGDisplayStreamYCbCrMatrix_SMPTE_240M_1995	-	Services / Data Types / Type Properties	-	objc
+var	struck	kCGDisplayStreamColorSpace	-	Variables	post-10.6	objc
+var	struck	kCGDisplayStreamDestinationRect	-	Variables	post-10.6	objc
+var	struck	kCGDisplayStreamMinimumFrameTime	-	Variables	post-10.6	objc
+var	struck	kCGDisplayStreamPreserveAspectRatio	-	Variables	post-10.6	objc
+var	struck	kCGDisplayStreamQueueDepth	-	Variables	post-10.6	objc
+var	struck	kCGDisplayStreamShowCursor	-	Variables	post-10.6	objc
+var	struck	kCGDisplayStreamSourceRect	-	Variables	post-10.6	objc
+var	struck	kCGDisplayStreamYCbCrMatrix	-	Variables	post-10.6	objc
+var	struck	kCGDisplayStreamYCbCrMatrix_ITU_R_601_4	-	Services / Data Types / Type Properties	post-10.6	objc
+var	struck	kCGDisplayStreamYCbCrMatrix_ITU_R_709_2	-	Services / Data Types / Type Properties	post-10.6	objc
+var	struck	kCGDisplayStreamYCbCrMatrix_SMPTE_240M_1995	-	Services / Data Types / Type Properties	post-10.6	objc
 var	struck	kCGDynamicRangeConstrained	-	Variables	after-10.6	objc
 var	struck	kCGDynamicRangeHigh	-	Variables	after-10.6	objc
 var	struck	kCGDynamicRangeStandard	-	Variables	after-10.6	objc
