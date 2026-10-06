@@ -3323,17 +3323,15 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 {
 	CGAffineTransform inverse;
 	const unsigned char *src;
-	CGPoint corner[4];
 	int channels[4];
 	int straight = 0;
 	int stored = 0;
 	size_t size = 0;
 	size_t row_bytes;
 	size_t img_w, img_h;
-	double minx, maxx, miny, maxy;
 	double alpha;
 	int left, right, top, bottom;
-	int x, y, i;
+	int x, y;
 	CGImageRef mask_image;
 	const CGFloat *mask_colors;
 	int mask_count = 0;
@@ -3393,7 +3391,6 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 	alpha = c->state.alpha;
 	for (y = top; y < bottom; y++) {
 		for (x = left; x < right; x++) {
-			CGPoint p;
 			unsigned char *d;
 			const unsigned char *s;
 			double u, v;

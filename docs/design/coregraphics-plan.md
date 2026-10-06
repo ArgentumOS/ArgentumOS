@@ -2169,3 +2169,14 @@ geometry became two helpers, and the build printed them in the very run whose ou
 `CG-CLIP` lines I was looking for. **THE WARNINGS COUNT IS NOW ITS OWN QUESTION IN THE GATE**, asked beside the
 failure count rather than as a footnote to it: this tree keeps that number at zero, and a number that is only
 looked at when something else goes wrong is a number nobody is keeping.
+
+## 37b. "Zero warnings" was measured on a build that compiled nothing
+
+**A `make` WITH NOTHING TO DO PRINTS NO WARNINGS, SO THE GATE THAT ASKED FOR THE WARNINGS COUNT — ADDED IN THE
+PREVIOUS SECTION — ANSWERED ZERO BECAUSE NOTHING WAS RECOMPILED.** The seven unused locals that the factoring left
+behind (`corner`, four min/max accumulators, `i`, and the `p` inside the loop) were real, they had been printed by
+the previous run, and the commit went through on a `make` that had no work to do. This is the same trap the tree
+already knows in another form — a header-only change does not rebuild the objects, so a green build says nothing
+about what you just changed — and the remedy is the same one: **TOUCH THE SOURCES BEFORE ASKING THE BUILD
+ANYTHING.** The gate now forces a rebuild before it counts, because a count taken over a build that did not happen
+is not a measurement.
