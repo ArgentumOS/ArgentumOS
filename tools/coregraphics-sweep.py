@@ -170,6 +170,22 @@ STRIKE_REASONS = ("swift-only", "after-10.6", POST_106, X11_TERRITORY)
 # half of this family (PDF/X keys, accessibility tag types) keeps the reason that is a FACT.
 PARKED_PREFIXES = ("CGPDF", "kCGPDF", "CGPS", "kCGPS")
 
+# AND THE CLAUSE THE PREFIX TEST CANNOT REACH, IN TWO GROUPS, EACH MEASURED RATHER THAN GUESSED. The prefix
+# test is right about the family it was written for and BLIND TO TWO OF ITS OWN MEMBERS' NAMES:
+#   * the PDF DRAWING doors are named `CGContextDrawPDFPage` and `CGContextDrawPDFDocument` — a `CGPDF` prefix
+#     never sees them — and they are unbuildable without the parked parser;
+#   * THE FONT PRINTING AND EMBEDDING FAMILY IS NAMED `CGFont...` FOR THE SAME REASON, AND THE HEADER AGREES
+#     WITH THE PARK RATHER THAN WITH THE LEDGER: CGFont.h's own note records that "the tables, variations and
+#     PostScript-subset families ... are a printing and embedding surface, and the half of the system that
+#     would call them is the parked PDF one". THE LEDGER WAS THE HALF THAT DISAGREED, so these rows move to
+#     `deferred` and the note stays as it is.
+PARKED_NAMES = frozenset((
+	"CGContextDrawPDFPage", "CGContextDrawPDFDocument",
+	"CGFontCopyTableForTag", "CGFontCopyTableTags",
+	"CGFontCopyVariationAxes", "CGFontCopyVariations", "CGFontCreateCopyWithVariations",
+	"CGFontCanCreatePostScriptSubset", "CGFontCreatePostScriptSubset", "CGFontCreatePostScriptEncoding",
+))
+
 # AND THE CLAUSE THE HEADER SET CANNOT EXPRESS: THE ERROR FAMILY. Measured, not assumed — the
 # artefact records the FIRST header, in sorted order, that mentions a name, and that heuristic split
 # the CGError family down the middle: `kCGErrorSuccess` landed on a display header and struck, while
@@ -183,9 +199,10 @@ PARK_REASON = "no-consumer"
 
 
 def is_parked(name):
-    """Is this name in the parked family? A PREFIX TEST, and the ledger says what it covers: every
-    CGPDF*/CGPS* name in the surface belongs to the PDF half, which is the family the user parked."""
-    return name.startswith(PARKED_PREFIXES)
+    """Is this name in the parked family? A PREFIX TEST PLUS THE NAMES IT CANNOT REACH, and the ledger says what
+    it covers: every CGPDF*/CGPS* name belongs to the PDF half, which is the family the user parked, and
+    PARKED_NAMES carries the members whose own names hide them from that test."""
+    return name.startswith(PARKED_PREFIXES) or name in PARKED_NAMES
 
 # THE ERA GROUND'S ARTEFACT AND ITS RULE. The file is `name<TAB>introducedAt<TAB>deprecatedAt<TAB>page`, one line
 # per ledger name, written by the fetch tool above. An ABSENT FILE IS AN EMPTY MAP AND NOTHING IS STRUCK ON THIS

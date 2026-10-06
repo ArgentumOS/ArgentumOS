@@ -2011,3 +2011,35 @@ matching lines in the log. **WHAT IS FIXED IS THE HABIT, NOT THE PUZZLE:** the c
 explicit `if` that PRINTS THE NUMBER IT TESTED, so a guard that fails to fire is visible in the output rather
 than inferred from a commit that should not exist. An instrument that silently does not fire is worse than no
 instrument, which is the same lesson this project keeps paying for in other forms.
+
+## 34. The park reaches the members its prefix test could not see: 10 rows, and the unit I did not write
+
+**THE FINDING IS THE UNIT.** Starting on `CGFontCopyTableTags`/`CGFontCopyTableForTag`, the generator's first
+assert fired on a *comment* that already mentioned one of the names — and reading that comment is what stopped
+the work:
+
+  > the tables, variations and PostScript-subset families (`CGFontCopyTableTags`,
+  > `CGFontCreateCopyWithVariations`, `CGFontCreatePostScriptSubset`, …) are a printing and embedding surface,
+  > and the half of the system that would call them **is the parked PDF one**. — CGFont.h
+
+**SO THE PROSE WAS RIGHT AND THE LEDGER WAS THE HALF THAT DISAGREED:** those rows were `open` while CGFont.h
+recorded that their consumer half is parked. THE ABORT WAS THE FEATURE — an assert that names a file is a prompt
+to read that file — and it is written down here because it saved a unit that would have shipped doors with no
+in-era consumer.
+
+**THE PREFIX TEST COULD NOT SEE THEM, AND THAT IS A PROPERTY OF PREFIX TESTS:** `PARKED_PREFIXES` covers
+`CGPDF`/`CGPS` and is blind to two kinds of member of the same half — the PDF *drawing* doors are named
+`CGContextDrawPDFPage` and `CGContextDrawPDFDocument`, and the whole font printing family is named `CGFont…`.
+The fix is the one this sweep already uses for the CGError family: **a NAMED clause beside the prefix test**
+rather than a widened prefix. `PARKED_NAMES` carries the ten, `is_parked()` tests it after the prefixes, and
+`--check` verifies them the same way it verifies a prefix — its own sentence, "every deferred row is in the
+parked family", now covers the clause too (`--check` and `--strict` both rc 0).
+
+**TEN ROWS MOVED, 165 → 175 PARKED:** the two PDF drawing doors, and the eight of the font printing and
+embedding surface — the two table doors, the three variation doors, and the three PostScript-subset doors. They
+carry `why` = `no-consumer`, like every other parked row, because THAT is what the park means: not "we cannot",
+but "the half of the system that would call this is not in scope by the user's own decision".
+
+**AND WHAT THIS DOES NOT CHANGE:** `CGFontCreateWithPlatformFont` stays `open` (it is not a printing door — it
+is a platform font reference, a separate ground), and the struck half of the PDF family stays struck, because a
+strike is a fact about the era and a park is a scope call.

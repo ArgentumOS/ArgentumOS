@@ -728,8 +728,8 @@ func	struck	CGContextDrawImageApplyingToneMapping	-	Reference / Functions	after-
 func	shipped	CGContextDrawLayerAtPoint	-	Opaque Types / Drawing Core Graphics Layers	shipped with CGLayer (plan §26)	objc
 func	shipped	CGContextDrawLayerInRect	-	Opaque Types / Drawing Core Graphics Layers	shipped with CGLayer (plan §26)	objc
 func	shipped	CGContextDrawLinearGradient	-	Opaque Types / Drawing Gradients and Shadings	-	objc
-func	open	CGContextDrawPDFDocument	-	Reference / Functions	deprecated	objc
-func	open	CGContextDrawPDFPage	-	Opaque Types / Drawing Images and PDF Content	-	objc
+func	deferred	CGContextDrawPDFDocument	-	Reference / Functions	no-consumer	objc
+func	deferred	CGContextDrawPDFPage	-	Opaque Types / Drawing Images and PDF Content	no-consumer	objc
 func	shipped	CGContextDrawPath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
 func	shipped	CGContextDrawRadialGradient	-	Opaque Types / Drawing Gradients and Shadings	-	objc
 func	shipped	CGContextDrawShading	-	Opaque Types / Drawing Gradients and Shadings	-	objc
@@ -972,17 +972,17 @@ func	struck	CGEventTapCreateForPid	-	Services / Data Types / Type Methods	after-
 func	struck	CGEventTapEnable	-	Services / Working With Event Taps	x11-territory	objc
 func	struck	CGEventTapIsEnabled	-	Services / Working With Event Taps	x11-territory	objc
 func	struck	CGEventTapPostEvent	-	Services / Working With Event Taps	x11-territory	objc
-func	open	CGFontCanCreatePostScriptSubset	-	Opaque Types / Working with PostScript Fonts	-	objc
+func	deferred	CGFontCanCreatePostScriptSubset	-	Opaque Types / Working with PostScript Fonts	no-consumer	objc
 func	shipped	CGFontCopyFullName	-	Opaque Types / Examining Font Metadata	-	objc
 func	shipped	CGFontCopyGlyphNameForGlyph	-	Opaque Types / Working with Glyphs	-	objc
 func	shipped	CGFontCopyPostScriptName	-	Opaque Types / Working with PostScript Fonts	-	objc
-func	open	CGFontCopyTableForTag	-	Opaque Types / Working with Font Tables	-	objc
-func	open	CGFontCopyTableTags	-	Opaque Types / Working with Font Tables	-	objc
-func	open	CGFontCopyVariationAxes	-	Opaque Types / Working with Variations	-	objc
-func	open	CGFontCopyVariations	-	Opaque Types / Working with Variations	-	objc
-func	open	CGFontCreateCopyWithVariations	-	Opaque Types / Working with Variations	-	objc
-func	open	CGFontCreatePostScriptEncoding	-	Opaque Types / Working with PostScript Fonts	-	objc
-func	open	CGFontCreatePostScriptSubset	-	Opaque Types / Working with PostScript Fonts	-	objc
+func	deferred	CGFontCopyTableForTag	-	Opaque Types / Working with Font Tables	no-consumer	objc
+func	deferred	CGFontCopyTableTags	-	Opaque Types / Working with Font Tables	no-consumer	objc
+func	deferred	CGFontCopyVariationAxes	-	Opaque Types / Working with Variations	no-consumer	objc
+func	deferred	CGFontCopyVariations	-	Opaque Types / Working with Variations	no-consumer	objc
+func	deferred	CGFontCreateCopyWithVariations	-	Opaque Types / Working with Variations	no-consumer	objc
+func	deferred	CGFontCreatePostScriptEncoding	-	Opaque Types / Working with PostScript Fonts	no-consumer	objc
+func	deferred	CGFontCreatePostScriptSubset	-	Opaque Types / Working with PostScript Fonts	no-consumer	objc
 func	shipped	CGFontCreateWithDataProvider	-	Opaque Types / Creating Font Objects	-	objc
 func	shipped	CGFontCreateWithFontName	-	Opaque Types / Creating Font Objects	-	objc
 func	open	CGFontCreateWithPlatformFont	-	Opaque Types / Creating Font Objects	deprecated	objc
