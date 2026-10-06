@@ -1235,3 +1235,63 @@ name that IS declared, and it verifies the family rather than trusting the statu
 was given up knowingly: it is the drawing API's only vector output (`CGPDFContext` is a `CGContext`, and our
 own `NSGraphicsContext.h` names a PDF destination format in prose), so if printing or export ever wants a
 resolution-independent path, that is the decision to revisit first.
+
+## 15. The text slice was WRITTEN AND REVERTED, and here is what it measured
+
+**THE UNIT WAS: the text state (`SetFont`, `SetFontSize`, `SetTextMatrix`/`Get`, `SetTextPosition`/`Get`,
+`SetCharacterSpacing`, `SetTextDrawingMode` + `CGTextDrawingMode`), the font retained on the graphics state
+beside the pattern paint, and ONE drawing door (`CGContextShowGlyphsAtPositions`) that rasterises a glyph
+through FreeType and composites it. THE STATE HALF WORKS AND WAS VERIFIED — its defaults and round trips
+pass, including the one that matters (a bitmap context's text matrix must default to the IDENTITY, because a
+zeroed matrix is singular) and the refusals (six of Apple's eight modes are refused by name). THE DRAWING
+DOOR DOES NOT PAINT, so the whole slice was reverted rather than shipped: a door that draws nothing is not a
+door, and the ledger's rows were never flipped (no `--refresh` ran), so nothing false is in the surface file.
+
+### What is MEASURED and confirmed — do not re-derive this
+
+* **The raster seam works.** `FT_Set_Char_Size(face, 0, size*64, 72, 72)` then `FT_Load_Glyph` then
+  `FT_Render_Glyph(NORMAL)` gives, for DejaVu Sans `A` at 32px, a **22x23 `FT_PIXEL_MODE_GRAY` bitmap with
+  `bitmap_left = 0`, `bitmap_top = 23` and a coverage sum of 41755** — about 164 fully-inked pixels, i.e. a
+  real glyph and not an empty one.
+* **THE RESOLUTIONS MUST NOT BE ZERO.** `FT_Set_Char_Size(face, 0, size*64, 0, 0)` is REFUSED by the
+  engine in this tree, and the failure is silent unless the seam says so: every glyph came back as nothing
+  and the first probe run measured an empty surface. 72 dpi is the 1:1 case.
+* **THE FLIP IS THE COMPOSITE'S BUSINESS, NOT THE ENGINE'S.** A bitmap context's CTM is
+  `(1, 0, 0, -1, 0, height)` — device y runs DOWN, as Apple's does — and handing that flip to FreeType makes
+  it report `bitmap_top = 0` for **every** glyph (measured), after which `pen - top` places the bitmap at its
+  own pen and it runs off the bottom edge: an empty screen, not a wrong one. The arrangement that works is:
+  take the reflection OUT of the engine's matrix (`d := -d` when the composite's linear part has a negative
+  determinant), render upright, and REVERSE THE COVERAGE ROWS on the way out. Only a PURE y reflection is
+  expressible this way; a reflection with a shear has to be refused by name.
+* **The placement formula is `dst = (round(pen.x) + left, round(pen.y) - top)`** with the pen computed as
+  `textMatrix x CTM` applied to the position (text space → user space → device), and the pen rounded to whole
+  DEVICE pixels: a transform is exact, a fractional pen is not.
+* **The alignment that must be built in from the start, not patched later:** the state holds ONE face and
+  sizes it per use (`FT_Set_Char_Size` on the face the font already holds) — the guest's second concurrent
+  open of one file is the defect the `font_twice` probe measured, and two sizes on one font is exactly the
+  regression the text probe should keep checking.
+
+### The open bug, stated so it can be attacked directly
+
+**The mask composite paints nothing, silently.** `pixman_image_composite32(PIXMAN_OP_OVER, src, cover,
+c->image, 0, 0, 0, 0, 0, 0, c->width, c->height)` with a surface-sized `PIXMAN_a8` cover whose bytes were
+written in by hand (the glyph, at `dst`), a valid clip region `(0,0,160,80)`, and a source — leaves the
+destination pixel at `(dst_x + 2, dst_y + 2)` UNCHANGED (`ff ff ff ff`, measured), and **pixman logs no
+error**.
+
+Eliminated, each by measurement rather than argument: the mask's ownership (`pixman_image_create_bits` keeps
+the pointer it is given — the trap this file already records — so the coverage is copied into pixman's own
+bytes); the small-mask-at-an-offset form (a full-surface cover at `(0,0)` behaves the same); the 1x1-plus-
+`REPEAT_NORMAL` source (the arrangement the TRAPEZOID composites need) versus `pixman_image_create_solid_fill`
+(both paint nothing); the operator (`cg_op(kCGBlendModeNormal)` is `PIXMAN_OP_OVER`); the clip region (printed:
+full surface); the coverage content (printed from FreeType's own buffer: 41755); and the destination image
+itself (`CGContextFillRect` paints into the same buffer through `pixman_composite_trapezoids`).
+
+**So the next experiment is a comparison rather than a theory:** `cg_composite_traps`' clip-mask branch
+already does `pixman_image_composite32(op, src, cover, c->image, x_src, y_src, 0, 0, 0, 0, c->width,
+c->height)` with a cover built by `pixman_image_create_bits(PIXMAN_a8, c->width, c->height, NULL, 0)` — the
+SAME call this slice made with the SAME construction — and it works. Diff the two field by field (the source
+image's kind and format, the `x_src`/`y_src` offsets, whether the destination's clip was set once or twice,
+and whether a transform is set on any of the three images) and, failing that, composite a *trap-free* mask
+in a five-line C probe against the host library. The instrument that answers it is the destination pixel,
+which is what this section measured.
