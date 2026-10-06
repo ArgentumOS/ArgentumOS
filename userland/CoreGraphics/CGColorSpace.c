@@ -19,6 +19,7 @@
 #include <lcms2.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 struct CGColorSpace {
 	int refcount;
@@ -33,15 +34,22 @@ struct CGColorSpace {
 	 * numbers". It doubles as the cache, because parsing a profile is expensive and a space is
 	 * exactly the right lifetime to hold one. */
 	cmsHPROFILE profile;
+	/* THE INDEXED FAMILY: the colour table as BYTES (owned, a copy of the caller's) and the base space its
+	 * values are read in (retained). `color_table_count` IS ENTRIES, not bytes — Apple's `lastIndex + 1`
+	 * — and the byte length is that times the base's component count. The base is also what a PATTERN
+	 * space answers with, which is why `CGColorSpaceGetBaseColorSpace` reads this field for both. */
+	unsigned char *color_table;
+	size_t color_table_count;
+	CGColorSpaceRef base;
 };
 
-static struct CGColorSpace cg_device_rgb = { 0, kCGColorSpaceModelRGB, 3, NULL };
-static struct CGColorSpace cg_device_gray = { 0, kCGColorSpaceModelMonochrome, 1, NULL };
+static struct CGColorSpace cg_device_rgb = { 0, kCGColorSpaceModelRGB, 3, NULL, NULL, 0, NULL };
+static struct CGColorSpace cg_device_gray = { 0, kCGColorSpaceModelMonochrome, 1, NULL, NULL, 0, NULL };
 /* FOUR COMPONENTS, ALPHA NOT COUNTED, like the other two: the count belongs to the SPACE, and
  * a colour adds its alpha on top of it. NO PROFILE, because there is no device-CMYK profile to
  * give it — which is what keeps a CMYK colour un-drawable while a Lab one becomes drawable
  * below. */
-static struct CGColorSpace cg_device_cmyk = { 0, kCGColorSpaceModelCMYK, 4, NULL };
+static struct CGColorSpace cg_device_cmyk = { 0, kCGColorSpaceModelCMYK, 4, NULL, NULL, 0, NULL };
 
 CGColorSpaceRef CGColorSpaceCreateDeviceRGB(void)
 {
@@ -371,8 +379,11 @@ CGColorSpaceRef CGColorSpaceRetain(CGColorSpaceRef space)
 	return space;
 }
 
+static int cg_space_is_static(CGColorSpaceRef space);
+
 void CGColorSpaceRelease(CGColorSpaceRef space)
 {
+	CGColorSpaceRef base;
 	if (space == NULL) {
 		return;
 	}
@@ -382,13 +393,21 @@ void CGColorSpaceRelease(CGColorSpaceRef space)
 	if (space->refcount > 0) {
 		return;
 	}
-	/* A SPACE WITH A PROFILE IS NOT A SINGLETON, so this one IS destroyed — the device spaces
-	 * are the ones that are not, and the difference is the profile: `CGColorSpaceCreateDeviceRGB()`
-	 * may be called again at any time and must get the same object back, while a Lab space was
-	 * asked for by parameters and owns an engine handle that has to be closed. */
-	if (space->profile != NULL) {
-		cmsCloseProfile(space->profile);
+	/* FREED UNLESS IT IS ONE OF THE PROCESS-WIDE SINGLETONS, and THE RULE USED TO BE "FREED IF IT HAS A
+	 * PROFILE": that was right for every space this library had, because the singletons have no profile and
+	 * every heap space had one. AN INDEXED SPACE IS THE FIRST HEAP SPACE WITH NO PROFILE, and the old rule
+	 * would have leaked it — the same shape as the C4.1 guard the struct's own comment records, which was
+	 * safe only because device RGB was the only RGB space that existed. THE SINGLETONS ARE NAMED, and
+	 * `cg_space_is_static` is defined at the END of this file so that it can see all of them. */
+	if (!cg_space_is_static(space)) {
+		if (space->profile != NULL) {
+			cmsCloseProfile(space->profile);
+		}
+		free(space->color_table);
+		base = space->base;
+		space->base = NULL;
 		free(space);
+		CGColorSpaceRelease(base);
 	}
 	/* NOT FREED, EVEN AT ZERO: these are the process-wide device spaces, and
 	 * `CGColorSpaceCreateDeviceRGB()` may be called again at any time. A caller that
@@ -458,7 +477,93 @@ size_t CGColorSpaceGetNumberOfComponents(CGColorSpaceRef space)
  * no profile, so `CGColorSpaceRelease` does not destroy it, and a caller who asks twice gets the same
  * object back — which is what lets a colour's space be compared by pointer as well as by model. See
  * CGColorSpace.h for why it has one component and why the uncoloured form is refused. */
-static struct CGColorSpace cg_pattern_space = { 0, kCGColorSpaceModelPattern, 1, NULL };
+static struct CGColorSpace cg_pattern_space = { 0, kCGColorSpaceModelPattern, 1, NULL, NULL, 0, NULL };
+
+/* ------------------------------------------------------------------------- */
+/* the indexed family                                                          */
+/* ------------------------------------------------------------------------- */
+
+CGColorSpaceRef CGColorSpaceCreateIndexed(CGColorSpaceRef baseSpace, size_t lastIndex,
+					  const uint8_t *colorTable)
+{
+	CGColorSpaceRef space;
+	size_t bytes;
+
+	if (baseSpace == NULL || colorTable == NULL) {
+		fprintf(stderr, "CG-REFUSE: CGColorSpaceCreateIndexed needs a base color space and a color "
+				"table\n");
+		return NULL;
+	}
+	if (lastIndex > 255) {
+		fprintf(stderr, "CG-REFUSE: CGColorSpaceCreateIndexed takes a maximum index of at most 255, "
+				"and was given %lu\n", (unsigned long)lastIndex);
+		return NULL;
+	}
+	if (CGColorSpaceGetModel(baseSpace) == kCGColorSpaceModelIndexed) {
+		fprintf(stderr, "CG-REFUSE: CGColorSpaceCreateIndexed needs a base space whose values can be "
+				"READ, and an indexed space's values are indices into another table\n");
+		return NULL;
+	}
+	/* THE TABLE'S LENGTH COMES FROM THE BASE'S COMPONENT COUNT, which is why a base this library cannot
+	 * count is refused above rather than copied blindly. */
+	bytes = (lastIndex + 1) * CGColorSpaceGetNumberOfComponents(baseSpace);
+	if (bytes == 0) {
+		fprintf(stderr, "CG-REFUSE: CGColorSpaceCreateIndexed needs a base color space with at least "
+				"one component\n");
+		return NULL;
+	}
+	space = calloc(1, sizeof(struct CGColorSpace));
+	if (space == NULL) {
+		return NULL;
+	}
+	space->color_table = malloc(bytes);
+	if (space->color_table == NULL) {
+		free(space);
+		return NULL;
+	}
+	memcpy(space->color_table, colorTable, bytes);
+	space->color_table_count = lastIndex + 1;
+	space->base = CGColorSpaceRetain(baseSpace);
+	space->refcount = 1;
+	space->model = kCGColorSpaceModelIndexed;
+	/* ONE COMPONENT, BECAUSE ITS VALUE IS AN INDEX: the table's values are the base space's, and they are
+	 * read THROUGH this space rather than being this space's components. */
+	space->components = 1;
+	return space;
+}
+
+CGColorSpaceRef CGColorSpaceGetBaseColorSpace(CGColorSpaceRef space)
+{
+	/* APPLE: "the base color space of `space` if `space` is a pattern or indexed color space; otherwise
+	 * NULL". A pattern space's base is one; a device space's is nobody's. */
+	if (space == NULL
+	    || (space->model != kCGColorSpaceModelIndexed && space->model != kCGColorSpaceModelPattern)) {
+		return NULL;
+	}
+	return space->base;
+}
+
+size_t CGColorSpaceGetColorTableCount(CGColorSpaceRef space)
+{
+	/* ENTRIES, NOT BYTES — Apple's `lastIndex + 1` — and 0 for anything that is not indexed. */
+	if (space == NULL || space->model != kCGColorSpaceModelIndexed) {
+		return 0;
+	}
+	return space->color_table_count;
+}
+
+void CGColorSpaceGetColorTable(CGColorSpaceRef space, uint8_t *table)
+{
+	/* "COPY THE ENTRIES ... IF `space` IS AN INDEXED COLOR SPACE; OTHERWISE, DO NOTHING" — so a caller who
+	 * asks a device space for a table gets their buffer back untouched rather than a partial write. */
+	size_t bytes;
+
+	if (space == NULL || table == NULL || space->model != kCGColorSpaceModelIndexed) {
+		return;
+	}
+	bytes = space->color_table_count * CGColorSpaceGetNumberOfComponents(space->base);
+	memcpy(table, space->color_table, bytes);
+}
 
 CGColorSpaceRef CGColorSpaceCreatePattern(CGColorSpaceRef baseSpace)
 {
@@ -471,3 +576,19 @@ CGColorSpaceRef CGColorSpaceCreatePattern(CGColorSpaceRef baseSpace)
 	cg_pattern_space.refcount++;
 	return &cg_pattern_space;
 }
+
+/* ------------------------------------------------------------------------- */
+/* which spaces are the process-wide singletons                                */
+/* ------------------------------------------------------------------------- */
+
+/* THE FOUR SPACES THAT ARE NEVER DESTROYED, named here so that `CGColorSpaceRelease` can tell "a space this
+ * library handed out again and again" from "a space a caller asked for by parameters". A SPACE MADE BY
+ * PARAMETERS OWNS SOMETHING THE ENGINE PARSED OR A TABLE THIS LIBRARY COPIED, and both have to be let go;
+ * a singleton owns nothing that is not already the process's. THE LIST IS SPELT OUT rather than inferred
+ * from "has no profile", because the inference is what an indexed space broke. */
+static int cg_space_is_static(CGColorSpaceRef space)
+{
+	return space == &cg_device_rgb || space == &cg_device_gray || space == &cg_device_cmyk
+	       || space == &cg_pattern_space;
+}
+

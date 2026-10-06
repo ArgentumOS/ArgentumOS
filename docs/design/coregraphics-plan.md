@@ -1950,3 +1950,40 @@ space built from parameters that is NOT profile-backed is never freed at all —
 space, and would be true of an indexed space over a device base. It is the same shape the struct's own comment
 records ("C4.1's guard dispatched on the MODEL alone, which was safe only because device RGB was the only RGB
 space that existed — the gap recorded against it"), and it belongs with the unit that makes it observable.
+
+## 32. The indexed family (4 rows), and the release rule the family taught
+
+**`CGColorSpaceCreateIndexed`, `CGColorSpaceGetBaseColorSpace`, `CGColorSpaceGetColorTable` and
+`CGColorSpaceGetColorTableCount` SHIP**, with the semantics taken from Apple's own sentences: the table is
+`m * (lastIndex + 1)` **BYTES**, the getter returns "the same format as that passed to
+`CGColorSpaceCreateIndexed`", `lastIndex` "must be less than or equal to 255", and `GetBaseColorSpace` answers
+for a **pattern or indexed** space while the other two answer 0 and DO NOTHING for anything else. The probe pins
+the off-by-one that this family invites — the count is **entries**, `lastIndex + 1`, not bytes — and the table
+comes back byte-identical with nothing written past its end (`table=00,40,80,ff beyond=ee`).
+
+**AND THE RELEASE RULE HAD TO LEARN SOMETHING.** `CGColorSpaceRelease` used to free exactly the spaces that have
+a profile, which was RIGHT FOR EVERY SPACE THIS LIBRARY HAD: the process-wide singletons have no profile, and
+every heap-allocated space — Lab, ICC, calibrated, named — had one. **AN INDEXED SPACE IS THE FIRST HEAP SPACE
+WITH NO PROFILE**, and the old rule would have leaked it. The new rule names the four singletons explicitly in
+`cg_space_is_static`, defined at the END of the file so that it can see all four, with a forward declaration
+above the release because two of them are defined later. It is the same shape as the C4.1 guard the struct's own
+comment records — a rule that was safe only because one kind of space existed.
+
+**A LEAK CANNOT BE SEEN FROM INSIDE THIS LIBRARY, AND THAT IS STATED RATHER THAN GLOSSED.** What the probe
+checks is the DANGEROUS half: releasing an indexed space must not free the singleton it points at, so after the
+releases the base still answers for its model, its component count and its colour-table count. The leak half —
+that the heap space and its table really go away — is unverified here and says so.
+
+**§31 IS CORRECTED IN PLACE: I WROTE THAT A PATTERN SPACE LEAKS TODAY, AND THAT IS WRONG.** `cg_pattern_space`
+is one of the four statics — the generator of this unit found all four by scanning the file — so the old rule
+left it alone correctly and there was no pre-existing leak at all. The claim came from reasoning about the rule
+instead of reading the initialisers; the initialisers are three lines above the constructors.
+
+**TWO GENERATOR LESSONS, BOTH NEW.** THE PROBE FILE AND THE MK WIRING SIT OUTSIDE THE TWO-PHASE CHECK, so a run
+that aborts in phase 1 leaves the probe written: writing a file twice is harmless, so the wiring is now
+idempotent rather than an append that would have run twice. And a STRAY NO-OP EDIT left in the generator — with
+an anchor I had guessed and never verified — was what aborted phase 1: the rule that an anchor comes from the
+file applies to every line of a generator, including the ones that look inert.
+
+**AND THE FILE'S OWN DOCTRINE CAUGHT THE REST:** adding three fields to `cg_state`'s cousin made the four static
+initialisers warn about missing field initialisers, which is exactly what "every field spelled" is for.

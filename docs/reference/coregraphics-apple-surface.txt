@@ -661,7 +661,7 @@ func	shipped	CGColorSpaceCreateDeviceRGB	-	Opaque Types / Creating Color Spaces	
 func	struck	CGColorSpaceCreateExtended	-	Reference / Functions	after-10.6	objc
 func	struck	CGColorSpaceCreateExtendedLinearized	-	Reference / Functions	after-10.6	objc
 func	shipped	CGColorSpaceCreateICCBased	-	Opaque Types / Creating Color Spaces	-	objc
-func	open	CGColorSpaceCreateIndexed	-	Opaque Types / Creating Color Spaces	-	objc
+func	shipped	CGColorSpaceCreateIndexed	-	Opaque Types / Creating Color Spaces	shipped with the indexed family (plan §32)	objc
 func	shipped	CGColorSpaceCreateLab	-	Opaque Types / Creating Color Spaces	-	objc
 func	struck	CGColorSpaceCreateLinearized	-	Reference / Functions	after-10.6	objc
 func	shipped	CGColorSpaceCreatePattern	-	Opaque Types / Creating Color Spaces	-	objc
@@ -671,9 +671,9 @@ func	shipped	CGColorSpaceCreateWithICCProfile	-	Opaque Types / Creating Color Sp
 func	shipped	CGColorSpaceCreateWithName	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceCreateWithPlatformColorSpace	-	Opaque Types / Creating Color Spaces	deprecated	objc
 func	struck	CGColorSpaceCreateWithPropertyList	-	Opaque Types / Creating Color Spaces	after-10.6	objc
-func	open	CGColorSpaceGetBaseColorSpace	-	Opaque Types / Examining a Color Space	-	objc
-func	open	CGColorSpaceGetColorTable	-	Opaque Types / Examining a Color Space	-	objc
-func	open	CGColorSpaceGetColorTableCount	-	Opaque Types / Examining a Color Space	-	objc
+func	shipped	CGColorSpaceGetBaseColorSpace	-	Opaque Types / Examining a Color Space	shipped with the indexed family (plan §32)	objc
+func	shipped	CGColorSpaceGetColorTable	-	Opaque Types / Examining a Color Space	shipped with the indexed family (plan §32)	objc
+func	shipped	CGColorSpaceGetColorTableCount	-	Opaque Types / Examining a Color Space	shipped with the indexed family (plan §32)	objc
 func	shipped	CGColorSpaceGetModel	-	Opaque Types / Examining a Color Space	-	objc
 func	struck	CGColorSpaceGetName	-	Reference / Functions	after-10.6	objc
 func	shipped	CGColorSpaceGetNumberOfComponents	-	Opaque Types / Examining a Color Space	-	objc

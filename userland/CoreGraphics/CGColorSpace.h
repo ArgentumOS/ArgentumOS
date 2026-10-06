@@ -95,6 +95,27 @@ CGColorSpaceRef CGColorSpaceCreateDeviceCMYK(void);
  * answers 1 and `CGColorCreate` refuses this space, because a pattern colour needs a pattern and
  * `CGColorCreateWithPattern` is how one is made.
  */
+/* THE INDEXED FAMILY. Apple's own words for the constructor: "`lastIndex` is an integer which specifies the
+ * maximum valid index value; it must be less than or equal to 255. `colorTable` is an array of m * (lastIndex +
+ * 1) BYTES, where m is the number of color components in the base color space."
+ *
+ * SO THE TABLE IS BYTES AND NOT COMPONENTS, and the getter hands back "the same format as that passed to
+ * `CGColorSpaceCreateIndexed`" — the table goes in and comes out unchanged, which is why this library stores
+ * the caller's bytes rather than interpreting them.
+ *
+ * TWO OF THESE DOORS ANSWER FOR A PATTERN SPACE AS WELL: `CGColorSpaceGetBaseColorSpace` returns the base of a
+ * pattern OR indexed space, in Apple's words. The `count` is ENTRIES (lastIndex + 1) and not bytes, which is
+ * the off-by-one the probe pins.
+ *
+ * AND THE RELEASE HAD TO LEARN SOMETHING, WHICH THIS FAMILY IS WHAT TEACHES IT: see CGColorSpace.c's note on
+ * `cg_space_is_static` — an indexed space is the first space in this library that is HEAP-ALLOCATED AND HAS NO
+ * PROFILE, and the old rule freed exactly the spaces that had one. */
+CGColorSpaceRef CGColorSpaceCreateIndexed(CGColorSpaceRef baseSpace, size_t lastIndex,
+					  const uint8_t *colorTable);
+CGColorSpaceRef CGColorSpaceGetBaseColorSpace(CGColorSpaceRef space);
+void CGColorSpaceGetColorTable(CGColorSpaceRef space, uint8_t *table);
+size_t CGColorSpaceGetColorTableCount(CGColorSpaceRef space);
+
 CGColorSpaceRef CGColorSpaceCreatePattern(CGColorSpaceRef baseSpace);
 /* A NULL `whitePoint` is D50, which is Apple's documented default and exactly what the engine's
  * own Lab4 profile uses — so the default is not an approximation of Apple's, it is the same
