@@ -15,6 +15,7 @@
  */
 #include <CoreGraphics/CGTypeID_internal.h>
 #include <CoreGraphics/CGDataConsumer.h>
+#include <CoreGraphics/CGLayer.h>
 
 CGTypeID CGColorGetTypeID(void)
 {
@@ -29,6 +30,11 @@ CGTypeID CGColorSpaceGetTypeID(void)
 CGTypeID CGContextGetTypeID(void)
 {
 	return (CGTypeID)CG_TYPE_ID_CGCONTEXT;
+}
+
+CGTypeID CGLayerGetTypeID(void)
+{
+	return (CGTypeID)CG_TYPE_ID_CGLAYER;
 }
 
 CGTypeID CGDataConsumerGetTypeID(void)

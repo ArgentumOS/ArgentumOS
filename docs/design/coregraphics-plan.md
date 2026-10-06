@@ -1726,3 +1726,32 @@ the close edge, and the note is in the code at the branch that adds it.
 and a caller's four lines whose last returns to the start — with the corners wound either way and starting at any
 corner. A curve anywhere in the path, a fifth corner, or a degenerate one whose corners line up is false. That
 is a READING, stated in the header, because Apple's page says only that the path must be a rectangle.
+
+## 26. CGLayer, and the two `CGContextDrawLayer*` doors that make it a feature rather than a declaration (9 rows)
+
+**NINE ROWS SHIP TOGETHER: the class's seven and the two doors that put a layer onto another context.** That
+grouping is the whole point of the unit — `CGLayerCreateWithContext` and `CGLayerGetContext` let a caller draw
+INTO a layer, and `CGContextDrawLayerInRect`/`AtPoint` are the only way anything comes OUT. A layer that could be
+drawn into but never composited back would be a declaration, which is why the two DrawLayer rows were checked
+against the ledger before the class was written and were found OPEN rather than struck: they are in scope.
+
+**THREE DECISIONS ARE APPLE'S HEADER'S OWN WORDS**, quoted rather than paraphrased: the size is "specified in
+default user space (base space) units"; `auxiliaryInfo` "should be NULL; it is reserved for future expansion";
+and drawing at a point "is equivalent to calling `CGContextDrawLayerInRect` with a rectangle having origin at
+`point` and size equal to the size of `layer`". THE LAST ONE IS IMPLEMENTED BY CALLING THAT FUNCTION, so the
+equivalence cannot drift.
+
+**TWO ARE THIS LIBRARY'S, STATED:** the layer's surface is the one 32-bit RGB chart its contexts are built for
+(so a layer made from a gray context still has an RGB surface — same colours, different color space), and a size
+is ROUNDED UP to whole pixels while `CGLayerGetSize` keeps answering the size AS ASKED. The probe checks both
+halves of that: an 8.5 x 4.25 layer answers 8.5 x 4.25 and its surface measures 9 x 5.
+
+**DRAWING A LAYER OUT IS `CGContextDrawImage` OVER THE LAYER'S OWN BYTES** — a layer IS an image of its surface,
+so the whole tested path is inherited (the CTM, the clip, the alpha, and the scaling the header promises) rather
+than a second blit kept in step by hand. The provider that lends those bytes holds a reference to the layer, so
+the surface cannot be freed while the image is being drawn.
+
+**AND THE PROBE'S ONE FAILURE WAS ITS OWN, IN A WAY WORTH KEEPING:** the scaling check drew the layer into a
+rectangle HALF AS TALL as the surface and then read row 0 — which a short rectangle leaves outside the draw,
+because this library's bitmap rows do not run the way its y axis does. The scaling had worked; the question had
+been asked in Y as well as X. Reading a FULL-HEIGHT band asks it in X alone, and the check now says so.

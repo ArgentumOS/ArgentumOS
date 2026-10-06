@@ -725,8 +725,8 @@ func	open	CGContextCopyPath	-	Opaque Types / Constructing a Current Graphics Pat
 func	struck	CGContextDrawConicGradient	-	Reference / Functions	after-10.6	objc
 func	shipped	CGContextDrawImage	-	Opaque Types / Drawing Images and PDF Content	-	objc
 func	struck	CGContextDrawImageApplyingToneMapping	-	Reference / Functions	after-10.6	objc
-func	open	CGContextDrawLayerAtPoint	-	Opaque Types / Drawing Core Graphics Layers	-	objc
-func	open	CGContextDrawLayerInRect	-	Opaque Types / Drawing Core Graphics Layers	-	objc
+func	shipped	CGContextDrawLayerAtPoint	-	Opaque Types / Drawing Core Graphics Layers	shipped with CGLayer (plan §26)	objc
+func	shipped	CGContextDrawLayerInRect	-	Opaque Types / Drawing Core Graphics Layers	shipped with CGLayer (plan §26)	objc
 func	shipped	CGContextDrawLinearGradient	-	Opaque Types / Drawing Gradients and Shadings	-	objc
 func	open	CGContextDrawPDFDocument	-	Reference / Functions	deprecated	objc
 func	open	CGContextDrawPDFPage	-	Opaque Types / Drawing Images and PDF Content	-	objc
@@ -1061,12 +1061,12 @@ func	shipped	CGImageRelease	-	Opaque Types / Retaining and releasing images	-	ob
 func	shipped	CGImageRetain	-	Opaque Types / Retaining and releasing images	-	objc
 func	struck	CGImageShouldToneMap	-	Reference / Functions	after-10.6	objc
 func	struck	CGInhibitLocalEvents	-	Services / Deprecated Functions	x11-territory	objc
-func	open	CGLayerCreateWithContext	-	Opaque Types / Creating Layer Objects	-	objc
-func	open	CGLayerGetContext	-	Opaque Types / Examining a Layer	-	objc
-func	open	CGLayerGetSize	-	Opaque Types / Examining a Layer	-	objc
-func	open	CGLayerGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
-func	open	CGLayerRelease	-	Opaque Types / Retaining and Releasing Color Objects	-	objc
-func	open	CGLayerRetain	-	Opaque Types / Retaining and Releasing Color Objects	-	objc
+func	shipped	CGLayerCreateWithContext	-	Opaque Types / Creating Layer Objects	shipped with CGLayer (plan §26)	objc
+func	shipped	CGLayerGetContext	-	Opaque Types / Examining a Layer	shipped with CGLayer (plan §26)	objc
+func	shipped	CGLayerGetSize	-	Opaque Types / Examining a Layer	shipped with CGLayer (plan §26)	objc
+func	shipped	CGLayerGetTypeID	-	Opaque Types / Working with Core Foundation Types	shipped with CGLayer (plan §26)	objc
+func	shipped	CGLayerRelease	-	Opaque Types / Retaining and Releasing Color Objects	shipped with CGLayer (plan §26)	objc
+func	shipped	CGLayerRetain	-	Opaque Types / Retaining and Releasing Color Objects	shipped with CGLayer (plan §26)	objc
 func	struck	CGMainDisplayID	-	Services / Finding Displays	x11-territory	objc
 func	struck	CGOpenGLDisplayMaskToDisplayID	-	Services / Finding Displays	x11-territory	objc
 func	struck	CGPDFArrayApplyBlock	-	Reference / Functions	after-10.6	objc
@@ -1500,7 +1500,7 @@ typealias	shipped	CGGlyph	-	Opaque Types / Working with Glyphs	-	objc
 typealias	shipped	CGGradientRef	-	Opaque Types	-	objc
 typealias	shipped	CGImageRef	-	Opaque Types	-	objc
 typealias	struck	CGKeyCode	-	Services / Data Types	x11-territory	objc
-typealias	open	CGLayerRef	-	Opaque Types	-	objc
+typealias	shipped	CGLayerRef	-	Opaque Types	shipped with CGLayer (plan §26)	objc
 typealias	struck	CGOpenGLDisplayMask	-	Services / Data Types	x11-territory	objc
 typealias	struck	CGPDFArrayApplierBlock	-	Reference / Data Types	post-10.6	objc
 typealias	deferred	CGPDFArrayRef	-	Opaque Types / Data Types	no-consumer	objc

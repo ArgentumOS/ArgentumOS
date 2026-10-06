@@ -80,12 +80,14 @@
 #ifdef __OBJC__
 @class NSArray;
 @class NSData;
+@class NSDictionary;
 @class NSMutableData;
 @class NSString;
 @class NSURL;
 #else
 typedef struct objc_object NSArray;
 typedef struct objc_object NSData;
+typedef struct objc_object NSDictionary;
 typedef struct objc_object NSMutableData;
 typedef struct objc_object NSString;
 typedef struct objc_object NSURL;
