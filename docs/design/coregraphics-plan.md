@@ -2139,3 +2139,33 @@ failure it is testing for from the absence of a test is the most expensive kind 
 the top of the file, because a clip door above it now needs it; and the coverage helper needed a forward
 declaration for the fourth time in this thread — the static-order lesson CGLayer, the clip door and now this one
 have each paid for.
+
+## 37. `CGContextDrawTiledImage` and the two page doors (3 rows)
+
+**APPLE'S SENTENCE ABOUT TILING IS A COMPLETE SPECIFICATION, WHICH IS WHY THIS DOOR ADDS NO GEOMETRY:** "The image
+is scaled to the size specified by `rect` in user space, positioned at the origin of `rect` in user space, then
+replicated, stepping the width of `rect` horizontally and the height of `rect` vertically, to fill the current
+clip region. Unlike patterns, the image is tiled in user space, so transformations applied to the CTM affect the
+final result." A TILE IS THEREFORE `CGContextDrawImage` — scaled into a rectangle, through the CTM, under the
+clip — and the door is the grid Apple describes. The probe asks for the step, the SCALE (a 2×2 source in a 4-unit
+tile puts one source pixel across two units) and the PHASE (moving the rectangle moves the whole tiling) at once,
+and then that the clip bounds it.
+
+**THE INDEX RANGE COMES FROM THE CLIP'S OWN DEVICE EXTENTS, TAKEN BACK TO USER SPACE.** The clip is what has to
+be filled and it is a device-space region, so its bounding box's corners through the inverse CTM give a user-space
+box that CONTAINS it — a box that covers a little more costs a few tiles that draw nothing, and a box that covered
+less would leave part of the clip untiled. Under a rotation the tiles are rotated too, which is what "tiled in
+user space" means, and the conservative box is what makes the range correct anyway.
+
+**`CGContextBeginPage` AND `CGContextEndPage` ARE REFUSED BY NAME, ON THE GROUND THE HEADER ITSELF PROVIDES:** it
+says "Begin a new page." and "End the current page." and nothing else, and a PAGE is a unit of a PAGE-BASED
+context — a PDF or printing context, both of which are the parked half. This library's contexts are bitmaps, where
+a page boundary would have to be invented, and inventing one is exactly what this tree refuses. The probe checks
+that the refusal leaves the surface undisturbed.
+
+**AND THE WARNINGS FROM THE PREVIOUS UNIT'S FACTORING WERE THERE ALL ALONG, IN A BUILD I HAD ALREADY READ.** Seven
+locals — `corner`, the four min/max accumulators, `i` and `p` — stopped being used when the sampler's inline
+geometry became two helpers, and the build printed them in the very run whose output I filtered down to the
+`CG-CLIP` lines I was looking for. **THE WARNINGS COUNT IS NOW ITS OWN QUESTION IN THE GATE**, asked beside the
+failure count rather than as a footnote to it: this tree keeps that number at zero, and a number that is only
+looked at when something else goes wrong is a number nobody is keeping.

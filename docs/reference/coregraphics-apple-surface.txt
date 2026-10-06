@@ -704,7 +704,7 @@ func	shipped	CGContextAddPath	-	Opaque Types / Constructing a Current Graphics P
 func	shipped	CGContextAddQuadCurveToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	shipped	CGContextAddRect	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	shipped	CGContextAddRects	-	Opaque Types / Constructing a Current Graphics Path	-	objc
-func	open	CGContextBeginPage	-	Opaque Types / Managing a Page-Based Graphics Context	-	objc
+func	shipped	CGContextBeginPage	-	Opaque Types / Managing a Page-Based Graphics Context	shipped with the tiled image and the page doors (plan §37)	objc
 func	shipped	CGContextBeginPath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	shipped	CGContextBeginTransparencyLayer	-	Opaque Types / Working with Transparency Layers	shipped with the transparency layers (plan §33)	objc
 func	shipped	CGContextBeginTransparencyLayerWithRect	-	Opaque Types / Working with Transparency Layers	shipped with the transparency layers (plan §33)	objc
@@ -733,10 +733,10 @@ func	deferred	CGContextDrawPDFPage	-	Opaque Types / Drawing Images and PDF Conte
 func	shipped	CGContextDrawPath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
 func	shipped	CGContextDrawRadialGradient	-	Opaque Types / Drawing Gradients and Shadings	-	objc
 func	shipped	CGContextDrawShading	-	Opaque Types / Drawing Gradients and Shadings	-	objc
-func	open	CGContextDrawTiledImage	-	Opaque Types / Drawing Images and PDF Content	-	objc
+func	shipped	CGContextDrawTiledImage	-	Opaque Types / Drawing Images and PDF Content	shipped with the tiled image and the page doors (plan §37)	objc
 func	shipped	CGContextEOClip	-	Opaque Types / Working with the Current Clipping Path	-	objc
 func	shipped	CGContextEOFillPath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
-func	open	CGContextEndPage	-	Opaque Types / Managing a Page-Based Graphics Context	-	objc
+func	shipped	CGContextEndPage	-	Opaque Types / Managing a Page-Based Graphics Context	shipped with the tiled image and the page doors (plan §37)	objc
 func	shipped	CGContextEndTransparencyLayer	-	Opaque Types / Working with Transparency Layers	shipped with the transparency layers (plan §33)	objc
 func	shipped	CGContextFillEllipseInRect	-	Opaque Types / Drawing Shapes	shipped with the context conveniences (plan §28)	objc
 func	shipped	CGContextFillPath	-	Opaque Types / Drawing the Current Graphics Path	-	objc

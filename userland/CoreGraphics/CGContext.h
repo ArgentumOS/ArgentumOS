@@ -372,6 +372,24 @@ void CGContextAddRoundedRect(CGContextRef context, CGRect rect, CGFloat cornerWi
  * itself is that header's; what is here is the verb. */
 void CGContextDrawImage(CGContextRef context, CGRect rect, CGImageRef image);
 
+/* APPLE'S OWN SENTENCE, AND IT IS A COMPLETE SPECIFICATION: "The image is scaled to the size specified by
+ * `rect` in user space, positioned at the origin of `rect` in user space, then replicated, stepping the width
+ * of `rect` horizontally and the height of `rect` vertically, to fill the current clip region. UNLIKE PATTERNS,
+ * THE IMAGE IS TILED IN USER SPACE, so transformations applied to the CTM affect the final result."
+ *
+ * THAT IS EXACTLY WHAT `CGContextDrawImage` DOES FOR ONE TILE — scaled into a rectangle, through the CTM, under
+ * the clip — so this door draws the tiles and adds no geometry of its own: a tile is a call to the door that
+ * already knows how to put an image into a rectangle, and the grid is the stepping Apple describes.
+ *
+ * `CGContextBeginPage` AND `CGContextEndPage` ARE REFUSED BY NAME, WHICH IS WHAT THE HEADER LEAVES ROOM FOR
+ * AND NOTHING MORE: "Begin a new page." and "End the current page." are the whole of what it says, and a PAGE
+ * is a unit of a PAGE-BASED context — a PDF or printing context, both of which are the parked half. This
+ * library's contexts are bitmaps, where a page boundary would have to be invented, and inventing one is the
+ * thing this tree refuses. */
+void CGContextDrawTiledImage(CGContextRef c, CGRect rect, CGImageRef image);
+void CGContextBeginPage(CGContextRef c, const CGRect *mediaBox);
+void CGContextEndPage(CGContextRef c);
+
 /*
  * AND THE GRADIENT'S DRAWN FORMS, WHICH FOLLOW THE IMAGE'S ARRANGEMENT EXACTLY: the gradient is
  * CGGradient.h's, the VERBS are here, and they are implemented in CGGradient.c because that is where

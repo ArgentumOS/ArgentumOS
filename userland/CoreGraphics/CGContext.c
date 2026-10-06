@@ -2635,6 +2635,90 @@ void CGContextStrokeLineSegments(CGContextRef c, const CGPoint *points, size_t c
 	CGPathRelease((CGPathRef)scratch);
 }
 
+/* ------------------------------------------------------------------------- */
+/* the tiled image, and the two page doors that refuse                          */
+/* ------------------------------------------------------------------------- */
+
+/* A TILE IS `CGContextDrawImage`, AND THE GRID IS APPLE'S SENTENCE: the tile at (i, j) goes at
+ * `rect.origin + (i·rect.width, j·rect.height)`, so a shifted origin shifts the whole tiling and the CTM
+ * transforms every tile exactly as it transforms one image. THE INDEX RANGE COMES FROM THE CLIP'S DEVICE
+ * EXTENTS TAKEN BACK TO USER SPACE: the clip is what has to be filled, it is a device-space region, and the
+ * corners of its bounding box through the inverse CTM give a user-space box that CONTAINS it — a box that
+ * covers a little more than the clip costs a few tiles that draw nothing, and a box that covered less would
+ * leave part of the clip untiled. */
+void CGContextDrawTiledImage(CGContextRef c, CGRect rect, CGImageRef image)
+{
+	CGAffineTransform inverse;
+	pixman_box32_t *ext;
+	CGRect extents;
+	CGPoint corner[4];
+	double minx, maxx, miny, maxy;
+	int i, j, i0, i1, j0, j1;
+
+	if (c == NULL || image == NULL) {
+		return;
+	}
+	if (rect.size.width <= 0.0 || rect.size.height <= 0.0) {
+		return;
+	}
+	ext = pixman_region32_extents(&c->state.clip);
+	extents = CGRectMake((CGFloat)ext->x1, (CGFloat)ext->y1, (CGFloat)(ext->x2 - ext->x1),
+			     (CGFloat)(ext->y2 - ext->y1));
+	inverse = CGAffineTransformInvert(c->state.ctm);
+	corner[0] = CGPointMake(extents.origin.x, extents.origin.y);
+	corner[1] = CGPointMake(extents.origin.x + extents.size.width, extents.origin.y);
+	corner[2] = CGPointMake(extents.origin.x, extents.origin.y + extents.size.height);
+	corner[3] = CGPointMake(extents.origin.x + extents.size.width,
+				extents.origin.y + extents.size.height);
+	for (i = 0; i < 4; i++) {
+		corner[i] = CGPointApplyAffineTransform(corner[i], inverse);
+	}
+	minx = maxx = corner[0].x;
+	miny = maxy = corner[0].y;
+	for (i = 1; i < 4; i++) {
+		if (corner[i].x < minx) {
+			minx = corner[i].x;
+		}
+		if (corner[i].x > maxx) {
+			maxx = corner[i].x;
+		}
+		if (corner[i].y < miny) {
+			miny = corner[i].y;
+		}
+		if (corner[i].y > maxy) {
+			maxy = corner[i].y;
+		}
+	}
+	i0 = (int)floor((minx - rect.origin.x) / rect.size.width);
+	i1 = (int)ceil((maxx - rect.origin.x) / rect.size.width);
+	j0 = (int)floor((miny - rect.origin.y) / rect.size.height);
+	j1 = (int)ceil((maxy - rect.origin.y) / rect.size.height);
+	for (j = j0; j <= j1; j++) {
+		for (i = i0; i <= i1; i++) {
+			CGRect tile = CGRectMake(rect.origin.x + (CGFloat)i * rect.size.width,
+						 rect.origin.y + (CGFloat)j * rect.size.height,
+						 rect.size.width, rect.size.height);
+
+			CGContextDrawImage(c, tile, image);
+		}
+	}
+}
+
+void CGContextBeginPage(CGContextRef c, const CGRect *mediaBox)
+{
+	(void)c;
+	(void)mediaBox;
+	fprintf(stderr, "CG-REFUSE: a PAGE is a unit of a page-based context — a PDF or printing context — and "
+			"the only contexts this library has are bitmaps; the 10.6 header says only \"Begin a new "
+			"page.\" and inventing what that means here is not this door\'s to do\n");
+}
+
+void CGContextEndPage(CGContextRef c)
+{
+	(void)c;
+	fprintf(stderr, "CG-REFUSE: CGContextEndPage needs a page-based context, and this library has none\n");
+}
+
 void CGContextDrawPath(CGContextRef c, CGPathDrawingMode mode)
 {
 	if (c == NULL) {
