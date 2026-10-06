@@ -1200,8 +1200,8 @@ func	deferred	CGPSConverterGetTypeID	-	Opaque Types / Type Properties	no-consume
 func	deferred	CGPSConverterIsConverting	-	Opaque Types / Miscellaneous Functions	no-consumer	objc
 func	shipped	CGPathApply	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
 func	struck	CGPathApplyWithBlock	-	Reference / Functions	after-10.6	objc
-func	open	CGPathContainsPoint	-	Opaque Types / Examining a Graphics Path	-	objc
-func	open	CGPathCreateCopy	-	Opaque Types / Copying a Graphics Path	-	objc
+func	shipped	CGPathContainsPoint	-	Opaque Types / Examining a Graphics Path	shipped with the path queries (plan §25)	objc
+func	shipped	CGPathCreateCopy	-	Opaque Types / Copying a Graphics Path	shipped with the path queries (plan §25)	objc
 func	struck	CGPathCreateCopyByDashingPath	-	Opaque Types / Copying a Graphics Path	after-10.6	objc
 func	struck	CGPathCreateCopyByFlattening	-	Reference / Functions	after-10.6	objc
 func	struck	CGPathCreateCopyByIntersectingPath	-	Reference / Functions	after-10.6	objc
@@ -1213,20 +1213,20 @@ func	struck	CGPathCreateCopyByTransformingPath	-	Opaque Types / Copying a Graphi
 func	struck	CGPathCreateCopyByUnioningPath	-	Reference / Functions	after-10.6	objc
 func	struck	CGPathCreateCopyOfLineByIntersectingPath	-	Reference / Functions	after-10.6	objc
 func	struck	CGPathCreateCopyOfLineBySubtractingPath	-	Reference / Functions	after-10.6	objc
-func	open	CGPathCreateMutableCopy	-	Opaque Types / Copying a Graphics Path	-	objc
+func	shipped	CGPathCreateMutableCopy	-	Opaque Types / Copying a Graphics Path	shipped with the path queries (plan §25)	objc
 func	struck	CGPathCreateMutableCopyByTransformingPath	-	Opaque Types / Copying a Graphics Path	after-10.6	objc
 func	struck	CGPathCreateSeparateComponents	-	Reference / Functions	after-10.6	objc
 func	struck	CGPathCreateWithEllipseInRect	-	Opaque Types / Creating Graphics Paths	after-10.6	objc
 func	struck	CGPathCreateWithRect	-	Opaque Types / Creating Graphics Paths	post-10.6	objc
 func	struck	CGPathCreateWithRoundedRect	-	Opaque Types / Creating Graphics Paths	after-10.6	objc
-func	open	CGPathEqualToPath	-	Opaque Types / Examining a Graphics Path	-	objc
+func	shipped	CGPathEqualToPath	-	Opaque Types / Examining a Graphics Path	shipped with the path queries (plan §25)	objc
 func	shipped	CGPathGetBoundingBox	-	Opaque Types / Examining a Graphics Path	-	objc
 func	shipped	CGPathGetCurrentPoint	-	Opaque Types / Examining a Graphics Path	-	objc
 func	shipped	CGPathGetPathBoundingBox	-	Opaque Types / Examining a Graphics Path	-	objc
 func	shipped	CGPathGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	struck	CGPathIntersectsPath	-	Reference / Functions	after-10.6	objc
 func	shipped	CGPathIsEmpty	-	Opaque Types / Examining a Graphics Path	-	objc
-func	open	CGPathIsRect	-	Opaque Types / Examining a Graphics Path	-	objc
+func	shipped	CGPathIsRect	-	Opaque Types / Examining a Graphics Path	shipped with the path queries (plan §25)	objc
 func	shipped	CGPathRelease	-	Opaque Types / Retaining and Releasing a Path	-	objc
 func	shipped	CGPathRetain	-	Opaque Types / Retaining and Releasing a Path	-	objc
 func	shipped	CGPatternCreate	-	Opaque Types / Creating a Pattern	-	objc

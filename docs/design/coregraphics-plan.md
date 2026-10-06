@@ -1697,3 +1697,32 @@ asserted that a decode array is REFUSED (the behaviour changed on purpose), and 
 asserted the same for a mask. A probe's assertion about the tree is a claim the tree may contradict — the same
 trap as a stale `excluded` array — and the honest repair is to assert the NEW behaviour, not to delete the
 check.
+
+## 25. The path copies and the three path queries (5 rows), and the edge a CLOSE was hiding
+
+**FIVE DOORS SHIP:** `CGPathCreateCopy`, `CGPathCreateMutableCopy`, `CGPathEqualToPath`, `CGPathIsRect` and
+`CGPathContainsPoint`, with a new probe (`coregraphics_pathquery`) that checks them as behaviour rather than as
+signatures.
+
+**EQUALITY IS OVER ELEMENTS, NOT OVER PICTURES, AND IT IS NOT A `memcmp`:** `cg_element` carries room for three
+points and a line uses one, so the slots a path never wrote are not part of an element and are not compared. Two
+paths that draw one outline by different routes are not equal, which is what Apple's page describes.
+
+**THE PAIR THAT MAKES `CGPathContainsPoint` WORTH SHIPPING IS THE HOLE.** A point inside a rectangle drawn
+inside another is OUTSIDE by the even-odd rule (the ray crosses two edges) and INSIDE by the non-zero rule (both
+crossings wind the same way) — and the probe asks the SAME path both times. A library that implemented one rule
+and used it for both would pass either check alone. `m` is applied to the POINT rather than the path: the same
+answer for an invertible map, and the flattening tolerance stays in the units the flattener was told about.
+
+**AND THE PROBE FOUND A REAL BUG, IN THE ONE PLACE A PATH LIBRARY IS EASIEST TO GET WRONG: A CLOSE IS AN EDGE.**
+`CGPathAddRect` writes a move, three lines and a CLOSE — not a returning line — so leaving `CloseSubpath` out of
+the crossing test hid the left edge of every rectangle. It showed up as a hole that was not there: a point in the
+band between two nested rectangles came back OUTSIDE by BOTH rules, because the inner rectangle's left edge —
+the crossing that makes the count even — was invisible to the ray. NO PIXEL CHECK WOULD HAVE CAUGHT THIS: the
+fill path goes through pixman, which gets the region right, while this test walks the elements itself. The fix is
+the close edge, and the note is in the code at the branch that adds it.
+
+**`CGPathIsRect` READS TWO SPELLINGS AND REFUSES EVERYTHING ELSE** — `CGPathAddRect`'s move/three-lines/close,
+and a caller's four lines whose last returns to the start — with the corners wound either way and starting at any
+corner. A curve anywhere in the path, a fifth corner, or a degenerate one whose corners line up is false. That
+is a READING, stated in the header, because Apple's page says only that the path must be a rectangle.

@@ -238,6 +238,35 @@ typedef void (*CGPathApplierFunction)(void *info, const CGPathElement *element);
 
 void CGPathApply(CGPathRef path, void *info, CGPathApplierFunction function);
 
+/* ------------------------------------------------------------------------- */
+/* Copies, and the three questions a path can answer about itself             */
+/* ------------------------------------------------------------------------- */
+
+/* THE ELEMENTS ARE COPIED, THE BYTES ARE NOT SHARED, and the two doors differ only in what the result may be
+ * used for: a copy is for reading, a MUTABLE copy is for carrying on from. Mutability is a TYPE here rather
+ * than a flag — `CGMutablePathRef` is what the mutation doors take — which is Apple's own arrangement and the
+ * reason an "immutable" path needs no runtime flag to protect it. */
+CGPathRef CGPathCreateCopy(CGPathRef path);
+CGMutablePathRef CGPathCreateMutableCopy(CGPathRef path);
+
+/* EQUAL MEANS THE SAME ELEMENTS, not the same picture: two paths that draw one outline by different routes are
+ * NOT equal, and this compares what Apple's page calls the path's elements — each element's TYPE, its POINT
+ * COUNT and the coordinates it actually uses. The unused slots beyond `npts` are not part of an element, which
+ * is why this is not a `memcmp`. */
+bool CGPathEqualToPath(CGPathRef path1, CGPathRef path2);
+
+/* IS THIS PATH A RECTANGLE, AND WHICH ONE? True for four axis-aligned corners that close — the shape
+ * `CGPathAddRect` builds, however it was wound and from whichever corner it started — with the rectangle
+ * written through `rect` when that is not NULL. Anything else is false, including a path that only LOOKS like
+ * a rectangle on screen (a curve approximating one, or a fifth corner). */
+bool CGPathIsRect(CGPathRef path, CGRect *rect);
+
+/* IS THIS POINT INSIDE THE PATH, BY THE EVEN-ODD RULE OR THE NON-ZERO ONE? The two rules disagree exactly
+ * where a path overlaps itself, which is the choice the parameter makes; and `m`, when given, is applied to
+ * the path's points before the test — Apple's sentence — so a singular matrix collapses the path rather than
+ * sending the question somewhere undefined. */
+bool CGPathContainsPoint(CGPathRef path, const CGAffineTransform *m, CGPoint point, bool eoFill);
+
 #ifdef __cplusplus
 }
 #endif

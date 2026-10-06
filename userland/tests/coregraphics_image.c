@@ -114,7 +114,6 @@ int main(void)
 	CGImageRef image;
 	CGDataProviderRef provider;
 	CGContextRef c;
-	CGFloat decode[8] = { 0 };
 
 	/* --- the chart reads back as it was given ---------------------------------------------- */
 	provider = CGDataProviderCreateWithData(NULL, img_data, sizeof(img_data), NULL);

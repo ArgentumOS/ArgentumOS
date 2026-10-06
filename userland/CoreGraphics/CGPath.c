@@ -555,3 +555,257 @@ void CGPathApply(CGPathRef cpath, void *info, CGPathApplierFunction function)
 		function(info, &element);
 	}
 }
+
+/* ------------------------------------------------------------------------- */
+/* Copies, and the three questions a path can answer about itself             */
+/* ------------------------------------------------------------------------- */
+
+/* ONE ELEMENT AT A TIME, BECAUSE THE TAIL IS NOT PART OF IT: `cg_element` carries room for three points and a
+ * line uses one, so comparing whole elements would compare slots the path never wrote — which is also why the
+ * comparison is not a `memcmp`. */
+static int fn_elements_equal(const cg_element *a, const cg_element *b)
+{
+	int i;
+
+	if (a->type != b->type || a->npts != b->npts) {
+		return 0;
+	}
+	for (i = 0; i < a->npts * 2; i++) {
+		if (a->pts[i] != b->pts[i]) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
+static struct CGPath *fn_copy_of(CGPathRef path)
+{
+	/* `CGPathRef` IS A POINTER TO CONST, so a copy being built is spelled with the mutable
+	 * struct — the same thing this file's other constructors do. */
+	struct CGPath *copy;
+
+	if (path == NULL) {
+		return NULL;
+	}
+	copy = calloc(1, sizeof(struct CGPath));
+	if (copy == NULL) {
+		return NULL;
+	}
+	copy->refcount = 1;
+	if (path->count > 0) {
+		copy->elems = malloc(sizeof(cg_element) * (size_t)path->count);
+		if (copy->elems == NULL) {
+			free(copy);
+			return NULL;
+		}
+		memcpy(copy->elems, path->elems, sizeof(cg_element) * (size_t)path->count);
+		copy->count = path->count;
+		copy->cap = path->count;
+	}
+	return copy;
+}
+
+CGPathRef CGPathCreateCopy(CGPathRef path)
+{
+	return (CGPathRef)fn_copy_of(path);
+}
+
+CGMutablePathRef CGPathCreateMutableCopy(CGPathRef path)
+{
+	return (CGMutablePathRef)fn_copy_of(path);
+}
+
+bool CGPathEqualToPath(CGPathRef path1, CGPathRef path2)
+{
+	int i;
+
+	if (path1 == NULL || path2 == NULL) {
+		return false;
+	}
+	if (path1 == path2) {
+		return true;
+	}
+	if (path1->count != path2->count) {
+		return false;
+	}
+	for (i = 0; i < path1->count; i++) {
+		if (!fn_elements_equal(&path1->elems[i], &path2->elems[i])) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/* A RECTANGLE IS FOUR CORNERS THAT STEP ONE AXIS AT A TIME AND COME BACK. `CGPathAddRect` writes a move and
+ * three lines and closes; a caller's own path may spell the same rectangle as four lines whose last returns to
+ * the start. BOTH ARE READ HERE AND NOTHING ELSE IS: a path with a curve in it, a path with five corners, or a
+ * degenerate one whose corners line up is not a rectangle. The corners may be wound either way and may start
+ * at any corner, which is a READING — Apple's page says only that the path must be a rectangle. */
+bool CGPathIsRect(CGPathRef path, CGRect *rect)
+{
+	CGFloat x[5];
+	CGFloat y[5];
+	int n = 0;
+	int i;
+	int closed = 0;
+	CGFloat minx, maxx, miny, maxy;
+
+	if (path == NULL) {
+		return false;
+	}
+	for (i = 0; i < path->count; i++) {
+		const cg_element *e = &path->elems[i];
+
+		if (e->type == kCGPathElementCloseSubpath) {
+			if (i != path->count - 1) {
+				return false;	/* anything after the close is not part of one rectangle */
+			}
+			closed = 1;
+			continue;
+		}
+		if (e->type != kCGPathElementMoveToPoint && e->type != kCGPathElementAddLineToPoint) {
+			return false;
+		}
+		if (n >= 5) {
+			return false;
+		}
+		x[n] = e->pts[0];
+		y[n] = e->pts[1];
+		n++;
+	}
+	if (n == 5 && x[4] == x[0] && y[4] == y[0]) {
+		n = 4;	/* a fourth line that returns to the start IS the close */
+	} else if (n != 4) {
+		return false;
+	}
+	(void)closed;
+	for (i = 0; i < 4; i++) {
+		int j = (i + 1) % 4;
+
+		if (!((x[i] == x[j]) != (y[i] == y[j]))) {
+			return false;	/* consecutive corners must step exactly one axis */
+		}
+	}
+	minx = maxx = x[0];
+	miny = maxy = y[0];
+	for (i = 1; i < 4; i++) {
+		if (x[i] < minx) {
+			minx = x[i];
+		}
+		if (x[i] > maxx) {
+			maxx = x[i];
+		}
+		if (y[i] < miny) {
+			miny = y[i];
+		}
+		if (y[i] > maxy) {
+			maxy = y[i];
+		}
+	}
+	if (minx == maxx || miny == maxy) {
+		return false;	/* a degenerate rectangle is a line, not a rectangle */
+	}
+	if (rect != NULL) {
+		rect->origin.x = minx;
+		rect->origin.y = miny;
+		rect->size.width = maxx - minx;
+		rect->size.height = maxy - miny;
+	}
+	return true;
+}
+
+/* THE CROSSING TEST, OVER THE PATH'S OWN LINES.
+ *
+ * EVERY CURVE IS FLATTENED FIRST — the tree's own adaptive flattener, the one the stroker and the dasher use —
+ * so a curve is a run of short lines by the time it is crossed, and this is one loop rather than one loop per
+ * element type.
+ *
+ * THE TWO RULES DIFFER IN ONE SIGN. Even-odd counts how many edges the ray crosses; non-zero adds whether each
+ * crossing runs upward or downward and asks whether the total is anything but zero. A COUNTER-CLOCKWISE INNER
+ * RECTANGLE IS THE CASE THAT TELLS THEM APART: both rules then describe the same shape differently, and the
+ * probe checks them as one pair.
+ *
+ * `m` IS APPLIED TO THE POINT RATHER THAN TO THE PATH — the same answer for an invertible map, and it keeps the
+ * flattening tolerance measured in the path's own units, which is where the flattener was told it applies. */
+bool CGPathContainsPoint(CGPathRef path, const CGAffineTransform *m, CGPoint point, bool eoFill)
+{
+	CGPathRef flat;
+	int crossings = 0;
+	int winding = 0;
+	int i;
+	double px = (double)point.x;
+	double py = (double)point.y;
+	double lx = 0.0;
+	double ly = 0.0;
+	double sx = 0.0;	/* the subpath's start: what a CLOSE returns to */
+	double sy = 0.0;
+	int have = 0;
+
+	if (path == NULL) {
+		return false;
+	}
+	flat = cg_path_create_flattened_copy(path, CG_FLATTEN_DEFAULT);
+	if (flat == NULL) {
+		return false;
+	}
+	if (m != NULL) {
+		CGAffineTransform inv = CGAffineTransformInvert(*m);
+		CGPoint p = CGPointApplyAffineTransform(CGPointMake((CGFloat)px, (CGFloat)py), inv);
+
+		px = (double)p.x;
+		py = (double)p.y;
+	}
+	for (i = 0; i < flat->count; i++) {
+		const cg_element *e = &flat->elems[i];
+
+		if (e->type == kCGPathElementMoveToPoint) {
+			lx = (double)e->pts[0];
+			ly = (double)e->pts[1];
+			sx = lx;
+			sy = ly;
+			have = 1;
+			continue;
+		}
+		/* A CLOSE IS AN EDGE — THE ONE BACK TO THE SUBPATH'S START — AND LEAVING IT OUT COSTS A
+		 * CROSSING RATHER THAN A PIXEL: a rectangle written by `CGPathAddRect` ends in a close and not
+		 * in a returning line, so without this the left edge of every rectangle was invisible to the
+		 * ray. THE PROBE CAUGHT IT AS A HOLE THAT WAS NOT THERE: a point in the band between two nested
+		 * rectangles came back OUTSIDE by both rules, because the inner rectangle's left edge — the one
+		 * that makes the count even — was never counted. */
+		if (e->type == kCGPathElementCloseSubpath && have) {
+			double ax = lx, ay = ly;
+			double bx = sx, by = sy;
+
+			if ((ay <= py) != (by <= py)) {
+				double t = (py - ay) / (by - ay);
+				double xint = ax + t * (bx - ax);
+
+				if (xint > px) {
+					crossings++;
+					winding += (by > ay) ? 1 : -1;
+				}
+			}
+			lx = bx;
+			ly = by;
+			continue;
+		}
+		if (e->type == kCGPathElementAddLineToPoint && have) {
+			double ax = lx, ay = ly;
+			double bx = (double)e->pts[0], by = (double)e->pts[1];
+
+			if ((ay <= py) != (by <= py)) {
+				double t = (py - ay) / (by - ay);
+				double xint = ax + t * (bx - ax);
+
+				if (xint > px) {
+					crossings++;
+					winding += (by > ay) ? 1 : -1;
+				}
+			}
+			lx = bx;
+			ly = by;
+		}
+	}
+	CGPathRelease(flat);
+	return eoFill ? (crossings % 2) != 0 : winding != 0;
+}
