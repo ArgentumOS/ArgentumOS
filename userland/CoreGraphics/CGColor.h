@@ -22,10 +22,12 @@
  * this header and CGColor.c both refuse rather than guess.
  *
  * AND WHAT IS STILL ABSENT, deliberately, rather than merely unbuilt:
- *   * `CGColorGetConstantColor` and the `kCGColorWhite`/`Black`/`Clear` constants take a
- *     CFStringRef in Apple's signature, and this tree has no CoreFoundation by decision
- *     (docs/design/corefoundation-plan.md is retracted, and plan §6 leaves the Foundation
- *     binding open). They arrive with that binding, not before it.
+ *   * `CGColorGetConstantColor` — NOT refused, only still unbuilt. IT WAS REFUSED HERE FOR ONE SESSION
+ *     AND THE GROUND HAS BEEN PAID: the note said this name and the `kCGColorWhite`/`Black`/`Clear`
+ *     constants arrive with the Foundation binding and not before it, and THE BINDING ARRIVED — every
+ *     CF type in this library is now spelled as the Foundation class it is toll-free with, which is
+ *     what `kCGColorSpaceGeneric*` in CGColorSpace.h and the trio declared below already do. The names
+ *     ship; the door that consumes them is the remaining row.
  *   * `CGColorCreateSRGB` wants a NAMED sRGB space rather than the device one, and
  *     `CGColorCreateGenericCMYK` wants a device-CMYK space that does not exist yet.
  *   * `CGColorConversionInfo` and its family are macOS 10.11 API and ARE OUT OF ERA, so they are
@@ -130,5 +132,26 @@ bool CGColorEqualToColor(CGColorRef color1, CGColorRef color2);
  * published nowhere), which is why the header says so rather than implying a constant someone could
  * port; identity is the whole of what the door promises. See CGTypeID_internal.h. */
 CGTypeID CGColorGetTypeID(void);
+
+/* ------------------------------------------------------------------------- */
+/* The constant colors: NAMES, not colors                                      */
+/* ------------------------------------------------------------------------- */
+
+/* THESE ARE `CFStringRef` CONSTANTS IN APPLE'S 10.6 HEADER, AND THAT IS NOT A TYPO OR AN OVERSIGHT TO BE
+ * MODERNISED AWAY: the 10.6 declarations read `CG_EXTERN const CFStringRef kCGColorWhite` under the heading
+ * "Names of colors for use with `CGColorGetConstantColor'", and the same names became `CGColorRef` objects in
+ * LATER SDKs. THIS LIBRARY FOLLOWS THE ERA AND THE HEADER: they are NAMES, a caller passes one to
+ * `CGColorGetConstantColor`, and the colour comes back from there.
+ *
+ * THAT MEANS `CGContextSetFillColorWithColor(ctx, kCGColorWhite)` — the modern spelling — DOES NOT COMPILE
+ * HERE, and it should not: that source is post-10.6, and the row that would take it is a different
+ * declaration of the same name. What compiles is the 10.6 spelling, which is the surface this duplication
+ * targets.
+ *
+ * APPLE'S OWN COMMENT SAYS WHICH SPACE THEY ARE IN — "Colors in the `Generic' gray color space" — so white
+ * and black are not device gray and the distinction matters to anyone who asks the colour what it holds. */
+extern NSString *const kCGColorWhite;
+extern NSString *const kCGColorBlack;
+extern NSString *const kCGColorClear;
 
 #endif /* CORE_GRAPHICS_CGCOLOR_H */

@@ -1520,3 +1520,39 @@ opposite for one build before the check itself contradicted it.
 **THE ONE THING THE UNIT DID NOT NEED TOUCH**: the decoders. They ask `cg_dataprovider_bytes`, which is now
 the single place a callback provider becomes a buffer, so PNG and JPEG read a callback source without knowing
 it is one — the materialisation is lazy, once, and cached, which is the claim §17 wrongly reported as broken.
+
+## 19. The constants, the format enums, and four names that were refused on paid ground (27 rows)
+
+**THE CONSTANT LAYER IS IN.** Eight macros (`CGFLOAT_TYPE`/`CGFLOAT_IS_DOUBLE`/`CGFLOAT_MIN`/`CGFLOAT_MAX`/
+`CGFLOAT_DEFINED`, `CG_LOCAL`, `CG_PRIVATE_EXTERN`, `CG_OBSOLETE`), two enumerations with their cases
+(`CGFontPostScriptFormat` with Apple's **1, 3, 42**, and `CGBitmapInfo` with `kCGBitmapFloatComponents`), the
+glyph bounds (`CGGlyphMin`/`CGGlyphMax`), and eleven NAMED constants — the four generic color spaces, the
+four variation-axis keys, and `kCGColorWhite`/`Black`/`Clear`. The rows are flipped by the sweep's own stale
+list, which is why the flip needs no counting by hand: `--check` names them and `--strict` agrees afterwards.
+
+**`CGBitmapInfo` WAS NOT AN ENUM, WHICH IS WHY THE ROW LOOKED UNBUILT:** Apple's 10.6 declares the flags in
+an UNNAMED enumeration and then does `typedef uint32_t CGBitmapInfo;` — so no `enum CGBitmapInfo` exists to
+find, and what this tree actually lacked was the type NAME. It has it now, `CGImageCreate`'s and
+`CGImageGetBitmapInfo`'s signatures are spelled with it (ABI-neutral: it is `uint32_t`), and
+`kCGBitmapFloatComponents` is `1 << 8` — above the alpha mask, below the byte-order bits.
+
+**THE TRIO WAS REFUSED ON GROUND THAT HAS SINCE BEEN PAID, AND THE REFUSAL IS CORRECTED IN PLACE.** CGColor.h
+said `CGColorGetConstantColor` and its three names "arrive with that binding, not before it" — the binding to
+Foundation, which at the time had not landed. IT LANDED, and this very library spells every CF type as the
+Foundation class it is toll-free with (`kCGColorSpaceGeneric*` has done so for several units). So the three
+names ship. **AND THEY SHIP AS NAMES RATHER THAN COLOURS, WHICH IS THE 10.6 SURFACE:** the 10.6 header reads
+`CG_EXTERN const CFStringRef kCGColorWhite` under "Names of colors for use with `CGColorGetConstantColor'",
+and the same names became `CGColorRef` objects in LATER SDKs. `CGContextSetFillColorWithColor(ctx,
+kCGColorWhite)` — the modern spelling — therefore does NOT compile here, deliberately: that source is
+post-10.6, and the door (`CGColorGetConstantColor`, still owed) is where a colour comes back.
+
+**A CONSTANT'S VALUE IS ITS OWN NAME, and that is a decision with a reason rather than a shortcut.** Apple
+publishes the *names* and says nothing about what a caller sees if it prints one, so the only property that
+must hold is that the reader and the writer of a value agree. Nothing in the library parses these strings.
+
+**THE VERIFICATION IS THE POINT OF THE STEP, NOT THE BUILD:** both source lists are `$(wildcard
+userland/CoreGraphics/*.m)` — the guest's `CG_MSRCS` in mk/00-base.mk and the host's `HOST_CG_MSRCS` in
+mk/60-host.mk — so a new file is compiled without being named, and "the build is green" says nothing about
+whether the new symbols EXIST. The check is `nm -g --defined-only` over the built objects, asserting all
+eleven new constants are defined somewhere: a name declared in a header and defined in a file that is not
+compiled links fine until somebody uses it.

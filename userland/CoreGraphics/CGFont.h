@@ -129,4 +129,37 @@ NSString *CGFontCopyFullName(CGFontRef font);
  * port; identity is the whole of what the door promises. See CGTypeID_internal.h. */
 CGTypeID CGFontGetTypeID(void);
 
+/* ------------------------------------------------------------------------- */
+/* The PostScript formats, the glyph bounds, and the variation axis names      */
+/* ------------------------------------------------------------------------- */
+
+/* APPLE'S ENUM, TRANSCRIBED WITH ITS VALUES — AND THE SPACING OF THOSE VALUES IS THE POINT: the types
+ * are numbered 1, 3 and 42 as the PostScript specification numbers them, not 1, 2, 3. A caller that
+ * stored one and printed it would notice; a caller that passed one straight through would not, which
+ * is exactly why the numbers are written down here rather than counted. */
+enum CGFontPostScriptFormat {
+	kCGFontPostScriptFormatType1 = 1,
+	kCGFontPostScriptFormatType3 = 3,
+	kCGFontPostScriptFormatType42 = 42
+};
+typedef enum CGFontPostScriptFormat CGFontPostScriptFormat;
+
+/* THE GLYPH BOUNDS, IN APPLE'S OWN SHAPE: a second unnamed enumeration whose members name the ends of
+ * the glyph range, with the maximum defined AS `kCGGlyphMax` above rather than by repeating a number.
+ * `CGGlyphMin` IS ZERO AND MEANS "A GLYPH EXISTS AT THIS INDEX" — the missing-glyph sentinel in this
+ * family is `kCGFontIndexInvalid`, not 0, which is what these two constants exist to keep apart. */
+enum {
+	CGGlyphMin = 0,
+	CGGlyphMax = kCGGlyphMax
+};
+
+/* THE VARIATION-AXIS NAMES: `CFStringRef` CONSTANTS IN APPLE'S HEADER AND `NSString *` HERE, this
+ * tree's binding for every CF type (see CGBase.h). They are THE KEYS OF THE AXES DICTIONARY a caller
+ * passes to `CGFontCreateCopyWithVariations`, so their spelling is part of the interface: a caller
+ * writes `kCGFontVariationAxisName` and expects the dictionary to be read by that name. */
+extern NSString *const kCGFontVariationAxisName;
+extern NSString *const kCGFontVariationAxisMinValue;
+extern NSString *const kCGFontVariationAxisMaxValue;
+extern NSString *const kCGFontVariationAxisDefaultValue;
+
 #endif /* CORE_GRAPHICS_CGFONT_H */

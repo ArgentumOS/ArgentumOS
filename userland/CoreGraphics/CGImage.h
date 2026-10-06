@@ -90,7 +90,20 @@ enum {
 #define kCGBitmapByteOrder16Host kCGBitmapByteOrder16Little
 #define kCGBitmapByteOrder32Host kCGBitmapByteOrder32Little
 
+/* `CGBitmapInfo` IS THE TYPE THOSE CONSTANTS BELONG TO, and this library named it nowhere until now:
+ * Apple's 10.6 declares the flags inside an UNNAMED enumeration and then does `typedef uint32_t
+ * CGBitmapInfo;` — so the type carries the mask values and the enumeration has no name of its own,
+ * which is why a reader looking for `enum CGBitmapInfo` in their header will not find one. The
+ * constants above keep this file's own spelling; what was missing was the name that gathers them. */
+typedef uint32_t CGBitmapInfo;
+
 #define kCGBitmapAlphaInfoMask 0x1Fu
+
+/* THE FLOAT-COMPONENTS FLAG, Apple's second bit in this family and the one this file was missing:
+ * `1 << 8` sits ABOVE the alpha mask (0x1F) and BELOW the byte-order bits (0x7000), so a caller ORs it
+ * with either without either noticing. It says the samples are floating point, which is a fact about
+ * the DATA a caller hands over rather than about the color space. */
+#define kCGBitmapFloatComponents (1 << 8)
 
 #include <CoreGraphics/CGColor.h>
 #include <CoreGraphics/CGColorSpace.h>
@@ -114,7 +127,7 @@ typedef struct CGImage *CGImageRef;
  * `shouldInterpolate` and `intent` are ACCEPTED AND KEPT, and they are the reason the getters for
  * them exist. What this library does with them when drawing is stated at `CGContextDrawImage`. */
 CGImageRef CGImageCreate(size_t width, size_t height, size_t bitsPerComponent, size_t bitsPerPixel,
-			 size_t bytesPerRow, CGColorSpaceRef space, uint32_t bitmapInfo,
+			 size_t bytesPerRow, CGColorSpaceRef space, CGBitmapInfo bitmapInfo,
 			 CGDataProviderRef provider, const CGFloat *decode, bool shouldInterpolate,
 			 CGColorRenderingIntent intent);
 
@@ -161,7 +174,7 @@ size_t CGImageGetBitsPerPixel(CGImageRef image);
 size_t CGImageGetBytesPerRow(CGImageRef image);
 CGColorSpaceRef CGImageGetColorSpace(CGImageRef image);
 CGImageAlphaInfo CGImageGetAlphaInfo(CGImageRef image);
-uint32_t CGImageGetBitmapInfo(CGImageRef image);
+CGBitmapInfo CGImageGetBitmapInfo(CGImageRef image);
 CGDataProviderRef CGImageGetDataProvider(CGImageRef image);
 bool CGImageGetShouldInterpolate(CGImageRef image);
 CGColorRenderingIntent CGImageGetRenderingIntent(CGImageRef image);

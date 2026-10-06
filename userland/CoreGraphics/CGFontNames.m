@@ -75,3 +75,19 @@ CGGlyph CGFontGetGlyphWithGlyphName(CGFontRef font, NSString *name)
 	}
 	return cg_font_glyph_with_name(font, [name UTF8String]);
 }
+
+/* ------------------------------------------------------------------------- */
+/* The variation-axis keys                                                     */
+/* ------------------------------------------------------------------------- */
+
+/* THE KEYS OF THE AXES DICTIONARY a caller passes to `CGFontCreateCopyWithVariations`: a dictionary whose
+ * keys are the axes ("wght", "wdth") and whose values are themselves dictionaries keyed by these four. They
+ * are `CFStringRef` in Apple's header and `NSString *` here, like every CF type in this library.
+ *
+ * THE VALUES ARE THIS LIBRARY'S OWN, as the colour names' are: Apple publishes the NAMES and nothing about
+ * what a caller sees if it prints one. What matters is that the reader and the writer of the dictionary
+ * agree, and they do because both use these declarations. */
+NSString *const kCGFontVariationAxisName = @"kCGFontVariationAxisName";
+NSString *const kCGFontVariationAxisMinValue = @"kCGFontVariationAxisMinValue";
+NSString *const kCGFontVariationAxisMaxValue = @"kCGFontVariationAxisMaxValue";
+NSString *const kCGFontVariationAxisDefaultValue = @"kCGFontVariationAxisDefaultValue";

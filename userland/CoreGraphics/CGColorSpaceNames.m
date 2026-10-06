@@ -57,6 +57,15 @@
 #include <lcms2.h>
 #include <stdio.h>
 
+/* THE FOUR GENERIC SPACES, AND THE VALUE OF EACH IS ITS OWN NAME. Apple publishes the NAMES, not the
+ * string a caller gets by printing one, and a caller who wrote this value to a file and read it back
+ * is reading a name this library chose — which is what a name is for. What must hold is that
+ * CGColorSpaceCreateWithName accepts the value it was handed, which is why the name IS the value. */
+NSString *const kCGColorSpaceGenericGray = @"kCGColorSpaceGenericGray";
+NSString *const kCGColorSpaceGenericRGB = @"kCGColorSpaceGenericRGB";
+NSString *const kCGColorSpaceGenericCMYK = @"kCGColorSpaceGenericCMYK";
+NSString *const kCGColorSpaceGenericRGBLinear = @"kCGColorSpaceGenericRGBLinear";
+
 NSString *const kCGColorSpaceSRGB = @"kCGColorSpaceSRGB";
 NSString *const kCGColorSpaceAdobeRGB1998 = @"kCGColorSpaceAdobeRGB1998";
 NSString *const kCGColorSpaceGenericGrayGamma2_2 = @"kCGColorSpaceGenericGrayGamma2_2";

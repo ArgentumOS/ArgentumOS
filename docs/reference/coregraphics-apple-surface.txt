@@ -84,8 +84,8 @@
 #   var        shipped   14   open   11   struck   87   deferred   23
 #   typealias  shipped   20   open   12   struck   45   deferred   23
 #   struct     shipped    7   open    3   struck    9   deferred    1
-case	open	CGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
-case	open	CGGlyphMin	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
+case	shipped	CGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	shipped with the constants and format enums (plan §19)	objc
+case	shipped	CGGlyphMin	-	Opaque Types / Working with Font Tables / Constants	shipped with the constants and format enums (plan §19)	objc
 case	deferred	CGPDFDataFormatJPEG2000	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
 case	deferred	CGPDFDataFormatJPEGEncoded	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
 case	deferred	CGPDFDataFormatRaw	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
@@ -160,7 +160,7 @@ case	shipped	kCGBitmapByteOrderDefault	-	Opaque Types / Examining an image / Con
 case	struck	kCGBitmapByteOrderInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	post-10.6	objc
 case	shipped	kCGBitmapByteOrderMask	-	Opaque Types / Examining an image / Enumeration Cases	deprecated	objc
 case	struck	kCGBitmapComponentInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	post-10.6	objc
-case	open	kCGBitmapFloatComponents	-	Opaque Types / Examining an image / Constants	deprecated	objc
+case	shipped	kCGBitmapFloatComponents	-	Opaque Types / Examining an image / Constants	shipped with the constants and format enums (plan §19)	objc
 case	struck	kCGBitmapFloatInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	post-10.6	objc
 case	struck	kCGBitmapLayoutABGR	-	Enumerations / Enumeration Cases	post-10.6	objc
 case	struck	kCGBitmapLayoutARGB	-	Enumerations / Enumeration Cases	post-10.6	objc
@@ -321,9 +321,9 @@ case	struck	kCGEventTargetUnixProcessID	-	Services / Constants / Constants	x11-t
 case	struck	kCGEventUnacceleratedPointerMovementX	-	Services / Constants / Enumeration Cases	post-10.6	objc
 case	struck	kCGEventUnacceleratedPointerMovementY	-	Services / Constants / Enumeration Cases	post-10.6	objc
 case	struck	kCGFloatingWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
-case	open	kCGFontPostScriptFormatType1	-	Opaque Types / Working with PostScript Fonts / Constants	-	objc
-case	open	kCGFontPostScriptFormatType3	-	Opaque Types / Working with PostScript Fonts / Constants	-	objc
-case	open	kCGFontPostScriptFormatType42	-	Opaque Types / Working with PostScript Fonts / Constants	-	objc
+case	shipped	kCGFontPostScriptFormatType1	-	Opaque Types / Working with PostScript Fonts / Constants	shipped with the constants and format enums (plan §19)	objc
+case	shipped	kCGFontPostScriptFormatType3	-	Opaque Types / Working with PostScript Fonts / Constants	shipped with the constants and format enums (plan §19)	objc
+case	shipped	kCGFontPostScriptFormatType42	-	Opaque Types / Working with PostScript Fonts / Constants	shipped with the constants and format enums (plan §19)	objc
 case	struck	kCGGesturePhaseBegan	-	Reference / Enumerations / Constants	post-10.6	objc
 case	struck	kCGGesturePhaseCancelled	-	Reference / Enumerations / Constants	post-10.6	objc
 case	struck	kCGGesturePhaseChanged	-	Reference / Enumerations / Constants	post-10.6	objc
@@ -528,7 +528,7 @@ case	struck	kCGWindowListOptionOnScreenOnly	-	Services / Data Types / Type Prope
 case	struck	kCGWindowSharingNone	-	Services / Data Types / Constants	x11-territory	objc
 case	struck	kCGWindowSharingReadOnly	-	Services / Data Types / Constants	x11-territory	objc
 case	struck	kCGWindowSharingReadWrite	-	Services / Data Types / Constants	x11-territory	objc
-enum	open	CGBitmapInfo	-	Opaque Types / Examining an image	-	objc
+enum	shipped	CGBitmapInfo	-	Opaque Types / Examining an image	shipped with the constants and format enums (plan §19)	objc
 enum	struck	CGBitmapLayout	-	Enumerations	post-10.6	objc
 enum	shipped	CGBlendMode	-	Opaque Types / Managing a Graphics Context	-	objc
 enum	struck	CGCaptureOptions	-	Services / Constants	x11-territory	objc
@@ -552,7 +552,7 @@ enum	struck	CGEventTapLocation	-	Services / Constants	x11-territory	objc
 enum	struck	CGEventTapOptions	-	Services / Constants	x11-territory	objc
 enum	struck	CGEventTapPlacement	-	Services / Constants	x11-territory	objc
 enum	struck	CGEventType	-	Services / Constants	x11-territory	objc
-enum	open	CGFontPostScriptFormat	-	Opaque Types / Working with PostScript Fonts	-	objc
+enum	shipped	CGFontPostScriptFormat	-	Opaque Types / Working with PostScript Fonts	shipped with the constants and format enums (plan §19)	objc
 enum	struck	CGGesturePhase	-	Reference / Enumerations	post-10.6	objc
 enum	struck	CGGlyphDeprecatedEnum	-	Reference / Enumerations	post-10.6	objc
 enum	shipped	CGGradientDrawingOptions	-	Opaque Types / Drawing Gradients and Shadings	-	objc
@@ -1325,12 +1325,12 @@ macro	struck	CGDisplayNoErr	-	Reference / Constants	x11-territory	objc
 macro	struck	CGEventMaskBit	-	Services / Working With Event Taps	x11-territory	objc
 macro	struck	CGEventNoErr	-	Reference / Constants	x11-territory	objc
 macro	struck	CGEventSupressionState	-	Reference / Macros	x11-territory	objc
-macro	open	CGFLOAT_DEFINED	-	CoreFoundation, CG-named / Reference / Macros	-	objc
+macro	shipped	CGFLOAT_DEFINED	-	CoreFoundation, CG-named / Reference / Macros	shipped with the constants and format enums (plan §19)	objc
 macro	struck	CGFLOAT_EPSILON	-	CoreFoundation, CG-named / Reference / Constants	post-10.6	objc
-macro	open	CGFLOAT_IS_DOUBLE	-	CoreFoundation, CG-named / Reference / Constants	-	objc
-macro	open	CGFLOAT_MAX	-	CoreFoundation, CG-named / Reference / Constants	-	objc
-macro	open	CGFLOAT_MIN	-	CoreFoundation, CG-named / Reference / Constants	-	objc
-macro	open	CGFLOAT_TYPE	-	CoreFoundation, CG-named / Reference / Macros	-	objc
+macro	shipped	CGFLOAT_IS_DOUBLE	-	CoreFoundation, CG-named / Reference / Constants	shipped with the constants and format enums (plan §19)	objc
+macro	shipped	CGFLOAT_MAX	-	CoreFoundation, CG-named / Reference / Constants	shipped with the constants and format enums (plan §19)	objc
+macro	shipped	CGFLOAT_MIN	-	CoreFoundation, CG-named / Reference / Constants	shipped with the constants and format enums (plan §19)	objc
+macro	shipped	CGFLOAT_TYPE	-	CoreFoundation, CG-named / Reference / Macros	shipped with the constants and format enums (plan §19)	objc
 macro	shipped	CGPointApplyAffineTransform	-	Reference / Macros	-	objc
 macro	shipped	CGPointEqualToPoint	-	Reference / Comparing Values	-	objc
 macro	struck	CGSetLocalEventsFilterDuringSupressionState	-	Services / Deprecated Functions	x11-territory	objc
@@ -1346,15 +1346,15 @@ macro	struck	CG_EXTERN_64	-	Reference / Macros	post-10.6	objc
 macro	struck	CG_HDR_BT_2100	-	Reference / Constants	post-10.6	objc
 macro	shipped	CG_INLINE	-	Reference / Macros	-	objc
 macro	struck	CG_IOS_VERSION	-	Reference / Macros	post-10.6	objc
-macro	open	CG_LOCAL	-	Reference / Macros	-	objc
+macro	shipped	CG_LOCAL	-	Reference / Macros	shipped with the constants and format enums (plan §19)	objc
 macro	struck	CG_LOCAL_32	-	Reference / Macros	post-10.6	objc
 macro	struck	CG_LOCAL_64	-	Reference / Macros	post-10.6	objc
 macro	struck	CG_NONNULL_ARRAY	-	Reference / Macros	post-10.6	objc
 macro	struck	CG_NULLABLE_ARRAY	-	Reference / Macros	post-10.6	objc
-macro	open	CG_OBSOLETE	-	Reference / Macros	-	objc
+macro	shipped	CG_OBSOLETE	-	Reference / Macros	shipped with the constants and format enums (plan §19)	objc
 macro	struck	CG_OSX_VERSION	-	Reference / Macros	post-10.6	objc
 macro	struck	CG_OS_VERSION_2020	-	Reference / Macros	post-10.6	objc
-macro	open	CG_PRIVATE_EXTERN	-	Reference / Macros	-	objc
+macro	shipped	CG_PRIVATE_EXTERN	-	Reference / Macros	shipped with the constants and format enums (plan §19)	objc
 macro	struck	CG_PURE	-	Reference / Macros	post-10.6	objc
 macro	struck	CG_SKYLIGHT_EXTERN_64	-	Reference / Macros	post-10.6	objc
 macro	struck	CG_SOFT_DEPRECATED_WITH_REPLACEMENT	-	Macros	post-10.6	objc
@@ -1556,8 +1556,8 @@ var	shipped	CGSizeZero	-	Reference / Constants / Constants	-	objc
 var	struck	kCGAdaptiveMaximumBitDepth	-	Variables	after-10.6	objc
 var	shipped	kCGBitmapByteOrder16Host	-	Opaque Types / Constants / Constants	deprecated	objc
 var	shipped	kCGBitmapByteOrder32Host	-	Opaque Types / Constants / Constants	deprecated	objc
-var	open	kCGColorBlack	-	Opaque Types / Getting System Colors	-	objc
-var	open	kCGColorClear	-	Opaque Types / Getting System Colors	-	objc
+var	shipped	kCGColorBlack	-	Opaque Types / Getting System Colors	shipped with the constants and format enums (plan §19)	objc
+var	shipped	kCGColorClear	-	Opaque Types / Getting System Colors	shipped with the constants and format enums (plan §19)	objc
 var	struck	kCGColorConversionBlackPointCompensation	-	Opaque Types / Type Properties	after-10.6	objc
 var	struck	kCGColorConversionTRCSize	-	Opaque Types / Converting Between Color Spaces	after-10.6	objc
 var	struck	kCGColorSpaceACESCGLinear	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
@@ -1577,12 +1577,12 @@ var	struck	kCGColorSpaceExtendedLinearITUR_2020	-	Opaque Types / Accessing Syste
 var	struck	kCGColorSpaceExtendedLinearSRGB	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
 var	struck	kCGColorSpaceExtendedRange	-	Reference / Constants	post-10.6	objc
 var	struck	kCGColorSpaceExtendedSRGB	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
-var	open	kCGColorSpaceGenericCMYK	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorSpaceGenericGray	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
+var	shipped	kCGColorSpaceGenericCMYK	-	Opaque Types / Accessing System-Defined Color Spaces	shipped with the constants and format enums (plan §19)	objc
+var	shipped	kCGColorSpaceGenericGray	-	Opaque Types / Accessing System-Defined Color Spaces	shipped with the constants and format enums (plan §19)	objc
 var	shipped	kCGColorSpaceGenericGrayGamma2_2	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
 var	struck	kCGColorSpaceGenericLab	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
-var	open	kCGColorSpaceGenericRGB	-	Opaque Types / Accessing System-Defined Color Spaces	deprecated	objc
-var	open	kCGColorSpaceGenericRGBLinear	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
+var	shipped	kCGColorSpaceGenericRGB	-	Opaque Types / Accessing System-Defined Color Spaces	shipped with the constants and format enums (plan §19)	objc
+var	shipped	kCGColorSpaceGenericRGBLinear	-	Opaque Types / Accessing System-Defined Color Spaces	shipped with the constants and format enums (plan §19)	objc
 var	struck	kCGColorSpaceGenericXYZ	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
 var	struck	kCGColorSpaceITUR_2020	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
 var	struck	kCGColorSpaceITUR_2020_HLG	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
@@ -1600,7 +1600,7 @@ var	struck	kCGColorSpaceLinearITUR_2020	-	Opaque Types / Accessing System-Define
 var	struck	kCGColorSpaceLinearSRGB	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
 var	struck	kCGColorSpaceROMMRGB	-	Opaque Types / Accessing System-Defined Color Spaces	after-10.6	objc
 var	shipped	kCGColorSpaceSRGB	-	Opaque Types / Accessing System-Defined Color Spaces	-	objc
-var	open	kCGColorWhite	-	Opaque Types / Getting System Colors	-	objc
+var	shipped	kCGColorWhite	-	Opaque Types / Getting System Colors	shipped with the constants and format enums (plan §19)	objc
 var	struck	kCGContentAverageLightLevel	-	Variables	after-10.6	objc
 var	struck	kCGContentAverageLightLevelNits	-	Variables	after-10.6	objc
 var	struck	kCGDefaultHDRImageContentHeadroom	-	Reference / Constants	after-10.6	objc
@@ -1625,10 +1625,10 @@ var	struck	kCGEXRToneMappingGammaKneeHigh	-	Reference / Constants	after-10.6	obj
 var	struck	kCGEXRToneMappingGammaKneeLow	-	Reference / Constants	after-10.6	objc
 var	shipped	kCGFontIndexInvalid	-	Opaque Types / Working with Font Tables / Constants	-	objc
 var	shipped	kCGFontIndexMax	-	Opaque Types / Working with Font Tables / Constants	-	objc
-var	open	kCGFontVariationAxisDefaultValue	-	Opaque Types / Working with Variations / Constants	-	objc
-var	open	kCGFontVariationAxisMaxValue	-	Opaque Types / Working with Variations / Constants	-	objc
-var	open	kCGFontVariationAxisMinValue	-	Opaque Types / Working with Variations / Constants	-	objc
-var	open	kCGFontVariationAxisName	-	Opaque Types / Working with Variations / Constants	-	objc
+var	shipped	kCGFontVariationAxisDefaultValue	-	Opaque Types / Working with Variations / Constants	shipped with the constants and format enums (plan §19)	objc
+var	shipped	kCGFontVariationAxisMaxValue	-	Opaque Types / Working with Variations / Constants	shipped with the constants and format enums (plan §19)	objc
+var	shipped	kCGFontVariationAxisMinValue	-	Opaque Types / Working with Variations / Constants	shipped with the constants and format enums (plan §19)	objc
+var	shipped	kCGFontVariationAxisName	-	Opaque Types / Working with Variations / Constants	shipped with the constants and format enums (plan §19)	objc
 var	shipped	kCGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	-	objc
 var	struck	kCGPDFContextAccessPermissions	-	Reference / Constants	after-10.6	objc
 var	deferred	kCGPDFContextAllowsCopying	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	no-consumer	objc

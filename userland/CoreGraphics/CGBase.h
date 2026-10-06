@@ -132,4 +132,42 @@ typedef double CGFloat;
 typedef unsigned long CGTypeID;
 typedef CGTypeID CFTypeID;
 
+/* ------------------------------------------------------------------------- */
+/* The macros: the float type, and the three annotations                       */
+/* ------------------------------------------------------------------------- */
+
+/* APPLE'S MACROS, WITH THE BRANCH ALREADY TAKEN. Their `CGBase.h` decides between `float` and
+ * `double` per architecture and defines `CGFLOAT_TYPE`, `CGFLOAT_IS_DOUBLE`, `CGFLOAT_MIN` and
+ * `CGFLOAT_MAX` accordingly; THIS TREE IS x86-64 ONLY, so the 64-bit arm is the only one there is and
+ * the values are Apple's own for it — `double`, `DBL_MIN`, `DBL_MAX`.
+ *
+ * `CGFLOAT_DEFINED` IS THE GUARD APPLE'S OWN HEADERS USE to tell whether `CGFloat` has already been
+ * declared (their `CGGeometry.h` wraps the typedef in it), so it means "CGFloat IS DEFINED HERE" and
+ * is 1, as theirs is. `CGFLOAT_MIN` and `CGFLOAT_MAX` are the largest and smallest MAGNITUDES of the
+ * type rather than its most negative number — about 2.2e-308 and 1.8e308 for `double` — which is
+ * what `DBL_MIN`/`DBL_MAX` mean and why Apple names the macros that way. */
+#include <float.h>
+
+#define CGFLOAT_TYPE double
+#define CGFLOAT_IS_DOUBLE 1
+#define CGFLOAT_MIN DBL_MIN
+#define CGFLOAT_MAX DBL_MAX
+#define CGFLOAT_DEFINED 1
+
+/* `CG_LOCAL` IS "VISIBLE ACROSS THE FRAMEWORK, NOT OUTSIDE IT", and `CG_PRIVATE_EXTERN` is its older
+ * name for the same idea — Apple's header defines the second AS the first, and this one does the same
+ * rather than inventing a third meaning. Apple's own expansion is `__private_extern__` where the
+ * compiler has it and `CG_EXTERN` otherwise, and THIS LIBRARY TAKES THE SECOND ARM: it is built as
+ * one library with no cross-file hidden symbols to protect, so what the macro has to mean here is
+ * what a caller sees, and `CG_EXTERN` is that. */
+#define CG_LOCAL CG_EXTERN
+#define CG_PRIVATE_EXTERN CG_LOCAL
+
+/* `CG_OBSOLETE` MARKS A DECLARATION THAT TIME HAS PASSED, AND THIS LIBRARY DEFINES IT AS NOTHING.
+ * That is a decision and not an omission: this duplication exists so that OLDER SOURCE COMPILES, and
+ * a header that raised a deprecation warning at the caller would punish exactly the use it is for.
+ * Apple's macro expands to `__attribute__((deprecated))` where the compiler has it; here the name
+ * exists, spells nothing, and the historical fact it would carry belongs in a ledger row's `why`. */
+#define CG_OBSOLETE
+
 #endif /* CORE_GRAPHICS_CGBASE_H */

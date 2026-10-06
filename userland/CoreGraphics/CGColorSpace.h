@@ -156,6 +156,14 @@ typedef struct objc_object NSString;
  * THE IN-ERA NAMES THAT ARE STILL OWED stay `open` in the work list: GenericRGB and GenericGray
  * (10.4, and Apple-DEPRECATED), GenericRGBLinear (10.5), and GenericCMYK (10.4, refused for want
  * of a profile that could be invented). */
+/* THE FOUR GENERIC SPACES: what a caller asks for when it wants "a gray space" or "an RGB space"
+ * and does not care which. Apple's names, this tree's type for them, declared the way the three below
+ * are — see the note above for why the type is `NSString *`. */
+extern NSString *const kCGColorSpaceGenericGray;
+extern NSString *const kCGColorSpaceGenericRGB;
+extern NSString *const kCGColorSpaceGenericCMYK;
+extern NSString *const kCGColorSpaceGenericRGBLinear;
+
 extern NSString *const kCGColorSpaceSRGB;
 extern NSString *const kCGColorSpaceAdobeRGB1998;
 extern NSString *const kCGColorSpaceGenericGrayGamma2_2;
