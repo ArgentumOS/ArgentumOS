@@ -1643,3 +1643,26 @@ lands — before any conclusion about the mask is drawn from those four numbers.
 
 To resume: `git stash pop` (stash@{0}), then read a freshly created context's bytes in the probe before
 asserting anything about a draw.
+
+## 23. The mask doors landed (2 rows): the four failures were the PROBE's chart, and the guard is what showed it
+
+**`CGImageCreateWithMask` AND `CGImageCreateWithMaskingColors` ARE IN, AND THE PIXELS ARE MEASURED.** The
+drawing path applies both of Apple's rules at the pixel: an IMAGE MASK's sample is an INVERSE alpha (S=1 paints
+nothing), a gray PICTURE used as a mask is the alpha itself, and MASKING COLORS do not-paint rather than blend.
+The readout from `coregraphics_imagederive` is the proof: `left=ff,ff,ff,ff right=00,00,00,00` — the zero
+column painted, the 255 column did not — plus both masking-colour directions (the range that misses the sample
+paints everything, the range that covers it paints nothing). The object-level checks were already passing:
+the derived picture shares the original's bytes, it is a picture and not a mask, masking it twice is refused, a
+mask is refused as the picture, a mask image with an alpha channel is refused, and a range outside 0..255 is
+refused rather than clamped.
+
+**§22'S FOUR FAILURES WERE THE PROBE'S, AND THE FIX WAS ONE WORD.** `CGBitmapContextCreate` here supports
+exactly `kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little` — it refuses every other chart **by
+name**, which is the right design and was already written — while the probe asked for `PremultipliedLast` and
+got NULL. Nothing about the mask was wrong; the canvas never existed.
+
+**AND THE LESSON IS THE GUARD, NOT THE TYPO.** Four failures were really *two*, because the pixel checks live
+inside `if (ctx != NULL && ...)`: a guarded section turns a broken setup into SKIPPED CHECKS, and skipped checks
+read as passes in every log that counts failures only. What made it legible was the second check beside the
+first — "...and the mask section below RUNS rather than being skipped" — because it fails on the same NULL the
+setup check does. THAT PAIRING IS THE PATTERN TO KEEP: when a section is guarded, assert that it ran.

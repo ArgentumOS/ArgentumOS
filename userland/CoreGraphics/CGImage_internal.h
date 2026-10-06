@@ -16,6 +16,12 @@
 
 int cg_image_is_drawable(CGImageRef image);
 
+/* THE TWO THINGS A PICTURE MAY BE PAINTED THROUGH, for the drawing path that applies them. The mask comes
+ * back RETAINED-BORROWED (the image holds it); the masking colours come back as a borrowed pointer with the
+ * component count written through `count`, which is 0 when the image has none. */
+CGImageRef cg_image_mask(CGImageRef image);
+const CGFloat *cg_image_masking_colors(CGImageRef image, int *count);
+
 /* THE ONE PLACE THAT KNOWS HOW A CHART'S BYTES ARE LAID OUT. A CGImage's `bitmapInfo` describes a
  * matrix — component count, alpha layout, byte order — and BOTH the constructor and the blit have to
  * read the same cell of it: the constructor to check that `bitsPerPixel` agrees with it, the blit to

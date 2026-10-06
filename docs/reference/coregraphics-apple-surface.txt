@@ -1034,8 +1034,8 @@ func	struck	CGImageCreateCopyWithContentHeadroom	-	Reference / Functions	after-1
 func	struck	CGImageCreateWithContentHeadroom	-	Opaque Types / Creating images	after-10.6	objc
 func	shipped	CGImageCreateWithImageInRect	-	Opaque Types / Creating images by modifying an image	shipped with the derivation doors (plan §21)	objc
 func	shipped	CGImageCreateWithJPEGDataProvider	-	Opaque Types / Creating images	-	objc
-func	open	CGImageCreateWithMask	-	Opaque Types / Creating images by modifying an image	-	objc
-func	open	CGImageCreateWithMaskingColors	-	Opaque Types / Creating image masks	-	objc
+func	shipped	CGImageCreateWithMask	-	Opaque Types / Creating images by modifying an image	shipped with the mask doors (plan §23)	objc
+func	shipped	CGImageCreateWithMaskingColors	-	Opaque Types / Creating image masks	shipped with the mask doors (plan §23)	objc
 func	shipped	CGImageCreateWithPNGDataProvider	-	Opaque Types / Creating images	-	objc
 func	shipped	CGImageGetAlphaInfo	-	Opaque Types / Examining an image	-	objc
 func	shipped	CGImageGetBitmapInfo	-	Opaque Types / Examining an image	-	objc

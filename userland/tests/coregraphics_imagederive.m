@@ -16,6 +16,7 @@
  */
 #import <Foundation/Foundation.h>
 #include <CoreGraphics/CGImage.h>
+#include <CoreGraphics/CGBitmapContext.h>
 #include <CoreGraphics/CGColorSpace.h>
 #include <CoreGraphics/CGDataProvider.h>
 
@@ -188,6 +189,114 @@ int main(void)
 		CGDataProviderRelease(provider);
 	}
 	CGColorSpaceRelease(rgb);
+
+	/* --- PAINTING THROUGH A MASK, IN PIXELS ------------------------------------------------ */
+	{
+		CGColorSpaceRef gray = CGColorSpaceCreateDeviceGray();
+		unsigned char picture_bytes[2 * 2];
+		unsigned char mask_bytes[2 * 2];	/* left column 0, right column 255 */
+		CGDataProviderRef pp;
+		CGDataProviderRef mp;
+		CGImageRef picture;
+		CGImageRef mask;
+		CGImageRef derived;
+		unsigned char canvas[2 * 2 * 4];
+		CGContextRef ctx;
+
+		memset(picture_bytes, 0xFF, sizeof picture_bytes);	/* a WHITE picture: gray 255 */
+		mask_bytes[0] = 0x00;	/* left column: mask sample 0 — an INVERSE alpha of 1, so it PAINTS */
+		mask_bytes[1] = 0xFF;	/* right column: sample 1 — inverse alpha 0, so it does NOT paint */
+		mask_bytes[2] = 0x00;
+		mask_bytes[3] = 0xFF;
+		pp = CGDataProviderCreateWithData(NULL, picture_bytes, sizeof picture_bytes, NULL);
+		mp = CGDataProviderCreateWithData(NULL, mask_bytes, sizeof mask_bytes, NULL);
+		picture = CGImageCreate(2, 2, 8, 8, 2, gray, kCGImageAlphaNone, pp, NULL, false,
+					kCGRenderingIntentDefault);
+		mask = CGImageMaskCreate(2, 2, 8, 8, 2, mp, NULL, false);
+		derived = CGImageCreateWithMask(picture, mask);
+
+		check("a picture painted through a mask is made", derived != NULL);
+		check("...and it SHARES the picture's bytes rather than copying them",
+		      derived != NULL && CGImageGetDataProvider(derived) == CGImageGetDataProvider(picture));
+		check("...and it is a picture, not a mask", derived != NULL && !CGImageIsMask(derived));
+		check("...and masking it AGAIN is refused, as Apple's header says",
+		      derived != NULL && CGImageCreateWithMask(derived, mask) == NULL);
+		check("...and a mask is refused as the picture to paint",
+		      CGImageCreateWithMask(mask, mask) == NULL);
+		check("...and so is a mask image WITH an alpha channel",
+		      CGImageCreateWithMask(picture,
+		                            CGImageCreate(2, 2, 8, 16, 4, gray, kCGImageAlphaLast, pp, NULL,
+		                                          false, kCGRenderingIntentDefault)) == NULL);
+
+		memset(canvas, 0, sizeof canvas);
+		/* THE DESTINATION IS RGB: a one-component space WITH an alpha channel is not a chart our
+		 * bitmap contexts accept, while the drawing path's layout map reads a GRAY picture into an
+		 * RGB surface happily. The picture and the mask stay gray. */
+		{
+			CGColorSpaceRef rgb = CGColorSpaceCreateDeviceRGB();
+
+			/* THE CHART IS THE ONE `CGBitmapContextCreate` SUPPORTS, AND THAT IS MEASURED RATHER THAN
+			 * GUESSED: this library builds a context for
+			 * `kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little` and refuses every other
+			 * chart BY NAME. Asking for `PremultipliedLast` got NULL, and the two checks below are what
+			 * turned that from a mystery into a reading. */
+			ctx = CGBitmapContextCreate(canvas, 2, 2, 8, 2 * 4, rgb,
+						    kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
+			check("a 2x2 RGB canvas is made for the draw", ctx != NULL);
+			check("...and the mask section below RUNS rather than being skipped", ctx != NULL);
+			CGColorSpaceRelease(rgb);
+		}
+		if (ctx != NULL && derived != NULL && picture != NULL) {
+			CGContextDrawImage(ctx, CGRectMake(0, 0, 2, 2), picture);
+			check("the picture alone paints BOTH columns",
+			      canvas[3] == 0xFF && canvas[(1 * 4) + 3] == 0xFF);
+			memset(canvas, 0, sizeof canvas);
+			CGContextDrawImage(ctx, CGRectMake(0, 0, 2, 2), derived);
+			/* THE INVERSION IS THE WHOLE RULE: the mask's ZERO sample paints and its 255 does not. */
+			check("...and with the mask, the ZERO column paints and the FULL one does not",
+			      canvas[3] == 0xFF && canvas[(1 * 4) + 3] == 0x00);
+			printf("CG-IMAGEDERIVE %-58s left=%02x,%02x,%02x,%02x right=%02x,%02x,%02x,%02x\n",
+			       "...readout", canvas[0], canvas[1], canvas[2], canvas[3],
+			       canvas[4], canvas[5], canvas[6], canvas[7]);
+
+			/* --- AND MASKING COLORS, WHOSE DIRECTION IS THE EASY MISTAKE ------------------- */
+			{
+				const CGFloat outside[2] = { 0, 0 };	/* nothing at 0 is in the picture (255) */
+				const CGFloat covering[2] = { 255, 255 };	/* every sample is 255: all masked out */
+				const CGFloat bad[2] = { 0, 300 };	/* NOT a sample value */
+				CGImageRef keeps = CGImageCreateWithMaskingColors(picture, outside);
+				CGImageRef hides = CGImageCreateWithMaskingColors(picture, covering);
+
+				check("masking colors that do not contain the sample keep it painted",
+				      keeps != NULL);
+				check("...and colors that DO contain it mask the pixel out entirely",
+				      hides != NULL);
+				check("a range outside 0..255 is refused rather than clamped",
+				      CGImageCreateWithMaskingColors(picture, bad) == NULL);
+				if (keeps != NULL) {
+					memset(canvas, 0, sizeof canvas);
+					CGContextDrawImage(ctx, CGRectMake(0, 0, 2, 2), keeps);
+					check("...and the range that misses paints BOTH columns",
+					      canvas[3] == 0xFF && canvas[(1 * 4) + 3] == 0xFF);
+					CGImageRelease(keeps);
+				}
+				if (hides != NULL) {
+					memset(canvas, 0, sizeof canvas);
+					CGContextDrawImage(ctx, CGRectMake(0, 0, 2, 2), hides);
+					check("...and the range that covers paints NEITHER",
+					      canvas[3] == 0x00 && canvas[(1 * 4) + 3] == 0x00);
+					CGImageRelease(hides);
+				}
+			}
+		}
+		CGContextRelease(ctx);
+		CGImageRelease(derived);
+		CGImageRelease(mask);
+		CGImageRelease(picture);
+		CGDataProviderRelease(mp);
+		CGDataProviderRelease(pp);
+		CGColorSpaceRelease(gray);
+	}
 
 	printf("CG-IMAGEDERIVE: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;

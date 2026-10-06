@@ -9,6 +9,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* THE FORMAT THIS LIBRARY DRAWS: 8 bits per component, 32 bits per pixel, premultiplied alpha
  * FIRST, little-endian byte order — the same one `CGBitmapContextCreate` pins, which is the whole
@@ -33,11 +34,40 @@ struct CGImage {
 	 * on its own — it is for clipping with or for masking another image. The flag is what
 	 * `CGImageIsMask` answers and what the drawing path refuses on. */
 	int is_mask;
+	/* A PICTURE PAINTED THROUGH SOMETHING: either a MASK image (retained) or MASKING COLORS (an owned
+	 * array of 2N sample ranges, N being the image's component count). The two are exclusive — Apple's
+	 * header says a masked picture may not be masked again — so `mask_color_count` is 0 unless the
+	 * colors door was used. */
+	CGImageRef mask;
+	CGFloat *mask_colors;
+	int mask_color_count;
 };
 
 int cg_image_is_drawable(CGImageRef image)
 {
 	return image != NULL && image->drawable;
+}
+
+/* WHAT A PICTURE MAY BE PAINTED THROUGH, for the drawing path. The mask is the image's own reference and the
+ * path must not release it; the masking colours are the image's array and the count says how many components
+ * they describe — zero meaning "this picture has neither". */
+CGImageRef cg_image_mask(CGImageRef image)
+{
+	return image == NULL ? NULL : image->mask;
+}
+
+const CGFloat *cg_image_masking_colors(CGImageRef image, int *count)
+{
+	if (image == NULL || image->mask_color_count <= 0) {
+		if (count != NULL) {
+			*count = 0;
+		}
+		return NULL;
+	}
+	if (count != NULL) {
+		*count = image->mask_color_count;
+	}
+	return image->mask_colors;
 }
 
 /* THE LAYOUT, DERIVED ONCE AND USED BY BOTH CALLERS. It maps a chart's channels onto byte offsets,
@@ -218,6 +248,8 @@ void CGImageRelease(CGImageRef image)
 	/* THE IMAGE LETS GO OF WHAT IT RETAINED, in the opposite order from the one it took them. */
 	CGDataProviderRelease(image->provider);
 	CGColorSpaceRelease(image->space);
+	CGImageRelease(image->mask);
+	free(image->mask_colors);
 	free(image);
 }
 
@@ -302,6 +334,19 @@ static CGImageRef fn_copy_structure(CGImageRef image)
 	copy->refcount = 1;
 	CGColorSpaceRetain(copy->space);
 	CGDataProviderRetain(copy->provider);
+	/* THE DERIVED THINGS ARE COPIED RATHER THAN ALIASED: the mask is retained and the masking colors
+	 * are a SECOND array, because the copy and the original are both going to free what they hold and
+	 * one buffer cannot belong to two images. */
+	CGImageRetain(copy->mask);
+	if (copy->mask_colors != NULL && copy->mask_color_count > 0) {
+		copy->mask_colors = malloc(sizeof(CGFloat) * (size_t)copy->mask_color_count * 2u);
+		if (copy->mask_colors == NULL) {
+			CGImageRelease(copy);
+			return NULL;
+		}
+		memcpy(copy->mask_colors, image->mask_colors,
+		       sizeof(CGFloat) * (size_t)copy->mask_color_count * 2u);
+	}
 	return copy;
 }
 
@@ -361,6 +406,134 @@ CGImageRef CGImageMaskCreate(size_t width, size_t height, size_t bitsPerComponen
 bool CGImageIsMask(CGImageRef image)
 {
 	return image != NULL && image->is_mask;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Painting a picture through a mask                                           */
+/* ------------------------------------------------------------------------- */
+
+/* THE TWO DOORS SHARE ONE RULE THAT IS APPLE'S AND ONE THAT IS THIS LIBRARY'S: a picture may be masked ONCE
+ * (the header says so), and the picture must not itself be a mask (a mask is not a picture to paint). Both
+ * are refused by name, and the refusal names which one was broken. */
+static int fn_masking_refused(CGImageRef image, const char *door)
+{
+	if (image == NULL) {
+		return 1;
+	}
+	if (image->is_mask) {
+		fprintf(stderr, "CG-REFUSE: %s takes a picture to paint, and a mask is not one — it is what "
+				"you paint THROUGH\n", door);
+		return 1;
+	}
+	if (image->mask != NULL || image->mask_colors != NULL) {
+		fprintf(stderr, "CG-REFUSE: %s takes a picture that is not already masked, and this one is\n",
+			door);
+		return 1;
+	}
+	return 0;
+}
+
+CGImageRef CGImageCreateWithMask(CGImageRef image, CGImageRef mask)
+{
+	CGImageRef copy;
+
+	if (fn_masking_refused(image, "CGImageCreateWithMask") || mask == NULL) {
+		if (mask == NULL) {
+			fprintf(stderr, "CG-REFUSE: CGImageCreateWithMask needs a mask to paint through\n");
+		}
+		return NULL;
+	}
+	if (!mask->is_mask) {
+		/* AN IMAGE USED AS A MASK IS AN ALPHA MASK AND MUST BE A GRAY PICTURE WITH NOTHING ELSE IN IT:
+		 * DeviceGray, no alpha channel, and not itself masked. Each of the three is Apple's rule and
+		 * each is checked rather than trusted — a colored mask would have to be reduced to one number
+		 * per pixel and the header does not say how, so REFUSING is the honest answer. */
+		if (mask->space == NULL || CGColorSpaceGetModel(mask->space) != kCGColorSpaceModelMonochrome) {
+			fprintf(stderr, "CG-REFUSE: CGImageCreateWithMask takes an image mask or a DeviceGray "
+					"image, and this mask is neither\n");
+			return NULL;
+		}
+		if (mask->alpha != kCGImageAlphaNone) {
+			fprintf(stderr, "CG-REFUSE: CGImageCreateWithMask needs a mask image with no alpha "
+					"channel: the mask's samples ARE the alpha\n");
+			return NULL;
+		}
+		if (mask->mask != NULL || mask->mask_colors != NULL) {
+			fprintf(stderr, "CG-REFUSE: CGImageCreateWithMask needs a mask image that is not itself "
+					"masked\n");
+			return NULL;
+		}
+	}
+	if (mask->bits_per_pixel != 8) {
+		/* THE SAMPLER BELOW READS ONE BYTE PER PIXEL, and to make that honest this door refuses a mask
+		 * whose samples are not one byte. A deeper or sub-byte mask would have to be SCALED, which is a
+		 * fact about the caller's data that this door will not invent. */
+		fprintf(stderr, "CG-REFUSE: CGImageCreateWithMask samples an 8-bit mask; this one has %lu bits "
+				"per pixel\n", (unsigned long)mask->bits_per_pixel);
+		return NULL;
+	}
+	copy = fn_copy_structure(image);
+	if (copy == NULL) {
+		return NULL;
+	}
+	copy->mask = CGImageRetain(mask);
+	return copy;
+}
+
+CGImageRef CGImageCreateWithMaskingColors(CGImageRef image, const CGFloat *components)
+{
+	CGImageRef copy;
+	int ncomp;
+
+	if (fn_masking_refused(image, "CGImageCreateWithMaskingColors") || components == NULL) {
+		if (components == NULL) {
+			fprintf(stderr, "CG-REFUSE: CGImageCreateWithMaskingColors needs the 2N sample ranges to "
+					"mask out\n");
+		}
+		return NULL;
+	}
+	if (image->space == NULL) {
+		fprintf(stderr, "CG-REFUSE: CGImageCreateWithMaskingColors needs a picture with a color space, "
+				"because N is its component count\n");
+		return NULL;
+	}
+	ncomp = CGColorSpaceGetNumberOfComponents(image->space);
+	if (ncomp < 1 || ncomp > 3) {
+		fprintf(stderr, "CG-REFUSE: CGImageCreateWithMaskingColors supports gray and RGB pictures\n");
+		return NULL;
+	}
+	/* EVERY VALUE MUST BE A VALID SAMPLE VALUE, and this library's samples are 8-bit: 0 to 255. A caller
+	 * who wrote 300 for a range meant something this door cannot express, so it is refused rather than
+	 * clamped — the same rule the colour-space constructors apply to their ranges. */
+	{
+		int i;
+
+		for (i = 0; i < ncomp * 2; i++) {
+			if (!(components[i] >= 0.0 && components[i] <= 255.0)) {
+				fprintf(stderr, "CG-REFUSE: CGImageCreateWithMaskingColors needs sample values in "
+						"0..255 for this 8-bit image, and value %d is %g\n", i,
+					(double)components[i]);
+				return NULL;
+			}
+		}
+		if (ncomp * 2 > 1 && components[0] > components[1]) {
+			fprintf(stderr, "CG-REFUSE: CGImageCreateWithMaskingColors needs min then max for each "
+					"component; the first pair reads max then min\n");
+			return NULL;
+		}
+	}
+	copy = fn_copy_structure(image);
+	if (copy == NULL) {
+		return NULL;
+	}
+	copy->mask_colors = malloc(sizeof(CGFloat) * (size_t)ncomp * 2u);
+	if (copy->mask_colors == NULL) {
+		CGImageRelease(copy);
+		return NULL;
+	}
+	memcpy(copy->mask_colors, components, sizeof(CGFloat) * (size_t)ncomp * 2u);
+	copy->mask_color_count = ncomp;
+	return copy;
 }
 
 CGImageRef CGImageCreateCopy(CGImageRef image)

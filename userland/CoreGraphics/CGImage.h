@@ -220,6 +220,27 @@ CGImageRef CGImageCreateCopy(CGImageRef image);
  * shape). A MASK HAS NO SPACE TO REPLACE, so a mask returns NULL too. */
 CGImageRef CGImageCreateCopyWithColorSpace(CGImageRef image, CGColorSpaceRef space);
 
+/* THE MASK DOORS, AND APPLE'S TWO RULES ARE DIFFERENT RULES. `CGImageCreateWithMask` takes either an
+ * IMAGE MASK — whose sample S is an INVERSE alpha, so S=1 paints nothing and S=0 paints fully — or a
+ * PICTURE, which serves as an alpha mask whose sample S is the alpha directly. An image used as a mask must
+ * be DeviceGray, must have no alpha, and must not itself be masked; and the picture being masked must be a
+ * picture that is not already masked, by either door. All four are REFUSED BY NAME here rather than assumed.
+ *
+ * THE RESULT DRAWS THROUGH THE MASK: the picture keeps its own bytes and the mask is applied where the
+ * picture is painted, which is why a derived image still shares the original's provider.
+ *
+ * THE MASK IS SAMPLED BY NORMALIZED POSITION — (0,0) to (1,1) across each — because the header says nothing
+ * about the two being the same size, and this is the reading that lets them differ: a mask stretched over
+ * the rectangle the picture is drawn into. */
+CGImageRef CGImageCreateWithMask(CGImageRef image, CGImageRef mask);
+
+/* MASKING COLORS: `components` holds 2N values { min[1], max[1], ... min[N], max[N] } where N IS THE NUMBER
+ * OF COMPONENTS OF THE IMAGE'S COLOR SPACE (one for a gray image, three for RGB), and ANY SAMPLE WHOSE
+ * COMPONENTS ALL FALL INSIDE THEIR RANGES IS MASKED OUT — left unpainted. Every value must be a valid sample
+ * value, which for this library's 8-bit images means 0 to 255, and anything else is refused rather than
+ * clamped: a caller who wrote 300 meant something this door cannot do. */
+CGImageRef CGImageCreateWithMaskingColors(CGImageRef image, const CGFloat *components);
+
 /* THE SUBRECTANGLE, IN APPLE'S OWN THREE STEPS, which the header documents in that order: the rectangle is
  * made integral, intersected with the image's bounds, and the pixels inside the result are referenced —
  * THE BYTES ARE NOT COPIED. The new image retains the original, so a caller may release the original the

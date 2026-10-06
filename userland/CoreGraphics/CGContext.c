@@ -2443,6 +2443,63 @@ void CGContextSetPatternPhase(CGContextRef c, CGSize phase)
  * of a fully transparent texel into a visible one, and that halo is what image scalers are known
  * for. A chart with no alpha channel is already "premultiplied by one", so nothing happens to it,
  * and a chart whose alpha is STRAIGHT is multiplied once, here, exactly as the nearest path does. */
+/* THE MASK A PICTURE IS PAINTED THROUGH, AS COVERAGE IN 0..1, AND APPLE'S TWO RULES DIFFER BY AN INVERSION:
+ * an IMAGE MASK's sample is an INVERSE alpha (S=1 paints nothing), while a gray PICTURE used as a mask is the
+ * alpha itself (S=1 paints fully). Both are read here as ONE BYTE per pixel, which is what
+ * CGImageCreateWithMask refuses any other depth for.
+ *
+ * IT IS SAMPLED BY NORMALIZED POSITION, the same coordinates the picture is sampled at, because the header
+ * never says the two are the same size: a mask is stretched over the rectangle the picture is drawn into.
+ * Outside 0..1 there is no mask to apply, and NO EFFECT is the honest answer rather than a refuse — the
+ * picture's own bounds already ended the loop for those pixels. */
+static double cg_image_mask_coverage(CGImageRef mask, double u, double v)
+{
+	const unsigned char *m;
+	size_t size = 0;
+	size_t w = CGImageGetWidth(mask);
+	size_t h = CGImageGetHeight(mask);
+	size_t row = CGImageGetBytesPerRow(mask);
+	int sx, sy;
+	double s;
+
+	if (w == 0 || h == 0) {
+		return 1.0;
+	}
+	sx = (int)(u * (double)w);
+	sy = (int)((1.0 - v) * (double)h);
+	if (sx >= (int)w) {
+		sx = (int)w - 1;
+	}
+	if (sy >= (int)h) {
+		sy = (int)h - 1;
+	}
+	if (sx < 0 || sy < 0) {
+		return 1.0;
+	}
+	m = (const unsigned char *)cg_dataprovider_bytes(CGImageGetDataProvider(mask), &size);
+	if (m == NULL) {
+		return 1.0;
+	}
+	s = (double)m[(size_t)sy * row + (size_t)sx];
+	return CGImageIsMask(mask) ? (1.0 - s / 255.0) : (s / 255.0);
+}
+
+/* IS THIS PIXEL MASKED OUT BY MASKING COLORS? Apple's rule: a sample whose components ALL fall inside their
+ * ranges is not painted. `comp` is in the COLOR SPACE's order — red, green, blue for RGB, the single gray for
+ * a one-component space — while the sampler's own variables are in the pixel's stored order, so the caller
+ * does that mapping and this function does the test. */
+static int cg_image_masked_out(const CGFloat *colors, int n, const double comp[3])
+{
+	int i;
+
+	for (i = 0; i < n; i++) {
+		if (!(comp[i] >= (double)colors[i * 2] && comp[i] <= (double)colors[i * 2 + 1])) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
 static void cg_image_texel(const unsigned char *src, size_t row_bytes, size_t stored, size_t img_w,
 			   size_t img_h, const int channels[4], int straight, int sx, int sy,
 			   double out[4])
@@ -2488,6 +2545,9 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 	double alpha;
 	int left, right, top, bottom;
 	int x, y, i;
+	CGImageRef mask_image;
+	const CGFloat *mask_colors;
+	int mask_count = 0;
 
 	if (c == NULL || image == NULL || c->data == NULL) {
 		return;
@@ -2508,6 +2568,10 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 				"layout\n");
 		return;
 	}
+	/* WHAT THE PICTURE IS PAINTED THROUGH, READ ONCE: either a mask or masking colors, never both —
+	 * CGImageCreateWithMask refuses a picture that is already masked. */
+	mask_image = cg_image_mask(image);
+	mask_colors = cg_image_masking_colors(image, &mask_count);
 	if (c->state.blend != kCGBlendModeNormal) {
 		fprintf(stderr, "CG-REFUSE: CGContextDrawImage composites source-over and does not "
 				"apply a blend mode yet\n");
@@ -2632,6 +2696,23 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 				if (c->state.clip_mask != NULL) {
 					sa = sa * (double)cg_clip_coverage(c, x, y) / 255.0;
 				}
+				/* MASKING COLORS ARE TESTED AND THE PIXEL IS EITHER PAINTED OR NOT, while a MASK SCALES
+				 * the alpha: those are Apple's two rules, and mixing them would paint a blend where the
+				 * caller asked for nothing at all. `mix` is the sampler's order (blue, green, red,
+				 * alpha) and the masking colors are in the SPACE's order (red, green, blue). */
+				if (mask_count > 0) {
+					double comp[3];
+
+					comp[0] = mix[2] * 255.0;
+					comp[1] = mix[1] * 255.0;
+					comp[2] = mix[0] * 255.0;
+					if (cg_image_masked_out(mask_colors, mask_count, comp)) {
+						continue;
+					}
+				}
+				if (mask_image != NULL) {
+					sa = sa * cg_image_mask_coverage(mask_image, u, v);
+				}
 				d[0] = (unsigned char)(mix[0] * 255.0 * sa + (double)d[0] * (1.0 - sa));
 				d[1] = (unsigned char)(mix[1] * 255.0 * sa + (double)d[1] * (1.0 - sa));
 				d[2] = (unsigned char)(mix[2] * 255.0 * sa + (double)d[2] * (1.0 - sa));
@@ -2668,6 +2749,22 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 			sa = (sv / 255.0) * alpha;
 			if (c->state.clip_mask != NULL) {
 				sa = sa * (double)cg_clip_coverage(c, x, y) / 255.0;
+			}
+			/* THE SAME TWO RULES AS THE INTERPOLATING PATH ABOVE, over this path's own variables:
+			 * `sr`, `sg` and `sb` are red, green and blue, and a gray chart reads one byte into all
+			 * three, which is why the single-component case needs no case of its own. */
+			if (mask_count > 0) {
+				double comp[3];
+
+				comp[0] = sr;
+				comp[1] = sg;
+				comp[2] = sb;
+				if (cg_image_masked_out(mask_colors, mask_count, comp)) {
+					continue;
+				}
+			}
+			if (mask_image != NULL) {
+				sa = sa * cg_image_mask_coverage(mask_image, u, v);
 			}
 			d[0] = (unsigned char)(sb * sa + (double)d[0] * (1.0 - sa));
 			d[1] = (unsigned char)(sg * sa + (double)d[1] * (1.0 - sa));
