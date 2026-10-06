@@ -1295,3 +1295,40 @@ image's kind and format, the `x_src`/`y_src` offsets, whether the destination's 
 and whether a transform is set on any of the three images) and, failing that, composite a *trap-free* mask
 in a five-line C probe against the host library. The instrument that answers it is the destination pixel,
 which is what this section measured.
+
+### The one thing that is now PROVEN, and what it leaves (measured 2026-10-05, after this section was first written)
+
+**PIXMAN COMPOSITES A MASK CORRECTLY IN EVERY SHAPE THIS SLICE USED.** A temporary standalone probe
+(`coregraphics_maskprobe`, since deleted and unwired) drove pixman directly through five variants and read
+the DESTINATION pixel after each — the instrument §15 named:
+
+    V1  1x1 + REPEAT_NORMAL source, full-surface a8 cover, offsets (0,0), OP_OVER   dest[12,12] = 00 00 00 ff
+    V2  pixman_image_create_solid_fill source, same shape                           dest[12,12] = 00 00 00 ff
+    V3  solid source, an 8x8 a8 mask composited at (10,10)                          dest[12,12] = 00 00 00 ff
+    V4  solid source, full cover, the DESTINATION's clip region set                 dest[12,12] = 00 00 00 ff
+    V5  control (V2 without a clip)                                                 dest[12,12] = 00 00 00 ff
+
+All five paint opaque black, INCLUDING V1, which is byte-for-byte the call the drawing door made. So pixman
+is exonerated, the 1x1-plus-REPEAT source is exonerated, the small-mask-at-an-offset form is exonerated, and
+setting the destination's clip region is exonerated — each now by experiment rather than by argument.
+
+**WHAT THAT LEAVES, NARROWED TO TWO MEASUREMENTS NEVER TAKEN, both from inside the library:**
+
+1. **The cover's CONTENT AT COMPOSITE TIME.** The coverage was read from FreeType's buffer (41755) and once
+   from a mask image (142 and 255 in its first two bytes), but never from the surface-sized `cover` after the
+   glyph was written into it by hand. The write loop is `cd[y * cs + x] = coverage[row * w + col]` with
+   `cs = pixman_image_get_stride(cover)`; if the cover is empty at the composite, the loop is at fault and the
+   placement arithmetic is right.
+2. **THE DESTINATION IMAGE'S OWN CLIP REGION**, read with `pixman_image_get_clip_region(c->image)` rather than
+   from `c->state.clip` (which is what the earlier diagnostic printed: `(0,0,160,80)`). `pixman_image_set_
+   clip_region32` was called TWICE on this image — once before the loop, once inside it — and that is the one
+   difference from `cg_composite_traps`, which calls it once. If the destination's clip came back empty, the
+   composite would paint nothing and log nothing, which is exactly the observed pair of facts.
+
+**AND ONE DESIGN EXIT THAT AVOIDS THE QUESTION, worth weighing before either measurement:** draw a glyph as a
+PATH. `FT_Outline_Decompose` gives the outline as moves, lines, conics and cubics; a `CGPath` holds exactly
+those; and `cg_fill_path` is the paint path this library demonstrably works — the one every fill probe
+exercises. That route also unlocks the two modes this slice refused (`kCGTextStroke`, `kCGTextClip`), which a
+mask can never draw as a stroke. The mask route's advantage is that it is what Apple's own text path uses for
+hinting and subpixel positioning, so the two are not equivalent; but a working path route beats an elegant
+mask route that paints nothing.
