@@ -183,7 +183,40 @@ int main(void)
 				}
 			}
 		}
-		check("an L has ink AT the baseline (its foot), so nothing is mirrored", at_baseline > 5);
+		{
+			int top_cols = 0, foot_cols = 0;
+			int wide_top[W], wide_foot[W];
+
+			/* TWO BANDS OF THE SAME GLYPH: just under its top (the stem alone — narrow) and just
+			 * above the baseline (the foot — wide). A MIRRORED `L` SWAPS THEM, and that is what this
+			 * measures. The earlier version counted ink NEAR the baseline, which a mirrored `L`'s
+			 * stem satisfies too — so it passed on an upside-down picture, which the PNG caught. */
+			memset(wide_top, 0, sizeof(wide_top));
+			memset(wide_foot, 0, sizeof(wide_foot));
+			for (y = 38; y <= 42; y++) {
+				for (x = 8; x < 60; x++) {
+					if (paint[((size_t)y * W + x) * 4 + 2] < 128) {
+						wide_top[x] = 1;
+					}
+				}
+			}
+			for (y = 54; y <= 59; y++) {
+				for (x = 8; x < 60; x++) {
+					if (paint[((size_t)y * W + x) * 4 + 2] < 128) {
+						wide_foot[x] = 1;
+					}
+				}
+			}
+			for (x = 0; x < W; x++) {
+				top_cols += wide_top[x];
+				foot_cols += wide_foot[x];
+			}
+			printf("CG-TEXT %-68s (stem %d column(s), foot %d)\n", "...measured widths",
+			       top_cols, foot_cols);
+			check("an L is upright: its FOOT (wide, at the bottom) and its STEM (narrow, at the top) "
+			      "are on the right ends of the glyph", foot_cols > 10 && top_cols < 8
+			      && foot_cols > top_cols * 2);
+		}
 	}
 
 	/* THE SPACE HAS NO INK AND IS NOT A FAILURE: every line of text contains one. */

@@ -515,8 +515,14 @@ int cg_font_render_glyph(CGFontRef font, CGGlyph glyph, CGFloat pixel_size, CGAf
 	if (buf == NULL) {
 		return 0;
 	}
+	/* THE ROWS ARE **NOT** REVERSED WHEN THE FLIP WAS TAKEN OUT OF THE MATRIX, which is a correction
+	 * the PICTURE made and no check in the probe did. FreeType's bitmap rows are TOP-DOWN whatever
+	 * direction its outline ran, so after the un-flip they are ALREADY in the device's own order
+	 * (y down) — reversing them beat the glyph twice and every letter came out vertically mirrored.
+	 * The probe's `L` check passed on that upside-down picture, because a mirrored `L` still has its
+	 * STEM crossing the baseline, which is all that check measured; it now compares two bands. */
 	for (row = 0; row < h; row++) {
-		memcpy(buf + (size_t)(mirror ? h - 1 - row : row) * (size_t)w,
+		memcpy(buf + (size_t)row * (size_t)w,
 		       slot->bitmap.buffer + (size_t)row * (size_t)(slot->bitmap.pitch < 0
 								    ? -slot->bitmap.pitch : slot->bitmap.pitch),
 		       (size_t)w);
@@ -533,5 +539,6 @@ int cg_font_render_glyph(CGFontRef font, CGGlyph glyph, CGFloat pixel_size, CGAf
 	if (advance != NULL) {
 		*advance = slot->advance.x / 64.0;
 	}
+	(void)mirror;
 	return 1;
 }

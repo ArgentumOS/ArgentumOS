@@ -1358,3 +1358,26 @@ through a surface-sized a8 coverage with a pixman solid-fill source.
 table); `CGContextSelectFont` and `CreateWithFontName` (the font-registry decision); the six drawing modes
 this slice refuses; subpixel pen positions; the font-smoothing and subpixel-positioning knobs; and HarfBuzz
 shaping, which no door here needs yet because every position is given.
+
+### The picture caught a bug every check in the text probe passed through
+
+**A .png IS AN INSTRUMENT, AND THIS ONE EARNED ITS KEEP.** Asked to see the painted text, the first picture
+came back with **every glyph vertically mirrored** — and `coregraphics_text` was passing at the time, `L`
+check included. The cause was one line in the raster seam: with the reflection taken out of FreeType's matrix
+(so it renders upright), **the rows must NOT be reversed** — FreeType's bitmap rows are TOP-DOWN whatever
+direction its outline ran, so after the un-flip they are already in the device's own order (y down), and
+reversing them beat each glyph twice.
+
+**WHY THE CHECK COULD NOT SEE IT, WHICH IS THE GENERAL LESSON:** the `L` check counted ink in a band around
+the baseline, and a mirrored `L` still has its STEM crossing the baseline — so the property it measured was
+one a mirror preserves. The check now compares TWO BANDS of the same glyph (the stem's top: narrow, ~3
+columns; the foot: wide, ~15) and cannot pass on a flipped picture. **An orientation claim needs a property
+that ISN'T symmetric, or a picture.**
+
+**AND THE PICTURE IS REPRODUCIBLE:** `userland/tests/coregraphics_textshot.m` is wired as a probe
+(`coregraphics_textshot`, 18 CG probes now) that lays out four runs on a 760x340 surface — 48pt, 32pt in a
+colour, 24pt through a 1.4x text matrix, and `LLLVII` for the orientation — checking that each put ink down;
+with `CG_TEXTSHOT=/path/out.png` in the environment it also writes the surface as a PNG (libpng, which this
+tree already links for the decoder half; the surface is BGRA so the row is repacked, not pointed at). Its
+layout is BY GLYPH NAME, because this slice has no character map yet and a font spells its digits out
+("zero", "one", ...) — which the first picture also showed, by their absence.
