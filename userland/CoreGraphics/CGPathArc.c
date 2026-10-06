@@ -134,15 +134,9 @@ void CGPathAddEllipseInRect(CGMutablePathRef path, const CGAffineTransform *m, C
 	cg_arc_ellipse(path, m, cx, cy, rx, ry, 0.0, 2.0 * CG_ARC_PI, 1);
 }
 
-CGPathRef CGPathCreateWithEllipseInRect(CGRect rect, const CGAffineTransform *m)
-{
-	CGMutablePathRef path = CGPathCreateMutable();
-
-	if (path != NULL) {
-		CGPathAddEllipseInRect(path, m, rect);
-	}
-	return (CGPathRef)path;
-}
+/* !! `CGPathCreateWithEllipseInRect` STOOD HERE AND WAS REMOVED (2026-10-05): it is macOS 10.7,
+ * out of era. It was four lines — allocate, call `CGPathAddEllipseInRect` above, return — so the
+ * era's spelling is that same pair, which is what a caller writes instead. */
 
 void CGPathAddRoundedRect(CGMutablePathRef path, const CGAffineTransform *m, CGRect rect,
 			  CGFloat cornerWidth, CGFloat cornerHeight)
@@ -190,16 +184,9 @@ void CGPathAddRoundedRect(CGMutablePathRef path, const CGAffineTransform *m, CGR
 	CGPathCloseSubpath(path);
 }
 
-CGPathRef CGPathCreateWithRoundedRect(CGRect rect, CGFloat cornerWidth, CGFloat cornerHeight,
-				      const CGAffineTransform *m)
-{
-	CGMutablePathRef path = CGPathCreateMutable();
-
-	if (path != NULL) {
-		CGPathAddRoundedRect(path, m, rect, cornerWidth, cornerHeight);
-	}
-	return (CGPathRef)path;
-}
+/* !! `CGPathCreateWithRoundedRect` STOOD HERE AND WAS REMOVED (2026-10-05): it is macOS 10.9, out
+ * of era. Four lines — allocate, call `CGPathAddRoundedRect` above, return — so the era's spelling
+ * is that pair. */
 
 void CGPathAddArcToPoint(CGMutablePathRef path, const CGAffineTransform *m, CGFloat x1, CGFloat y1,
 			 CGFloat x2, CGFloat y2, CGFloat radius)

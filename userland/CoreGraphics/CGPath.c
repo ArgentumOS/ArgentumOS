@@ -27,6 +27,14 @@
  */
 #include <CoreGraphics/CGAffineTransform.h>
 #include <CoreGraphics/CGPath.h>
+#include <CoreGraphics/CGPath_internal.h>
+
+/* THE RENAME TABLE FOR THE THREE PATH OPERATIONS THAT ARE OURS NOW (2026-10-05). They were public,
+ * and `CGPathCreateCopyByStrokingPath`/`ByDashingPath` are macOS 10.7 while `ByFlattening` is 13.0
+ * — out of era for a 10.6-era surface — so the PUBLIC DECLARATIONS are gone and the code lives
+ * under the names in CGPath_internal.h. The table is here so this file's definition and call sites
+ * read as one thing; what the surface cares about is the compiled name, and `nm` is the check. */
+#define CGPathCreateCopyByFlattening cg_path_create_flattened_copy
 
 #include <math.h>
 #include <stdlib.h>

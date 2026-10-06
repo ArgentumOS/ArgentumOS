@@ -42,9 +42,19 @@
 #include <CoreGraphics/CGContext.h>
 #include <CoreGraphics/CGGradient_internal.h>
 #include <CoreGraphics/CGPath.h>
+#include <CoreGraphics/CGPath_internal.h>
 #include <CoreGraphics/CGPaint_internal.h>
 #include <CoreGraphics/CGPattern_internal.h>
 #include <CoreGraphics/CGShading_internal.h>
+
+/* THE RENAME TABLE FOR THE THREE PATH OPERATIONS THAT ARE OURS NOW (2026-10-05) — the public
+ * declarations went with the era decision and the code lives under the names in CGPath_internal.h;
+ * see CGPath.c for the argument in full. THIS FILE IS WHERE THEY ARE MOSTLY USED: `CGContextClip`,
+ * `CGContextStrokePath` and `CGContextSetLineDash` are the 10.0-era verbs built on them, so the
+ * table is what keeps a removed NAME from being a removed CAPABILITY. */
+#define CGPathCreateCopyByFlattening cg_path_create_flattened_copy
+#define CGPathCreateCopyByStrokingPath cg_path_create_stroked_copy
+#define CGPathCreateCopyByDashingPath cg_path_create_dashed_copy
 
 #include <math.h>
 #include <stdio.h>

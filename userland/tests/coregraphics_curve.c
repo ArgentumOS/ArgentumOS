@@ -29,6 +29,14 @@
 #include <CoreGraphics/CGBitmapContext.h>
 #include <CoreGraphics/CGContext.h>
 #include <CoreGraphics/CGPath.h>
+#include <CoreGraphics/CGPath_internal.h>
+
+/* THE RENAME TABLE — see coregraphics_stroke.c for the argument in full. `CGPathCreateCopyBy
+ * Flattening` is macOS 13.0 and `ByStrokingPath` 10.7, both out of era; the machinery is what the
+ * 10.0-era boxes, clips and strokes are built on, and this probe is where the FLATTENED GEOMETRY
+ * itself is measured. */
+#define CGPathCreateCopyByFlattening cg_path_create_flattened_copy
+#define CGPathCreateCopyByStrokingPath cg_path_create_stroked_copy
 
 #include <math.h>
 #include <stdio.h>

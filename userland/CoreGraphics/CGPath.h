@@ -102,11 +102,14 @@ void CGPathCloseSubpath(CGMutablePathRef path);
 void CGPathAddArc(CGMutablePathRef path, const CGAffineTransform *m, CGFloat x, CGFloat y,
 		  CGFloat radius, CGFloat startAngle, CGFloat endAngle, bool clockwise);
 void CGPathAddEllipseInRect(CGMutablePathRef path, const CGAffineTransform *m, CGRect rect);
-CGPathRef CGPathCreateWithEllipseInRect(CGRect rect, const CGAffineTransform *m);
 void CGPathAddRoundedRect(CGMutablePathRef path, const CGAffineTransform *m, CGRect rect,
 			  CGFloat cornerWidth, CGFloat cornerHeight);
-CGPathRef CGPathCreateWithRoundedRect(CGRect rect, CGFloat cornerWidth, CGFloat cornerHeight,
-				      const CGAffineTransform *m);
+/* !! THE TWO `CGPathCreateWith…` FACTORIES STOOD HERE AND WERE REMOVED (2026-10-05):
+ * `CGPathCreateWithEllipseInRect` is macOS 10.7 and `CGPathCreateWithRoundedRect` is 10.9, out of
+ * era for this duplication. THEY WERE THIN WRAPPERS OVER THE TWO `Add…` FORMS DIRECTLY ABOVE —
+ * allocate a mutable path, call the adder — so nothing was lost with them: a caller of the era
+ * this surface targets writes `CGPathCreateMutable` + `CGPathAddEllipseInRect`, which is what they
+ * did anyway. */
 
 /* ROUND OFF THE CORNER AT (x1,y1) BETWEEN THE CURRENT POINT AND (x2,y2): a straight line to
  * the tangency point, then the arc to the second tangency point, WHICH IS WHERE THE PATH
@@ -117,45 +120,31 @@ CGPathRef CGPathCreateWithRoundedRect(CGRect rect, CGFloat cornerWidth, CGFloat 
 void CGPathAddArcToPoint(CGMutablePathRef path, const CGAffineTransform *m, CGFloat x1, CGFloat y1,
 			 CGFloat x2, CGFloat y2, CGFloat radius);
 
-/*
- * DASHING: THE PATH CUT INTO THE PIECES A DASHED LINE DRAWS (CGPathDash.c).
+/* !! DASHING AND FLATTENING STOOD HERE, AND BOTH ARE INTERNAL NOW (2026-10-05). Their public
+ * declarations were `CGPathCreateCopyByDashingPath` (macOS 10.7) and `CGPathCreateCopyByFlattening`
+ * (13.0) — out of era for a 10.6-era surface — and the code lives in CGPath_internal.h as
+ * `cg_path_create_dashed_copy` and `cg_path_create_flattened_copy`.
  *
- * `lengths` is a cycle of lengths that alternate ON and OFF from `phase` onward, and the
- * result is a set of separate subpaths — one per dash — because the pens really do go up and
- * down. THE OUTPUT IS LINES: a dash boundary falls between points on a curve, so the path is
- * flattened first, through the one flattener in the tree.
+ * NEITHER NAME WAS LOAD-BEARING FOR A CALLER OF THE ERA, AND BOTH PIECES OF MACHINERY ARE STILL
+ * LOAD-BEARING FOR THIS LIBRARY, which is why they are internalised rather than deleted:
  *
- * `transform` IS APPLIED TO THE PATH, NOT TO THE RESULT, so the lengths are in the
- * transformed space — the convention the stroker set — and a NULL `lengths` or a `count` of
- * zero means NO DASHING, which is a copy rather than an empty path: that is how a caller says
- * "solid". Three further cases this tree decides because Apple's page does not: AN ODD COUNT
- * IS DOUBLED (a cyclic pattern with an odd element count would fall out of step with its own
- * alternation), A TOTAL LENGTH OF ZERO IS A SOLID LINE, and A NEGATIVE LENGTH IS READ AS ITS
- * MAGNITUDE.
- */
-CGPathRef CGPathCreateCopyByDashingPath(CGPathRef path, const CGAffineTransform *transform,
-					CGFloat phase, const CGFloat *lengths, size_t count);
-
-/*
- * FLATTENING: THE CURVES AS LINES, AND THE ONE PLACE THAT DECISION IS MADE.
+ *   * DASHING IS REACHED THROUGH `CGContextSetLineDash` (10.0), the verb an application of the era
+ *     calls; the dasher exists so that verb can draw. `lengths` is a cycle alternating ON and OFF
+ *     from `phase`, the output is separate subpaths because the pens really do go up and down, and
+ *     it is LINES because a dash boundary falls between points on a curve. Three cases this tree
+ *     decided because Apple's page leaves them open: AN ODD COUNT IS DOUBLED (a cyclic pattern with
+ *     an odd element count would fall out of step with its own alternation), A TOTAL LENGTH OF ZERO
+ *     IS A SOLID LINE, and A NEGATIVE LENGTH IS READ AS ITS MAGNITUDE.
+ *   * FLATTENING IS REACHED THROUGH `CGContextClip`, `CGPathGetPathBoundingBox`, the fill and the
+ *     stroker, and through the AppKit's `-containsPoint:`. ONE SUBDIVISION, IN ONE PLACE — a
+ *     second one would be a second answer to "where is this curve", and a box that disagreed with
+ *     the pixels is the kind of bug that survives every review. The subdivision is ADAPTIVE (de
+ *     Casteljau at the midpoint, recursing until the control points are within the tolerance of
+ *     the chord, to a depth limit that catches degenerate chords); `flatness` of zero or less means
+ *     0.1, this tree's answer because Apple's page leaves the non-positive case open.
  *
- * `flatness` is the greatest distance a line is allowed to stray from the curve it
- * replaces, in the path's own units. A value of zero or less — or the number a caller who
- * does not want to think about it passes — means `0.1`, which is this tree's answer because
- * Apple's page does not define the non-positive case.
- *
- * IT IS PUBLIC BECAUSE BOTH BOXES AND BOTH CONSUMERS USE IT: `CGPathGetPathBoundingBox` is
- * this path's box, the fill in CGContext.c and the stroker in CGPathStroke.c flatten through
- * it too. ONE SUBDIVISION, IN ONE PLACE — a second one would be a second answer to "where
- * is this curve", and a bounding box that disagreed with the pixels is exactly the kind of
- * bug that survives every review.
- *
- * THE SUBDIVERSION IS ADAPTIVE (de Casteljau at the midpoint, recursing until the control
- * points are within the tolerance of the chord, to a depth limit that catches degenerate
- * chords). A fixed number of segments would be wrong for a small curve and wrong for a
- * large one, in opposite directions.
- */
-CGPathRef CGPathCreateCopyByFlattening(CGPathRef path, CGFloat flatness);
+ * A CALLER OF THIS SURFACE WRITES `CGContextSetLineDash` AND `CGPathGetPathBoundingBox`, which is
+ * what the era had. */
 
 /* Asking. `CGPathGetBoundingBox` INCLUDES THE CONTROL POINTS, so for a curve it is bigger
  * than the path; `CGPathGetPathBoundingBox` is the tight box of the curve itself, taken
@@ -218,9 +207,14 @@ typedef enum {
  * the alternative (stroke first, transform the result) differs for any transform that
  * is not a similarity.
  */
-CGPathRef CGPathCreateCopyByStrokingPath(CGPathRef path, const CGAffineTransform *transform,
-					CGFloat lineWidth, CGLineCap lineCap, CGLineJoin lineJoin,
-					CGFloat miterLimit);
+/* !! THE STROKING DECLARATION STOOD HERE AND IS INTERNAL NOW (2026-10-05):
+ * `CGPathCreateCopyByStrokingPath` is macOS 10.7, out of era, and the code is
+ * `cg_path_create_stroked_copy` in CGPath_internal.h. THE COMMENT ABOVE IS KEPT BECAUSE IT IS THE
+ * BEHAVIOUR THE FUNCTION STILL HAS, and the ONE DEVIATION it states is the reason the requirement
+ * is kept rather than deleted: the returned path is a set of overlapping ORIENTED pieces and must
+ * be filled NON-ZERO — an even-odd fill of it is not the stroke, which a stroke that doubles back
+ * shows, where the even-odd rule paints nothing at all. `CGContextStrokePath` (10.0) is the caller
+ * that fills it that way, and THAT is the verb of this era. */
 
 /* Walking. `points` is an array owned by the caller of the applier and valid only for the
  * duration of the call: 1 point for a move, 1 for a line, 2 for a quadratic, 3 for a cubic,

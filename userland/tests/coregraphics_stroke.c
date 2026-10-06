@@ -57,6 +57,31 @@
 #include <CoreGraphics/CGBitmapContext.h>
 #include <CoreGraphics/CGContext.h>
 #include <CoreGraphics/CGPath.h>
+#include <CoreGraphics/CGPath_internal.h>
+
+/* THIS PROBE DRIVES THE STROKER AND THE DASHER DIRECTLY, AND THAT IS NOW AN INTERNAL DOOR
+ * (2026-10-05). `CGPathCreateCopyByStrokingPath` and `ByDashingPath` are macOS 10.7 and the
+ * duplication is a 10.6-era surface, so their PUBLIC declarations are gone and the code lives
+ * under the names in CGPath_internal.h — the same machinery `CGContextStrokePath` and
+ * `CGContextSetLineDash` (both 10.0) are built on, which the probe beside this one drives through
+ * the context. WHAT THIS FILE IS FOR IS THE GEOMETRY OF THE OUTLINE, which only the path-level
+ * door exposes; the table keeps those checks rather than deleting the coverage with the name. */
+#define CGPathCreateCopyByStrokingPath cg_path_create_stroked_copy
+#define CGPathCreateCopyByDashingPath cg_path_create_dashed_copy
+
+/* AND ONE MORE NAME THE ERA TAKES AWAY: `CGPathCreateWithEllipseInRect` is macOS 10.7 and was four
+ * lines over `CGPathAddEllipseInRect`, so this helper IS the era's spelling rather than a rename —
+ * the checks below go on drawing circles through the mutable-path pair a caller of this era uses. */
+static CGPathRef probe_ellipse_path(CGRect rect, const CGAffineTransform *m)
+{
+	CGMutablePathRef p = CGPathCreateMutable();
+
+	if (p != NULL) {
+		CGPathAddEllipseInRect(p, m, rect);
+	}
+	return (CGPathRef)p;
+}
+#define CGPathCreateWithEllipseInRect(rect, m) probe_ellipse_path(rect, m)
 
 #include <stdio.h>
 #include <string.h>

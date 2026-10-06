@@ -31,6 +31,12 @@
  *     nothing and refusing it would refuse a pattern a caller could reasonably build.
  */
 #include <CoreGraphics/CGPath.h>
+#include <CoreGraphics/CGPath_internal.h>
+
+/* THE RENAME TABLE — see CGPath.c for the argument in full. This file DEFINES the dasher and
+ * CALLS the flattener. */
+#define CGPathCreateCopyByDashingPath cg_path_create_dashed_copy
+#define CGPathCreateCopyByFlattening cg_path_create_flattened_copy
 
 #include <math.h>
 #include <stdio.h>

@@ -51,10 +51,10 @@
 # counted, NOT excluded: 0 distinct names Apple documents on a `swift.` page
 # but which carry the CG spelling.
 #
-# why the struck rows are struck: after-10.6 246
+# why the struck rows are struck: after-10.6 251
 #
 # counts by kind:
-#   func       shipped  202   open  417   struck  116
+#   func       shipped  197   open  417   struck  121
 #   macro      shipped    7   open  100   struck    0
 #   enum       shipped   13   open   41   struck    3
 #   case       shipped   84   open  296   struck   64
@@ -1179,11 +1179,11 @@ func	shipped	CGPathApply	-	Opaque Types / Applying a Function to the Elements of
 func	struck	CGPathApplyWithBlock	-	Reference / Functions	after-10.6	objc
 func	open	CGPathContainsPoint	-	Opaque Types / Examining a Graphics Path	-	objc
 func	open	CGPathCreateCopy	-	Opaque Types / Copying a Graphics Path	-	objc
-func	shipped	CGPathCreateCopyByDashingPath	-	Opaque Types / Copying a Graphics Path	after-10.6	objc
-func	shipped	CGPathCreateCopyByFlattening	-	Reference / Functions	after-10.6	objc
+func	struck	CGPathCreateCopyByDashingPath	-	Opaque Types / Copying a Graphics Path	after-10.6	objc
+func	struck	CGPathCreateCopyByFlattening	-	Reference / Functions	after-10.6	objc
 func	struck	CGPathCreateCopyByIntersectingPath	-	Reference / Functions	after-10.6	objc
 func	struck	CGPathCreateCopyByNormalizing	-	Reference / Functions	after-10.6	objc
-func	shipped	CGPathCreateCopyByStrokingPath	-	Opaque Types / Copying a Graphics Path	after-10.6	objc
+func	struck	CGPathCreateCopyByStrokingPath	-	Opaque Types / Copying a Graphics Path	after-10.6	objc
 func	struck	CGPathCreateCopyBySubtractingPath	-	Reference / Functions	after-10.6	objc
 func	struck	CGPathCreateCopyBySymmetricDifferenceOfPath	-	Reference / Functions	after-10.6	objc
 func	struck	CGPathCreateCopyByTransformingPath	-	Opaque Types / Copying a Graphics Path	after-10.6	objc
@@ -1193,9 +1193,9 @@ func	struck	CGPathCreateCopyOfLineBySubtractingPath	-	Reference / Functions	afte
 func	open	CGPathCreateMutableCopy	-	Opaque Types / Copying a Graphics Path	-	objc
 func	struck	CGPathCreateMutableCopyByTransformingPath	-	Opaque Types / Copying a Graphics Path	after-10.6	objc
 func	struck	CGPathCreateSeparateComponents	-	Reference / Functions	after-10.6	objc
-func	shipped	CGPathCreateWithEllipseInRect	-	Opaque Types / Creating Graphics Paths	after-10.6	objc
+func	struck	CGPathCreateWithEllipseInRect	-	Opaque Types / Creating Graphics Paths	after-10.6	objc
 func	shipped	CGPathCreateWithRect	-	Opaque Types / Creating Graphics Paths	-	objc
-func	shipped	CGPathCreateWithRoundedRect	-	Opaque Types / Creating Graphics Paths	after-10.6	objc
+func	struck	CGPathCreateWithRoundedRect	-	Opaque Types / Creating Graphics Paths	after-10.6	objc
 func	open	CGPathEqualToPath	-	Opaque Types / Examining a Graphics Path	-	objc
 func	shipped	CGPathGetBoundingBox	-	Opaque Types / Examining a Graphics Path	-	objc
 func	shipped	CGPathGetCurrentPoint	-	Opaque Types / Examining a Graphics Path	-	objc

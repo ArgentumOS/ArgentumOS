@@ -28,6 +28,35 @@
 #include <CoreGraphics/CGContext.h>
 #include <CoreGraphics/CGPath.h>
 
+/* THE TWO `CGPathCreateWith…` FACTORIES ARE OUT OF ERA (2026-10-05) — `WithEllipseInRect` is macOS
+ * 10.7 and `WithRoundedRect` 10.9 — and BOTH WERE FOUR LINES over the `Add…` forms, so the era's
+ * spelling is that pair. These helpers exist so the checks below keep reading the way they did:
+ * a caller of the surface this library duplicates writes `CGPathCreateMutable` followed by
+ * `CGPathAddEllipseInRect` or `CGPathAddRoundedRect`, and that is exactly what they expand to. */
+static CGPathRef probe_ellipse_path(CGRect rect, const CGAffineTransform *m)
+{
+	CGMutablePathRef p = CGPathCreateMutable();
+
+	if (p != NULL) {
+		CGPathAddEllipseInRect(p, m, rect);
+	}
+	return (CGPathRef)p;
+}
+
+static CGPathRef probe_rounded_path(CGRect rect, CGFloat cw, CGFloat ch,
+				    const CGAffineTransform *m)
+{
+	CGMutablePathRef p = CGPathCreateMutable();
+
+	if (p != NULL) {
+		CGPathAddRoundedRect(p, m, rect, cw, ch);
+	}
+	return (CGPathRef)p;
+}
+
+#define CGPathCreateWithEllipseInRect(rect, m) probe_ellipse_path(rect, m)
+#define CGPathCreateWithRoundedRect(rect, cw, ch, m) probe_rounded_path(rect, cw, ch, m)
+
 #include <math.h>
 #include <stdio.h>
 #include <string.h>

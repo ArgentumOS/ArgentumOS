@@ -28,7 +28,16 @@
 
 #import <CoreGraphics/CGContext.h>
 #import <CoreGraphics/CGPath.h>
+#import <CoreGraphics/CGPath_internal.h>
 #import <Foundation/NSAffineTransform.h>
+
+/* THE RENAME TABLE FOR THE ONE PATH OPERATION THIS CLASS NEEDS — `CGPathCreateCopyByFlattening`
+ * is macOS 13.0, so its public declaration went in the 2026-10-05 era removal and the code lives
+ * under the name in CGPath_internal.h. `-containsPoint:` is a crossing count over a FLATTENED
+ * path (an oval has no line segments at all, so a lines-only test would answer NO everywhere),
+ * which is why the AppKit reaches into the library's own flattener rather than growing a second
+ * one. */
+#define CGPathCreateCopyByFlattening cg_path_create_flattened_copy
 
 #include <stdio.h>
 #include <string.h>

@@ -32,6 +32,13 @@
  * A stroked path is geometry; where it lands is the context's business.
  */
 #include <CoreGraphics/CGPath.h>
+#include <CoreGraphics/CGPath_internal.h>
+
+/* THE RENAME TABLE — see CGPath.c for the argument in full: the three `CopyBy…` path operations
+ * are internal as of 2026-10-05 because they are 10.7-13.0 API and this is a 10.6-era surface.
+ * This file DEFINES the stroker and CALLS the flattener, so it needs both names. */
+#define CGPathCreateCopyByStrokingPath cg_path_create_stroked_copy
+#define CGPathCreateCopyByFlattening cg_path_create_flattened_copy
 
 #include <math.h>
 #include <stdlib.h>
