@@ -1456,3 +1456,26 @@ say that (at 64pt a 2px outline has less ink than the fill, but at 32pt it had M
 version of that check was wrong). The clip modes are checked by their consequence: a full-surface rect after
 `kCGTextClip` lands on exactly the glyph's ink area (675 against the fill's 666), and `kCGTextFillClip` leaves
 both the glyph's OWN paint and the rect (red 351, black 320).
+
+## 17. The provider's callback forms: implemented, one check red, STASHED at `stash@{0}`
+
+**THE UNIT IS WRITTEN AND BUILT, 17 OF ITS 18 CHECKS PASS, AND IT IS STASHED RATHER THAN COMMITTED** because
+one check is red and a red gate is not shippable. What works, measured: a **sequential** source's callbacks
+are really called (`getBytes` counted), its bytes come back through `CGDataProviderCopyData`, `rewind` runs
+once so the caller's source is left usable, and `releaseInfo` runs at release; a **direct** source with a
+byte pointer is BORROWED — one `getBytePointer` call, no `getBytesAtPosition` at all, and the pointer
+returned at release; a direct source with no pointer is read by position, short answers and all; and the
+refusals (no `getBytes`; no accessor; a negative size) all hold.
+
+**THE ONE FAILING CHECK, WITH ITS READOUT:** "a second read gives the same bytes from the SAME buffer (read
+once, cached)" — `again=28 bytes, get_bytes_calls=2, cursor=0`. The bytes are right both times; the SOURCE
+WAS READ TWICE, which contradicts `cg_dataprovider_bytes`'s materialise-once guard
+(`provider->data == NULL && (sequential || direct)`). Two greps say there is only ONE `fn_materialise` call
+site (inside that guard) and only ONE `CGDataProviderCopyData`, so the guard and the behaviour disagree and
+the next instrument is a TRACE INSIDE `cg_dataprovider_bytes`/`fn_materialise` — measure at the writer.
+**WHY IT MATTERS RATHER THAN BEING A WART:** a sequential source with no `rewind` can only be read once, so a
+second materialisation would make the second reader see NOTHING — the caching is part of the contract the
+header promises.
+
+To resume: `git stash pop` (stash@{0}) and run `make host-coregraphics-run`; the failing check's readout is in
+`userland/tests/coregraphics_dataprovider.m`.
