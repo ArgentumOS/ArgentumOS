@@ -1787,3 +1787,50 @@ build in the next file it compiled, which is the only reason it was cheap to fix
 **ONE INSTRUMENT TRAP, ALSO WORTH KEEPING:** a check whose message contained the word "FAILED" was counted as a
 failure by gates that count lines containing `FAIL` — the make target said "all 23 probes passed" while the
 grep said one failure. **A CHECK'S MESSAGE MUST NOT SPELL THE VERDICT TOKEN.**
+
+## 28. The context conveniences (6 rows), and a fix I was wrong about
+
+**SIX DOORS SHIP OVER MACHINERY THAT ALREADY EXISTED:** `CGContextCopyPath`, `CGContextPathContainsPoint`,
+`CGContextAddArcToPoint`, `CGContextFillRects`, `CGContextFillEllipseInRect`, `CGContextStrokeEllipseInRect`.
+None of them is new capability — all five painted ones are the same road as `CGContextFillRect`/`StrokePath` —
+and that is the point: they were owed because nothing called them, not because nothing could.
+
+**THE POINT TEST IS APPLE'S SENTENCE, IMPLEMENTED AS WRITTEN:** "a point is contained within a context's path if
+it is inside the painted region when the path is stroked OR filled with opaque colors using the path drawing mode
+`mode`". So the fill modes ask `CGPathContainsPoint`; the stroke modes STROKE THE PATH FIRST and ask the same
+question of the outline under the **NON-ZERO** rule — which is what the stroker's own contract requires, since
+its result is a set of overlapping oriented pieces; and the two combined modes are the union.
+
+**AND THE PROBE ASKS FOR CONSEQUENCES RATHER THAN CALLS.** `FillRects` with two OVERLAPPING translucent
+rectangles reads `overlap=128 single=128` — ONE blend, where a loop of single fills would have produced about
+191 in the overlap. `PathContainsPoint` is asked about a **line**: the fill rule says false and the stroke rule
+says true, which is the only way to see that the mode is really consulted. `AddArcToPoint` is measured by the
+bounding box of the path it builds: radius 5 with legs of 10 puts the tangents at (5,0) and (10,5), so
+`box=(0,0,10,5)` and the corner is never reached. The ellipses are asked where a rectangle would answer
+differently: a filled ellipse paints its centre and NOT its rectangle's corner; a stroked one paints its rim and
+NOT its centre.
+
+**`CGContextFillRect` NOW GOES THROUGH THE SAME HELPER**, so there is one spelling of "paint a scratch path"
+rather than a second one beside the door that already had it — and the older probe's assertion that `FillRect`
+leaves the caller's current path untouched still holds.
+
+**A FIX I WAS WRONG ABOUT, AND THE INSTRUMENT THAT SETTLED IT.** The first version swapped `c->path` to paint a
+scratch path. When two checks failed I diagnosed a use-after-free (a fill empties the path in place, so the
+pointer that came back was the caller's own) and removed the swap. It was the wrong diagnosis — but the change
+was right for a different reason: **the internal helpers TAKE A PATH and do not consume it**, so no swap was ever
+needed. The two checks failed again, and the real cause was THE PROBE'S ROW ARITHMETIC: this library's bitmap
+rows do not run the way its y axis does, so a check that names one row is a check on the row arithmetic rather
+than on the door. Both checks now ask the question **in X alone** — a full-height band for `FillRects`, and
+"something was painted / the centre was not" for the stroke — which is the same lesson the layer probe paid for,
+applied before it could cost a second time.
+
+**TWO SETTINGS STAY `open` WITH THEIR GROUNDS, BOTH FOUND BY MEASUREMENT:** `CGContextSetFlatness` has **no
+context-side flattening call site to feed** — the flattener's callers are all path-side and take the tolerance as
+a parameter — so a stored context flatness would be a setting with no consumer; and `CGContextSetRenderingIntent`
+has **no getter in this library's surface** to observe it. Neither is a capability this library lacks; both are
+names whose meaning nothing here would read.
+
+**AND A LEDGER GAP CARRIED FORWARD RATHER THAN FIXED IN PASSING:** `CGContextDrawPDFPage` and
+`CGContextDrawPDFDocument` are `open` rows named `CGContext*`, so the PDF park's prefix list does not catch them
+— and both are unbuildable without the parked parser. Parking them is a deliberate change to the park's own
+definition, so it belongs in its own unit.

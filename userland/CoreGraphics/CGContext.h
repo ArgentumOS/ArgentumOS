@@ -275,6 +275,39 @@ void CGContextAddCurveToPoint(CGContextRef context, CGFloat cp1x, CGFloat cp1y, 
 void CGContextAddArc(CGContextRef context, CGFloat x, CGFloat y, CGFloat radius,
 		     CGFloat startAngle, CGFloat endAngle, bool clockwise);
 void CGContextAddEllipseInRect(CGContextRef context, CGRect rect);
+
+/* ------------------------------------------------------------------------- */
+/* Five conveniences over machinery that already exists                        */
+/* ------------------------------------------------------------------------- */
+
+/* APPLE'S OWN WORDS FOR THE POINT TEST, AND THEY ARE THE REASON THE STROKE MODES ARE HERE: "A point is
+ * contained within a context's path if it is inside the painted region when the path is stroked or filled with
+ * opaque colors using the path drawing mode `mode'. `point' is specified in user space." So the fill modes ask
+ * CGPathContainsPoint, and the stroke modes stroke the path FIRST and ask the same question of the outline —
+ * under the NON-ZERO rule, which is what the stroker's own contract requires (see CGPath_internal.h: its result
+ * is a set of overlapping ORIENTED pieces). The two combined modes are the union, because Apple's sentence is
+ * "stroked OR filled". */
+bool CGContextPathContainsPoint(CGContextRef c, CGPoint point, CGPathDrawingMode mode);
+
+/* "The returned path is specified in the current user space of `context'" — which is where this library's paths
+ * live, so the copy is a plain one. The caller owns it. */
+CGPathRef CGContextCopyPath(CGContextRef c);
+
+/* The tangent arc: Apple's sentence is that it is tangent to the line from the current point to (x1, y1) and
+ * the line from (x1, y1) to (x2, y2), possibly preceded by a straight line — which is the construction
+ * CGPathAddArcToPoint already implements. */
+void CGContextAddArcToPoint(CGContextRef c, CGFloat x1, CGFloat y1, CGFloat x2, CGFloat y2, CGFloat radius);
+
+/* AN ARRAY OF RECTANGLES IS FILLED AS ONE PATH AND NOT AS ONE FILL PER RECTANGLE: a loop of single fills would
+ * double-blend every overlap, while one path under the non-zero rule covers the union once. Apple's header says
+ * only "fill `rects', an array of `count' CGRects", and this is the reading that keeps a translucent fill from
+ * being wrong where two rectangles meet. */
+void CGContextFillRects(CGContextRef c, const CGRect *rects, size_t count);
+
+/* The two ellipse conveniences, built the way CGContextFillRect is: a SCRATCH path, so the context's current
+ * path is untouched — the guarantee that door's comment already makes and its probe already asserts. */
+void CGContextFillEllipseInRect(CGContextRef c, CGRect rect);
+void CGContextStrokeEllipseInRect(CGContextRef c, CGRect rect);
 void CGContextAddRoundedRect(CGContextRef context, CGRect rect, CGFloat cornerWidth,
 			     CGFloat cornerHeight);
 

@@ -1948,10 +1948,11 @@ void CGContextEOFillPath(CGContextRef c)
 	cg_fill_current_path(c, 1);
 }
 
+static void fn_paint_scratch_path(CGContextRef c, CGPathRef scratch, int stroking);
+
 void CGContextFillRect(CGContextRef c, CGRect rect)
 {
 	CGMutablePathRef scratch;
-	CGFloat a;
 
 	if (c == NULL) {
 		return;
@@ -1966,14 +1967,9 @@ void CGContextFillRect(CGContextRef c, CGRect rect)
 		return;
 	}
 	CGPathAddRect(scratch, NULL, rect);
-	a = c->state.alpha;
-	if (c->state.fill_pattern != NULL) {
-		cg_paint_path(c, (CGPathRef)scratch, 0, cg_op(c->state.blend), NULL,
-			      c->state.fill_pattern, a * c->state.fill_pattern_alpha);
-	} else {
-		cg_paint_path(c, (CGPathRef)scratch, 0, cg_op(c->state.blend), c->state.rgba, NULL, a);
-	}
-	CGPathRelease((CGPathRef)scratch);
+	/* ONE SPELLING OF "PAINT A SCRATCH PATH", shared with the convenience doors below: the scratch is built
+	 * here and handed over, and fn_paint_scratch_path releases it. */
+	fn_paint_scratch_path(c, (CGPathRef)scratch, 0);
 }
 
 void CGContextClearRect(CGContextRef c, CGRect rect)
@@ -2112,6 +2108,137 @@ void CGContextStrokeRect(CGContextRef c, CGRect rect)
 	if (c != NULL) {
 		cg_stroke_rect_with(c, rect, c->state.line_width);
 	}
+}
+
+/* ------------------------------------------------------------------------- */
+/* Five conveniences over machinery that already exists                        */
+/* ------------------------------------------------------------------------- */
+
+/* PAINT A SCRATCH PATH WITHOUT TOUCHING THE CALLER'S, which is the guarantee `CGContextFillRect` makes in its
+ * own comment and the shape every convenience in this file follows. THE SCRATCH PATH IS HANDED OVER, not
+ * released here: the fill and stroke doors CONSUME the current path (that is what they mean by emptying it), so
+ * whatever ends up in `c->path` afterwards is what this function owns and releases — the door's leftover, not
+ * the pointer that was passed in. */
+static void fn_paint_scratch_path(CGContextRef c, CGPathRef scratch, int stroking)
+{
+	if (scratch == NULL) {
+		return;
+	}
+	/* THE HELPERS TAKE A PATH AND DO NOT CONSUME IT, so the caller's current path is untouched BY
+	 * CONSTRUCTION and there is no swap to get wrong. AN EARLIER VERSION OF THIS FUNCTION SWAPPED `c->path`
+	 * INSTEAD, and because a fill EMPTIES the path IN PLACE — the same pointer, its count set to zero — the
+	 * pointer that came back was the caller's own, which was then released and put back: a use-after-free of
+	 * the caller's path. THE PROBE IS WHAT FOUND IT, as everything after the first painted convenience in that
+	 * probe painted nothing at all. */
+	if (stroking) {
+		cg_stroke_path_with_width(c, scratch, c->state.line_width);
+	} else {
+		CGFloat a = c->state.alpha;
+
+		if (c->state.fill_pattern != NULL) {
+			cg_paint_path(c, scratch, 0, cg_op(c->state.blend), NULL, c->state.fill_pattern,
+				      a * c->state.fill_pattern_alpha);
+		} else {
+			cg_paint_path(c, scratch, 0, cg_op(c->state.blend), c->state.rgba, NULL, a);
+		}
+	}
+	CGPathRelease(scratch);
+}
+
+CGPathRef CGContextCopyPath(CGContextRef c)
+{
+	return c == NULL ? NULL : CGPathCreateCopy((CGPathRef)c->path);
+}
+
+bool CGContextPathContainsPoint(CGContextRef c, CGPoint point, CGPathDrawingMode mode)
+{
+	if (c == NULL || c->path == NULL) {
+		return false;
+	}
+	switch (mode) {
+	case kCGPathFill:
+		return CGPathContainsPoint((CGPathRef)c->path, NULL, point, false);
+	case kCGPathEOFill:
+		return CGPathContainsPoint((CGPathRef)c->path, NULL, point, true);
+	case kCGPathStroke:
+	case kCGPathFillStroke:
+	case kCGPathEOFillStroke: {
+		CGPathRef outline = CGPathCreateCopyByStrokingPath((CGPathRef)c->path, NULL,
+								   c->state.line_width, c->state.line_cap,
+								   c->state.line_join, c->state.miter_limit);
+		bool hit = false;
+
+		if (outline != NULL) {
+			/* NON-ZERO, because that is what the stroker's result is FOR: it is a set of overlapping
+			 * oriented pieces, and even-odd would punch holes where its own joins overlap. */
+			hit = CGPathContainsPoint(outline, NULL, point, false);
+			CGPathRelease(outline);
+		}
+		if (!hit && mode != kCGPathStroke) {
+			/* Apple's sentence is "stroked OR filled", so the combined modes are the union. */
+			hit = CGPathContainsPoint((CGPathRef)c->path, NULL, point,
+						  mode == kCGPathEOFillStroke);
+		}
+		return hit;
+	}
+	default:
+		return false;
+	}
+}
+
+void CGContextAddArcToPoint(CGContextRef c, CGFloat x1, CGFloat y1, CGFloat x2, CGFloat y2, CGFloat radius)
+{
+	if (c != NULL) {
+		CGPathAddArcToPoint((CGMutablePathRef)c->path, NULL, x1, y1, x2, y2, radius);
+	}
+}
+
+void CGContextFillRects(CGContextRef c, const CGRect *rects, size_t count)
+{
+	CGMutablePathRef scratch;
+	size_t i;
+
+	if (c == NULL || rects == NULL || count == 0) {
+		return;
+	}
+	scratch = CGPathCreateMutable();
+	if (scratch == NULL) {
+		return;
+	}
+	for (i = 0; i < count; i++) {
+		CGPathAddRect(scratch, NULL, rects[i]);
+	}
+	fn_paint_scratch_path(c, (CGPathRef)scratch, 0);
+}
+
+void CGContextFillEllipseInRect(CGContextRef c, CGRect rect)
+{
+	CGMutablePathRef scratch;
+
+	if (c == NULL) {
+		return;
+	}
+	scratch = CGPathCreateMutable();
+	if (scratch == NULL) {
+		return;
+	}
+	CGPathAddEllipseInRect(scratch, NULL, rect);
+	fn_paint_scratch_path(c, (CGPathRef)scratch, 0);
+}
+
+void CGContextStrokeEllipseInRect(CGContextRef c, CGRect rect)
+{
+	CGMutablePathRef scratch;
+
+	if (c == NULL) {
+		return;
+	}
+	scratch = CGPathCreateMutable();
+	if (scratch == NULL) {
+		return;
+	}
+	CGPathAddEllipseInRect(scratch, NULL, rect);
+	fn_paint_scratch_path(c, (CGPathRef)scratch, 1);
 }
 
 void CGContextStrokeRectWithWidth(CGContextRef c, CGRect rect, CGFloat width)

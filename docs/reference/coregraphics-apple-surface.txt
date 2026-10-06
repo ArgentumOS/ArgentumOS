@@ -695,7 +695,7 @@ func	struck	CGConfigureDisplayOrigin	-	Services / Configuring Displays	x11-terri
 func	struck	CGConfigureDisplayStereoOperation	-	Services / Configuring Displays	x11-territory	objc
 func	struck	CGConfigureDisplayWithDisplayMode	-	Services / Configuring Displays	x11-territory	objc
 func	shipped	CGContextAddArc	-	Opaque Types / Constructing a Current Graphics Path	-	objc
-func	open	CGContextAddArcToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
+func	shipped	CGContextAddArcToPoint	-	Opaque Types / Constructing a Current Graphics Path	shipped with the context conveniences (plan §28)	objc
 func	shipped	CGContextAddCurveToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	shipped	CGContextAddEllipseInRect	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	shipped	CGContextAddLineToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
@@ -721,7 +721,7 @@ func	shipped	CGContextConvertRectToDeviceSpace	-	Opaque Types / Converting Betwe
 func	shipped	CGContextConvertRectToUserSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
 func	shipped	CGContextConvertSizeToDeviceSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
 func	shipped	CGContextConvertSizeToUserSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
-func	open	CGContextCopyPath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
+func	shipped	CGContextCopyPath	-	Opaque Types / Constructing a Current Graphics Path	shipped with the context conveniences (plan §28)	objc
 func	struck	CGContextDrawConicGradient	-	Reference / Functions	after-10.6	objc
 func	shipped	CGContextDrawImage	-	Opaque Types / Drawing Images and PDF Content	-	objc
 func	struck	CGContextDrawImageApplyingToneMapping	-	Reference / Functions	after-10.6	objc
@@ -738,10 +738,10 @@ func	shipped	CGContextEOClip	-	Opaque Types / Working with the Current Clipping 
 func	shipped	CGContextEOFillPath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
 func	open	CGContextEndPage	-	Opaque Types / Managing a Page-Based Graphics Context	-	objc
 func	open	CGContextEndTransparencyLayer	-	Opaque Types / Working with Transparency Layers	-	objc
-func	open	CGContextFillEllipseInRect	-	Opaque Types / Drawing Shapes	-	objc
+func	shipped	CGContextFillEllipseInRect	-	Opaque Types / Drawing Shapes	shipped with the context conveniences (plan §28)	objc
 func	shipped	CGContextFillPath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
 func	shipped	CGContextFillRect	-	Opaque Types / Drawing Shapes	-	objc
-func	open	CGContextFillRects	-	Opaque Types / Drawing Shapes	-	objc
+func	shipped	CGContextFillRects	-	Opaque Types / Drawing Shapes	shipped with the context conveniences (plan §28)	objc
 func	shipped	CGContextFlush	-	Opaque Types / Managing a Graphics Context	-	objc
 func	shipped	CGContextGetCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
 func	shipped	CGContextGetClipBoundingBox	-	Opaque Types / Working with the Current Clipping Path	-	objc
@@ -756,7 +756,7 @@ func	shipped	CGContextGetTypeID	-	Opaque Types / Working with Core Foundation Ty
 func	shipped	CGContextGetUserSpaceToDeviceSpaceTransform	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
 func	shipped	CGContextIsPathEmpty	-	Opaque Types / Examining the Current Graphics Path	-	objc
 func	shipped	CGContextMoveToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
-func	open	CGContextPathContainsPoint	-	Opaque Types / Examining the Current Graphics Path	-	objc
+func	shipped	CGContextPathContainsPoint	-	Opaque Types / Examining the Current Graphics Path	shipped with the context conveniences (plan §28)	objc
 func	shipped	CGContextRelease	-	Opaque Types / Retaining and Releasing Graphics Contexts	-	objc
 func	shipped	CGContextReplacePathWithStrokedPath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	struck	CGContextResetClip	-	Reference / Functions	post-10.6	objc
@@ -815,7 +815,7 @@ func	shipped	CGContextShowGlyphsAtPositions	-	Opaque Types / Drawing Text	-	objc
 func	shipped	CGContextShowGlyphsWithAdvances	-	Opaque Types / Drawing Text	deprecated	objc
 func	shipped	CGContextShowText	-	Opaque Types / Drawing Text	deprecated	objc
 func	shipped	CGContextShowTextAtPoint	-	Opaque Types / Drawing Text	deprecated	objc
-func	open	CGContextStrokeEllipseInRect	-	Opaque Types / Drawing Shapes	-	objc
+func	shipped	CGContextStrokeEllipseInRect	-	Opaque Types / Drawing Shapes	shipped with the context conveniences (plan §28)	objc
 func	shipped	CGContextStrokeLineSegments	-	Opaque Types / Drawing Shapes	-	objc
 func	shipped	CGContextStrokePath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
 func	shipped	CGContextStrokeRect	-	Opaque Types / Drawing Shapes	-	objc
