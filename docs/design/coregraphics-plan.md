@@ -1755,3 +1755,35 @@ the surface cannot be freed while the image is being drawn.
 rectangle HALF AS TALL as the surface and then read row 0 — which a short rectangle leaves outside the draw,
 because this library's bitmap rows do not run the way its y axis does. The scaling had worked; the question had
 been asked in Y as well as X. Reading a FULL-HEIGHT band asks it in X alone, and the check now says so.
+
+## 27. The geometry doors: the third comparison and the dictionary representations (7 rows)
+
+**SEVEN ROWS SHIP:** `CGRectEqualToRect`, and the six 10.5 serialisation doors — `CGPoint`/`CGSize`/`CGRect` each
+with a `CreateDictionaryRepresentation` and a `MakeWithDictionaryRepresentation`.
+
+**THE KEY STRINGS ARE THIS LIBRARY'S, BECAUSE APPLE'S PAGES DO NOT PUBLISH THEM — AND THAT WAS MEASURED, NOT
+ASSUMED.** Apple's documentation describes the result as "the dictionary representation of the point" and stops
+there; a documentation search confirms the keys are an implementation detail, published by other bindings and by
+code in the wild rather than by Apple. So the spelling chosen here is the one every other implementation uses —
+`"X"`, `"Y"`, `"Width"`, `"Height"` — because the whole purpose of the representation is that a dictionary this
+library writes can be read by anything that reads Apple's, and the probe pins that spelling rather than trusting
+it: it inspects the keys, not only the round trip.
+
+**THE FAILURE CHANNEL IS THE BOOLEAN APPLE DEFINES**, so a malformed dictionary returns `false` and says nothing
+else: this is a query whose failure is a VALUE, like `CGImageIsMask`'s answer for NULL, and a caller probing a
+dictionary should not have to read a diagnostic to find out. **THE OUTPUT STRUCT IS LEFT UNTOUCHED ON THAT PATH**
+— which is what "store the value in `point'" can mean on a path that returns false — and the probe checks it
+with a sentinel, because a half-written struct is the kind of bug a round trip alone would not show.
+
+**THE STRUCT IS WHAT IS STORED, NOT A NORMALISED SHAPE:** a rectangle with a negative width comes back with it
+negative, since `CGRectStandardize` is a different function.
+
+**AND A UNIT THAT COST A HEADER THE LESSON IS WORTH RECORDING:** the first version of this patch rebuilt
+`CGGeometry.h` as *head + insertion + tail*, which silently DROPPED every declaration between the insertion
+point and the final `#endif` — the whole geometry surface, `CGRectIntegral` among them. It was caught by the
+build in the next file it compiled, which is the only reason it was cheap to fix: **an insertion is
+`head + new + rest`, never `head + new + tail`, unless the file has exactly one thing left.**
+
+**ONE INSTRUMENT TRAP, ALSO WORTH KEEPING:** a check whose message contained the word "FAILED" was counted as a
+failure by gates that count lines containing `FAIL` — the make target said "all 23 probes passed" while the
+grep said one failure. **A CHECK'S MESSAGE MUST NOT SPELL THE VERDICT TOKEN.**

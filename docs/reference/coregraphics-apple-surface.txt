@@ -1234,10 +1234,10 @@ func	shipped	CGPatternGetTypeID	-	Opaque Types / Working with Core Foundation Ty
 func	shipped	CGPatternRelease	-	Opaque Types / Retaining and Releasing a Pattern	-	objc
 func	shipped	CGPatternRetain	-	Opaque Types / Retaining and Releasing a Pattern	-	objc
 func	shipped	CGPointApplyAffineTransform	-	Reference / Applying Affine Transformations	-	objc
-func	open	CGPointCreateDictionaryRepresentation	-	Reference / Creating a Dictionary Representation from a Geometric Primitive	-	objc
+func	shipped	CGPointCreateDictionaryRepresentation	-	Reference / Creating a Dictionary Representation from a Geometric Primitive	shipped with the geometry doors (plan §27)	objc
 func	shipped	CGPointEqualToPoint	-	Reference / Functions	deprecated	objc
 func	shipped	CGPointMake	-	Reference / Creating a Geometric Primitive from Values	-	objc
-func	open	CGPointMakeWithDictionaryRepresentation	-	Reference / Creating a Geometric Primitive from a Dictionary Representation	-	objc
+func	shipped	CGPointMakeWithDictionaryRepresentation	-	Reference / Creating a Geometric Primitive from a Dictionary Representation	shipped with the geometry doors (plan §27)	objc
 func	struck	CGPostKeyboardEvent	-	Services / Deprecated Functions	x11-territory	objc
 func	struck	CGPostMouseEvent	-	Services / Deprecated Functions	x11-territory	objc
 func	struck	CGPostScrollWheelEvent	-	Services / Deprecated Functions	x11-territory	objc
@@ -1247,9 +1247,9 @@ func	struck	CGPreflightScreenCaptureAccess	-	Reference / Functions	after-10.6	ob
 func	shipped	CGRectApplyAffineTransform	-	Reference / Applying Affine Transformations	-	objc
 func	shipped	CGRectContainsPoint	-	Reference / Checking for Membership	-	objc
 func	shipped	CGRectContainsRect	-	Reference / Checking for Membership	-	objc
-func	open	CGRectCreateDictionaryRepresentation	-	Reference / Creating a Dictionary Representation from a Geometric Primitive	-	objc
+func	shipped	CGRectCreateDictionaryRepresentation	-	Reference / Creating a Dictionary Representation from a Geometric Primitive	shipped with the geometry doors (plan §27)	objc
 func	shipped	CGRectDivide	-	Reference / Modifying Rectangles	-	objc
-func	open	CGRectEqualToRect	-	Reference / Comparing Values	deprecated	objc
+func	shipped	CGRectEqualToRect	-	Reference / Comparing Values	shipped with the geometry doors (plan §27)	objc
 func	shipped	CGRectGetHeight	-	Reference / Getting Height and Width	-	objc
 func	shipped	CGRectGetMaxX	-	Reference / Getting Min, Mid, and Max Values	-	objc
 func	shipped	CGRectGetMaxY	-	Reference / Getting Min, Mid, and Max Values	-	objc
@@ -1266,7 +1266,7 @@ func	shipped	CGRectIsEmpty	-	Reference / Checking Rectangle Characteristics	-	ob
 func	shipped	CGRectIsInfinite	-	Reference / Checking Rectangle Characteristics	-	objc
 func	shipped	CGRectIsNull	-	Reference / Checking Rectangle Characteristics	-	objc
 func	shipped	CGRectMake	-	Reference / Creating a Geometric Primitive from Values	-	objc
-func	open	CGRectMakeWithDictionaryRepresentation	-	Reference / Creating a Geometric Primitive from a Dictionary Representation	-	objc
+func	shipped	CGRectMakeWithDictionaryRepresentation	-	Reference / Creating a Geometric Primitive from a Dictionary Representation	shipped with the geometry doors (plan §27)	objc
 func	shipped	CGRectOffset	-	Reference / Modifying Rectangles	-	objc
 func	shipped	CGRectStandardize	-	Reference / Modifying Rectangles	-	objc
 func	shipped	CGRectUnion	-	Reference / Modifying Rectangles	-	objc
@@ -1303,10 +1303,10 @@ func	shipped	CGShadingRetain	-	Opaque Types / Retaining and Releasing Shading Ob
 func	struck	CGShieldingWindowID	-	Services / Capturing and Releasing Displays	x11-territory	objc
 func	struck	CGShieldingWindowLevel	-	Services / Capturing and Releasing Displays	x11-territory	objc
 func	shipped	CGSizeApplyAffineTransform	-	Reference / Applying Affine Transformations	-	objc
-func	open	CGSizeCreateDictionaryRepresentation	-	Reference / Creating a Dictionary Representation from a Geometric Primitive	-	objc
+func	shipped	CGSizeCreateDictionaryRepresentation	-	Reference / Creating a Dictionary Representation from a Geometric Primitive	shipped with the geometry doors (plan §27)	objc
 func	shipped	CGSizeEqualToSize	-	Reference / Functions	deprecated	objc
 func	shipped	CGSizeMake	-	Reference / Creating a Geometric Primitive from Values	-	objc
-func	open	CGSizeMakeWithDictionaryRepresentation	-	Reference / Creating a Geometric Primitive from a Dictionary Representation	-	objc
+func	shipped	CGSizeMakeWithDictionaryRepresentation	-	Reference / Creating a Geometric Primitive from a Dictionary Representation	shipped with the geometry doors (plan §27)	objc
 func	struck	CGUnregisterScreenRefreshCallback	-	Services / Getting Information About Refresh and Move Operations	x11-territory	objc
 func	struck	CGVectorMake	-	Reference / Creating a Geometric Primitive from Values	post-10.6	objc
 func	struck	CGWaitForScreenRefreshRects	-	Services / Getting Information About Refresh and Move Operations	x11-territory	objc

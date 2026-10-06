@@ -88,6 +88,43 @@ CGRect CGRectMake(CGFloat x, CGFloat y, CGFloat width, CGFloat height);
 #define CGSizeEqualToSize(size1, size2) \
 	((size1).width == (size2).width && (size1).height == (size2).height)
 
+/* THE THIRD COMPARISON, the one of the shapes that was still owed: four fields rather than two, and the same
+ * exact equality the other two use — CGGeometry has no notion of "close enough". */
+#define CGRectEqualToRect(rect1, rect2) \
+	((rect1).origin.x == (rect2).origin.x && (rect1).origin.y == (rect2).origin.y \
+	 && (rect1).size.width == (rect2).size.width && (rect1).size.height == (rect2).size.height)
+
+/* ------------------------------------------------------------------------- */
+/* The dictionary representations                                             */
+/* ------------------------------------------------------------------------- */
+
+/* A GEOMETRIC PRIMITIVE AS A DICTIONARY, AND BACK. THESE ARE THE 10.5 SERIALISATION DOORS: Apple's header says
+ * the `Make` forms take a dictionary "presumably returned earlier from" the matching `Create` form, and that
+ * they "return true on success; false otherwise".
+ *
+ * THE KEY STRINGS ARE THIS LIBRARY'S, BECAUSE APPLE'S PAGES DO NOT PUBLISH THEM: the documentation describes the
+ * result as "the dictionary representation of the point" and stops there, so the keys are an implementation
+ * detail in the same sense the enum values are — MEASURED rather than assumed, and the measurement is a
+ * documentation search, not a header. What IS decided here is to use the spelling every other implementation of
+ * these doors uses — "X", "Y", "Width", "Height" — because the whole purpose of the representation is that a
+ * caller can read a dictionary this library wrote and hand one back, and that only works if the names match the
+ * ones in the wild.
+ *
+ * THE FAILURE CHANNEL IS THE BOOLEAN, WHICH APPLE DEFINES — so a malformed dictionary returns `false` and says
+ * nothing else: this is a query whose failure is a VALUE, like CGImageIsMask's answer for NULL, and a caller
+ * probing a dictionary should not have to read a diagnostic to find out. THE OUTPUT STRUCT IS LEFT UNTOUCHED
+ * when the answer is false, which is what "store the value in `point'" can mean on a path that returns false.
+ *
+ * THE TYPE IS `NSDictionary *` for Apple's `CFDictionaryRef`, as every CF type in this library is spelled, and
+ * THE `Create` DOORS RETURN A REFERENCE THE CALLER OWNS — release it, as Apple's own documentation says to
+ * release the CFDictionary it returns. */
+NSDictionary *CGPointCreateDictionaryRepresentation(CGPoint point);
+bool CGPointMakeWithDictionaryRepresentation(NSDictionary *dict, CGPoint *point);
+NSDictionary *CGSizeCreateDictionaryRepresentation(CGSize size);
+bool CGSizeMakeWithDictionaryRepresentation(NSDictionary *dict, CGSize *size);
+NSDictionary *CGRectCreateDictionaryRepresentation(CGRect rect);
+bool CGRectMakeWithDictionaryRepresentation(NSDictionary *dict, CGRect *rect);
+
 /* Reading a rectangle. */
 CGFloat CGRectGetMinX(CGRect rect);
 CGFloat CGRectGetMinY(CGRect rect);
