@@ -92,8 +92,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-DIRECTORYENUMERATOR %s ok\n", name);
@@ -103,6 +106,15 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		       detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSMutableSet", "unionSet:") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* NULLABLE CONSTRUCTORS ROUTED THROUGH `id`, this tier's rule for -Werror=nullable-to-nonnull-conversion. */
 static id fn_url(NSString *path)
@@ -277,6 +289,7 @@ int main(void)
 		check("walk-yields-the-whole-subtree", fn_same_items(items, expected),
 		      [NSString stringWithFormat:@"got %lu item(s): %@",
 			(unsigned long)[items count], [items componentsJoinedByString:@" "]]);
+	covers("NSFileManager", "enumeratorAtPath:");
 		check("walk-paths-are-relative-to-the-directory", [notRelative count] == 0,
 		      [NSString stringWithFormat:@"these carry the directory's own path: %@",
 			[notRelative componentsJoinedByString:@" "]]);
@@ -386,6 +399,7 @@ int main(void)
 		      [NSString stringWithFormat:@"walk %lu, subpaths %lu, subpathsWithError %lu",
 			(unsigned long)[byWalk count], (unsigned long)[bySubpaths count],
 			(unsigned long)[bySubpathsWithError count]]);
+	covers("NSFileManager", "subpathsAtPath:");
 
 		check("a-symbolic-link-given-as-the-path-is-traversed",
 		      fn_same_items(fn_walk(fn_path(@"link")), @[ @"b.txt", @"sub", @"sub/c.txt" ]) &&

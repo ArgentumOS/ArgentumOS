@@ -237,6 +237,7 @@ int main(void)
 		      [[[delegate received] objectAtIndex:0] isEqual:@"id=42 on=a port|first|second"],
 		      [NSString stringWithFormat:@"sent=%d and the delegate recorded: %@", (int)sent,
 			[[delegate received] componentsJoinedByString:@"; "]]);
+	covers("NSPortMessage", "sendBeforeDate:");
 	covers("NSMachPort", "setDelegate:");
 
 		/* A COMPONENT THAT IS NOT DATA IS REFUSED AT THE DOOR, and nothing arrives. Apple's other documented

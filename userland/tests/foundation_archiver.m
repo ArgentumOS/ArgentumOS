@@ -392,6 +392,7 @@ int main(void)
 		      [back count] == 2 && [[back objectAtIndex:0] isEqualToString:@"substituted"] &&
 		      [[back objectAtIndex:1] isEqualToString:@"substituted"],
 		      @"the object is written as its replacement, both times it appears");
+	covers("NSKeyedArchiver", "classNameForClass:");
 	covers("NSCoder", "encodeRootObject:");
 
 		/* THE READING SIDE: the same archive, substituted on the way in. */

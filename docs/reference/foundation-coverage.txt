@@ -163,10 +163,8 @@ NSDateComponents	leapMonth	property	leapMonth	# needs a check
 NSDateComponents	nanosecond	property	nanosecond	# needs a check
 NSDateComponents	repeatedDay	property	repeatedDay	# needs a check
 NSDateComponents	setValue:forComponent:	method	-setValue:forComponent:	# needs a check
-NSDateComponents	setWeek:	method	-setWeek:	# needs a check
 NSDateComponents	timeZone	property	timeZone	# needs a check
 NSDateComponents	validDate	property	validDate	# needs a check
-NSDateComponents	valueForComponent:	method	-valueForComponent:	# needs a check
 NSDateComponents	week	method	-week	# needs a check
 NSDateComponents	weekdayOrdinal	property	weekdayOrdinal	# needs a check
 NSDateFormatter	defaultDate	property	defaultDate	# needs a check
@@ -307,17 +305,14 @@ NSFileHandle	writeabilityHandler	property	writeabilityHandler	# needs a check
 NSFileManager	contentsOfDirectoryAtURL:includingPropertiesForKeys:options:error:	method	-contentsOfDirectoryAtURL:includingPropertiesForKeys:options:error:	# needs a check
 NSFileManager	createDirectoryAtURL:withIntermediateDirectories:attributes:error:	method	-createDirectoryAtURL:withIntermediateDirectories:attributes:error:	# needs a check
 NSFileManager	delegate	property	delegate	# needs a check
-NSFileManager	enumeratorAtPath:	method	-enumeratorAtPath:	# needs a check
 NSFileManager	enumeratorAtURL:includingPropertiesForKeys:options:errorHandler:	method	-enumeratorAtURL:includingPropertiesForKeys:options:errorHandler:	# needs a check
 NSFileManager	getFileProviderServicesForItemAtURL:completionHandler:	method	-getFileProviderServicesForItemAtURL:completionHandler:	# needs a check
 NSFileManager	getRelationship:ofDirectory:inDomain:toItemAtURL:error:	method	-getRelationship:ofDirectory:inDomain:toItemAtURL:error:	# needs a check
 NSFileManager	isDeletableFileAtPath:	method	-isDeletableFileAtPath:	# needs a check
-NSFileManager	isExecutableFileAtPath:	method	-isExecutableFileAtPath:	# needs a check
 NSFileManager	isReadableFileAtPath:	method	-isReadableFileAtPath:	# needs a check
 NSFileManager	isWritableFileAtPath:	method	-isWritableFileAtPath:	# needs a check
 NSFileManager	linkItemAtPath:toPath:error:	method	-linkItemAtPath:toPath:error:	# needs a check
 NSFileManager	mountedVolumeURLsIncludingResourceValuesForKeys:options:	method	-mountedVolumeURLsIncludingResourceValuesForKeys:options:	# needs a check
-NSFileManager	subpathsAtPath:	method	-subpathsAtPath:	# needs a check
 NSFileManager	subpathsOfDirectoryAtPath:error:	method	-subpathsOfDirectoryAtPath:error:	# needs a check
 NSFileManagerDelegate	fileManager:shouldCopyItemAtPath:toPath:	method	-fileManager:shouldCopyItemAtPath:toPath:	# needs a check
 NSFileManagerDelegate	fileManager:shouldCopyItemAtURL:toURL:	method	-fileManager:shouldCopyItemAtURL:toURL:	# needs a check
@@ -428,7 +423,6 @@ NSInvocation	selector	property	selector	# needs a check
 NSInvocation	setArgument:atIndex:	method	-setArgument:atIndex:	# needs a check
 NSKeyedArchiver	archiveRootObject:toFile:	method	+archiveRootObject:toFile:	# needs a check
 NSKeyedArchiver	archivedDataWithRootObject:requiringSecureCoding:error:	method	+archivedDataWithRootObject:requiringSecureCoding:error:	# needs a check
-NSKeyedArchiver	classNameForClass:	method	+classNameForClass:	# needs a check
 NSKeyedArchiver	delegate	property	delegate	# needs a check
 NSKeyedArchiver	encodeBool:forKey:	method	-encodeBool:forKey:	# needs a check
 NSKeyedArchiver	encodeBytes:length:forKey:	method	-encodeBytes:length:forKey:	# needs a check
@@ -509,11 +503,7 @@ NSMutableAttributedString	setAttributedString:	method	-setAttributedString:	# ne
 NSMutableAttributedString	setAttributes:range:	method	-setAttributes:range:	# needs a check
 NSMutableData	compressUsingAlgorithm:error:	method	-compressUsingAlgorithm:error:	# needs a check
 NSMutableData	decompressUsingAlgorithm:error:	method	-decompressUsingAlgorithm:error:	# needs a check
-NSMutableSet	intersectSet:	method	-intersectSet:	# needs a check
-NSMutableSet	minusSet:	method	-minusSet:	# needs a check
 NSMutableSet	setSet:	method	-setSet:	# needs a check
-NSMutableSet	setWithCapacity:	method	+setWithCapacity:	# needs a check
-NSMutableSet	unionSet:	method	-unionSet:	# needs a check
 NSMutableString	applyTransform:reverse:range:updatedRange:	method	-applyTransform:reverse:range:updatedRange:	# needs a check
 NSMutableURLRequest	allowsConstrainedNetworkAccess	property	allowsConstrainedNetworkAccess	# needs a check
 NSMutableURLRequest	allowsExpensiveNetworkAccess	property	allowsExpensiveNetworkAccess	# needs a check
@@ -593,7 +583,6 @@ NSPortMessage	components	property	components	# needs a check
 NSPortMessage	initWithSendPort:receivePort:components:	method	-initWithSendPort:receivePort:components:	# needs a check
 NSPortMessage	msgid	property	msgid	# needs a check
 NSPortMessage	receivePort	property	receivePort	# needs a check
-NSPortMessage	sendBeforeDate:	method	-sendBeforeDate:	# needs a check
 NSPortMessage	sendPort	property	sendPort	# needs a check
 NSPortNameServer	portForName:	method	-portForName:	# needs a check
 NSPortNameServer	portForName:host:	method	-portForName:host:	# needs a check

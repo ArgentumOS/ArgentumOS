@@ -536,6 +536,8 @@ int main(void)
 		      [NSCalendarIdentifierBangla isEqualToString:@"bangla"] &&
 		      [NSCalendarDayChangedNotification isEqualToString:@"NSCalendarDayChangedNotification"],
 		      "the aliases equal their house names, DayOfYear is Apple's bit, and an identifier is its wire string");
+	covers("NSDateComponents", "setWeek:");
+	covers("NSDateComponents", "valueForComponent:");
 	}
 
 	{

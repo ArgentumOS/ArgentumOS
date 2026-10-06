@@ -560,6 +560,7 @@ int main(int argc, char *argv[])
 		      !launched && error != nil &&
 		      [[error domain] isEqualToString:@"NSPOSIXErrorDomain"],
 		      [NSString stringWithFormat:@"launched=%d error=%@", (int)launched, [error domain]]);
+	covers("NSFileManager", "isExecutableFileAtPath:");
 	}
 
 	{

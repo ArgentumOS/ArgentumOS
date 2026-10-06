@@ -117,6 +117,9 @@ int main(void)
 		      [NSString stringWithFormat:@"union=%lu minus=%lu intersect=%lu",
 			(unsigned long)unionCount, (unsigned long)minusCount,
 			(unsigned long)intersectCount]);
+	covers("NSMutableSet", "intersectSet:");
+	covers("NSMutableSet", "minusSet:");
+	covers("NSMutableSet", "unionSet:");
 	}
 
 	{
@@ -286,6 +289,7 @@ int main(void)
 			(unsigned long)(three != nil ? [three count] : 0),
 			(int)(empty == [NSSet set]),
 			(unsigned long)(mutableFromVarargs != nil ? [mutableFromVarargs count] : 0)]);
+	covers("NSMutableSet", "setWithCapacity:");
 	}
 
 	{
