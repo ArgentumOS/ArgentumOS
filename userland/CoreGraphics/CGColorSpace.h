@@ -193,13 +193,19 @@ NSString *CGColorSpaceCopyName(CGColorSpaceRef space) CG_RETURNS_RETAINED;
  * out of era. THE ICC ROOM KEEPS ITS IN-ERA DOORS — `CGColorSpaceCreateICCBased` and
  * `CGColorSpaceCreateWithICCProfile` (10.5) — so profile bytes are as reachable as they were
  * before it existed; what is gone is the NSData spelling of the door. */
-
-/* !! `CGColorSpaceCopyICCData` STOOD HERE AND WAS REMOVED (2026-10-05) — the OTHER HALF OF THE
- * SAME PAIR, and macOS 10.12 like the door above, so it is out of era too. THE IN-ERA
- * COUNTERPART IS `CGColorSpaceCopyICCProfile` (10.5, the provider form), which is a row this
- * ledger still carries as owed work rather than an implemented one. AND WHAT THAT MEANS FOR A
- * CALLER IS STATED RATHER THAN GLOSSED: there is no Foundation-data spelling of a space's profile
- * bytes left in this library, and none is owed, because the era this surface targets has none. */
+/* !! `CGColorSpaceCopyICCData` WAS REMOVED AS OUT OF ERA (2026-10-05, macOS 10.12) — AND THE NOTE
+ * THAT STOOD HERE SAID TWO THINGS THAT ARE NOT SO, BOTH OF WHICH THIS UNIT MEASURED AND CORRECTED:
+ *
+ *   1. IT CALLED `CGColorSpaceCopyICCProfile` "the provider form". It is not: the 10.5 declaration is
+ *      `CFDataRef CGColorSpaceCopyICCProfile(CGColorSpaceRef space)`, WHICH TAKES ONLY THE SPACE AND RETURNS
+ *      DATA. The provider form is `CGColorSpaceCreateICCBased`, which is in the ICC room's create half.
+ *   2. IT SAID "there is no Foundation-data spelling of a space's profile bytes left in this library, and none
+ *      is owed, because the era this surface targets has none". BOTH IN-ERA DOORS ARE DATA DOORS:
+ *      `CGColorSpaceCreateWithICCProfile` takes a `CFDataRef` and `CGColorSpaceCopyICCProfile` returns one,
+ *      both 10.5. What 10.12 added was the NSDATA SPELLING OF THEIR NAMES (`…WithICCData`/`…CopyICCData`), and
+ *      that is what went. THE OWED ROWS WERE THESE TWO ALL ALONG. */
+CGColorSpaceRef CGColorSpaceCreateWithICCProfile(NSData *data);
+NSData *CGColorSpaceCopyICCProfile(CGColorSpaceRef space);
 
 /* THE CALIBRATED SPACES, AND THE ONE PLACE APPLE'S PARAMETERS DO NOT TRANSFER DIRECTLY. Apple
  * gives a MATRIX taking RGB to XYZ; the engine wants three PRIMARIES in xy. Those are the same

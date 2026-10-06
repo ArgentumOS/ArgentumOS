@@ -358,6 +358,11 @@ CGColorSpaceRef CGColorSpaceCreateICCBased(size_t nComponents, const CGFloat *ra
 	return space;
 }
 
+void *cg_colorspace_profile_handle(CGColorSpaceRef space)
+{
+	return space == NULL ? NULL : (void *)space->profile;
+}
+
 CGColorSpaceRef CGColorSpaceRetain(CGColorSpaceRef space)
 {
 	if (space != NULL) {

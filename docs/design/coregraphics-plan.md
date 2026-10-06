@@ -1915,3 +1915,38 @@ catches the rest. Neither catches everything, which is why both run.
 non-zero on "nothing to flip", which aborted the commit that followed it. **A one-shot script must not be
 re-run in the same chain as the commit it protects** — the ledger was already correct, and the commit had to be
 redone by hand.
+
+## 31. The ICC profile both ways (2 rows), and a recorded note that was wrong twice
+
+**`CGColorSpaceCreateWithICCProfile` AND `CGColorSpaceCopyICCProfile` SHIP**, and the note in CGColorSpace.h
+that described them had to be corrected in place, because it was wrong in two ways — both of them measured
+against the 10.5 header this unit read:
+
+1. **It called `CGColorSpaceCopyICCProfile` "the provider form". It is not.** The 10.5 declaration is
+   `CFDataRef CGColorSpaceCopyICCProfile(CGColorSpaceRef space)` — which takes only the space and RETURNS DATA.
+   The provider form is `CGColorSpaceCreateICCBased`, in the room's create half.
+2. **It said that "there is no Foundation-data spelling of a space's profile bytes left in this library, and
+   none is owed, because the era this surface targets has none." Both in-era doors ARE data doors:**
+   `CreateWithICCProfile` takes a `CFDataRef` and `CopyICCProfile` returns one, and both are 10.5. What 10.12
+   added was the **NSData spelling of their names** — `…WithICCData` and `…CopyICCData` — and that is what went
+   with the era cut. **THE OWED ROWS WERE THESE TWO ALL ALONG.**
+
+**THE IMPLEMENTATION IS COMPOSITION RATHER THAN A SECOND PARSER.** `CreateWithICCProfile` is the CFData form of
+`CGColorSpaceCreateICCBased`: it builds a provider over the caller's bytes (retaining the object, as the
+provider's own CFData form does) and calls that door, whose zero component count means "ask the profile". And
+`CopyICCProfile` uses the engine's own serialiser, called twice — once to measure, once to fill — because
+re-emitting a profile by hand would be a second implementation of a format this library only ever reads.
+
+**THE PROBE ASKS FOR A USABLE SPACE AND NOT A DESCRIBABLE ONE:** the bytes come out, make a space again with the
+same model and component count, and a colour made in THAT space fills a context — `b=0 g=0 r=255 a=255` — which
+is only true if the profile was really parsed rather than carried as an opaque blob. Apple's other sentence is
+measured too: a DEVICE space answers NULL, because a device space is the one whose numbers are the numbers.
+
+**WHAT REMAINS IN THIS FAMILY, AND ONE THING IT WILL EXPOSE.** Four indexed rows (`CreateIndexed` and the three
+getters) and `CreateWithPlatformColorSpace`, which is REFUSED BY NAME with its ground in Apple's own words: "For
+MacOS X, `ref` should be a `CMProfileRef`" — a ColorSync type this library has no equivalent of. AND THE INDEXED
+UNIT MUST COME WITH A RELEASE FIX: `CGColorSpaceRelease` frees a space only when `space->profile != NULL`, so a
+space built from parameters that is NOT profile-backed is never freed at all — which is true TODAY of a pattern
+space, and would be true of an indexed space over a device base. It is the same shape the struct's own comment
+records ("C4.1's guard dispatched on the MODEL alone, which was safe only because device RGB was the only RGB
+space that existed — the gap recorded against it"), and it belongs with the unit that makes it observable.

@@ -60,6 +60,7 @@
 
 #include <lcms2.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 /* THE FOUR GENERIC SPACES, AND THE VALUE OF EACH IS ITS OWN NAME. Apple publishes the NAMES, not the
  * string a caller gets by printing one, and a caller who wrote this value to a file and read it back
@@ -220,6 +221,72 @@ NSString *CGColorSpaceCopyName(CGColorSpaceRef space)
 		}
 	}
 	return nil;
+}
+
+/* ------------------------------------------------------------------------- */
+/* the ICC profile, both ways                                                  */
+/* ------------------------------------------------------------------------- */
+
+/* THE PROVIDER'S RELEASE CALLBACK, the same shape the provider's own CFData form uses: `info` is the object
+ * the creator retained, and the bytes taken from it are valid for exactly as long as it lives. */
+static void fn_release_profile_data(void *info, const void *data, size_t size)
+{
+	(void)data;
+	(void)size;
+	[(NSData *)info release];
+}
+
+/* A DATA PROVIDER IS THE ROAD IN, BECAUSE IT ALREADY IS ONE: `CGColorSpaceCreateICCBased` takes a provider,
+ * validates the bytes, parses them and keeps the PROFILE rather than the data — so this door is the CFData
+ * form of that one and not a second parser. The zero component count means "ask the profile". */
+CGColorSpaceRef CGColorSpaceCreateWithICCProfile(NSData *data)
+{
+	CGDataProviderRef provider;
+	CGColorSpaceRef space;
+
+	if (data == nil) {
+		fprintf(stderr, "CG-REFUSE: CGColorSpaceCreateWithICCProfile needs the profile's bytes\n");
+		return NULL;
+	}
+	provider = CGDataProviderCreateWithData((void *)[data retain], [data bytes], (size_t)[data length],
+						fn_release_profile_data);
+	if (provider == NULL) {
+		[data release];
+		return NULL;
+	}
+	space = CGColorSpaceCreateICCBased(0, NULL, provider, NULL);
+	CGDataProviderRelease(provider);
+	return space;
+}
+
+/* AND THE ROAD OUT IS THE ENGINE'S OWN SERIALISER, because re-emitting a profile by hand would be a second
+ * implementation of a format that this library only ever reads. THE SIZE IS ASKED FOR FIRST, which is how the
+ * engine's writer is called twice: once to measure, once to fill. */
+NSData *CGColorSpaceCopyICCProfile(CGColorSpaceRef space)
+{
+	cmsHPROFILE profile = (cmsHPROFILE)cg_colorspace_profile_handle(space);
+	cmsUInt32Number size = 0;
+	void *mem;
+	NSData *data;
+
+	if (profile == NULL) {
+		return nil;	/* Apple: "or NULL if the color space doesn't have an ICC profile" */
+	}
+	if (!cmsSaveProfileToMem(profile, NULL, &size) || size == 0) {
+		return nil;
+	}
+	mem = malloc((size_t)size);
+	if (mem == NULL) {
+		return nil;
+	}
+	if (!cmsSaveProfileToMem(profile, mem, &size)) {
+		free(mem);
+		return nil;
+	}
+	/* THE CALLER OWNS WHAT COMES BACK, and the engine's buffer is this function's to free. */
+	data = [[NSData alloc] initWithBytes:mem length:(NSUInteger)size];
+	free(mem);
+	return data;
 }
 
 CGColorSpaceRef CGColorSpaceCreateWithName(NSString *name)

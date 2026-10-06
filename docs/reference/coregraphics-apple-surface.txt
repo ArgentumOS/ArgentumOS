@@ -649,7 +649,7 @@ func	shipped	CGColorRelease	-	Opaque Types / Retaining and Releasing Color Objec
 func	shipped	CGColorRetain	-	Opaque Types / Retaining and Releasing Color Objects	-	objc
 func	struck	CGColorSpaceCopyBaseColorSpace	-	Reference / Functions	after-10.6	objc
 func	struck	CGColorSpaceCopyICCData	-	Opaque Types / Examining a Color Space	after-10.6	objc
-func	open	CGColorSpaceCopyICCProfile	-	Opaque Types / Examining a Color Space	deprecated	objc
+func	shipped	CGColorSpaceCopyICCProfile	-	Opaque Types / Examining a Color Space	shipped with the ICC doors (plan §31)	objc
 func	shipped	CGColorSpaceCopyName	-	Opaque Types / Examining a Color Space	-	objc
 func	struck	CGColorSpaceCopyPropertyList	-	Opaque Types / Examining a Color Space	after-10.6	objc
 func	shipped	CGColorSpaceCreateCalibratedGray	-	Opaque Types / Creating Color Spaces	-	objc
@@ -667,7 +667,7 @@ func	struck	CGColorSpaceCreateLinearized	-	Reference / Functions	after-10.6	objc
 func	shipped	CGColorSpaceCreatePattern	-	Opaque Types / Creating Color Spaces	-	objc
 func	struck	CGColorSpaceCreateWithColorSyncProfile	-	Reference / Functions	after-10.6	objc
 func	struck	CGColorSpaceCreateWithICCData	-	Opaque Types / Creating Color Spaces	after-10.6	objc
-func	open	CGColorSpaceCreateWithICCProfile	-	Opaque Types / Creating Color Spaces	deprecated	objc
+func	shipped	CGColorSpaceCreateWithICCProfile	-	Opaque Types / Creating Color Spaces	shipped with the ICC doors (plan §31)	objc
 func	shipped	CGColorSpaceCreateWithName	-	Opaque Types / Creating Color Spaces	-	objc
 func	open	CGColorSpaceCreateWithPlatformColorSpace	-	Opaque Types / Creating Color Spaces	deprecated	objc
 func	struck	CGColorSpaceCreateWithPropertyList	-	Opaque Types / Creating Color Spaces	after-10.6	objc

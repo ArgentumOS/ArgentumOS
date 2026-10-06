@@ -36,4 +36,10 @@ void *cg_colorspace_engine_profile(CGColorSpaceRef space);
 CGColorSpaceRef cg_colorspace_from_profile(void *profile, CGColorSpaceModel model,
 					   size_t components);
 
+/* THE PARSED PROFILE HANDLE, for the one door that has to serialise it back to bytes. `void *` rather than
+ * `cmsHPROFILE` so that a caller of this header does not need the engine's header to name the type: the
+ * translation unit that uses it knows what it is, and the rest do not have to. NULL for a space that has no
+ * profile, which is every device space. */
+void *cg_colorspace_profile_handle(CGColorSpaceRef space);
+
 #endif /* CORE_GRAPHICS_CGCOLORSPACE_INTERNAL_H */
