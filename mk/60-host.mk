@@ -214,6 +214,7 @@ host-foundation-run: host-foundation
 # below are the ones the probe runs were verified with (0 warnings, 144 checks).
 HOST_LCMS2_PREFIX ?= .build/lcms2-host-prefix
 HOST_CG_CFLAGS  ?= -std=gnu11 -fPIC -g -Wall -Wextra -Iuserland -I/usr/include/pixman-1 \
+		   -I/usr/include/freetype2 \
 		   -I$(CURDIR)/$(HOST_LCMS2_PREFIX)/include
 # THE HOST DOES NEED THE RPATH — the opposite of the guest, and for the same reason: there is
 # no system lcms2 to fall back on here (measured: the runtime .so exists, the header does not),
@@ -231,7 +232,8 @@ HOST_CG_CFLAGS  ?= -std=gnu11 -fPIC -g -Wall -Wextra -Iuserland -I/usr/include/p
 # header's API is stable across implementations of it, so the host probes use the system library while
 # the GUEST library links the vendored 3.2.0 that tools/libjpeg-build.sh installs. Two builds would
 # be waste here — the reason lcms2 needed two was that this host had no lcms2 DEVELOPMENT HEADER.
-HOST_CG_LDFLAGS ?= -lpixman-1 -lpng16 -ljpeg -lm -L$(CURDIR)/$(HOST_LCMS2_PREFIX)/lib -llcms2 \
+HOST_CG_LDFLAGS ?= -lpixman-1 -lpng16 -ljpeg -lfreetype -lm \
+		   -L$(CURDIR)/$(HOST_LCMS2_PREFIX)/lib -llcms2 \
 		   -L$(HOST_LIBDIR) -lfoundation -L$(CURDIR)/$(HOST_OBJCPFX)/lib -lobjc $(HOST_ICU_LIBS) \
 		   -Wl,-rpath,$(CURDIR)/$(HOST_LCMS2_PREFIX)/lib
 HOST_CG_SRCS    := $(wildcard userland/CoreGraphics/*.c)
@@ -250,7 +252,7 @@ HOST_CG_OBJDIR  := $(HOST_OBJDIR)/coregraphics
 HOST_CG_MOBJS    = $(patsubst userland/CoreGraphics/%.m,$(HOST_CG_OBJDIR)/coregraphics-%.o,$(HOST_CG_MSRCS))
 # PIXMAN'S INCLUDE PATH NEEDS THE `pixman-1` SUBDIRECTORY NAMED: `pixman.h` includes
 # `pixman-version.h` from its own directory and is NOT self-contained.
-HOST_CG_PROBES  ?= coregraphics_context coregraphics_stroke coregraphics_stroke_context coregraphics_curve coregraphics_arc coregraphics_color coregraphics_color_foundation coregraphics_image coregraphics_image_png coregraphics_image_jpeg coregraphics_gradient coregraphics_gradient_colors coregraphics_shading coregraphics_pattern coregraphics_nsvalue
+HOST_CG_PROBES  ?= coregraphics_context coregraphics_stroke coregraphics_stroke_context coregraphics_curve coregraphics_arc coregraphics_color coregraphics_color_foundation coregraphics_image coregraphics_image_png coregraphics_image_jpeg coregraphics_gradient coregraphics_gradient_colors coregraphics_shading coregraphics_pattern coregraphics_nsvalue coregraphics_font
 
 $(HOST_CG_OBJDIR)/coregraphics-%.o: userland/CoreGraphics/%.m
 	@mkdir -p $(HOST_CG_OBJDIR)

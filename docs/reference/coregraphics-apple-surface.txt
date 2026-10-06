@@ -77,12 +77,12 @@
 # why the struck rows are struck: after-10.6 253, post-10.6 178, x11-territory 475
 #
 # counts by kind:
-#   func       shipped  192   open  135   struck  310   deferred   98
+#   func       shipped  211   open  116   struck  310   deferred   98
 #   macro      shipped    7   open    8   struck   92   deferred    0
 #   enum       shipped   12   open    4   struck   38   deferred    3
 #   case       shipped   85   open   17   struck  325   deferred   17
-#   var        shipped   11   open   14   struck   87   deferred   23
-#   typealias  shipped   17   open   15   struck   45   deferred   23
+#   var        shipped   14   open   11   struck   87   deferred   23
+#   typealias  shipped   20   open   12   struck   45   deferred   23
 #   struct     shipped    7   open    3   struck    9   deferred    1
 case	open	CGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
 case	open	CGGlyphMin	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
@@ -973,9 +973,9 @@ func	struck	CGEventTapEnable	-	Services / Working With Event Taps	x11-territory	
 func	struck	CGEventTapIsEnabled	-	Services / Working With Event Taps	x11-territory	objc
 func	struck	CGEventTapPostEvent	-	Services / Working With Event Taps	x11-territory	objc
 func	open	CGFontCanCreatePostScriptSubset	-	Opaque Types / Working with PostScript Fonts	-	objc
-func	open	CGFontCopyFullName	-	Opaque Types / Examining Font Metadata	-	objc
-func	open	CGFontCopyGlyphNameForGlyph	-	Opaque Types / Working with Glyphs	-	objc
-func	open	CGFontCopyPostScriptName	-	Opaque Types / Working with PostScript Fonts	-	objc
+func	shipped	CGFontCopyFullName	-	Opaque Types / Examining Font Metadata	-	objc
+func	shipped	CGFontCopyGlyphNameForGlyph	-	Opaque Types / Working with Glyphs	-	objc
+func	shipped	CGFontCopyPostScriptName	-	Opaque Types / Working with PostScript Fonts	-	objc
 func	open	CGFontCopyTableForTag	-	Opaque Types / Working with Font Tables	-	objc
 func	open	CGFontCopyTableTags	-	Opaque Types / Working with Font Tables	-	objc
 func	open	CGFontCopyVariationAxes	-	Opaque Types / Working with Variations	-	objc
@@ -983,25 +983,25 @@ func	open	CGFontCopyVariations	-	Opaque Types / Working with Variations	-	objc
 func	open	CGFontCreateCopyWithVariations	-	Opaque Types / Working with Variations	-	objc
 func	open	CGFontCreatePostScriptEncoding	-	Opaque Types / Working with PostScript Fonts	-	objc
 func	open	CGFontCreatePostScriptSubset	-	Opaque Types / Working with PostScript Fonts	-	objc
-func	open	CGFontCreateWithDataProvider	-	Opaque Types / Creating Font Objects	-	objc
+func	shipped	CGFontCreateWithDataProvider	-	Opaque Types / Creating Font Objects	-	objc
 func	open	CGFontCreateWithFontName	-	Opaque Types / Creating Font Objects	-	objc
 func	open	CGFontCreateWithPlatformFont	-	Opaque Types / Creating Font Objects	deprecated	objc
-func	open	CGFontGetAscent	-	Opaque Types / Examining Font Metrics	-	objc
-func	open	CGFontGetCapHeight	-	Opaque Types / Examining Font Metrics	-	objc
-func	open	CGFontGetDescent	-	Opaque Types / Examining Font Metrics	-	objc
-func	open	CGFontGetFontBBox	-	Opaque Types / Examining Font Metrics	-	objc
-func	open	CGFontGetGlyphAdvances	-	Opaque Types / Working with Glyphs	-	objc
-func	open	CGFontGetGlyphBBoxes	-	Opaque Types / Working with Glyphs	-	objc
-func	open	CGFontGetGlyphWithGlyphName	-	Opaque Types / Working with Glyphs	-	objc
-func	open	CGFontGetItalicAngle	-	Opaque Types / Examining Font Metrics	-	objc
-func	open	CGFontGetLeading	-	Opaque Types / Examining Font Metrics	-	objc
-func	open	CGFontGetNumberOfGlyphs	-	Opaque Types / Working with Glyphs	-	objc
-func	open	CGFontGetStemV	-	Opaque Types / Examining Font Metrics	-	objc
+func	shipped	CGFontGetAscent	-	Opaque Types / Examining Font Metrics	-	objc
+func	shipped	CGFontGetCapHeight	-	Opaque Types / Examining Font Metrics	-	objc
+func	shipped	CGFontGetDescent	-	Opaque Types / Examining Font Metrics	-	objc
+func	shipped	CGFontGetFontBBox	-	Opaque Types / Examining Font Metrics	-	objc
+func	shipped	CGFontGetGlyphAdvances	-	Opaque Types / Working with Glyphs	-	objc
+func	shipped	CGFontGetGlyphBBoxes	-	Opaque Types / Working with Glyphs	-	objc
+func	shipped	CGFontGetGlyphWithGlyphName	-	Opaque Types / Working with Glyphs	-	objc
+func	shipped	CGFontGetItalicAngle	-	Opaque Types / Examining Font Metrics	-	objc
+func	shipped	CGFontGetLeading	-	Opaque Types / Examining Font Metrics	-	objc
+func	shipped	CGFontGetNumberOfGlyphs	-	Opaque Types / Working with Glyphs	-	objc
+func	shipped	CGFontGetStemV	-	Opaque Types / Examining Font Metrics	-	objc
 func	open	CGFontGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
-func	open	CGFontGetUnitsPerEm	-	Opaque Types / Examining Font Metrics	-	objc
-func	open	CGFontGetXHeight	-	Opaque Types / Examining Font Metrics	-	objc
-func	open	CGFontRelease	-	Opaque Types / Retaining and Releasing a CGFont Object	-	objc
-func	open	CGFontRetain	-	Opaque Types / Retaining and Releasing a CGFont Object	-	objc
+func	shipped	CGFontGetUnitsPerEm	-	Opaque Types / Examining Font Metrics	-	objc
+func	shipped	CGFontGetXHeight	-	Opaque Types / Examining Font Metrics	-	objc
+func	shipped	CGFontRelease	-	Opaque Types / Retaining and Releasing a CGFont Object	-	objc
+func	shipped	CGFontRetain	-	Opaque Types / Retaining and Releasing a CGFont Object	-	objc
 func	shipped	CGFunctionCreate	-	Opaque Types / Creating Function Objects	-	objc
 func	open	CGFunctionGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGFunctionRelease	-	Opaque Types / Retaining and Releasing CGFunction Objects	-	objc
@@ -1490,13 +1490,13 @@ typealias	struck	CGEventTapInformation	-	Services / Data Types	x11-territory	obj
 typealias	struck	CGEventTapProxy	-	Services / Data Types	x11-territory	objc
 typealias	struck	CGEventTimestamp	-	Services / Data Types	x11-territory	objc
 typealias	shipped	CGFloat	-	CoreFoundation, CG-named / Reference / Data Types	-	objc
-typealias	open	CGFontIndex	-	Opaque Types / Working with Glyphs	-	objc
-typealias	open	CGFontRef	-	Opaque Types	-	objc
+typealias	shipped	CGFontIndex	-	Opaque Types / Working with Glyphs	-	objc
+typealias	shipped	CGFontRef	-	Opaque Types	-	objc
 typealias	shipped	CGFunctionEvaluateCallback	-	Opaque Types / Callbacks	-	objc
 typealias	shipped	CGFunctionRef	-	Opaque Types	-	objc
 typealias	shipped	CGFunctionReleaseInfoCallback	-	Opaque Types / Callbacks	-	objc
 typealias	struck	CGGammaValue	-	Services / Data Types	x11-territory	objc
-typealias	open	CGGlyph	-	Opaque Types / Working with Glyphs	-	objc
+typealias	shipped	CGGlyph	-	Opaque Types / Working with Glyphs	-	objc
 typealias	shipped	CGGradientRef	-	Opaque Types	-	objc
 typealias	shipped	CGImageRef	-	Opaque Types	-	objc
 typealias	struck	CGKeyCode	-	Services / Data Types	x11-territory	objc
@@ -1623,13 +1623,13 @@ var	struck	kCGEXRToneMappingGammaDefog	-	Reference / Constants	after-10.6	objc
 var	struck	kCGEXRToneMappingGammaExposure	-	Reference / Constants	after-10.6	objc
 var	struck	kCGEXRToneMappingGammaKneeHigh	-	Reference / Constants	after-10.6	objc
 var	struck	kCGEXRToneMappingGammaKneeLow	-	Reference / Constants	after-10.6	objc
-var	open	kCGFontIndexInvalid	-	Opaque Types / Working with Font Tables / Constants	-	objc
-var	open	kCGFontIndexMax	-	Opaque Types / Working with Font Tables / Constants	-	objc
+var	shipped	kCGFontIndexInvalid	-	Opaque Types / Working with Font Tables / Constants	-	objc
+var	shipped	kCGFontIndexMax	-	Opaque Types / Working with Font Tables / Constants	-	objc
 var	open	kCGFontVariationAxisDefaultValue	-	Opaque Types / Working with Variations / Constants	-	objc
 var	open	kCGFontVariationAxisMaxValue	-	Opaque Types / Working with Variations / Constants	-	objc
 var	open	kCGFontVariationAxisMinValue	-	Opaque Types / Working with Variations / Constants	-	objc
 var	open	kCGFontVariationAxisName	-	Opaque Types / Working with Variations / Constants	-	objc
-var	open	kCGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	-	objc
+var	shipped	kCGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	-	objc
 var	struck	kCGPDFContextAccessPermissions	-	Reference / Constants	after-10.6	objc
 var	deferred	kCGPDFContextAllowsCopying	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	no-consumer	objc
 var	deferred	kCGPDFContextAllowsPrinting	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	no-consumer	objc

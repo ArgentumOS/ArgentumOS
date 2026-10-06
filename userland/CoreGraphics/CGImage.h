@@ -75,7 +75,7 @@ typedef enum {
  * the mask uses, and a mask that is too wide is a mask that swallows bits a caller set. THE TWO
  * HOST NAMES ARE MACROS IN APPLE'S HEADER TOO, endian-dependent, and this library builds for
  * x86-64 alone, so they name the Little variants as Apple's own `#else` arm does. */
-typedef enum {
+enum {
 	kCGBitmapByteOrderMask = 0x7000,
 	kCGBitmapByteOrderDefault = (0 << 12),
 	kCGBitmapByteOrder16Little = (1 << 12),
