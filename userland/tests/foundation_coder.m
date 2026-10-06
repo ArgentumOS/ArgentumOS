@@ -1251,6 +1251,159 @@ int main(void)
 		printf("FOUNDATION-CODER DIAG leg=data-objects-done\n");
 	}
 
+	printf("FOUNDATION-CODER DIAG leg=classes-of-objects\n");
+	{
+		/* THE CLASSES-OF-OBJECTS DOORS: they decode and then VERIFY, refusing through the failure policy
+		 * whatever the set does not name. Asserted in BOTH directions - allowed and refused - and with a NIL
+		 * set too, which this library's own helper documents as NO RESTRICTION rather than an empty
+		 * allow-list. */
+		NSMutableData *guardData = [[NSMutableData alloc] init];
+		NSKeyedArchiver *guardWriter = [[NSKeyedArchiver alloc] initForWritingWithMutableData:guardData];
+		CoderNode *guardedNode = [[CoderNode alloc] init];
+		NSArray *guardedList = [NSArray arrayWithObjects:@"one", @"two", nil];
+		id objBack = nil, nilSetBack = nil, arrayBack = nil;
+		BOOL objRefused = NO, arrayRefused = NO;
+
+		[guardWriter encodeObject:guardedNode forKey:@"node"];
+		[guardWriter encodeObject:guardedList forKey:@"list"];
+		[guardWriter finishEncoding];
+		{
+			NSKeyedUnarchiver *guardReader = [[NSKeyedUnarchiver alloc] initForReadingWithData:guardData];
+			NSSet *strings = [NSSet setWithObject:[NSString class]];
+			NSSet *nodes = [NSSet setWithObject:[CoderNode class]];
+			NSSet *numbers = [NSSet setWithObject:[NSNumber class]];
+
+			objBack = [guardReader decodeObjectOfClasses:nodes forKey:@"node"];
+			nilSetBack = [guardReader decodeObjectOfClasses:nil forKey:@"node"];
+			arrayBack = [guardReader decodeArrayOfObjectsOfClasses:strings forKey:@"list"];
+			@try {
+				(void)[guardReader decodeObjectOfClasses:strings forKey:@"node"];
+			} @catch (NSException *e) {
+				(void)e;
+				objRefused = YES;
+			}
+			@try {
+				(void)[guardReader decodeArrayOfObjectsOfClasses:numbers forKey:@"list"];
+			} @catch (NSException *e) {
+				(void)e;
+				arrayRefused = YES;
+			}
+			check("classes-of-objects-doors-allow-what-they-name-and-refuse-what-they-do-not",
+			      objBack != nil && [objBack isKindOfClass:[CoderNode class]] &&
+			      nilSetBack != nil && [nilSetBack isKindOfClass:[CoderNode class]] &&
+			      arrayBack != nil && [arrayBack count] == 2 && objRefused && arrayRefused,
+			      [NSString stringWithFormat:@"obj=%@ nilSet=%@ array=%@ refused=%d/%d",
+				objBack, nilSetBack, arrayBack, (int)objRefused, (int)arrayRefused]);
+			covers("NSCoder", "decodeObjectOfClasses:forKey:");
+			covers("NSCoder", "decodeArrayOfObjectsOfClasses:forKey:");
+		}
+		printf("FOUNDATION-CODER DIAG leg=classes-of-objects-done\n");
+	}
+
+	printf("FOUNDATION-CODER DIAG leg=dictionary-and-top-level\n");
+	{
+		/* THE KEYS/OBJECTS DICTIONARY DOOR AND THE TOP-LEVEL PAIR. The first verifies BOTH halves of every
+		 * pair; the second is the ERROR-RETURNING spelling - it answers nil and fills the error instead of
+		 * raising - so a check that only asked for the right class would miss the whole point of the pair. */
+		NSMutableData *dictData = [[NSMutableData alloc] init];
+		NSKeyedArchiver *dictWriter = [[NSKeyedArchiver alloc] initForWritingWithMutableData:dictData];
+		NSDictionary *dict = [NSDictionary dictionaryWithObject:[NSNumber numberWithInt:21] forKey:@"k"];
+		id dictBack = nil;
+		id topOk = nil, topWrong = nil, topClassesOk = nil, topClassesWrong = nil;
+		NSError *wrongErr = nil, *classesErr = nil;
+		BOOL dictRefused = NO;
+
+		[dictWriter encodeObject:dict forKey:@"dict"];
+		[dictWriter encodeObject:[NSNumber numberWithInt:7] forKey:@"seven"];
+		[dictWriter finishEncoding];
+		{
+			NSKeyedUnarchiver *dictReader = [[NSKeyedUnarchiver alloc] initForReadingWithData:dictData];
+			NSSet *strings = [NSSet setWithObject:[NSString class]];
+			NSSet *numbers = [NSSet setWithObject:[NSNumber class]];
+			NSSet *dates = [NSSet setWithObject:[NSDate class]];
+
+			dictBack = [dictReader decodeDictionaryWithKeysOfClasses:strings
+								 objectsOfClasses:numbers forKey:@"dict"];
+			@try {
+				(void)[dictReader decodeDictionaryWithKeysOfClasses:strings
+							    objectsOfClasses:dates forKey:@"dict"];
+			} @catch (NSException *e) {
+				(void)e;
+				dictRefused = YES;
+			}
+			topOk = [dictReader decodeTopLevelObjectOfClass:[NSNumber class] forKey:@"seven"
+								  error:NULL];
+			topWrong = [dictReader decodeTopLevelObjectOfClass:[NSString class] forKey:@"seven"
+								     error:&wrongErr];
+			topClassesOk = [dictReader decodeTopLevelObjectOfClasses:numbers forKey:@"seven"
+								       error:NULL];
+			topClassesWrong = [dictReader decodeTopLevelObjectOfClasses:strings forKey:@"seven"
+									  error:&classesErr];
+			check("dictionary-classes-door-and-the-error-returning-top-level-pair",
+			      dictBack != nil && [dictBack count] == 1 && dictRefused &&
+			      topOk != nil && [topOk intValue] == 7 &&
+			      topWrong == nil && wrongErr != nil &&
+			      topClassesOk != nil && [topClassesOk intValue] == 7 &&
+			      topClassesWrong == nil && classesErr != nil,
+			      [NSString stringWithFormat:@"dict=%@ refused=%d topOk=%@ wrong=%@/%@ classesOk=%@ wrong=%@/%@",
+				dictBack, (int)dictRefused, topOk, topWrong,
+				wrongErr != nil ? [wrongErr description] : @"(none)", topClassesOk, topClassesWrong,
+				classesErr != nil ? [classesErr description] : @"(none)"]);
+			covers("NSCoder", "decodeDictionaryWithKeysOfClasses:objectsOfClasses:forKey:");
+			covers("NSCoder", "decodeTopLevelObjectOfClass:forKey:error:");
+			covers("NSCoder", "decodeTopLevelObjectOfClasses:forKey:error:");
+		}
+		printf("FOUNDATION-CODER DIAG leg=dictionary-and-top-level-done\n");
+	}
+
+	printf("FOUNDATION-CODER DIAG leg=minimum-length\n");
+	{
+		/* THE SIZED READING DOOR AND ITS SEQUENTIAL TWIN: the floor the caller declares is HONOURED - a run
+		 * that meets it is handed back, one that does not is refused - which is the whole reason the sized
+		 * spelling exists. */
+		static const unsigned char run[5] = { 'a', 'b', 'c', 'd', 'e' };
+		NSMutableData *floorData = [[NSMutableData alloc] init];
+		NSKeyedArchiver *floorWriter = [[NSKeyedArchiver alloc] initForWritingWithMutableData:floorData];
+		const void *meetsBack = NULL, *shortBack = NULL;
+		NSUInteger sequLength = 0;
+		const void *sequBack = NULL;
+		BOOL shortRefused = NO;
+
+		[floorWriter encodeBytes:run length:sizeof(run) forKey:@"run"];
+		[floorWriter finishEncoding];
+		{
+			NSKeyedUnarchiver *floorReader = [[NSKeyedUnarchiver alloc] initForReadingWithData:floorData];
+
+			meetsBack = [floorReader decodeBytesForKey:@"run" minimumLength:3];
+			@try {
+				shortBack = [floorReader decodeBytesForKey:@"run" minimumLength:9];
+			} @catch (NSException *e) {
+				(void)e;
+				shortRefused = YES;
+			}
+			(void)shortBack;
+			check("sized-bytes-door-honours-the-floor-it-is-given",
+			      meetsBack != NULL && memcmp(meetsBack, run, sizeof(run)) == 0 && shortRefused,
+			      [NSString stringWithFormat:@"meets=%p shortRefused=%d", meetsBack, (int)shortRefused]);
+			covers("NSCoder", "decodeBytesForKey:minimumLength:");
+		}
+		{
+			NSMutableData *sequData = [[NSMutableData alloc] init];
+			NSArchiver *sequWriter = [[NSArchiver alloc] initForWritingWithMutableData:sequData];
+
+			[sequWriter encodeBytes:run length:sizeof(run)];
+			sequBack = [[[NSUnarchiver alloc] initForReadingWithData:sequData]
+					decodeBytesWithReturnedLength:&sequLength];
+			check("sequential-sized-bytes-door-round-trips-with-its-length",
+			      sequBack != NULL && sequLength == sizeof(run) &&
+			      memcmp(sequBack, run, sizeof(run)) == 0,
+			      [NSString stringWithFormat:@"bytes=%p length=%lu (wanted %lu)", sequBack,
+				(unsigned long)sequLength, (unsigned long)sizeof(run)]);
+			covers("NSCoder", "decodeBytesWithReturnedLength:");
+		}
+		printf("FOUNDATION-CODER DIAG leg=minimum-length-done\n");
+	}
+
 	printf("FOUNDATION-CODER RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness
