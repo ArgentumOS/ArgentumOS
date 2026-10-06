@@ -615,9 +615,14 @@ static void cg_group_pop(CGContextRef c, int composite)
 
 		mask = pixman_image_create_bits(PIXMAN_a8, 1, 1, (uint32_t *)&level, 4);
 		if (mask != NULL) {
+			/* THE DESTINATION IS THE SURFACE THIS GROUP REPLACED AND NOT `c->image`: at this moment
+			 * `c->image` IS the group's own, so compositing into it would put the group onto itself
+			 * and leave the real destination untouched — which is exactly what the probe caught, as
+			 * every readout of zero. The CLIP is still the group's, and that is right: a layer bounded
+			 * by a rectangle is bounded at both ends by that rectangle. */
 			pixman_image_set_repeat(mask, PIXMAN_REPEAT_NORMAL);
-			pixman_image_set_clip_region32(c->image, &c->state.clip);
-			pixman_image_composite32(cg_op(outer_blend), g->image, mask, c->image, 0, 0, 0, 0,
+			pixman_image_set_clip_region32(g->saved_image, &c->state.clip);
+			pixman_image_composite32(cg_op(outer_blend), g->image, mask, g->saved_image, 0, 0, 0, 0,
 						 0, 0, c->width, c->height);
 			pixman_image_unref(mask);
 		}
@@ -628,6 +633,12 @@ static void cg_group_pop(CGContextRef c, int composite)
 	c->stride = g->saved_stride;
 	c->image = g->saved_image;
 	c->owns_data = g->saved_owns_data;
+	/* AND THE TWO STATE EXCEPTIONS ARE UNDONE, WHICH IS THE OTHER HALF OF APPLE'S SENTENCE: "after a call to
+	 * this function, all of the parameters in the graphics state remain unchanged" — so the alpha the caller
+	 * had before the layer is the alpha they have after it. The probe caught this as the layer's own alpha of
+	 * 1 leaking out of the layer and attenuating nothing. */
+	c->state.alpha = g->alpha;
+	c->state.blend = g->blend;
 	free(g);
 }
 

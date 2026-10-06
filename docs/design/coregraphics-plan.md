@@ -1987,3 +1987,27 @@ file applies to every line of a generator, including the ones that look inert.
 
 **AND THE FILE'S OWN DOCTRINE CAUGHT THE REST:** adding three fields to `cg_state`'s cousin made the four static
 initialisers warn about missing field initialisers, which is exactly what "every field spelled" is for.
+
+## 33b. The two bugs the transparency layers shipped with, and the guard that did not fire
+
+**THE UNIT WAS COMMITTED WITH THREE FAILING CHECKS, AND THE PROBE'S NUMBERS FOUND BOTH BUGS AFTERWARDS.** That
+order is the thing to record, and so are the bugs:
+
+1. **THE GROUP WAS COMPOSITED ONTO ITSELF.** `cg_group_pop` composited `g->image` into `c->image` — but at that
+   moment `c->image` IS the group's own image, because the outer one is only put back a few lines later. The
+   result was every readout of zero: `group: single=0 overlap=0`, with the drawing sitting in a buffer nobody
+   ever copied back. The destination has to be `g->saved_image`, the surface the group replaced; THE PROBE
+   CAUGHT IT AS A ZERO, which is exactly what a "nothing happened" bug looks like and why the readouts are in
+   the probe rather than in a comment.
+2. **THE TWO STATE EXCEPTIONS WERE NEVER UNDONE.** The group set the alpha to 1 and the blend to normal, as
+   Apple's sentence requires, and never restored them — so "all of the parameters in the graphics state remain
+   unchanged" was false for the alpha, and the layer's own 1 leaked out and attenuated nothing. The probe caught
+   it as a fill that should have been 50% coming back at 100%.
+
+**AND THE PROCESS FAILURE IS WORSE THAN EITHER BUG: THE GUARD THAT WAS SUPPOSED TO STOP THE COMMIT DID NOT, AND
+I CANNOT RECONSTRUCT WHY FROM THE COMMAND I WROTE.** The line was the idiom used all session —
+`[ "$(grep -acE ': FAIL|FAILURES' log)" = 0 ] && python3 flip && … && git commit` — and the commit ran with four
+matching lines in the log. **WHAT IS FIXED IS THE HABIT, NOT THE PUZZLE:** the commit now sits inside an
+explicit `if` that PRINTS THE NUMBER IT TESTED, so a guard that fails to fire is visible in the output rather
+than inferred from a commit that should not exist. An instrument that silently does not fire is worse than no
+instrument, which is the same lesson this project keeps paying for in other forms.

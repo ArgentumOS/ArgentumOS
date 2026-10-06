@@ -134,12 +134,15 @@ int main(void)
 		check("an end with no begin is refused rather than corrupting the surface",
 		      alpha_at(canvas, 2) == 0xFF);
 		CGContextSetBlendMode(c, kCGBlendModeMultiply);
+		CGContextSetAlpha(c, 0.5);
 		memset(canvas, 0, sizeof canvas);
-		CGContextBeginTransparencyLayer(c, NULL);
+		CGContextBeginTransparencyLayer(c, NULL);	/* refused, so nothing is pushed */
 		two_bands(c);
-		CGContextEndTransparencyLayer(c);
-		check("a layer under a NON-NORMAL blend is refused by name, and leaves the surface alone",
-		      alpha_at(canvas, 3) == 0x00);
+		CGContextEndTransparencyLayer(c);		/* and this has nothing to end */
+		/* WHAT A REFUSED LAYER HAS TO LEAVE BEHIND IS THE *UNGROUPED* RESULT: the drawing still happens,
+		 * it is simply not grouped, so the overlap must be the same 43.75% the plain case produced. */
+		check("a layer under a NON-NORMAL blend is refused by name, and the drawing is simply UNGROUPED",
+		      alpha_at(canvas, 3) == plain_overlap);
 		CGContextSetBlendMode(c, kCGBlendModeNormal);
 	}
 
