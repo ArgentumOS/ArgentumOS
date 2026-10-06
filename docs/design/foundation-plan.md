@@ -28426,3 +28426,24 @@ Both are the same class of staleness the campaign has hit before: a check whose 
 ABSENT goes false the moment the absence is filled, and NOTHING in the ordinary run says so. The argument that they
 are not from this tranche is the diff: it is additive only (a `covers()` helper and claim lines), which cannot
 change whether a door exists.
+
+**§63.247x — THE SWEEP'S 313 WAS INFLATED BY PROSE, AND THE HONEST NUMBER IS 150 (2026-10-04).** The global
+sweep of §63.247v searched the RAW probe sources, so a selector written in a COMMENT or inside a failure-detail
+STRING counted as a call. Re-run over comment- and literal-stripped sources, with the WHOLE file as the search
+space (so a call split across lines still matches):
+
+    150 of 1,053 tier-none rows are CALLED in code    (the raw-source sweep said 313)
+
+**163 of those 313 hits were prose.** The correction matters beyond the number, because it reclassifies owners:
+NSUndoManager was named in the sweep's top line with 8 rows, and a LINE-BY-LINE scan of the stripped sources finds
+ZERO - its calls are split across lines, which is exactly why the whole-text search is the right instrument and
+the line-by-line one is not. (I made that mistake twice in one turn: the first per-owner diagnostic scanned line
+by line and reported nothing, which nearly became a false "these doors are never called".)
+
+**AND THREE RECEIVER HEURISTICS FAILED IN A ROW** - "owner key appears in the receiver identifier", "stem equals
+key", "stem mentions the owner" - each either accepted a foreign receiver (NSURL riding `urlhandle`) or rejected a
+true one (`[manager undo]` where the probe names its undo manager `manager`). THE CONCLUSION IS THAT THIS FILTER
+CANNOT BE MECHANICAL: the receiver rule that HAS held is the painful one - the call site must be in the owner's
+OWN probe, or the calling check's condition must be read. The strict variant is now EXHAUSTED (0 rows left), so
+the remaining ~150 go one owner at a time, condition by condition, which is how NSCoder, NSDateFormatter and the
+XML family were done.
