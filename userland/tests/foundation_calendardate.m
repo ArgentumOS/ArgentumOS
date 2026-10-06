@@ -303,6 +303,8 @@ int main(void)
 		      [epoch timeIntervalSince1970] == 978307200.0 && [made srAbsoluteTime] == 0,
 		      [NSString stringWithFormat:@"sr=%g ref=%g unix=%g", [epoch srAbsoluteTime],
 			[epoch timeIntervalSinceReferenceDate], [epoch timeIntervalSince1970]]);
+	covers("NSDate", "dateWithSRAbsoluteTime:");
+	covers("NSDate", "initWithSRAbsoluteTime:");
 	}
 	{
 		/* APPLE'S DOCUMENTED FORM, and the offset is APPLIED: the same instant written two ways. */

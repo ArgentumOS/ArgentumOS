@@ -1595,6 +1595,7 @@ NULL
 		      [matched containsIndex:2] && [matched containsIndex:3] &&
 		      exhaustiveCalls == 4 && missing == NSNotFound,
 		      "the first-match walk STOPS at the match (2 predicate calls for a match at index 1), the indexes form visits all four, and an absent value answers NSNotFound");
+	covers("NSArray", "indexOfObjectPassingTest:");
 	covers("NSArray", "indexesOfObjectsPassingTest:");
 	}
 

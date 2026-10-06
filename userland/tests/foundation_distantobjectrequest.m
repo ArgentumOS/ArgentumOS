@@ -240,6 +240,7 @@ int main(void)
 		      delegate->handled == 1,
 		      @"the answer is the delegate's AND the service's own method was never called — the counter is "
 		      @"what tells the two paths apart");
+	covers("NSDistantObjectRequest", "replyWithException:");
 		check("the-request-carries-its-connection-its-invocation-and-its-conversation",
 		      delegate->connectionMatched && delegate->invocationMatched && delegate->conversationMatched &&
 		      delegate->conversations == 1,

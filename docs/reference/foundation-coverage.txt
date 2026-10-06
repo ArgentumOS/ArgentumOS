@@ -38,7 +38,6 @@ NSArray	descriptionWithLocale:indent:	method	-descriptionWithLocale:indent:	# ne
 NSArray	enumerateObjectsAtIndexes:options:usingBlock:	method	-enumerateObjectsAtIndexes:options:usingBlock:	# needs a check
 NSArray	enumerateObjectsWithOptions:usingBlock:	method	-enumerateObjectsWithOptions:usingBlock:	# needs a check
 NSArray	indexOfObjectAtIndexes:options:passingTest:	method	-indexOfObjectAtIndexes:options:passingTest:	# needs a check
-NSArray	indexOfObjectPassingTest:	method	-indexOfObjectPassingTest:	# needs a check
 NSArray	indexOfObjectWithOptions:passingTest:	method	-indexOfObjectWithOptions:passingTest:	# needs a check
 NSArray	indexesOfObjectsAtIndexes:options:passingTest:	method	-indexesOfObjectsAtIndexes:options:passingTest:	# needs a check
 NSArray	indexesOfObjectsWithOptions:passingTest:	method	-indexesOfObjectsWithOptions:passingTest:	# needs a check
@@ -153,8 +152,6 @@ NSData	base64Encoding	method	-base64Encoding	# needs a check
 NSData	initWithBase64Encoding:	method	-initWithBase64Encoding:	# needs a check
 NSData	initWithBytesNoCopy:length:deallocator:	method	-initWithBytesNoCopy:length:deallocator:	# needs a check
 NSDate	dateWithCalendarFormat:timeZone:	method	-dateWithCalendarFormat:timeZone:	# needs a check
-NSDate	dateWithSRAbsoluteTime:	method	+dateWithSRAbsoluteTime:	# needs a check
-NSDate	initWithSRAbsoluteTime:	method	-initWithSRAbsoluteTime:	# needs a check
 NSDate	now	property	now	# needs a check
 NSDate	srAbsoluteTime	property	srAbsoluteTime	# needs a check
 NSDateComponents	calendar	property	calendar	# needs a check
@@ -246,7 +243,6 @@ NSDiscardableContent	isContentDiscarded	method	-isContentDiscarded	# needs a che
 NSDistantObject	initWithLocal:connection:	method	-initWithLocal:connection:	# needs a check
 NSDistantObjectRequest	conversation	property	conversation	# needs a check
 NSDistantObjectRequest	invocation	property	invocation	# needs a check
-NSDistantObjectRequest	replyWithException:	method	-replyWithException:	# needs a check
 NSDistributedLock	breakLock	method	-breakLock	# needs a check
 NSDistributedLock	lockDate	property	lockDate	# needs a check
 NSDistributedLock	tryLock	method	-tryLock	# needs a check
@@ -661,9 +657,7 @@ NSSocketPort	initRemoteWithProtocolFamily:socketType:protocol:address:	method	-i
 NSSocketPort	initRemoteWithTCPPort:host:	method	-initRemoteWithTCPPort:host:	# needs a check
 NSSocketPort	initWithProtocolFamily:socketType:protocol:address:	method	-initWithProtocolFamily:socketType:protocol:address:	# needs a check
 NSSocketPort	initWithProtocolFamily:socketType:protocol:socket:	method	-initWithProtocolFamily:socketType:protocol:socket:	# needs a check
-NSSocketPort	initWithTCPPort:	method	-initWithTCPPort:	# needs a check
 NSSocketPort	protocolFamily	property	protocolFamily	# needs a check
-NSSocketPort	socket	property	socket	# needs a check
 NSSocketPort	socketType	property	socketType	# needs a check
 NSSocketPortNameServer	defaultNameServerPortNumber	property	defaultNameServerPortNumber	# needs a check
 NSSocketPortNameServer	portForName:	method	-portForName:	# needs a check

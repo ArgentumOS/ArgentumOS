@@ -98,8 +98,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-PORT %s ok\n", name);
@@ -108,6 +111,15 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		printf("FOUNDATION-PORT %s FAIL %s\n", name, detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSSocketPort", "socket") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* THE PORT A BOUND SOCKET REPORTS, read out of the raw sockaddr `-address` hands back. */
 static unsigned short port_of(NSData *address)
@@ -182,6 +194,8 @@ int main(void)
 		      port != nil && asked == PROBE_PORT && port_of([port address]) == PROBE_PORT,
 		      [NSString stringWithFormat:@"asked %d, the kernel bound %u, -address says %u",
 			PROBE_PORT, (unsigned)asked, (unsigned)port_of([port address])]);
+	covers("NSSocketPort", "initWithTCPPort:");
+	covers("NSSocketPort", "socket");
 		[port invalidate];
 	}
 
