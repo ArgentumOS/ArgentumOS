@@ -1382,7 +1382,20 @@ tree already links for the decoder half; the surface is BGRA so the row is repac
 layout is BY GLYPH NAME, because this slice has no character map yet and a font spells its digits out
 ("zero", "one", ...) — which the first picture also showed, by their absence.
 
-## 16. A LATENT DEFECT FOUND WHILE TESTING TEXT CLIPPING: the graphics state's clip region is aliased
+## 16. CORRECTED: the clip region is NOT aliased — a defect I inferred from a probe instead of reading the code
+
+**THE CLAIM BELOW WAS WRONG, AND THE CORRECTION COMES FIRST BECAUSE THE CLAIM IS THE PART THAT WOULD HAVE
+COST A SESSION. Read at the writer, `CGContextSaveGState` does `*slot = c->state` AND THEN
+RE-INITIALISES the saved region as a deep copy — `pixman_region32_init` + `pixman_region32_copy`,
+CGContext.c:520-521 — so the boxes are not shared. And the pop/release discipline is sound on the
+other side: `CGContextRestoreGState` `fini`s the region it replaces and adopts the saved DEEP copy,
+leaving the popped slot's struct pointing at the live state's boxes — which is harmless twice over,
+because `CGContextRelease` walks only `i < c->depth` and the next save into that slot overwrites the
+struct WITHOUT a fini. No double free, no leak, no aliasing. THE INFERENCE CAME FROM A PROBE THAT
+MISBEHAVED, NOT FROM THE CODE, which is the exact mistake this file keeps recording: READ THE WRITER
+BEFORE RECORDING A DEFECT.
+
+### What was claimed (kept, struck through by the paragraph above)
 
 **FOUND, RECORDED, NOT FIXED — and it is not about text.** `cg_state` holds the clip as
 `pixman_region32_t clip` **by value**, and a `pixman_region32_t` is an inline struct holding a **pointer** to
@@ -1411,3 +1424,14 @@ their clip is the outline or the stroked region). It builds and the mask path st
 verification did not reach a clean verdict inside the session's budget, so it was reverted rather than
 shipped unverified. **What it needs next:** the clip checks LAST in the probe (nothing to restore) and,
 ideally, the region fix above first.
+
+### What the text-mode reverted unit still needs, restated after the correction
+
+The six-mode dispatch was implemented and reverted (see above), and **the reason to re-land it is unchanged**:
+Fill through the rasterised mask, Stroke/FillStroke/Clip/FillClip through the glyph's OUTLINE as a path, and
+Invisible drawing nothing while the pen advances. What it needs next is NOT a library fix — the clip region
+was exonerated — but a probe that MEASURES: the first attempt's in-block failures (a stroke that put down no
+ink, a fill that covered nothing) are **unexplained**, and the next attempt must print each mode's ink count
+and bounding box rather than compare them with expectations, which is how the subpixel work found its own
+answer (the centroid readout). The library-side code is small and known: `cg_font_glyph_outline` (conics
+passed through as conics), a path-taking clip, and the dispatch.
