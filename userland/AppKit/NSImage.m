@@ -283,7 +283,7 @@ static void fn_swizzle_bgra_to_rgba(const unsigned char *src, unsigned char *dst
 	}
 	cs = CGColorSpaceCreateDeviceRGB();
 	ctx = CGBitmapContextCreate(canvas, (size_t)w, (size_t)h, 8, (size_t)w * 4u, cs,
-				    kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+				    kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
 	CGColorSpaceRelease(cs);
 	if (ctx == NULL) {
 		free(canvas);

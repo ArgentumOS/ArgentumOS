@@ -92,7 +92,7 @@ static CGContextRef fresh(void)
 {
 	memset(surface, 0, sizeof(surface));
 	return CGBitmapContextCreate(surface, W, H, 8, W * 4, CGColorSpaceCreateDeviceRGB(),
-				     kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+				     kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
 }
 
 static void pixel(CGContextRef c, int x, int y, unsigned char out[4])

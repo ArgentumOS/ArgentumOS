@@ -40,12 +40,15 @@
  * guards in place, whichever header is read first leaves the other's types undefined — which is
  * exactly how it failed, with `unknown type name 'CGImageAlphaInfo'`.
  *
- * WHAT MOVED IS UNCHANGED. The four alpha values a 32-bit context can be built with; the LIVE
- * `CGImageByteOrderInfo` family rather than the `kCGBitmapByteOrder*` one — Apple's index carries
- * all four of those as DEPRECATED and this tree neither ships nor owes a deprecated name, so the
- * same bits are declared under the modern spelling (`kCGImageByteOrder32Little` is 2 << 12, exactly
- * as `kCGBitmapByteOrder32Little` was); and the two masks, because a `bitmapInfo` word is a packed
- * pair and a named mask beats a literal. */
+ * WHAT MOVED IS UNCHANGED, AND THE BYTE-ORDER SPELLING IS NOW THE 10.6 ONE. This paragraph used to
+ * argue the opposite — that the LIVE `CGImageByteOrderInfo` family should be declared instead,
+ * because Apple's index carries the `kCGBitmapByteOrder*` names as DEPRECATED and this tree neither
+ * ships nor owes a deprecated name. THE SDK GROUND SETTLED IT (2026-10-05) AND AGAINST THAT
+ * REASONING: `kCGBitmapByteOrder*` IS in the 10.6 headers and `kCGImageByteOrder*` is NOT, so the
+ * era's names — not the modern ones — are what a caller of this surface writes. THE SAME BITS
+ * EITHER WAY (`kCGBitmapByteOrder32Little` is 2 << 12, exactly what the modern spelling was), so
+ * this is a spelling the surface owes rather than a behaviour change, and it arrives as a FIX for
+ * rows the ledger had been carrying as owed. */
 /* THE FULL EIGHT, IN APPLE'S CANONICAL VALUES, and the two `NoneSkip*` ones had to MOVE to get
  * there: this tree previously had `NoneSkipFirst = 4` and `NoneSkipLast = 5`, which is BOTH SWAPPED
  * relative to Apple (where NoneSkipLast is 5 and NoneSkipFirst is 6) and a COLLISION with
@@ -67,14 +70,27 @@ typedef enum {
 	kCGImageAlphaOnly = 7
 } CGImageAlphaInfo;
 
+/* APPLE'S 10.6 DECLARATION, ALL SIX VALUES AND THE MASK, transcribed from the header itself rather
+ * than recalled — `kCGBitmapByteOrderMask` is 0x7000 there, NOT the 0xF000 the modern spelling of
+ * the mask uses, and a mask that is too wide is a mask that swallows bits a caller set. THE TWO
+ * HOST NAMES ARE MACROS IN APPLE'S HEADER TOO, endian-dependent, and this library builds for
+ * x86-64 alone, so they name the Little variants as Apple's own `#else` arm does. */
 typedef enum {
-	kCGImageByteOrderDefault = 0,
-	kCGImageByteOrder32Little = 2 << 12,
-	kCGImageByteOrder32Big = 4 << 12
-} CGImageByteOrderInfo;
+	kCGBitmapByteOrderMask = 0x7000,
+	kCGBitmapByteOrderDefault = (0 << 12),
+	kCGBitmapByteOrder16Little = (1 << 12),
+	kCGBitmapByteOrder32Little = (2 << 12),
+	kCGBitmapByteOrder16Big = (3 << 12),
+	kCGBitmapByteOrder32Big = (4 << 12)
+};
+
+/* UNNAMED ON PURPOSE, like Apple's own: 10.6 declares these constants inside `CGBitmapInfo`'s own
+ * option set, and there is no such type as `CGImageByteOrderInfo` there to name them with. */
+
+#define kCGBitmapByteOrder16Host kCGBitmapByteOrder16Little
+#define kCGBitmapByteOrder32Host kCGBitmapByteOrder32Little
 
 #define kCGBitmapAlphaInfoMask 0x1Fu
-#define kCGBitmapByteOrderInfoMask 0xF000u
 
 #include <CoreGraphics/CGColor.h>
 #include <CoreGraphics/CGColorSpace.h>

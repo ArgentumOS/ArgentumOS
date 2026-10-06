@@ -53,7 +53,7 @@ static CGContextRef bitmap(void)
 
 	memset(buf, 0, sizeof(buf));
 	return CGBitmapContextCreate(buf, W, H, 8, W * 4, CGColorSpaceCreateDeviceRGB(),
-				     kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+				     kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
 }
 
 static void pixel(CGContextRef c, int x, int y, unsigned char *out)

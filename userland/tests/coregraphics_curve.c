@@ -31,6 +31,19 @@
 #include <CoreGraphics/CGPath.h>
 #include <CoreGraphics/CGPath_internal.h>
 
+/* `CGPathCreateWithRect` is macOS 10.7 and was four lines over `CGPathAddRect`, so this helper IS
+ * the era's spelling rather than a rename: allocate a mutable path, add the rect. */
+static CGPathRef probe_rect_path(CGRect rect, const CGAffineTransform *m)
+{
+	CGMutablePathRef p = CGPathCreateMutable();
+
+	if (p != NULL) {
+		CGPathAddRect(p, m, rect);
+	}
+	return (CGPathRef)p;
+}
+#define CGPathCreateWithRect(rect, m) probe_rect_path(rect, m)
+
 /* THE RENAME TABLE — see coregraphics_stroke.c for the argument in full. `CGPathCreateCopyBy
  * Flattening` is macOS 13.0 and `ByStrokingPath` 10.7, both out of era; the machinery is what the
  * 10.0-era boxes, clips and strokes are built on, and this probe is where the FLATTENED GEOMETRY
@@ -72,7 +85,7 @@ static CGContextRef fresh(void)
 {
 	memset(surface, 0, sizeof(surface));
 	return CGBitmapContextCreate(surface, W, H, 8, W * 4, CGColorSpaceCreateDeviceRGB(),
-				     kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+				     kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
 }
 
 static void pixel(CGContextRef c, int x, int y, unsigned char out[4])

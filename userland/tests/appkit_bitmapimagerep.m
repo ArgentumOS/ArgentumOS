@@ -193,7 +193,7 @@ int main(void)
 			memset([rep bitmapData], 0xff, 32u * 4u);
 			memset(surf, 0, sizeof(surf));
 			cg = CGBitmapContextCreate(surf, W, H, 8, W * 4, CGColorSpaceCreateDeviceRGB(),
-						   kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+						   kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
 			gctx = [NSGraphicsContext graphicsContextWithCGContext:cg flipped:NO];
 			[NSGraphicsContext setCurrentContext:gctx];
 			check("a bitmap-backed rep draws into the CURRENT context",
@@ -223,7 +223,7 @@ int main(void)
 				[rep setColorSpaceName:NSDeviceRGBColorSpace];
 				memset(surf, 0, sizeof(surf));
 				cg = CGBitmapContextCreate(surf, W, H, 8, W * 4, CGColorSpaceCreateDeviceRGB(),
-							   kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+							   kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
 				gctx = [NSGraphicsContext graphicsContextWithCGContext:cg flipped:NO];
 				[NSGraphicsContext setCurrentContext:gctx];
 				[rep drawInRect:NSMakeRect(0.0, 0.0, (CGFloat)W, (CGFloat)H)];
@@ -249,7 +249,7 @@ int main(void)
 			check("a rep decoded from a PNG has pixels to put on a surface", [png CGImage] != NULL);
 			memset(surf, 0, sizeof(surf));
 			cg = CGBitmapContextCreate(surf, W, H, 8, W * 4, CGColorSpaceCreateDeviceRGB(),
-						   kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+						   kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
 			gctx = [NSGraphicsContext graphicsContextWithCGContext:cg flipped:NO];
 			[NSGraphicsContext setCurrentContext:gctx];
 			check("...and it DRAWS when the context is there",

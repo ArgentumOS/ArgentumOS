@@ -201,7 +201,7 @@ cg_pattern_cell *cg_pattern_render_cell(CGPatternRef pattern)
 		ctx = CGBitmapContextCreate(cell->data, (size_t)width, (size_t)height, 8,
 					    (size_t)cell->stride, device,
 					    kCGImageAlphaPremultipliedFirst
-						    | kCGImageByteOrder32Little);
+						    | kCGBitmapByteOrder32Little);
 		CGColorSpaceRelease(device);
 	}
 	if (ctx == NULL) {

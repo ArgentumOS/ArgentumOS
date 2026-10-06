@@ -38,7 +38,7 @@
 
 /*
  * SELF-CONTAINED, WHICH IT WAS NOT: `CGAffineTransform` appears in five of the
- * declarations below — `CGPathCreateWithRect`'s and the stroker's transform parameters —
+ * declarations below, the stroker's among them —
  * and this header used to rely on its INCLUDERS including CGAffineTransform.h first.
  * CGPath.c and CGContext.h both happened to, so nothing failed until a new translation
  * unit (CGPathStroke.c) included CGPath.h alone and the compiler answered `unknown type
@@ -70,7 +70,9 @@ typedef struct CGPath *CGMutablePathRef;
 
 /* Creating. */
 CGMutablePathRef CGPathCreateMutable(void);
-CGPathRef CGPathCreateWithRect(CGRect rect, const CGAffineTransform *m);
+/* !! `CGPathCreateWithRect` STOOD HERE AND WAS REMOVED (2026-10-05): it is macOS 10.7, out of
+ * era, and it was four lines over `CGPathAddRect` (allocate, add, return) — so the era's
+ * spelling is that pair, which is what a caller of this surface writes. */
 CGPathRef CGPathRetain(CGPathRef path);
 void CGPathRelease(CGPathRef path);
 

@@ -48,8 +48,10 @@ static int cg_color_space_components(CGColorSpaceRef space)
 		return 4;
 	case kCGColorSpaceModelLab:
 		return 3;   /* L*, a*, b* */
-	case kCGColorSpaceModelXYZ:
-		return 3;   /* X, Y, Z -- a colour CAN be in an XYZ space, and the engine converts it */
+	/* !! `case kCGColorSpaceModelXYZ: return 3;` STOOD HERE (2026-10-05): the case went with the
+	 * enum member, so an XYZ colour cannot be created any more and the default arm answers it —
+	 * which is the right answer rather than a lost one, because X, Y and Z are not device numbers
+	 * and nothing here converts them. */
 	default:
 		/* A SPACE WHOSE NUMBERS THIS TREE CANNOT INTERPRET IS NOT GUESSED AT. A space this
 		 * code has no model for would have its components read as if they were a device

@@ -150,7 +150,7 @@ CGImageRef CGImageCreateWithJPEGDataProvider(CGDataProviderRef provider, const C
 	}
 	result = CGImageCreate((size_t)width, (size_t)height, 8, 32, (size_t)width * 4u,
 			       CGColorSpaceCreateDeviceRGB(),
-			       kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little, output,
+			       kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little, output,
 			       NULL, shouldInterpolate, intent);
 	CGDataProviderRelease(output);
 	return result;

@@ -151,15 +151,9 @@ void CGPathRelease(CGPathRef cpath)
 	free(path);
 }
 
-CGPathRef CGPathCreateWithRect(CGRect rect, const CGAffineTransform *m)
-{
-	CGMutablePathRef path = CGPathCreateMutable();
-
-	if (path != NULL) {
-		CGPathAddRect(path, m, rect);
-	}
-	return path;
-}
+/* !! `CGPathCreateWithRect` STOOD HERE AND WAS REMOVED (2026-10-05): macOS 10.7, out of era, and
+ * four lines over `CGPathAddRect` — so the era's spelling is `CGPathCreateMutable` followed by
+ * `CGPathAddRect`, and that is what the curve probe now exercises BOTH halves of. */
 
 /* ------------------------------------------------------------------------- */
 /* building                                                                  */

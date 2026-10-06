@@ -237,8 +237,8 @@ static CGColorSpaceRef fn_space_for(NSString *name)
 		 * one colour whose channels all agree. 32Big stores the word in the NAMED order, which is
 		 * what these bytes are. */
 		uint32_t info = _hasAlpha
-			? (uint32_t)(kCGImageAlphaPremultipliedLast | kCGImageByteOrder32Big)
-			: (uint32_t)kCGImageByteOrder32Big;
+			? (uint32_t)(kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big)
+			: (uint32_t)kCGBitmapByteOrder32Big;
 
 		if (prov != NULL && cs != NULL) {
 			_cgImage = CGImageCreate((size_t)_pixelsWide, (size_t)_pixelsHigh,

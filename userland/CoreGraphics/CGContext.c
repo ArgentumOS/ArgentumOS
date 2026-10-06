@@ -40,6 +40,7 @@
  */
 #include <CoreGraphics/CGBitmapContext.h>
 #include <CoreGraphics/CGContext.h>
+#include <CoreGraphics/CGContext_internal.h>
 #include <CoreGraphics/CGGradient_internal.h>
 #include <CoreGraphics/CGPath.h>
 #include <CoreGraphics/CGPath_internal.h>
@@ -273,15 +274,15 @@ CGContextRef CGBitmapContextCreate(void *data, size_t width, size_t height,
 	 * bytes mean something other than what the caller asked for would corrupt
 	 * whatever it touched. */
 	alpha = bitmap_info & kCGBitmapAlphaInfoMask;
-	order = bitmap_info & kCGBitmapByteOrderInfoMask;
+	order = bitmap_info & kCGBitmapByteOrderMask;
 	if (width == 0 || height == 0 || bits_per_component != 8) {
 		fprintf(stderr, "CG-REFUSE: CGBitmapContextCreate needs 8 bits per component "
 				"and a non-empty size\n");
 		return NULL;
 	}
-	if (alpha != kCGImageAlphaPremultipliedFirst || order != kCGImageByteOrder32Little) {
+	if (alpha != kCGImageAlphaPremultipliedFirst || order != kCGBitmapByteOrder32Little) {
 		fprintf(stderr, "CG-REFUSE: CGBitmapContextCreate supports only "
-				"kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little (the "
+				"kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little (the "
 				"format this probe pins)\n");
 		return NULL;
 	}
@@ -633,7 +634,7 @@ void CGContextClipToRect(CGContextRef c, CGRect rect)
 				       (unsigned int)(dev.size.height < 0 ? 0 : dev.size.height));
 }
 
-void CGContextResetClip(CGContextRef c)
+void cg_context_reset_clip(CGContextRef c)
 {
 	if (c == NULL) {
 		return;

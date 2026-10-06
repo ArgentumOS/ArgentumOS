@@ -81,7 +81,7 @@ static CGContextRef make_context(void)
 {
 	memset(surf, 0, sizeof(surf));
 	return CGBitmapContextCreate(surf, W, H, 8, W * 4, CGColorSpaceCreateDeviceRGB(),
-				     kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+				     kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
 }
 
 /* THE 4x4 8-BIT RGBA PNG the CoreGraphics decode probe already uses. */

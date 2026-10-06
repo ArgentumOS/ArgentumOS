@@ -148,7 +148,7 @@ int main(void)
 	 * play is the flip every image path in this library shares: the image's row 0 is the top. */
 	memset(buf, 0, sizeof(buf));
 	c = CGBitmapContextCreate(buf, N, N, 8, N * 4, CGColorSpaceCreateDeviceRGB(),
-				  kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+				  kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
 	CGContextDrawImage(c, CGRectMake(0.0, 0.0, (double)N, (double)N), image);
 	pixel(c, 4, 4, p);
 	check_near("the top-left quadrant draws RED", (double)p[2], 255.0);

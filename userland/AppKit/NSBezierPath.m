@@ -29,6 +29,13 @@
 #import <CoreGraphics/CGContext.h>
 #import <CoreGraphics/CGPath.h>
 #import <CoreGraphics/CGPath_internal.h>
+#import <CoreGraphics/CGContext_internal.h>
+
+/* THE RENAME TABLE FOR THE CLIP PRIMITIVE — `CGContextResetClip` is not in the 10.6 headers, so
+ * its public declaration went in the 2026-10-05 era removal and the code is `cg_context_reset_clip`
+ * in CGContext_internal.h. `-setClip:` is a REPLACE and this library's clip is CoreGraphics', so
+ * the primitive is what makes the replacement possible at all. */
+#define CGContextResetClip cg_context_reset_clip
 #import <Foundation/NSAffineTransform.h>
 
 /* THE RENAME TABLE FOR THE ONE PATH OPERATION THIS CLASS NEEDS — `CGPathCreateCopyByFlattening`

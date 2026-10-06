@@ -18,7 +18,7 @@
  * there is exactly ONE decode path and one place for a surprise to live.
  *
  * AND THE LAYOUT IT PRODUCES IS THIS LIBRARY'S OWN. `PNG_FORMAT_BGRA` writes B, G, R, A in memory,
- * which is what `kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little` means, so the bytes
+ * which is what `kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little` means, so the bytes
  * arrive in the right ORDER and the only work left is the PREMULTIPLY that the format promises and
  * PNG does not supply: a PNG's samples are straight (non-premultiplied), and a CGImage in this
  * format must be premultiplied. One pass, in place, rounding to nearest.
@@ -151,7 +151,7 @@ CGImageRef CGImageCreateWithPNGDataProvider(CGDataProviderRef provider, const CG
 	}
 	result = CGImageCreate((size_t)image.width, (size_t)image.height, 8, 32,
 			       (size_t)image.width * 4u, CGColorSpaceCreateDeviceRGB(),
-			       kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little, output,
+			       kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little, output,
 			       NULL, shouldInterpolate, intent);
 	CGDataProviderRelease(output);
 	return result;

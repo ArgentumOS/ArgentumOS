@@ -51,14 +51,14 @@
 # counted, NOT excluded: 0 distinct names Apple documents on a `swift.` page
 # but which carry the CG spelling.
 #
-# why the struck rows are struck: after-10.6 253, post-10.6 168
+# why the struck rows are struck: after-10.6 253, post-10.6 176
 #
 # counts by kind:
-#   func       shipped  195   open  399   struck  141
+#   func       shipped  193   open  399   struck  143
 #   macro      shipped    7   open   76   struck   24
-#   enum       shipped   13   open   29   struck   15
-#   case       shipped   84   open  213   struck  147
-#   var        shipped    9   open   52   struck   74
+#   enum       shipped   12   open   29   struck   16
+#   case       shipped   85   open  207   struck  152
+#   var        shipped   11   open   50   struck   74
 #   typealias  shipped   17   open   69   struck   14
 #   struct     shipped    8   open    6   struck    6
 case	open	CGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
@@ -129,13 +129,13 @@ case	open	kCGBackingStoreRetained	-	Services / Data Types / Constants	-	objc
 case	open	kCGBackstopMenuLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
 case	open	kCGBaseWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
 case	shipped	kCGBitmapAlphaInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	-	objc
-case	open	kCGBitmapByteOrder16Big	-	Opaque Types / Examining an image / Constants	deprecated	objc
-case	open	kCGBitmapByteOrder16Little	-	Opaque Types / Examining an image / Constants	deprecated	objc
-case	open	kCGBitmapByteOrder32Big	-	Opaque Types / Examining an image / Constants	deprecated	objc
-case	open	kCGBitmapByteOrder32Little	-	Opaque Types / Examining an image / Constants	deprecated	objc
-case	open	kCGBitmapByteOrderDefault	-	Opaque Types / Examining an image / Constants	deprecated	objc
-case	shipped	kCGBitmapByteOrderInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	post-10.6	objc
-case	open	kCGBitmapByteOrderMask	-	Opaque Types / Examining an image / Enumeration Cases	deprecated	objc
+case	shipped	kCGBitmapByteOrder16Big	-	Opaque Types / Examining an image / Constants	deprecated	objc
+case	shipped	kCGBitmapByteOrder16Little	-	Opaque Types / Examining an image / Constants	deprecated	objc
+case	shipped	kCGBitmapByteOrder32Big	-	Opaque Types / Examining an image / Constants	deprecated	objc
+case	shipped	kCGBitmapByteOrder32Little	-	Opaque Types / Examining an image / Constants	deprecated	objc
+case	shipped	kCGBitmapByteOrderDefault	-	Opaque Types / Examining an image / Constants	deprecated	objc
+case	struck	kCGBitmapByteOrderInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	post-10.6	objc
+case	shipped	kCGBitmapByteOrderMask	-	Opaque Types / Examining an image / Enumeration Cases	deprecated	objc
 case	struck	kCGBitmapComponentInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	post-10.6	objc
 case	open	kCGBitmapFloatComponents	-	Opaque Types / Examining an image / Constants	deprecated	objc
 case	struck	kCGBitmapFloatInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	post-10.6	objc
@@ -199,7 +199,7 @@ case	shipped	kCGColorSpaceModelMonochrome	-	Opaque Types / Examining a Color Spa
 case	shipped	kCGColorSpaceModelPattern	-	Opaque Types / Examining a Color Space / Constants	-	objc
 case	shipped	kCGColorSpaceModelRGB	-	Opaque Types / Examining a Color Space / Constants	-	objc
 case	shipped	kCGColorSpaceModelUnknown	-	Opaque Types / Examining a Color Space / Constants	-	objc
-case	shipped	kCGColorSpaceModelXYZ	-	Opaque Types / Examining a Color Space / Constants	post-10.6	objc
+case	struck	kCGColorSpaceModelXYZ	-	Opaque Types / Examining a Color Space / Constants	post-10.6	objc
 case	struck	kCGComponentFloat16Bit	-	Enumerations / Enumeration Cases	post-10.6	objc
 case	struck	kCGComponentFloat32Bit	-	Enumerations / Enumeration Cases	post-10.6	objc
 case	struck	kCGComponentInteger10Bit	-	Enumerations / Enumeration Cases	post-10.6	objc
@@ -323,10 +323,10 @@ case	shipped	kCGImageAlphaPremultipliedLast	-	Opaque Types / Examining an image 
 case	struck	kCGImageByteOrder16Big	-	Reference / Enumerations / Constants	post-10.6	objc
 case	struck	kCGImageByteOrder16Host	-	Reference / Enumerations / Enumeration Cases	post-10.6	objc
 case	struck	kCGImageByteOrder16Little	-	Reference / Enumerations / Constants	post-10.6	objc
-case	shipped	kCGImageByteOrder32Big	-	Reference / Enumerations / Constants	post-10.6	objc
+case	struck	kCGImageByteOrder32Big	-	Reference / Enumerations / Constants	post-10.6	objc
 case	struck	kCGImageByteOrder32Host	-	Reference / Enumerations / Enumeration Cases	post-10.6	objc
-case	shipped	kCGImageByteOrder32Little	-	Reference / Enumerations / Constants	post-10.6	objc
-case	shipped	kCGImageByteOrderDefault	-	Reference / Enumerations / Constants	post-10.6	objc
+case	struck	kCGImageByteOrder32Little	-	Reference / Enumerations / Constants	post-10.6	objc
+case	struck	kCGImageByteOrderDefault	-	Reference / Enumerations / Constants	post-10.6	objc
 case	struck	kCGImageByteOrderMask	-	Reference / Enumerations / Constants	post-10.6	objc
 case	struck	kCGImageComponentFloat	-	Enumerations / Enumeration Cases	post-10.6	objc
 case	struck	kCGImageComponentInteger	-	Enumerations / Enumeration Cases	post-10.6	objc
@@ -534,7 +534,7 @@ enum	struck	CGGesturePhase	-	Reference / Enumerations	post-10.6	objc
 enum	struck	CGGlyphDeprecatedEnum	-	Reference / Enumerations	post-10.6	objc
 enum	shipped	CGGradientDrawingOptions	-	Opaque Types / Drawing Gradients and Shadings	-	objc
 enum	shipped	CGImageAlphaInfo	-	Opaque Types / Examining an image	-	objc
-enum	shipped	CGImageByteOrderInfo	-	Reference / Enumerations	post-10.6	objc
+enum	struck	CGImageByteOrderInfo	-	Reference / Enumerations	post-10.6	objc
 enum	struck	CGImageComponentInfo	-	Enumerations	post-10.6	objc
 enum	struck	CGImagePixelFormatInfo	-	Reference / Enumerations	after-10.6	objc
 enum	shipped	CGInterpolationQuality	-	Opaque Types / Drawing Images and PDF Content	-	objc
@@ -736,7 +736,7 @@ func	shipped	CGContextMoveToPoint	-	Opaque Types / Constructing a Current Graphi
 func	open	CGContextPathContainsPoint	-	Opaque Types / Examining the Current Graphics Path	-	objc
 func	shipped	CGContextRelease	-	Opaque Types / Retaining and Releasing Graphics Contexts	-	objc
 func	shipped	CGContextReplacePathWithStrokedPath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
-func	shipped	CGContextResetClip	-	Reference / Functions	post-10.6	objc
+func	struck	CGContextResetClip	-	Reference / Functions	post-10.6	objc
 func	shipped	CGContextRestoreGState	-	Opaque Types / Saving and Restoring Graphics State	-	objc
 func	shipped	CGContextRetain	-	Opaque Types / Retaining and Releasing Graphics Contexts	-	objc
 func	shipped	CGContextRotateCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
@@ -1194,7 +1194,7 @@ func	open	CGPathCreateMutableCopy	-	Opaque Types / Copying a Graphics Path	-	obj
 func	struck	CGPathCreateMutableCopyByTransformingPath	-	Opaque Types / Copying a Graphics Path	after-10.6	objc
 func	struck	CGPathCreateSeparateComponents	-	Reference / Functions	after-10.6	objc
 func	struck	CGPathCreateWithEllipseInRect	-	Opaque Types / Creating Graphics Paths	after-10.6	objc
-func	shipped	CGPathCreateWithRect	-	Opaque Types / Creating Graphics Paths	post-10.6	objc
+func	struck	CGPathCreateWithRect	-	Opaque Types / Creating Graphics Paths	post-10.6	objc
 func	struck	CGPathCreateWithRoundedRect	-	Opaque Types / Creating Graphics Paths	after-10.6	objc
 func	open	CGPathEqualToPath	-	Opaque Types / Examining a Graphics Path	-	objc
 func	shipped	CGPathGetBoundingBox	-	Opaque Types / Examining a Graphics Path	-	objc
@@ -1531,8 +1531,8 @@ var	shipped	CGRectNull	-	Reference / Constants	-	objc
 var	shipped	CGRectZero	-	Reference / Constants / Constants	-	objc
 var	shipped	CGSizeZero	-	Reference / Constants / Constants	-	objc
 var	struck	kCGAdaptiveMaximumBitDepth	-	Variables	after-10.6	objc
-var	open	kCGBitmapByteOrder16Host	-	Opaque Types / Constants / Constants	deprecated	objc
-var	open	kCGBitmapByteOrder32Host	-	Opaque Types / Constants / Constants	deprecated	objc
+var	shipped	kCGBitmapByteOrder16Host	-	Opaque Types / Constants / Constants	deprecated	objc
+var	shipped	kCGBitmapByteOrder32Host	-	Opaque Types / Constants / Constants	deprecated	objc
 var	open	kCGColorBlack	-	Opaque Types / Getting System Colors	-	objc
 var	open	kCGColorClear	-	Opaque Types / Getting System Colors	-	objc
 var	struck	kCGColorConversionBlackPointCompensation	-	Opaque Types / Type Properties	after-10.6	objc

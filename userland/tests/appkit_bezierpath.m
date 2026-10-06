@@ -22,6 +22,11 @@
 
 #import <CoreGraphics/CGBitmapContext.h>
 #import <CoreGraphics/CGContext.h>
+#include <CoreGraphics/CGContext_internal.h>
+
+/* THE RENAME TABLE — see NSBezierPath.m: the clip reset is internal now, and what these
+ * checks are about is what the AppKit does with it. */
+#define CGContextResetClip cg_context_reset_clip
 #import <CoreGraphics/CGPath.h>
 #import <Foundation/NSAffineTransform.h>
 
@@ -62,7 +67,7 @@ static CGContextRef bitmap(void)
 
 	memset(buf, 0, sizeof(buf));
 	return CGBitmapContextCreate(buf, W, H, 8, W * 4, CGColorSpaceCreateDeviceRGB(),
-				     kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+				     kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
 }
 
 static void pixel(CGContextRef c, int x, int y, unsigned char *out)

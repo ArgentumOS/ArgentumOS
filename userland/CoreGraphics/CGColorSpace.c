@@ -288,12 +288,12 @@ static int cg_model_from_profile(cmsHPROFILE p, CGColorSpaceModel *model, size_t
 		*components = 3;
 		return 1;
 	case cmsSigXYZData:
-		/* AN XYZ PROFILE IS A COLOUR SPACE LIKE ANY OTHER HERE: a model with three components and
-		 * no primaries, and the removal of the gamut predicates (2026-10-05) took away the only
-		 * reader that cared about the difference. */
-		*model = kCGColorSpaceModelXYZ;
-		*components = 3;
-		return 1;
+		/* !! AN XYZ PROFILE IS REFUSED NOW (2026-10-05), WHERE IT USED TO BE READ AS ITS OWN MODEL.
+		 * `kCGColorSpaceModelXYZ` is macOS 10.8 API — the 10.6 headers have no such case — and the
+		 * model is what a colour's NUMBERS mean, so there is nothing honest to answer for X, Y and
+		 * Z: calling them a device model would read them as light values. The refusal has the same
+		 * shape every other unknown-model path in this file already has. */
+		return 0;
 	default:
 		return 0;
 	}

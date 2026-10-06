@@ -40,7 +40,7 @@ int cg_image_is_drawable(CGImageRef image)
  * and it is the ONLY place that knows the difference between the logical order Apple names and the
  * physical order the bytes are in.
  *
- * THE ONE RULE THAT LOOKS LIKE A SPECIAL CASE AND IS NOT: `kCGImageByteOrder32Little` REVERSES the
+ * THE ONE RULE THAT LOOKS LIKE A SPECIAL CASE AND IS NOT: `kCGBitmapByteOrder32Little` REVERSES the
  * logical order in memory. An RGB space with `PremultipliedFirst` is logically A, R, G, B, and
  * little-endian storage is what makes it the B, G, R, A this library's contexts use everywhere. So
  * both "BGR" spellings fall out of the same reversal rather than needing their own case, and the
@@ -83,7 +83,7 @@ void cg_image_layout(CGColorSpaceRef space, CGImageAlphaInfo alpha, uint32_t ord
 	}
 	for (i = 0; i < components && i < 3; i++) {
 		int logical = first ? i + 1 : i;
-		int physical = (order == (uint32_t)kCGImageByteOrder32Big) ? logical
+		int physical = (order == (uint32_t)kCGBitmapByteOrder32Big) ? logical
 								      : (*stored - 1 - logical);
 
 		map[2 - i] = physical;   /* i counts from RED; the map runs B, G, R */
@@ -94,7 +94,7 @@ void cg_image_layout(CGColorSpaceRef space, CGImageAlphaInfo alpha, uint32_t ord
 	if (alpha_slot) {
 		int logical = first ? 0 : *stored - 1;
 
-		map[3] = (order == (uint32_t)kCGImageByteOrder32Big) ? logical : (*stored - 1 - logical);
+		map[3] = (order == (uint32_t)kCGBitmapByteOrder32Big) ? logical : (*stored - 1 - logical);
 	}
 }
 

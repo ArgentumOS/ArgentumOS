@@ -40,6 +40,11 @@
  */
 #include <CoreGraphics/CGBitmapContext.h>
 #include <CoreGraphics/CGContext.h>
+#include <CoreGraphics/CGContext_internal.h>
+
+/* THE RENAME TABLE — see NSBezierPath.m: the clip reset is internal now, and what these
+ * checks are about is what the AppKit does with it. */
+#define CGContextResetClip cg_context_reset_clip
 #include <CoreGraphics/CGPath.h>
 
 #include <stdio.h>
@@ -75,7 +80,7 @@ static CGContextRef fresh(void)
 {
 	memset(surface, 0, sizeof(surface));
 	return CGBitmapContextCreate(surface, W, H, 8, W * 4, CGColorSpaceCreateDeviceRGB(),
-				     kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+				     kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
 }
 
 /* The bytes of one pixel, in memory order. */
@@ -447,10 +452,10 @@ int main(void)
 
 	/* --- the constructor's refusals ----------------------------------------- */
 	c = CGBitmapContextCreate(surface, W, H, 16, W * 4, CGColorSpaceCreateDeviceRGB(),
-				  kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+				  kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
 	check("16 bits per component is refused with NULL", c == NULL);
 	c = CGBitmapContextCreate(surface, W, H, 8, W * 4, CGColorSpaceCreateDeviceRGB(),
-				  kCGImageAlphaPremultipliedLast | kCGImageByteOrder32Big);
+				  kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
 	check("an unsupported alpha/order combination is refused with NULL", c == NULL);
 
 	/* --- the path API on its own -------------------------------------------- */

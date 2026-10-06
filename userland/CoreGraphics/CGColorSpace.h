@@ -56,9 +56,15 @@ typedef enum {
 	kCGColorSpaceModelLab = 3,
 	kCGColorSpaceModelDeviceN = 4,
 	kCGColorSpaceModelIndexed = 5,
-	kCGColorSpaceModelPattern = 6,
-	kCGColorSpaceModelXYZ = 7
+	kCGColorSpaceModelPattern = 6
 } CGColorSpaceModel;
+
+/* !! `kCGColorSpaceModelXYZ` STOOD HERE AND WAS REMOVED (2026-10-05): it is macOS 10.8 API and
+ * the 10.6 headers do not carry it, so this enum has no case for an XYZ profile. What that costs
+ * is stated where it happens rather than papered over: an XYZ ICC profile is now REFUSED by
+ * `cg_model_from_profile` (CGColorSpace.c), because the model is what a colour's NUMBERS mean and
+ * there is no honest model to give X, Y and Z here. (The plan's own note about "an XYZ space"
+ * being reachable through a profile was written when it was.) */
 
 /* THE DEVICE SPACES. Each is a shared singleton: a device space has no parameters, so two
  * callers asking for device RGB get the same object and the refcount is what keeps it alive.

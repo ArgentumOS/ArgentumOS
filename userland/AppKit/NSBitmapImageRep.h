@@ -33,7 +33,7 @@
  *
  * **THE COLOUR ORDER OF A BITMAP-BACKED REP IS `R, G, B, A`, ALPHA LAST AND PREMULTIPLIED** — stated
  * here because a caller writing bytes needs it, and because getting it wrong is SILENT rather than
- * loud: the bytes are declared to Core Graphics with an explicit `kCGImageByteOrder32Big`, which stores
+ * loud: the bytes are declared to Core Graphics with an explicit `kCGBitmapByteOrder32Big`, which stores
  * the 32-bit word in the order named. `kCGImageAlphaPremultipliedLast` ALONE would mean the DEFAULT
  * byte order, which is little-endian, and that reads the same bytes as `A, B, G, R` — so an opaque RED
  * pixel, whose byte 0 is 0, came out fully TRANSPARENT. That is not a hypothetical: it is what this

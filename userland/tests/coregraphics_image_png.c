@@ -112,7 +112,7 @@ int main(void)
 	/* --- and it DRAWS, which is where the bytes can be read back --------------------------- */
 	memset(buf, 0, sizeof(buf));
 	c = CGBitmapContextCreate(buf, W, H, 8, W * 4, CGColorSpaceCreateDeviceRGB(),
-				  kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+				  kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
 	CGContextDrawImage(c, CGRectMake(0.0, 0.0, 8.0, 8.0), image);
 	/* THE 4x4 IMAGE ON AN 8x8 SURFACE IS TWO PIXELS PER IMAGE PIXEL, and the image's row 0 is the
 	 * top of the rect, so rows come in pairs: 0-1 red, 2-3 the white row, 4-5 green, 6-7 blue. */

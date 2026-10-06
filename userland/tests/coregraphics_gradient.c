@@ -48,7 +48,7 @@ static CGContextRef fresh(void)
 
 	memset(buf, 0, sizeof(buf));
 	c = CGBitmapContextCreate(buf, W, H, 8, W * 4, CGColorSpaceCreateDeviceRGB(),
-				  kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+				  kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
 	/* OPAQUE BLACK, SO "UNTOUCHED" IS A KNOWN PICTURE rather than a transparent surface a
 	 * mistaken composite could also produce. */
 	CGContextSetRGBFillColor(c, 0.0, 0.0, 0.0, 1.0);

@@ -70,7 +70,7 @@ static CGContextRef fresh(void)
 
 	memset(buf, 0, sizeof(buf));
 	c = CGBitmapContextCreate(buf, W, H, 8, W * 4, CGColorSpaceCreateDeviceRGB(),
-				  kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+				  kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
 	return c;
 }
 
@@ -96,7 +96,7 @@ static CGImageRef make_strip(void)
 								 NULL);
 
 	return CGImageCreate(2, 1, 8, 32, 8, CGColorSpaceCreateDeviceRGB(),
-			     kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little, provider, NULL,
+			     kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little, provider, NULL,
 			     false, kCGRenderingIntentDefault);
 }
 
@@ -105,7 +105,7 @@ static CGImageRef make_image(size_t bytes)
 	CGDataProviderRef provider = CGDataProviderCreateWithData(NULL, img_data, bytes, NULL);
 
 	return CGImageCreate(4, 4, 8, 32, 16, CGColorSpaceCreateDeviceRGB(),
-			     kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little, provider, NULL,
+			     kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little, provider, NULL,
 			     false, kCGRenderingIntentDefault);
 }
 
@@ -119,7 +119,7 @@ int main(void)
 	/* --- the chart reads back as it was given ---------------------------------------------- */
 	provider = CGDataProviderCreateWithData(NULL, img_data, sizeof(img_data), NULL);
 	image = CGImageCreate(4, 4, 8, 32, 16, CGColorSpaceCreateDeviceRGB(),
-			      kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little, provider, NULL,
+			      kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little, provider, NULL,
 			      false, kCGRenderingIntentDefault);
 	check("CGImageCreate gives an image", image != NULL);
 	check_num("...whose width is what it was told", (double)CGImageGetWidth(image), 4.0, 0);
@@ -149,22 +149,22 @@ int main(void)
 	 * whose four COLOUR components would need conversion rather than reordering. */
 	check("a bit depth that would have to be scaled is refused",
 	      CGImageCreate(4, 4, 16, 64, 32, CGColorSpaceCreateDeviceRGB(),
-			    kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little, provider, NULL,
+			    kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little, provider, NULL,
 			    false, kCGRenderingIntentDefault) == NULL);
 	check("...and a bitsPerPixel that disagrees with the chart's own channels",
 	      CGImageCreate(4, 4, 8, 32, 16, CGColorSpaceCreateDeviceRGB(), kCGImageAlphaNone,
 			    provider, NULL, false, kCGRenderingIntentDefault) == NULL);
 	check("...and CMYK, which the blit cannot reorder into RGB",
 	      CGImageCreate(4, 4, 8, 32, 16, CGColorSpaceCreateDeviceCMYK(),
-			    kCGImageAlphaNone | kCGImageByteOrder32Big, provider, NULL, false,
+			    kCGImageAlphaNone | kCGBitmapByteOrder32Big, provider, NULL, false,
 			    kCGRenderingIntentDefault) == NULL);
 	check("...and a DECODE array, rather than ignoring it",
 	      CGImageCreate(4, 4, 8, 32, 16, CGColorSpaceCreateDeviceRGB(),
-			    kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little, provider, decode,
+			    kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little, provider, decode,
 			    false, kCGRenderingIntentDefault) == NULL);
 	check("...and a NULL provider", CGImageCreate(4, 4, 8, 32, 16, CGColorSpaceCreateDeviceRGB(),
 						      kCGImageAlphaPremultipliedFirst |
-						      kCGImageByteOrder32Little, NULL, NULL, false,
+						      kCGBitmapByteOrder32Little, NULL, NULL, false,
 						      kCGRenderingIntentDefault) == NULL);
 	check("...and a provider too short for its own chart",
 	      make_image(8) == NULL);
@@ -202,7 +202,7 @@ int main(void)
 		static const unsigned char half[4] = { 0x00, 0x00, 0x80, 0x80 };   /* 50% red, premultiplied */
 		CGDataProviderRef hp = CGDataProviderCreateWithData(NULL, half, sizeof(half), NULL);
 		CGImageRef himg = CGImageCreate(1, 1, 8, 32, 4, CGColorSpaceCreateDeviceRGB(),
-					       kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little,
+					       kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little,
 					       hp, NULL, false, kCGRenderingIntentDefault);
 
 		check("a 1x1 half-transparent image can be made", himg != NULL);
@@ -261,7 +261,7 @@ int main(void)
 		static const unsigned char rgba[4] = { 0xff, 0x00, 0x00, 0xff };
 		CGDataProviderRef rp = CGDataProviderCreateWithData(NULL, rgba, sizeof(rgba), NULL);
 		CGImageRef ri = CGImageCreate(1, 1, 8, 32, 4, CGColorSpaceCreateDeviceRGB(),
-					      kCGImageAlphaPremultipliedLast | kCGImageByteOrder32Little, rp,
+					      kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Little, rp,
 					      NULL, false, kCGRenderingIntentDefault);
 
 		check("a kCGImageAlphaPremultipliedLast chart is ACCEPTED now, not refused", ri != NULL);
@@ -280,14 +280,14 @@ int main(void)
 		 * from the opposite direction. A library that forgot would land at 128.
 		 *
 		 * AND THE FIXTURE IS `A, B, G, R`, WHICH IS THE PART THAT FOOLED ME: `AlphaLast` is the
-		 * LOGICAL order, and `kCGImageByteOrder32Little` REVERSES it in memory, so the alpha's byte
+		 * LOGICAL order, and `kCGBitmapByteOrder32Little` REVERSES it in memory, so the alpha's byte
 		 * is the FIRST one. My first version of this fixture wrote R, G, B, A — the reading one
 		 * expects from the name — and the alpha came back as 255. The code was right, the fixture
 		 * was wrong, and the check below is what said so. */
 		static const unsigned char straight[4] = { 0x80, 0xff, 0xff, 0xff };
 		CGDataProviderRef sp = CGDataProviderCreateWithData(NULL, straight, sizeof(straight), NULL);
 		CGImageRef si = CGImageCreate(1, 1, 8, 32, 4, CGColorSpaceCreateDeviceRGB(),
-					      kCGImageAlphaLast | kCGImageByteOrder32Little, sp, NULL, false,
+					      kCGImageAlphaLast | kCGBitmapByteOrder32Little, sp, NULL, false,
 					      kCGRenderingIntentDefault);
 
 		check("a kCGImageAlphaLast chart — STRAIGHT alpha — can be built", si != NULL);
@@ -476,7 +476,7 @@ int main(void)
 		CGDataProviderRef prov = CGDataProviderCreateWithData(NULL, rgba_bytes,
 								     sizeof(rgba_bytes), NULL);
 		CGImageRef im = CGImageCreate(2, 2, 8, 32, 8, CGColorSpaceCreateDeviceRGB(),
-					      kCGImageAlphaPremultipliedLast | kCGImageByteOrder32Big, prov,
+					      kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big, prov,
 					      NULL, false, kCGRenderingIntentDefault);
 
 		check("...and the same bytes CAN be declared PREMULTIPLIED-LAST with an explicit 32Big",

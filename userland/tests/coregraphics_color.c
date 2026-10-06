@@ -77,7 +77,7 @@ static CGContextRef fresh(void)
 	 * first `pixel()` after it dereferences that NULL. This probe asks for the format it pins,
 	 * the same pair coregraphics_stroke_context asks for. */
 	c = CGBitmapContextCreate(buf, W, H, 8, W * 4, CGColorSpaceCreateDeviceRGB(),
-				  kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+				  kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
 	return c;
 }
 

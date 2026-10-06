@@ -186,7 +186,11 @@ void CGContextClipToRect(CGContextRef context, CGRect rect);
  */
 void CGContextClip(CGContextRef context);
 void CGContextEOClip(CGContextRef context);
-void CGContextResetClip(CGContextRef context);
+/* !! `CGContextResetClip` STOOD HERE AND IS INTERNAL NOW (2026-10-05): the 10.6 headers do not
+ * carry it, so a caller of this era cannot name it. THE PRIMITIVE STAYS, as `cg_context_reset_clip`
+ * in CGContext_internal.h, because the AppKit's own `-setClip:` is a REPLACE and this library's
+ * clip is CoreGraphics' — see NSBezierPath.m, the one shipped consumer. An era caller replaces a
+ * clip the way the era did: `CGContextSaveGState`/`RestoreGState`, or `CGContextClipToRect`. */
 CGRect CGContextGetClipBoundingBox(CGContextRef context);
 
 /* Fill colour, alpha and compositing. The component setters are the C2's colour

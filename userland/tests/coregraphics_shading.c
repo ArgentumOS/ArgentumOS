@@ -81,7 +81,7 @@ static CGContextRef fresh(void)
 
 	memset(buf, 0, sizeof(buf));
 	c = CGBitmapContextCreate(buf, W, H, 8, W * 4, CGColorSpaceCreateDeviceRGB(),
-				  kCGImageAlphaPremultipliedFirst | kCGImageByteOrder32Little);
+				  kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
 	CGContextSetRGBFillColor(c, 0.0, 0.0, 0.0, 1.0);
 	CGContextFillRect(c, CGRectMake(0.0, 0.0, (CGFloat)W, (CGFloat)H));
 	return c;
