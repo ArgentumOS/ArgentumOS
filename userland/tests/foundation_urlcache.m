@@ -12,8 +12,11 @@
 
 static int okc = 0, failc = 0;
 
+static int lastcheck;
+
 static void check(const char *name, BOOL held, NSString *why)
 {
+	lastcheck = held;	/* read by covers() */
 	if(held) {
 		okc++;
 		printf("FOUNDATION-URLCACHE %s ok\n", name);
@@ -22,6 +25,15 @@ static void check(const char *name, BOOL held, NSString *why)
 		printf("FOUNDATION-URLCACHE %s FAIL: %s\n", name, [why UTF8String]);
 	}
 }
+
+/* covers("NSBundle", "resourcePath") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 static NSURLRequest *fn_request(NSString *url, NSString *method)
 {
@@ -56,6 +68,7 @@ int main(void)
 	check("the-shared-cache-is-one-per-process",
 	      [NSURLCache sharedURLCache] == [NSURLCache sharedURLCache],
 	      @"two calls answer the same object");
+	covers("NSURLCache", "diskCapacity");
 	check("and-a-cache-of-ones-own-is-not-it", cache != [NSURLCache sharedURLCache],
 	      @"the initialiser makes a cache a caller owns");
 
@@ -69,6 +82,7 @@ int main(void)
 	      [[[cache cachedResponseForRequest:fn_request(@"http://example.com/a", @"GET")] data]
 			isEqualToData:body],
 	      @"the key is the request's URL and method, not its object identity");
+	covers("NSURLCache", "cachedResponseForRequest:");
 	check("a-different-url-does-not",
 	      [cache cachedResponseForRequest:fn_request(@"http://example.com/b", @"GET")] == nil,
 	      @"a different URL is a different entry");
@@ -104,6 +118,7 @@ int main(void)
 	      [cache cachedResponseForRequest:fn_request(@"http://example.com/a", @"GET")] == nil &&
 	      [cache cachedResponseForRequest:fn_request(@"http://example.com/c", @"GET")] != nil,
 	      @"the one removed is gone and the other stays");
+	covers("NSURLCache", "removeCachedResponseForRequest:");
 	[cache removeAllCachedResponses];
 	check("remove-all-empties-it",
 	      [cache currentMemoryUsage] == 0 &&
@@ -116,6 +131,7 @@ int main(void)
 		check("a-response-cached-before-the-date-goes",
 		      [cache cachedResponseForRequest:fn_request(@"http://example.com/d", @"GET")] == nil,
 		      @"the entry remembers when it was cached, which is how Apple's door can be answered");
+	covers("NSURLCache", "removeCachedResponsesSinceDate:");
 	}
 
 	/* --- THE DISK HALF, WHICH REPORTS RATHER THAN PRETENDS ------------------------------------------ */

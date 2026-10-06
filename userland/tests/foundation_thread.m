@@ -161,8 +161,11 @@ static volatile int fn_probe_main_ran = 0;
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-THREAD %s ok\n", name);
@@ -172,6 +175,15 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		       detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSBundle", "resourcePath") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 static double fn_now(void)
 {
@@ -307,6 +319,7 @@ int main(void)
 		check("thread-start-runs-its-target",
 		      ran && [work argument] == argument,
 		      [NSString stringWithFormat:@"ran=%d argument=%@", (int)ran, [work argument]]);
+	covers("NSThread", "initWithTarget:selector:object:");
 	}
 
 	{
@@ -329,6 +342,7 @@ int main(void)
 		check("thread-sleep-returns",
 		      elapsed >= 0.0 && elapsed < 2.0 && pastElapsed >= 0.0 && pastElapsed < 2.0,
 		      [NSString stringWithFormat:@"positive=%.3f past=%.3f", elapsed, pastElapsed]);
+	covers("NSThread", "sleepUntilDate:");
 	}
 
 	{
@@ -476,6 +490,7 @@ int main(void)
 		}
 		check("thread-block-body-runs", fired == 1 && [NSThread isMultiThreaded],
 		      [NSString stringWithFormat:@"fired=%d spins=%d multi=%d", fired, spins, [NSThread isMultiThreaded]]);
+	covers("NSThread", "detachNewThreadWithBlock:");
 	}
 	{
 		/* AND -main IS THE HOOK: a subclass overriding ONLY the body runs. It has no target, no selector and
@@ -506,6 +521,7 @@ int main(void)
 		      [current qualityOfService] == NSQualityOfServiceUtility,
 		      [NSString stringWithFormat:@"class=%g instance=%g qos=%d", [NSThread threadPriority],
 			[current threadPriority], (int)[current qualityOfService]]);
+	covers("NSThread", "setThreadPriority:");
 	}
 
 	printf("FOUNDATION-THREAD RESULT ok=%d fail=%d\n", okc, failc);

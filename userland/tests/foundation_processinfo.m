@@ -34,8 +34,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-PROCESSINFO %s ok\n", name);
@@ -45,6 +48,15 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		       detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSBundle", "resourcePath") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 int main(void)
 {
@@ -157,6 +169,7 @@ int main(void)
 		      [NSOSF1OperatingSystem isEqualToString:@"NSOSF1OperatingSystem"] &&
 		      outsideTheSeven,
 		      [NSString stringWithFormat:@"this system answers <%@>, which must not be one of the seven", ours]);
+	covers("NSProcessInfo", "isOperatingSystemAtLeastVersion:");
 	}
 
 	/* AND THE STATE WITH ITS NOTIFICATION (§62.98): the enum had NO door before this unit, so the door and the
@@ -254,6 +267,7 @@ int main(void)
 		      first != nil && second != nil && first != second && ran == 1 && sawExpired == NO,
 		      [NSString stringWithFormat:@"first=%d second=%d distinct=%d ran=%d expired=%d",
 			first != nil, second != nil, first != second, ran, sawExpired]);
+	covers("NSProcessInfo", "endActivity:");
 	}
 
 	{
@@ -279,6 +293,8 @@ int main(void)
 		      [NSString stringWithFormat:@"support=%d before=%d profile=%d certified=%d",
 			[info automaticTerminationSupportEnabled], before,
 			[info hasPerformanceProfile:@"probe"], [info isDeviceCertifiedFor:@"probe"]]);
+	covers("NSProcessInfo", "disableAutomaticTermination:");
+	covers("NSProcessInfo", "enableAutomaticTermination:");
 		[info setAutomaticTerminationSupportEnabled:before];	/* leave the flag as it was found */
 	}
 
@@ -286,6 +302,8 @@ int main(void)
 		      info != nil && !lowPower && !catalyst && !onMac && !onVision,
 		      [NSString stringWithFormat:@"lowPower=%d catalyst=%d onMac=%d onVision=%d",
 			(int)lowPower, (int)catalyst, (int)onMac, (int)onVision]);
+	covers("NSProcessInfo", "hasPerformanceProfile:");
+	covers("NSProcessInfo", "isDeviceCertifiedFor:");
 	}
 
 	printf("FOUNDATION-PROCESSINFO RESULT ok=%d fail=%d\n", okc, failc);

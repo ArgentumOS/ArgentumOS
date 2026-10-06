@@ -22,8 +22,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-DECIMALNUMBER %s ok\n", name);
@@ -33,6 +36,15 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		       detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSBundle", "resourcePath") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* THE EXCEPTION A BLOCK THREW, by name, or NULL if it returned. */
 static NSString * _Nullable fn_capture_name(NSDecimalNumber * (^block)(void))
@@ -72,6 +84,8 @@ int main(void)
 		      [NSString stringWithFormat:@"2500.6=%@ -2500.6=%@ -2.5006e3=%@ +3=%@ fr=%@ refused=%@",
 			[plain stringValue], [negative stringValue], [scientific stringValue],
 			[explicitPlus stringValue], [french stringValue], [refused stringValue]]);
+	covers("NSDecimalNumber", "decimalNumberByRoundingAccordingToBehavior:");
+	covers("NSDecimalNumber", "decimalNumberWithString:");
 	}
 
 	/* 2. THE OBJECT LAYER ON THE C SURFACE. */
@@ -88,6 +102,9 @@ int main(void)
 		      [[third stringValue] hasPrefix:@"0.3333333333333"],
 		      [NSString stringWithFormat:@"0.1+0.2=%@ 1.1*2.2=%@ 2/4=%@ 1/3=%@",
 			[sum stringValue], [product stringValue], [half stringValue], [third stringValue]]);
+	covers("NSDecimalNumber", "decimalNumberByAdding:");
+	covers("NSDecimalNumber", "decimalNumberByDividingBy:");
+	covers("NSDecimalNumber", "decimalNumberByMultiplyingBy:");
 	}
 
 	/* 3. THE DOCUMENTED ASYMMETRY. The default behaviour raises on overflow, underflow and divide-by-zero
@@ -141,6 +158,7 @@ int main(void)
 		      [saturated isEqualToNumber:[NSDecimalNumber maximumDecimalNumber]],
 		      [NSString stringWithFormat:@"raised %@; quietly gives %.40@",
 			thrown ? thrown : @"nothing", [saturated stringValue]]);
+	covers("NSDecimalNumber", "decimalNumberByMultiplyingByPowerOf10:");
 	}
 
 	/* 5. THE SCALE: the behaviour's number of digits after the point, applied to the result. */
@@ -244,6 +262,7 @@ int main(void)
 		      [NSString stringWithFormat:@"1.5->%@ 0.1->%@ 2^53+1->%@ hashes %d/%d",
 			[half stringValue], [tenth stringValue], [integer stringValue],
 			(int)([doubleHalf hash] == [half hash]), (int)([bigInteger hash] == [integer hash])]);
+	covers("NSDecimalNumber", "decimalNumberWithDecimal:");
 	}
 
 	/* 9. THE HANDLER'S SHAPE, AND +setDefaultBehavior: TAKING EFFECT. */

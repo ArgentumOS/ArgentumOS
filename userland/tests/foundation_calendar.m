@@ -918,6 +918,7 @@ int main(void)
 				      [[NSString stringWithFormat:@"next=%@ y=%ld m=%ld d=%ld h=%ld min=%ld", next,
 					(long)[got year], (long)[got month], (long)[got day], (long)[got hour],
 					(long)[got minute]] UTF8String]);
+	covers("NSCalendar", "initWithCalendarIdentifier:");
 			}
 		}
 		{

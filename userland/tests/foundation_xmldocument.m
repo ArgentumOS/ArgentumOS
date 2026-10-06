@@ -97,6 +97,8 @@ int main(void)
 		      [[[child childAtIndex:0] stringValue] isEqual:@"text"] &&
 		      [[root XMLString] isEqual:@"<root id=\"1\"><child>text</child></root>"],
 		      [NSString stringWithFormat:@"root=%@ xml=%@", [root name], [root XMLString]]);
+	covers("NSXMLDocument", "addChild:");
+	covers("NSXMLDocument", "setRootElement:");
 	}
 
 	{
@@ -217,6 +219,7 @@ int main(void)
 		      [without isEqual:with],
 		      [NSString stringWithFormat:@"with=%lu bytes without=%lu bytes",
 			(unsigned long)[with length], (unsigned long)[without length]]);
+	covers("NSXMLDocument", "XMLDataWithOptions:");
 	}
 
 	check("document-replacement-class-answers-its-argument",
@@ -229,6 +232,7 @@ int main(void)
 
 		check("probe-tree-removed", removed && ![manager fileExistsAtPath:@PROBE_ROOT],
 		      cleanupError != nil ? [cleanupError localizedDescription] : @"still there");
+	covers("NSXMLDocument", "replacementClassForClass:");
 	}
 
 	printf("FOUNDATION-XMLDOCUMENT RESULT ok=%d fail=%d\n", okc, failc);

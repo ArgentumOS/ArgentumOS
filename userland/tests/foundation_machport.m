@@ -31,8 +31,11 @@
 
 static int okc = 0, failc = 0;
 
+static int lastcheck;
+
 static void check(const char *name, BOOL held, NSString *why)
 {
+	lastcheck = held;	/* read by covers() */
 	if(held) {
 		okc++;
 		printf("FOUNDATION-MACHPORT %s ok\n", name);
@@ -41,6 +44,15 @@ static void check(const char *name, BOOL held, NSString *why)
 		printf("FOUNDATION-MACHPORT %s FAIL: %s\n", name, [why UTF8String]);
 	}
 }
+
+/* covers("NSBundle", "resourcePath") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* PUMPING THE RUN LOOP IN FIXED STEPS, because the guest's clock rounds a small sleep up hard: a deadline built
  * from a duration would be a deadline the clock decides, and a step count is the same number of opportunities. */
@@ -171,6 +183,8 @@ int main(void)
 		      [NSString stringWithFormat:@"a fresh mach port: valid=%d handle=%u reserved=%lu socket=%d",
 			(int)[port isValid], [port machPort], (unsigned long)[port reservedSpaceLength],
 			(int)[port socket]]);
+	covers("NSMachPort", "initWithMachPort:");
+	covers("NSMachPort", "portWithMachPort:");
 
 		check("the-from-number-doors-refuse",
 		      noPort == nil && noPortOptions == nil && noInit == nil && noInitOptions == nil,
@@ -223,6 +237,7 @@ int main(void)
 		      [[[delegate received] objectAtIndex:0] isEqual:@"id=42 on=a port|first|second"],
 		      [NSString stringWithFormat:@"sent=%d and the delegate recorded: %@", (int)sent,
 			[[delegate received] componentsJoinedByString:@"; "]]);
+	covers("NSMachPort", "setDelegate:");
 
 		/* A COMPONENT THAT IS NOT DATA IS REFUSED AT THE DOOR, and nothing arrives. Apple's other documented
 		 * component kind is a port, which means a port RIGHT — a thing this system does not have, so it is a

@@ -13,8 +13,11 @@
 
 static int okc = 0, failc = 0;
 
+static int lastcheck;
+
 static void check(const char *name, BOOL held, NSString *why)
 {
+	lastcheck = held;	/* read by covers() */
 	if(held) {
 		okc++;
 		printf("FOUNDATION-HTTPCOOKIESTORAGE %s ok\n", name);
@@ -23,6 +26,15 @@ static void check(const char *name, BOOL held, NSString *why)
 		printf("FOUNDATION-HTTPCOOKIESTORAGE %s FAIL: %s\n", name, [why UTF8String]);
 	}
 }
+
+/* covers("NSBundle", "resourcePath") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 static NSHTTPCookie *fn_cookie(NSString *name, NSString *value, NSString *domain, NSString *path)
 {
@@ -83,12 +95,14 @@ int main(void)
 		      [[[store cookiesForURL:[NSURL URLWithString:@"http://example.com/"]] lastObject]
 			value] != nil,
 		      @"the store still answers for that host");
+	covers("NSHTTPCookieStorage", "setCookie:");
 		{
 			NSArray *forExample = [store cookiesForURL:[NSURL URLWithString:@"http://example.com/"]];
 
 			check("the-replacement-won", [[forExample lastObject] value] != nil &&
 			      [[[forExample lastObject] value] isEqualToString:@"2"],
 			      @"same name, domain and path means the second one WINS rather than accumulating");
+	covers("NSHTTPCookieStorage", "cookiesForURL:");
 		}
 		[store setCookie:other];
 		check("the-store-told-its-observers", watcher->changes >= 3,
@@ -173,6 +187,7 @@ int main(void)
 			check("the-sort-is-nssortdescriptors",
 			      [sorted count] == 2 && [[[sorted objectAtIndex:0] name] isEqualToString:@"a"],
 			      @"the doors take the class the library already has");
+	covers("NSHTTPCookieStorage", "sortedCookiesUsingDescriptors:");
 		}
 		
 	}

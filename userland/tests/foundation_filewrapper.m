@@ -43,8 +43,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-FILEWRAPPER %s ok\n", name);
@@ -54,6 +57,15 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		       detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSBundle", "resourcePath") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 static NSString *fn_path(NSString *relative)
 {
@@ -162,6 +174,8 @@ int main(void)
 		      [NSString stringWithFormat:@"regular=%d bytes=%lu name=%@ size=%@",
 			(int)[wrapper isRegularFile], (unsigned long)(bytes != nil ? [bytes length] : 0),
 			[wrapper filename], [attributes objectForKey:NSFileSize]]);
+	covers("NSFileWrapper", "initWithPath:");
+	covers("NSFileWrapper", "symbolicLinkDestination");
 	}
 
 	{
@@ -276,6 +290,9 @@ int main(void)
 		      [found isEqualToString:secondKey] && [[directory fileWrappers] count] == 2,
 		      [NSString stringWithFormat:@"first=%@ second=%@ found=%@ count=%lu", firstKey,
 			secondKey, found, (unsigned long)[[directory fileWrappers] count]]);
+	covers("NSFileWrapper", "addFileWrapper:");
+	covers("NSFileWrapper", "initDirectoryWithFileWrappers:");
+	covers("NSFileWrapper", "initRegularFileWithContents:");
 
 		[directory removeFileWrapper:first];
 		check("fw-a-second-child-with-one-name-gets-another-key",
@@ -388,6 +405,7 @@ int main(void)
 		      [NSString stringWithFormat:@"data=%lu bytes plist=%s",
 			(unsigned long)(representation != nil ? [representation length] : 0),
 			[plain isKindOfClass:[NSDictionary class]] ? "yes" : "no"]);
+	covers("NSFileWrapper", "initWithSerializedRepresentation:");
 
 		check("fw-serialization-round-trips-the-tree",
 		      rebuilt != nil && [rebuilt isDirectory] && [children count] == 4 &&

@@ -175,8 +175,11 @@ static void fn_wait_seconds(double seconds)
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-RUNLOOP %s ok\n", name);
@@ -186,6 +189,15 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		       detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSBundle", "resourcePath") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 
 /*
@@ -662,6 +674,7 @@ int main(void)
 			      beforePass == 0 && [probe fires] == 1 && [probe lastArgument] == argument,
 			      [NSString stringWithFormat:@"before=%lu after=%lu argument=%@",
 				(unsigned long)beforePass, (unsigned long)[probe fires], [probe lastArgument]]);
+	covers("NSRunLoop", "performSelector:target:argument:order:modes:");
 		}
 	}
 
@@ -708,6 +721,7 @@ int main(void)
 		check("cancel-perform-selector-removes-only-that-one",
 		      [[probe order] isEqualToString:@"B"],
 		      [NSString stringWithFormat:@"order=%@ (want B: only noteB survived)", [probe order]]);
+	covers("NSRunLoop", "cancelPerformSelector:target:argument:");
 	}
 
 	{
@@ -730,6 +744,7 @@ int main(void)
 		      [probe fires] == 0 && [other fires] == 1,
 		      [NSString stringWithFormat:@"cancelledTarget=%lu otherTarget=%lu (want 0 and 1)",
 			(unsigned long)[probe fires], (unsigned long)[other fires]]);
+	covers("NSRunLoop", "cancelPerformSelectorsWithTarget:");
 	}
 
 	{
@@ -746,6 +761,8 @@ int main(void)
 		check("perform-block-runs-on-the-loop",
 		      [probe blockRan],
 		      @"the block set its flag during a pass");
+	covers("NSRunLoop", "performBlock:");
+	covers("NSRunLoop", "performInModes:block:");
 	}
 
 	{

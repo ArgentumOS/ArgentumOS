@@ -47,8 +47,11 @@ static void fn_marker_handler(NSException *exception)
 	}
 }
 
+static int lastcheck;
+
 static void check(const char *name, int ok, const char *detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-ERROR %s ok\n", name);
@@ -57,6 +60,15 @@ static void check(const char *name, int ok, const char *detail)
 		printf("FOUNDATION-ERROR %s FAIL %s\n", name, detail ? detail : "");
 	}
 }
+
+/* covers("NSBundle", "resourcePath") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /*
  * THE ASSERTION FAMILY'S OWN FIXTURES (W2d). A recorder SUBCLASS is what proves the handler is
@@ -579,6 +591,7 @@ int main(void)
 		      [[asked localizedDescription] isEqualToString:@"from the provider"] &&
 		      [[spoken localizedDescription] isEqualToString:@"from userInfo"],
 		      detail);
+	covers("NSError", "userInfoValueProviderForDomain:");
 		[NSError setUserInfoValueProviderForDomain:@"ProvidedDomain" provider:nil];
 		check("error-user-info-provider-removed",
 		      [NSError userInfoValueProviderForDomain:@"ProvidedDomain"] == nil &&

@@ -30,8 +30,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-STREAM %s ok\n", name);
@@ -40,6 +43,15 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		printf("FOUNDATION-STREAM %s FAIL %s\n", name, detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSBundle", "resourcePath") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* FORK + EXECVE WITH THE ERRNO BROUGHT BACK THROUGH A PIPE: 0 when the exec worked, else the errno.
  * interp NULL means "exec the file itself", which is the shebang path. */
@@ -248,6 +260,7 @@ int main(void)
 		check("property-bag-forgets",
 		      [stream propertyForKey:NSStreamFileCurrentOffsetKey] == nil,
 		      @"setting nil did not remove the property");
+	covers("NSStream", "propertyForKey:");
 		check("property-bag-refuses-a-nil-key",
 		      ![stream setProperty:@1 forKey:(NSStreamPropertyKey)nil] &&
 		      [stream propertyForKey:(NSStreamPropertyKey)nil] == nil,

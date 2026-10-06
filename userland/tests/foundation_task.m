@@ -151,8 +151,11 @@ static int fn_child(int argc, char *argv[])
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-TASK %s ok\n", name);
@@ -161,6 +164,15 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		printf("FOUNDATION-TASK %s FAIL %s\n", name, detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSBundle", "resourcePath") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* WHAT THE REAPER'S TWO SIDE EFFECTS ARE OBSERVED THROUGH — a flag it sets and a count it posts into. */
 @interface FnTaskFixture : NSObject
@@ -296,6 +308,7 @@ int main(int argc, char *argv[])
 		      [NSString stringWithFormat:@"self=%d launched=%d pid=%d",
 			(int)[manager isExecutableFileAtPath:probe_self()],
 			(int)launched, [task processIdentifier]]);
+	covers("NSTask", "launchAndReturnError:");
 		[task waitUntilExit];
 		check("task-waits-and-reports",
 		      [task terminationStatus] == 7 &&
@@ -562,6 +575,7 @@ int main(int argc, char *argv[])
 		}
 		check("task-nil-arguments-raises", raised,
 		      @"nil arguments were accepted: Apple's own sentence is that they RAISE");
+	covers("NSTask", "terminationHandler");
 	}
 
 	{

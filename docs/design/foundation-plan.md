@@ -28408,3 +28408,21 @@ rows they assert.
 the wrong bracket. The instrument that fixed both was the same - PRINT THE STATE AND READ IT: markers around each
 clause named the clause; the comment/string-stripped delimiter balance named the line. Neither was reachable by
 reasoning about the code, and both took one call once attempted.
+
+**§63.247w — THE MASS TRANCHE, ITS RECEIVER FILTER, AND TWO PRE-EXISTING REDS IT SURFACED (2026-10-04).** The
+sweep's fourth tranche went wide: 89 rows across 26 probes in one pass (asserted 799 -> 888, queue 1,138 ->
+1,049). The RECEIVER FILTER became mechanical rather than case-by-case - a row is claimed only where its call site
+is in THE OWNER'S OWN PROBE, matched strictly: the probe stem equals the owner's key (`NSBundle` -> `bundle`), or
+`ns`+key (`NSValue` -> `nsvalue`), or the key is a `_`-word of the stem. The strictness is load-bearing: an "owner
+key appears anywhere in the stem" test would have let NSURL rows ride `urlhandle`/`urlcache`/`urlcredential`
+checks, which are different receivers.
+
+**AND TWO OF THE 26 TOUCHED CASES ARE RED, IN CHECKS THIS TRANCHES DID NOT TOUCH - both STALE ABSENCE CHECKS:**
+ * `foundation_distantobjectrequest / the-three-doors-this-library-does-not-consult-are-absent` - it asserts the
+   doors are ABSENT with their grounds, and they now EXIST (§62.91 delivered NSDistantObjectRequest).
+ * `foundation_nsvalue / cg-spelled-geometry-doors-are-not-on-foundation-s-nsvalue` - it asserts Foundation's
+   NSValue declares none of the CG-spelled doors, and the CoreGraphics NSValue category now provides them.
+Both are the same class of staleness the campaign has hit before: a check whose claim is that something is
+ABSENT goes false the moment the absence is filled, and NOTHING in the ordinary run says so. The argument that they
+are not from this tranche is the diff: it is additive only (a `covers()` helper and claim lines), which cannot
+change whether a door exists.

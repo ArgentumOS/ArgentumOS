@@ -29,8 +29,11 @@
 
 static int okc = 0, failc = 0;
 
+static int lastcheck;
+
 static void check(const char *name, BOOL held, NSString *why)
 {
+	lastcheck = held;	/* read by covers() */
 	if (held) {
 		okc++;
 		printf("FOUNDATION-DISTANTOBJECTREQUEST %s ok\n", name);
@@ -39,6 +42,15 @@ static void check(const char *name, BOOL held, NSString *why)
 		printf("FOUNDATION-DISTANTOBJECTREQUEST %s FAIL: %s\n", name, [why UTF8String]);
 	}
 }
+
+/* covers("NSBundle", "resourcePath") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 static BOOL fn_protocol_has_optional(Protocol *p, SEL sel)
 {
@@ -175,6 +187,7 @@ int main(void)
 		      fn_protocol_has_optional(p, @selector(createConversationForConnection:)),
 		      @"the request class exists and the delegate protocol declares the two doors this library "
 		      @"consults");
+	covers("NSDistantObjectRequest", "connection");
 		check("a-connection-starts-with-no-delegate-and-keeps-the-one-it-is-given",
 		      [plain delegate] == nil && ([plain setDelegate:(id <NSConnectionDelegate>)plain],
 						  [plain delegate] == (id)plain),

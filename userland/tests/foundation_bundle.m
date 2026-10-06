@@ -206,6 +206,7 @@ int main(void)
 	 * nothing - a caller learns the bundle's existence from "did I get one". */
 	check("bundle-rejects-a-directory-with-no-manifest", plain == nil,
 	      "a directory with no Info.plist answers nil");
+	covers("NSBundle", "bundleWithPath:");
 
 	check("bundle-accepts-both-layouts",
 	      contents != nil && flat != nil &&
@@ -224,6 +225,7 @@ int main(void)
 	      [[contents executablePath] hasSuffix:@"Contents/MacOS/foundation_bundle_payload.so"] &&
 	      [[flat executablePath] hasSuffix:@"FlatFixture.app/bundle_fixture"],
 	      "the executable path follows the layout: Contents/MacOS for one, the bundle root for the other");
+	covers("NSBundle", "objectForInfoDictionaryKey:");
 
 	/* RESOURCE LOOKUP: a hit, a MISS (which must be nil, not a path that nearly matches), and the plural form
 	 * over the same directory. */
@@ -279,6 +281,7 @@ int main(void)
 		      [[[contents resourceURL] path] isEqualToString:resourcePath] &&
 		      [[[contents executableURL] path] isEqualToString:executablePath],
 		      "3 URLs (bundle, resource, executable) each equal their path");
+	covers("NSBundle", "bundleWithIdentifier:");
 	covers("NSBundle", "bundleURL");
 	covers("NSBundle", "resourceURL");
 	covers("NSBundle", "executableURL");
@@ -307,6 +310,7 @@ int main(void)
 		      [[[[NSBundle alloc] initWithURL:contentsURL] bundlePath] isEqualToString:[contents bundlePath]] &&
 		      [NSBundle bundleWithURL:notBundleURL] == nil,
 		      "2 of 3 URLs open a bundle (bundleWithURL:, initWithURL:); 1 is not a bundle");
+	covers("NSBundle", "URLForResource:withExtension:subdirectory:");
 	covers("NSBundle", "bundleWithURL:");
 	covers("NSBundle", "initWithURL:");
 	}
@@ -374,6 +378,8 @@ int main(void)
 	      [[NSBundle preferredLocalizationsFromArray:@[@"en", @"fr"] forPreferences:@[@"es"]]
 		isEqualToArray:@[@"en", @"fr"]],
 	      "1 of 3 available matches 1 preference; 0 matches leaves the 2-element list unchanged");
+	covers("NSBundle", "localizedStringForKey:value:table:");
+	covers("NSBundle", "localizations");
 	covers("NSBundle", "preferredLocalizationsFromArray:forPreferences:");
 
 	check("development-localization-and-localized-info",
@@ -381,6 +387,7 @@ int main(void)
 	      [[[contents localizedInfoDictionary] objectForKey:@"CFBundleName"] isEqualToString:@"Bundle Fixture"] &&
 	      [[contents preferredLocalizations] count] >= 1,
 	      "1 development region, 1 manifest value, and >=1 preferred localization");
+	covers("NSBundle", "preferredLocalizationsFromArray:");
 	covers("NSBundle", "developmentLocalization");
 	covers("NSBundle", "localizedInfoDictionary");
 	covers("NSBundle", "preferredLocalizations");

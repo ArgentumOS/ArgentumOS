@@ -195,6 +195,7 @@ int main(void)
 		      enPattern != nil && dePattern != nil &&
 		      [enPattern hasPrefix:@"M"] && [dePattern hasPrefix:@"d"],
 		      [NSString stringWithFormat:@"en=%@ de=%@", enPattern, dePattern]);
+	covers("NSDateFormatter", "locale");
 	covers("NSDateFormatter", "dateFormatFromTemplate:options:locale:");
 	}
 

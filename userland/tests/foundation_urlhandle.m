@@ -23,8 +23,11 @@
 
 static int okc = 0, failc = 0;
 
+static int lastcheck;
+
 static void check(const char *name, BOOL held, NSString *why)
 {
+	lastcheck = held;	/* read by covers() */
 	if(held) {
 		okc++;
 		printf("FOUNDATION-URLHANDLE %s ok\n", name);
@@ -33,6 +36,15 @@ static void check(const char *name, BOOL held, NSString *why)
 		printf("FOUNDATION-URLHANDLE %s FAIL: %s\n", name, [why UTF8String]);
 	}
 }
+
+/* covers("NSBundle", "resourcePath") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* --- THE TRANSPORT: IN PROCESS, TWO SCHEMES, ONE FOR SUCCESS AND ONE FOR FAILURE -------------------- */
 
@@ -204,6 +216,7 @@ int main(void)
 		      [handle status] == NSURLHandleNotLoaded && [handle failureReason] == nil &&
 		      [handle availableResourceData] == nil,
 		      @"a fresh handle is NotLoaded, has no failure reason, and has no data");
+	covers("NSURLHandle", "cachedHandleForURL:");
 
 		check("the-registry-answers-a-class-and-the-cache-the-same-handle",
 		      [NSURLHandle canInitWithURL:url] &&
@@ -219,6 +232,8 @@ int main(void)
 		      [handle writeProperty:nil forKey:NSFTPPropertyUserLoginKey] &&
 		      [handle propertyForKeyIfAvailable:NSFTPPropertyUserLoginKey] == nil,
 		      @"a written property reads back, an unwritten one is nil rather than a load, and nil removes");
+	covers("NSURLHandle", "URLHandleClassForURL:");
+	covers("NSURLHandle", "canInitWithURL:");
 
 		/* --- THE FOREGROUND LOAD, AND WHAT IT FILES --------------------------------------------------- */
 		{
@@ -233,6 +248,7 @@ int main(void)
 			      [NSString stringWithFormat:@"the load answered %lu byte(s) reading \"%@\" with status %d",
 				(unsigned long)[data length], text != nil ? text : @"(nothing)",
 				(int)[handle status]]);
+	covers("NSURLHandle", "propertyForKeyIfAvailable:");
 
 			/* THE KEYS, FILED BY THE CLASS RATHER THAN BY THIS PROBE: a restored vocabulary that nothing
 			 * fills is a list of names, and this check is where that would show. */
@@ -285,6 +301,7 @@ int main(void)
 			      [NSString stringWithFormat:@"the client was told: %@%@",
 				[[client events] componentsJoinedByString:@", "],
 				finished ? @"" : @" (the load never finished within the budget)"]);
+	covers("NSURLHandle", "addClient:");
 
 			[background removeClient:client];
 		}
@@ -300,6 +317,7 @@ int main(void)
 			      [failing failureReason] != nil && [[failing failureReason] length] > 0,
 			      [NSString stringWithFormat:@"the load answered nil with status %d and the reason \"%@\"",
 				(int)[failing status], [failing failureReason]]);
+	covers("NSURLHandle", "removeClient:");
 		}
 
 	}

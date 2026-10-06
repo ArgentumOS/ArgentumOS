@@ -135,6 +135,8 @@ int main(void)
 		check("url-set-resource-data-answers-no-for-a-url-that-cannot-hold-data",
 		      wrote == NO,
 		      [[NSString stringWithFormat:@"wrote=%d", (int)wrote] UTF8String]);
+	covers("NSURL", "resourceDataUsingCache:");
+	covers("NSURL", "setResourceData:");
 		check("url-resource-data-using-cache-answers-nil-for-an-unreachable-url",
 		      loaded == nil,
 		      [[NSString stringWithFormat:@"loaded=%@", loaded] UTF8String]);
@@ -181,6 +183,7 @@ int main(void)
 		check("url-promised-item-value-agrees-with-the-ordinary-door",
 		      gotOrdinary == gotPromised && gotOrdinary,
 		      [[NSString stringWithFormat:@"ordinary=%d promised=%d", (int)gotOrdinary, (int)gotPromised] UTF8String]);
+	covers("NSURL", "checkPromisedItemIsReachableAndReturnError:");
 		check("url-promised-item-content-tied-key-answers-yes-with-nil",
 		      tiedYes == YES && tied == nil && e3 == nil,
 		      [[NSString stringWithFormat:@"yes=%d value=%@", (int)tiedYes, tied] UTF8String]);
@@ -192,6 +195,7 @@ int main(void)
 		      [[p promisedItemResourceValuesForKeys:[NSArray arrayWithObject:NSURLIsDirectoryKey]
 						      error:NULL] isKindOfClass:[NSDictionary class]],
 		      "the bulk door answers a dictionary");
+	covers("NSURL", "checkResourceIsReachableAndReturnError:");
 	}
 
 

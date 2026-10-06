@@ -14,8 +14,11 @@
 
 static int okc = 0, failc = 0;
 
+static int lastcheck;
+
 static void check(const char *name, BOOL held, NSString *why)
 {
+	lastcheck = held;	/* read by covers() */
 	if(held) {
 		okc++;
 		printf("FOUNDATION-HTTPCOOKIE %s ok\n", name);
@@ -24,6 +27,15 @@ static void check(const char *name, BOOL held, NSString *why)
 		printf("FOUNDATION-HTTPCOOKIE %s FAIL: %s\n", name, [why UTF8String]);
 	}
 }
+
+/* covers("NSBundle", "resourcePath") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 int main(void)
 {
@@ -37,6 +49,7 @@ int main(void)
 
 		check("a-cookie-without-properties-is-refused", [NSHTTPCookie cookieWithProperties:none] == nil,
 		      @"an empty dictionary has no name and no value");
+	covers("NSHTTPCookie", "cookieWithProperties:");
 		check("a-cookie-without-a-name-is-refused", [NSHTTPCookie cookieWithProperties:noName] == nil,
 		      @"the name is required");
 		check("a-cookie-without-a-value-is-refused",
@@ -98,6 +111,7 @@ int main(void)
 			check("cookies-become-a-request-field",
 			      [[out objectForKey:@"Cookie"] isEqualToString:@"session=abc123"],
 			      @"the request form is name=value");
+	covers("NSHTTPCookie", "requestHeaderFieldsWithCookies:");
 			round = [NSHTTPCookie cookieWithProperties:[cookie properties]];
 			check("the-property-dictionary-round-trips",
 			      round != nil && [[round name] isEqualToString:[cookie name]] &&

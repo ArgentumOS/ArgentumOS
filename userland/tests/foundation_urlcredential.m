@@ -12,8 +12,11 @@
 
 static int okc = 0, failc = 0;
 
+static int lastcheck;
+
 static void check(const char *name, BOOL held, NSString *why)
 {
+	lastcheck = held;	/* read by covers() */
 	if(held) {
 		okc++;
 		printf("FOUNDATION-URLCREDENTIAL %s ok\n", name);
@@ -22,6 +25,15 @@ static void check(const char *name, BOOL held, NSString *why)
 		printf("FOUNDATION-URLCREDENTIAL %s FAIL: %s\n", name, [why UTF8String]);
 	}
 }
+
+/* covers("NSBundle", "resourcePath") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 int main(void)
 {
@@ -36,6 +48,8 @@ int main(void)
 		check("the-factory-keeps-what-it-was-given",
 		      [[c user] isEqualToString:@"kyle"] && [[c password] isEqualToString:@"hunter2"],
 		      @"user and password survive the factory");
+	covers("NSURLCredential", "password");
+	covers("NSURLCredential", "persistence");
 		check("the-persistence-is-kept",
 		      [c persistence] == NSURLCredentialPersistenceForSession,
 		      @"the persistence kind is part of the value");

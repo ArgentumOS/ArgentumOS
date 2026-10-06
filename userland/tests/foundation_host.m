@@ -25,8 +25,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-HOST %s ok\n", name);
@@ -35,6 +38,15 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		printf("FOUNDATION-HOST %s FAIL %s\n", name, detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSBundle", "resourcePath") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* IS ONE OF THESE A LOOPBACK ADDRESS? 127.0.0.0/8 is, and so is ::1 — and this is written out rather than
  * compared against a constant because the SYSTEM decides which textual form it answers with. */
@@ -92,6 +104,7 @@ int main(void)
 		      [[host addresses] containsObject:address],
 		      [NSString stringWithFormat:@"addresses=%@ names=%@",
 			host != nil ? [host addresses] : @"(no host)", host != nil ? [host names] : @"-"]);
+	covers("NSHost", "hostWithName:");
 	}
 
 	{
@@ -110,6 +123,7 @@ int main(void)
 		      [NSString stringWithFormat:@"addresses=%@ names=%@",
 			byAddress != nil ? [byAddress addresses] : @"(no host)",
 			byAddress != nil ? [byAddress names] : @"-"]);
+	covers("NSHost", "hostWithAddress:");
 		check("a-host-is-equal-to-the-one-rebuilt-from-its-own-address",
 		      byName != nil && rebuilt != nil && [byName isEqualToHost:rebuilt],
 		      [NSString stringWithFormat:@"byName=%@ rebuilt=%@",
@@ -128,6 +142,7 @@ int main(void)
 		      [NSString stringWithFormat:@"one=%@ two=%@",
 			one != nil ? [one addresses] : @"(no host)",
 			two != nil ? [two addresses] : @"(no host)"]);
+	covers("NSHost", "isEqualToHost:");
 	}
 
 	{
@@ -156,6 +171,7 @@ int main(void)
 		      ![NSHost isHostCacheEnabled],
 		      [NSString stringWithFormat:@"isHostCacheEnabled=%d after setHostCacheEnabled:YES",
 			(int)[NSHost isHostCacheEnabled]]);
+	covers("NSHost", "setHostCacheEnabled:");
 		[NSHost flushHostCache];
 	}
 

@@ -215,6 +215,7 @@ int main(void)
 		      [[back objectAtIndex:4] isEqual:[NSNull null]] &&
 		      [[[back objectAtIndex:7] objectForKey:@"big"] longLongValue] == 9000000000LL,
 		      @"strings, ints, doubles, booleans, NSNull and a dictionary all come back");
+	covers("NSArchiver", "archivedDataWithRootObject:");
 	covers("NSKeyedUnarchiver", "unarchiveObjectWithData:");
 		check("identity-survives-the-round-trip",
 		      [back objectAtIndex:5] == [back objectAtIndex:6] &&
@@ -308,6 +309,7 @@ int main(void)
 		      [nilWrite isEqualToString:NSInvalidArgumentException] &&
 		      [nilRead isEqualToString:NSInvalidArgumentException],
 		      @"nil data is a programming error, not an empty archive");
+	covers("NSArchiver", "encodeRootObject:");
 	covers("NSCoder", "encodeRootObject:");
 		check("a-second-root-object-raises",
 		      [twice isEqualToString:NSInvalidArgumentException],

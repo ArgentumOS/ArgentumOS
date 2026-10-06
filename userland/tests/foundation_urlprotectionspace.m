@@ -9,8 +9,11 @@
 
 static int okc = 0, failc = 0;
 
+static int lastcheck;
+
 static void check(const char *name, BOOL held, NSString *why)
 {
+	lastcheck = held;	/* read by covers() */
 	if(held) {
 		okc++;
 		printf("FOUNDATION-URLPROTECTIONSPACE %s ok\n", name);
@@ -19,6 +22,15 @@ static void check(const char *name, BOOL held, NSString *why)
 		printf("FOUNDATION-URLPROTECTIONSPACE %s FAIL: %s\n", name, [why UTF8String]);
 	}
 }
+
+/* covers("NSBundle", "resourcePath") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 int main(void)
 {
@@ -39,6 +51,9 @@ int main(void)
 		      [[server realm] isEqualToString:@"restricted"] &&
 		      [[server authenticationMethod] isEqualToString:NSURLAuthenticationMethodHTTPBasic],
 		      @"host, port, protocol, realm and method all survive");
+	covers("NSURLProtectionSpace", "authenticationMethod");
+	covers("NSURLProtectionSpace", "port");
+	covers("NSURLProtectionSpace", "realm");
 		check("a-server-space-is-not-a-proxy", ![server isProxy] && [server proxyType] == nil,
 		      @"the server door does not set the proxy flag or a proxy type");
 		check("a-proxy-space-says-so", [proxy isProxy] &&

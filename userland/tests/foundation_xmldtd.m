@@ -88,6 +88,7 @@ int main(void)
 		      [NSString stringWithFormat:@"kind=%lu dtdKind=%lu name=%@ xml=%@",
 			(unsigned long)[node kind], (unsigned long)[node DTDKind], [node name],
 			[node XMLString]]);
+	covers("NSXMLDTD", "addChild:");
 	}
 
 	{

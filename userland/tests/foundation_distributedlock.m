@@ -22,8 +22,11 @@
 
 static int okc = 0, failc = 0;
 
+static int lastcheck;
+
 static void check(const char *name, BOOL held, NSString *why)
 {
+	lastcheck = held;	/* read by covers() */
 	if(held) {
 		okc++;
 		printf("FOUNDATION-DLOCK %s ok\n", name);
@@ -32,6 +35,15 @@ static void check(const char *name, BOOL held, NSString *why)
 		printf("FOUNDATION-DLOCK %s FAIL: %s\n", name, [why UTF8String]);
 	}
 }
+
+/* covers("NSBundle", "resourcePath") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 int main(void)
 {
@@ -52,6 +64,7 @@ int main(void)
 		      first != nil && [first lockDate] == nil,
 		      [NSString stringWithFormat:@"a lock with a path was made and reports %@ as its date before anybody "
 			@"has claimed it", [first lockDate] == nil ? @"nothing" : @"a date"]);
+	covers("NSDistributedLock", "lockWithPath:");
 
 		check("try-lock-claims-the-name-and-a-second-claimant-cannot-take-it",
 		      [first tryLock] && ![second tryLock] && [second lockDate] != nil,
@@ -114,6 +127,7 @@ int main(void)
 		check("a-lock-with-an-empty-path-is-refused",
 		      nameless == nil,
 		      @"a lock whose name is empty would be a claim on nothing, so the initializer answers nil");
+	covers("NSDistributedLock", "initWithPath:");
 	}
 
 	printf("FOUNDATION-DLOCK RESULT ok=%d fail=%d\n", okc, failc);
