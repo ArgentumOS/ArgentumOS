@@ -19,6 +19,10 @@
 #import <CoreGraphics/CGColorSpace.h>
 #import <Foundation/NSException.h>
 
+/* FOR THE REFUSAL BELOW AND NOTHING ELSE: the class-side diagnostics this tree writes go to stderr
+ * by hand, because a refusal that is not printed is a refusal nobody can attribute. */
+#include <stdio.h>
+
 /* THE FIELD IS SET FROM INSIDE THE CLASS, which is not fastidiousness: the ivar is PROTECTED, and a
  * free function cannot touch it — the compiler said exactly that when the first version of this file
  * set `c->_cgColor` from `fn_color` below. A private initialiser is the way in for a helper that is a
@@ -226,10 +230,24 @@ static void fn_raise_for(const char *what)
 	return fn_color(fn_named(kCGColorSpaceSRGB, red, green, blue, alpha));
 }
 
+/* !! `+colorWithDisplayP3Red:green:blue:alpha:` STOOD HERE AND NOW REFUSES (2026-10-05). It was
+ * built on `kCGColorSpaceDisplayP3`, which CoreGraphics no longer has — the name is macOS 10.11.2
+ * and the duplication is a 10.6-era surface — so there is no space to build it in. THE REFUSAL IS
+ * SAID OUT LOUD rather than answered with device RGB, because device RGB IS sRGB and a P3 colour
+ * silently built in sRGB is a different colour with the same numbers: the caller would get a wrong
+ * answer that looks right. (Apple's own `+colorWithDisplayP3Red:…` is 10.12 API, so an application
+ * of the era this AppKit targets does not call it; what is owed is a decision about the AppKit's
+ * own era, which is measured separately — see the AppKit ledger.) */
 + (nullable NSColor *)colorWithDisplayP3Red:(CGFloat)red green:(CGFloat)green blue:(CGFloat)blue
 				      alpha:(CGFloat)alpha
 {
-	return fn_color(fn_named(kCGColorSpaceDisplayP3, red, green, blue, alpha));
+	(void)red;
+	(void)green;
+	(void)blue;
+	(void)alpha;
+	fprintf(stderr, "APPKIT-REFUSE: +colorWithDisplayP3Red:green:blue:alpha: needs "
+			"kCGColorSpaceDisplayP3, which CoreGraphics removed as out of era\n");
+	return nil;
 }
 
 + (nullable NSColor *)colorWithGenericGamma22White:(CGFloat)white alpha:(CGFloat)alpha

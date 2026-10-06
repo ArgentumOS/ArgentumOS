@@ -64,15 +64,21 @@ int main(void)
 	profile = [NSData dataWithContentsOfFile:pathString];
 	check("the probe can read it into an NSData", profile != nil);
 
-	/* THE SPACE FROM FOUNDATION DATA: the form whose Apple name says `CFData` and whose argument
-	 * here is an NSData. The model comes out of the profile, so an sRGB profile gives an RGB
-	 * space — and that is read back through the LIBRARY, not through this file's knowledge. */
-	space = CGColorSpaceCreateWithICCData(profile);
-	check("CGColorSpaceCreateWithICCData gives a space", space != NULL);
+	/* THE SPACE FROM FOUNDATION DATA, THROUGH THE IN-ERA DOOR. This used to be
+	 * `CGColorSpaceCreateWithICCData` — the NSData spelling, macOS 10.12, REMOVED on 2026-10-05 —
+	 * so it now goes through the PROVIDER door, which is the same profile bytes reaching the same
+	 * parser: `CGDataProviderCreateWithCFData` (10.4) and `CGColorSpaceCreateICCBased` (10.0).
+	 * THE MODEL STILL COMES OUT OF THE PROFILE, read back through the LIBRARY rather than through
+	 * this file's knowledge, which is what the check below is for. */
+	{
+		CGDataProviderRef p = CGDataProviderCreateWithCFData(profile);
+		check("CGDataProviderCreateWithCFData gives a provider", p != NULL);
+		space = CGColorSpaceCreateICCBased(3, NULL, p, NULL);
+		CGDataProviderRelease(p);
+	}
+	check("the provider door turns those bytes into a space", space != NULL);
 	check("...whose model the profile decided",
 	      space != NULL && CGColorSpaceGetModel(space) == kCGColorSpaceModelRGB);
-	check("...and which the library can draw, since it has a profile",
-	      CGColorSpaceSupportsOutput(space));
 
 	/* THE PROVIDER FROM FOUNDATION DATA, AND BACK: `CopyData` hands back +1, and the check that it
 	 * is the SAME BYTES is `-isEqualToData:`, which is a real comparison rather than a length. */
@@ -143,79 +149,15 @@ int main(void)
 		CGColorSpaceRelease(named);
 	}
 
-	/* --- AND THE BYTES COME BACK OUT: the ICC pair, closed -------------------------------- */
-	/* WHAT COMES OUT IS A RE-SERIALISATION AND NOT THE BYTES THAT WENT IN, so the check is not a
-	 * byte comparison — it is THE PROPERTY THAT MATTERS: a space rebuilt from these bytes must
-	 * convert a colour the SAME WAY the original did. That is what a caller who stores a profile
-	 * and reads it back actually needs, and it holds even though the bytes differ. */
-	{
-		NSData *fromFile = [NSData dataWithContentsOfFile:pathString];
-		CGColorSpaceRef original = CGColorSpaceCreateWithICCData(fromFile);
-		CGColorSpaceRef rebuilt;
-		CGColorSpaceRef dev;
-		NSData *written;
-		CGFloat w[4];
-		CGColorRef a;
-		CGColorRef b;
-		CGColorRef ca;
-		CGColorRef cb;
-
-		written = CGColorSpaceCopyICCData(original);
-		check("a space built from a profile can hand its bytes back", written != nil);
-		check("...and the bytes are not empty", written != nil && [written length] > 0);
-		rebuilt = CGColorSpaceCreateWithICCData(written);
-		check("...and a space rebuilt from them is a space", rebuilt != NULL);
-
-		w[0] = 0.2;
-		w[1] = 0.5;
-		w[2] = 0.8;
-		w[3] = 1.0;
-		dev = CGColorSpaceCreateDeviceRGB();
-		a = CGColorCreate(original, w);
-		ca = CGColorCreateCopyByMatchingToColorSpace(a, kCGRenderingIntentRelativeColorimetric,
-							     dev, NULL);
-		b = CGColorCreate(rebuilt, w);
-		cb = CGColorCreateCopyByMatchingToColorSpace(b, kCGRenderingIntentRelativeColorimetric,
-							     dev, NULL);
-		if (ca != NULL && cb != NULL) {
-			const CGFloat *pa = CGColorGetComponents(ca);
-			const CGFloat *pb = CGColorGetComponents(cb);
-			double d0 = pa[0] - pb[0];
-			double d1 = pa[1] - pb[1];
-			double d2 = pa[2] - pb[2];
-
-			if (d0 < 0) { d0 = -d0; }
-			if (d1 < 0) { d1 = -d1; }
-			if (d2 < 0) { d2 = -d2; }
-			/* A TOLERANCE, NOT EXACTNESS: the two spaces come from two spellings of the same
-			 * profile, and a re-serialisation moves a 16.16 tag by its last bit. */
-			check("...and the ORIGINAL and the REBUILT space convert a colour the same way",
-			      d0 < 0.001 && d1 < 0.001 && d2 < 0.001);
-		} else {
-			check("both spaces convert", 0);
-		}
-		CGColorRelease(cb);
-		CGColorRelease(ca);
-		CGColorRelease(b);
-		CGColorRelease(a);
-		CGColorSpaceRelease(dev);
-		CGColorSpaceRelease(rebuilt);
-		CGColorSpaceRelease(original);
-		[written release];
-
-		{
-			/* THE DEVICE SPACE IS HELD RATHER THAN CREATED IN THE CALL: creating one retains the
-			 * process-wide singleton, and a probe that takes a reference it never gives back is
-			 * asserting an ownership rule it is not keeping itself. */
-			CGColorSpaceRef devspace = CGColorSpaceCreateDeviceRGB();
-
-			check("a DEVICE space keeps no profile, so it has no bytes to hand back",
-			      CGColorSpaceCopyICCData(devspace) == nil);
-			CGColorSpaceRelease(devspace);
-		}
-		check("...and a NULL space is answered rather than crashed on",
-		      CGColorSpaceCopyICCData(NULL) == nil);
-	}
+	/* --- THE ICC ROUND TRIP STOOD HERE AND WAS REMOVED (2026-10-05) ------------------------ */
+	/* This block asked whether a profile's bytes come back out of a space and rebuild a space that
+	 * converts the same way. BOTH HALVES OF THAT PAIR ARE GONE — `CGColorSpaceCopyICCData` and
+	 * `CGColorSpaceCreateWithICCData` are macOS 10.12, out of era — and so is the conversion the
+	 * answer used to be read back through (`CGColorCreateCopyByMatchingToColorSpace`, 10.11). So
+	 * the block cannot be re-pointed at an in-era door: there is no way left for a caller to ask a
+	 * space for its bytes. THE IN-ERA COUNTERPART IS A ROW, NOT AN IMPLEMENTATION:
+	 * `CGColorSpaceCopyICCProfile` (10.5) is owed work, and when it lands, THIS block's property —
+	 * a re-serialisation that describes the same space — is what it should be checked against. */
 
 	printf("CG-COLORF: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;

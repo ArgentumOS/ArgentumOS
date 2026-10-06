@@ -140,19 +140,19 @@ typedef struct objc_object NSString;
 /* The names this library answers with an EXACT profile — exact in the sense that matters: each
  * space's white point, primaries and transfer function are given to the engine rather than
  * substituted for something this library cannot express. What is absent is absent for that same
- * reason, name by name in CGColorSpaceNames.m, and stays `open` in the ledger. */
+ * reason, name by name in CGColorSpaceNames.m, and stays `open` in the ledger.
+ *
+ * THREE NAMES, AND THE 10.6 ERA IS WHY THERE ARE ONLY THREE (2026-10-05). The rest of Apple's
+ * `kCGColorSpace…` list post-dates Mac OS X 10.6 and was REMOVED rather than kept: Display P3
+ * (10.11.2), DCI-P3 (10.11), ITU-R 2020 (10.11), ProPhoto/ROMM (10.11), generic XYZ (10.11),
+ * linear sRGB (10.12), linear gray (10.12), generic Lab (10.13) and linear Display P3 (12.0). An
+ * application of the era this duplication targets cannot name them, so neither may this library.
+ * THE IN-ERA NAMES THAT ARE STILL OWED stay `open` in the work list: GenericRGB and GenericGray
+ * (10.4, and Apple-DEPRECATED), GenericRGBLinear (10.5), and GenericCMYK (10.4, refused for want
+ * of a profile that could be invented). */
 extern NSString *const kCGColorSpaceSRGB;
-extern NSString *const kCGColorSpaceLinearSRGB;
-extern NSString *const kCGColorSpaceDisplayP3;
-extern NSString *const kCGColorSpaceLinearDisplayP3;
 extern NSString *const kCGColorSpaceAdobeRGB1998;
-extern NSString *const kCGColorSpaceROMMRGB;
-extern NSString *const kCGColorSpaceGenericLab;
 extern NSString *const kCGColorSpaceGenericGrayGamma2_2;
-extern NSString *const kCGColorSpaceDCIP3;
-extern NSString *const kCGColorSpaceLinearGray;
-extern NSString *const kCGColorSpaceGenericXYZ;
-extern NSString *const kCGColorSpaceITUR_2020;
 
 /* A space by name, or NULL with a reason on stderr. THE DEVICE SPACES ARE SHARED SINGLETONS AND
  * THE NAMED SPACES ARE CACHED TOO — one object per name — because `CGColorSpaceCopyName` below
@@ -175,24 +175,17 @@ CGColorSpaceRef CGColorSpaceCreateWithName(NSString *name);
  * ignored — which is what CGBase.h's macro is for. */
 NSString *CGColorSpaceCopyName(CGColorSpaceRef space) CG_RETURNS_RETAINED;
 
-/* THE ICC PROFILE AS FOUNDATION DATA: `NSData *` where Apple's name says `CFData`, and the
- * counterpart of `CGDataProviderCreateWithCFData`. It is a BRIDGE — the data becomes a provider
- * and goes to `CGColorSpaceCreateICCBased`, which is where parsing, validation and taking the
- * model out of the profile all live — so this form and the file form cannot reach different
- * conclusions about what a profile means. The data may be released as soon as this returns. */
-CGColorSpaceRef CGColorSpaceCreateWithICCData(NSData *data);
+/* !! `CGColorSpaceCreateWithICCData` STOOD HERE AND WAS REMOVED (2026-10-05): it is macOS 10.12,
+ * out of era. THE ICC ROOM KEEPS ITS IN-ERA DOORS — `CGColorSpaceCreateICCBased` and
+ * `CGColorSpaceCreateWithICCProfile` (10.5) — so profile bytes are as reachable as they were
+ * before it existed; what is gone is the NSData spelling of the door. */
 
-/* THE PROFILE'S BYTES BACK OUT, AS FOUNDATION DATA — and WHAT COMES OUT IS A RE-SERIALISATION
- * RATHER THAN THE BYTES THAT WENT IN. A space keeps the PARSED profile: that is what lets drawing
- * through it be fast and the provider be released the moment the space exists, so these are the
- * bytes the engine WRITES. They describe the same space, which is the property that matters and
- * the one the probe checks, by converting through a space rebuilt from them.
- *
- * A SPACE WITH NO STORED PROFILE ANSWERS NIL, which is Apple's own contract for a space without ICC
- * data and is the case for every DEVICE space here. Apple's device spaces do carry profiles; this
- * library's do not, and its conversion path synthesises the one it needs when it needs it rather
- * than keeping it. */
-NSData *CGColorSpaceCopyICCData(CGColorSpaceRef space) CG_RETURNS_RETAINED;
+/* !! `CGColorSpaceCopyICCData` STOOD HERE AND WAS REMOVED (2026-10-05) — the OTHER HALF OF THE
+ * SAME PAIR, and macOS 10.12 like the door above, so it is out of era too. THE IN-ERA
+ * COUNTERPART IS `CGColorSpaceCopyICCProfile` (10.5, the provider form), which is a row this
+ * ledger still carries as owed work rather than an implemented one. AND WHAT THAT MEANS FOR A
+ * CALLER IS STATED RATHER THAN GLOSSED: there is no Foundation-data spelling of a space's profile
+ * bytes left in this library, and none is owed, because the era this surface targets has none. */
 
 /* THE CALIBRATED SPACES, AND THE ONE PLACE APPLE'S PARAMETERS DO NOT TRANSFER DIRECTLY. Apple
  * gives a MATRIX taking RGB to XYZ; the engine wants three PRIMARIES in xy. Those are the same
@@ -200,10 +193,9 @@ NSData *CGColorSpaceCopyICCData(CGColorSpaceRef space) CG_RETURNS_RETAINED;
  * between them is arithmetic rather than an approximation, and sRGB's own matrix builds this
  * library's device RGB described the long way round.
  *
- * A NULL `matrix` MEANS THIS LIBRARY'S DEVICE RGB, which is sRGB and is what the conversion path
- * already states: "the default RGB colour space" has to mean something specific, and device RGB
- * has a definition here. A NULL `whitePoint` means D65, for the same reason — a matrix without
- * its white point is half a space.
+ * A NULL `matrix` MEANS THIS LIBRARY'S DEVICE RGB, which is sRGB: "the default RGB colour space"
+ * has to mean something specific, and device RGB has a definition here. A NULL `whitePoint` means
+ * D65, for the same reason — a matrix without its white point is half a space.
  *
  * THE BLACK POINT IS ACCEPTED AND HAS NO EFFECT. That is as much Apple's description of it as
  * this library's limitation: Apple documents it as mattering only under the ABSOLUTE
@@ -220,29 +212,12 @@ void CGColorSpaceRelease(CGColorSpaceRef space);
 CGColorSpaceModel CGColorSpaceGetModel(CGColorSpaceRef space);
 size_t CGColorSpaceGetNumberOfComponents(CGColorSpaceRef space);
 
-/* THE PREDICATES, AND WHICH OF THEM ARE COMPUTED.
- *
- * `SupportsOutput` asks whether this library can DRAW a colour in the space, and it is answered
- * from the SAME fact the context's setters refuse from: a space with a profile can be converted
- * and therefore drawn, while device CMYK has neither and answers NO.
- *
- * `IsWideGamutRGB` compares the space's PRIMARIES against sRGB's triangle, because wide gamut
- * means the space includes colours sRGB does not and a primary is such a colour. A space that IS
- * sRGB — which device RGB is, by this library's own definition — has its primaries ON that
- * triangle and answers NO, and a profile whose primaries cannot be read (anything that is not a
- * matrix shaper) answers NO as well, since a gamut nobody can read is a gamut nobody can compare.
- *
- * THE OTHER FOUR ANSWER NO BECAUSE NO SUCH SPACE EXISTS HERE YET, not because they are stubs:
- * an extended-range space has components outside 0..1, and an HDR, PQ or HLG space is built on
- * one of those unbounded transfer curves. Everything this library builds is bounded and 0..1, so
- * each of the four is a statement about the library — and the day one of them changes, it is the
- * function's own comment that changes with it. */
-bool CGColorSpaceSupportsOutput(CGColorSpaceRef space);
-bool CGColorSpaceIsWideGamutRGB(CGColorSpaceRef space);
-bool CGColorSpaceUsesExtendedRange(CGColorSpaceRef space);
-bool CGColorSpaceIsHDR(CGColorSpaceRef space);
-bool CGColorSpaceIsHLGBased(CGColorSpaceRef space);
-bool CGColorSpaceIsPQBased(CGColorSpaceRef space);
+/* !! SIX PREDICATES STOOD HERE AND WERE REMOVED (2026-10-05), every one of them out of era:
+ * `CGColorSpaceSupportsOutput`, `CGColorSpaceIsWideGamutRGB` and `CGColorSpaceUsesExtendedRange`
+ * (10.12), `CGColorSpaceIsHDR` (10.15), `CGColorSpaceIsHLGBased` and `CGColorSpaceIsPQBased`
+ * (12.0). What they asked — whether this library can draw in a space, and whether a space reaches
+ * beyond 0..1 — is answered where it is ACTED ON: the drawing paths refuse a space they cannot
+ * sample, which is the refusal this library keeps. */
 
 #ifdef __cplusplus
 }

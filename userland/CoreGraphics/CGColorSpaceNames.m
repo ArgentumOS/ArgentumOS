@@ -22,28 +22,32 @@
  * it works. Nothing below owns anything in any case — the constants are string literals and the
  * profiles are handed to the C half, which owns them from there.
  *
- * AND THE SIX NAMES ARE THE ONES THIS LIBRARY CAN BACK WITH AN EXACT PROFILE. Each is defined by
- * a white point, three primaries and a transfer function — every one of which the engine can be
- * given here — so none of them is a substitution for a definition this library cannot express:
+ * AND THE THREE NAMES ARE THE ONES THIS LIBRARY CAN BACK WITH AN EXACT PROFILE *AND* THAT THE
+ * 10.6 ERA ALLOWS. Each is defined by a white point, three primaries and a transfer function —
+ * every one of which the engine can be given here — so none of them is a substitution for a
+ * definition this library cannot express:
  *
  *   kCGColorSpaceSRGB                  sRGB's own profile, from the engine
- *   kCGColorSpaceLinearSRGB            sRGB's primaries, D65, gamma 1: no transfer function at all
  *   kCGColorSpaceAdobeRGB1998          Adobe's primaries, D65, gamma 563/256 — the exact value the
  *                                      Adobe RGB (1998) specification names, not 2.2 rounded
- *   kCGColorSpaceROMMRGB               ProPhoto's primaries, D50, gamma 1.8, which is its definition
- *   kCGColorSpaceGenericLab            Lab under D50, the ICC default Apple's generic Lab uses
  *   kCGColorSpaceGenericGrayGamma2_2   D65 with gamma 2.2
  *
- * WHAT IS NOT HERE, AND EVERY ONE OF THEM FOR THE SAME KIND OF REASON: `kCGColorSpaceDisplayP3` is
- * sRGB's PIECEWISE CURVE on P3's primaries, and this library's space constructors take one power
- * per channel, AND THE PIECEWISE CURVE HAS SINCE ARRIVED — so Display P3 and its linear form are
- * here too: `cg_srgb_curve` builds the sRGB transfer function as the engine's parametric type 4,
- * with the parameters read out of lcms2's own source rather than remembered. That closes the item
- * this paragraph used to leave open. STILL ABSENT, each for its own reason: the `Extended…` family
- * and `kCGColorSpaceACESCGLinear` are outside 0..1 or built on HDR curves;
- * `kCGColorSpaceGenericCMYK` has no profile that can be invented (what ink values mean depends on
- * the press); `kCGColorSpaceGenericXYZ` needs an XYZ model this library does not read. Every one of
- * them stays `open` in the ledger, which is where an unimplemented name belongs.
+ * NINE NAMES WERE HERE AND WERE REMOVED (2026-10-05) BECAUSE THEY ARE OUT OF ERA, not because
+ * their definitions stopped working: linear sRGB (10.12), Display P3 (10.11.2) and its linear
+ * form (12.0), DCI-P3 (10.11), ProPhoto/ROMM (10.11), generic XYZ (10.11), ITU-R BT.2020 (10.11),
+ * linear gray (10.12) and generic Lab (10.13). With them went the whole piecewise-transfer
+ * machinery they were the only users of — the parametric type-4 curve, `cg_rgb_profile_pc` and
+ * `cg_rgb_profile_srgb_curve` — so this file is now one gamma-built profile per channel plus
+ * sRGB's own. **THE DEFINITIONS ARE IN HISTORY AND THAT IS THE RECORD**: the white points,
+ * primaries and curve parameters each one needs were measured when it was built, and a later era
+ * decision that puts one back in scope has them written down there rather than to re-derive.
+ *
+ * WHAT REMAINS ABSENT FOR REASONS THAT ARE NOT THE ERA, and stays `open` in the ledger where an
+ * unimplemented name belongs: the `Extended…` family and `kCGColorSpaceACESCGLinear` are outside
+ * 0..1 or built on HDR curves, and `kCGColorSpaceGenericCMYK` has no profile that can be
+ * invented (what ink values mean depends on the press). `kCGColorSpaceGenericRGB` (10.4),
+ * `kCGColorSpaceGenericGray` (10.4) and `kCGColorSpaceGenericRGBLinear` (10.5) are IN era and
+ * simply not implemented yet.
  */
 #import <Foundation/Foundation.h>
 
@@ -54,17 +58,8 @@
 #include <stdio.h>
 
 NSString *const kCGColorSpaceSRGB = @"kCGColorSpaceSRGB";
-NSString *const kCGColorSpaceLinearSRGB = @"kCGColorSpaceLinearSRGB";
 NSString *const kCGColorSpaceAdobeRGB1998 = @"kCGColorSpaceAdobeRGB1998";
-NSString *const kCGColorSpaceROMMRGB = @"kCGColorSpaceROMMRGB";
-NSString *const kCGColorSpaceGenericLab = @"kCGColorSpaceGenericLab";
 NSString *const kCGColorSpaceGenericGrayGamma2_2 = @"kCGColorSpaceGenericGrayGamma2_2";
-NSString *const kCGColorSpaceDisplayP3 = @"kCGColorSpaceDisplayP3";
-NSString *const kCGColorSpaceLinearDisplayP3 = @"kCGColorSpaceLinearDisplayP3";
-NSString *const kCGColorSpaceDCIP3 = @"kCGColorSpaceDCIP3";
-NSString *const kCGColorSpaceLinearGray = @"kCGColorSpaceLinearGray";
-NSString *const kCGColorSpaceGenericXYZ = @"kCGColorSpaceGenericXYZ";
-NSString *const kCGColorSpaceITUR_2020 = @"kCGColorSpaceITUR_2020";
 
 /* An xy pair with Y = 1, which is the spelling the engine's primaries use. */
 static cmsCIExyY cg_xy(double x, double y)
@@ -117,114 +112,19 @@ static cmsHPROFILE cg_rgb_profile(double wx, double wy, double rx, double ry, do
 	return p;
 }
 
-/* A PIECEWISE TRANSFER FUNCTION AS THE ENGINE'S PARAMETRIC TYPE 4, WITH THE PARAMETERS TAKEN FROM
- * THE SPECIFICATIONS RATHER THAN FROM MEMORY: `cmsgamma.c` evaluates type 4 as
- *     Y = (aX + b)^g   for X >= d,      Y = cX   otherwise
- * so a specification that reads "a power above a breakpoint, a straight line below it" IS a
- * five-number array of {g, a, b, c, d}.
+/* !! THE PIECEWISE-TRANSFER MACHINERY STOOD HERE AND WAS REMOVED (2026-10-05). It was the
+ * engine's parametric type 4 — `cg_param_curve`, the sRGB parameter array read out of lcms2's own
+ * source and the BT.2020 array inverted from the specification — plus the two profile builders
+ * that asked it for a curve per channel (`cg_rgb_profile_pc` and `cg_rgb_profile_srgb_curve`).
+ * ITS ONLY TWO CONSUMERS WERE OUT-OF-ERA SPACES, AND BOTH WENT IN THE SAME PASS — Display P3 (the
+ * sRGB curve) and ITU-R BT.2020 (the inverted OETF). The three names that remain are one power per
+ * channel or sRGB's own profile, so `cg_rgb_profile` above is all they need.
  *
- * sRGB'S IS THE ONE THE PROBE DISCRIMINATES BY ITS TOE: without the toe the same numbers describe
- * a different space — 0.02 decodes to 0.0015 with it and to 0.0068 without — which is why the toe
- * is the quantity the Display P3 check measures. */
-static const double cg_srgb_params[5] = { 2.4, 1.0 / 1.055, 0.055 / 1.055, 1.0 / 12.92,
-					  0.04045 };
-
-/* BT.2020'S OETF INVERTED, WHICH IS THE DIRECTION A MATRIX/TRC PROFILE STORES. The specification
- * writes the ENCODE direction as `V = 4.5L` below beta and `V = alpha*L^0.45 - (alpha - 1)` above
- * it, with alpha = 1.09929682680944 and beta = 0.018053968510807 — and a profile's curve runs the
- * other way, from the encoded value to light. Inverting it gives the same shape with
- * {g, a, b, c, d} = {1/0.45, 1/alpha, (alpha-1)/alpha, 1/4.5, 4.5*beta}: NO NEW MACHINERY, five
- * different numbers, which is the whole reason the parametric path exists. */
-static const double cg_bt2020_params[5] = {
-	1.0 / 0.45, 1.0 / 1.09929682680944, 0.09929682680944 / 1.09929682680944, 1.0 / 4.5,
-	4.5 * 0.018053968510807
-};
-
-static cmsToneCurve *cg_param_curve(const double params[5])
-{
-	cmsFloat64Number p[5];
-	int i;
-
-	for (i = 0; i < 5; i++) {
-		p[i] = params[i];
-	}
-	return cmsBuildParametricToneCurve(NULL, 4, p);
-}
-
-static cmsToneCurve *cg_srgb_curve(void)
-{
-	return cg_param_curve(cg_srgb_params);
-}
-
-/* THE SAME RGB PROFILE WITH A PIECEWISE CURVE INSTEAD OF A POWER, WHICH IS THE GENERAL FORM: the
- * gamma builder in `cg_rgb_profile` above makes three identical curves from one number, and this
- * asks for a parametric curve three times. The structure repeats because C has no closure to hand
- * it — and a space defined with a piecewise transfer function cannot be written as a power at all,
- * which is why Display P3 and ITU-R BT.2020 are here and the others are not. */
-static cmsHPROFILE cg_rgb_profile_pc(double wx, double wy, double rx, double ry, double gx,
-				     double gy, double bx, double by, const double *params)
-{
-	cmsCIExyYTRIPLE prim;
-	cmsToneCurve *curve[3];
-	cmsCIExyY wp = cg_xy(wx, wy);
-	cmsHPROFILE p;
-	int i;
-
-	prim.Red = cg_xy(rx, ry);
-	prim.Green = cg_xy(gx, gy);
-	prim.Blue = cg_xy(bx, by);
-	for (i = 0; i < 3; i++) {
-		curve[i] = cg_param_curve(params);
-		if (curve[i] == NULL) {
-			for (i = 0; i < 3; i++) {
-				if (curve[i] != NULL) {
-					cmsFreeToneCurve(curve[i]);
-				}
-			}
-			return NULL;
-		}
-	}
-	p = cmsCreateRGBProfile(&wp, &prim, curve);
-	for (i = 0; i < 3; i++) {
-		cmsFreeToneCurve(curve[i]);
-	}
-	return p;
-}
-
-/* THE SAME RGB PROFILE WITH THE sRGB CURVE INSTEAD OF A POWER. The structure repeats
- * `cg_rgb_profile` because C has no closure to hand it — the gamma form builds three identical
- * curves from one number, and this asks for the piecewise curve three times — and WHAT DIFFERS IS
- * THE WHOLE REASON IT EXISTS: a space defined with a piecewise transfer function cannot be written
- * as a power at all, and Display P3 is such a space. */
-static cmsHPROFILE cg_rgb_profile_srgb_curve(double wx, double wy, double rx, double ry, double gx,
-					     double gy, double bx, double by)
-{
-	cmsCIExyYTRIPLE prim;
-	cmsToneCurve *curve[3];
-	cmsCIExyY wp = cg_xy(wx, wy);
-	cmsHPROFILE p;
-	int i;
-
-	prim.Red = cg_xy(rx, ry);
-	prim.Green = cg_xy(gx, gy);
-	prim.Blue = cg_xy(bx, by);
-	for (i = 0; i < 3; i++) {
-		curve[i] = cg_srgb_curve();
-		if (curve[i] == NULL) {
-			for (i = 0; i < 3; i++) {
-				if (curve[i] != NULL) {
-					cmsFreeToneCurve(curve[i]);
-				}
-			}
-			return NULL;
-		}
-	}
-	p = cmsCreateRGBProfile(&wp, &prim, curve);
-	for (i = 0; i < 3; i++) {
-		cmsFreeToneCurve(curve[i]);
-	}
-	return p;
-}
+ * THE PARAMETERS ARE IN HISTORY rather than here, for the reason a removal is recorded at all: the
+ * numbers were measured, not recalled, and a later era decision that puts P3 or BT.2020 back in
+ * scope should find the definition rather than re-derive it. THE PROBE'S DISCRIMINATOR GOES WITH
+ * THEM: the sRGB curve's TOE — 0.02 decoding to 0.00444444 inside it against 0.0068 outside — was
+ * how a piecewise space was told apart from a power curve, and no remaining name needs it. */
 
 static cmsHPROFILE cg_profile_for_name(NSString *name, CGColorSpaceModel *model, size_t *components)
 {
@@ -236,86 +136,21 @@ static cmsHPROFILE cg_profile_for_name(NSString *name, CGColorSpaceModel *model,
 		*components = 3;
 		return cmsCreate_sRGBProfile();
 	}
-	if ([name isEqual:kCGColorSpaceLinearSRGB]) {
-		*model = kCGColorSpaceModelRGB;
-		*components = 3;
-		/* GAMMA 1 IS "NO TRANSFER FUNCTION", which is what a linear space means. */
-		return cg_rgb_profile(CG_D65_X, CG_D65_Y, 0.6400, 0.3300, 0.3000, 0.6000, 0.1500, 0.0600,
-				      1.0);
-	}
-	if ([name isEqual:kCGColorSpaceDisplayP3]) {
-		*model = kCGColorSpaceModelRGB;
-		*components = 3;
-		/* DISPLAY P3 IS DCI-P3'S PRIMARIES WITH THE sRGB TRANSFER FUNCTION — and D65, not the
-		 * cinema white point, which is why a NEUTRAL grey in it converts to the same grey. */
-		return cg_rgb_profile_srgb_curve(CG_D65_X, CG_D65_Y, 0.6800, 0.3200, 0.2650, 0.6900,
-						 0.1500, 0.0600);
-	}
-	if ([name isEqual:kCGColorSpaceLinearDisplayP3]) {
-		*model = kCGColorSpaceModelRGB;
-		*components = 3;
-		return cg_rgb_profile(CG_D65_X, CG_D65_Y, 0.6800, 0.3200, 0.2650, 0.6900, 0.1500, 0.0600,
-				      1.0);
-	}
-	if ([name isEqual:kCGColorSpaceDCIP3]) {
-		*model = kCGColorSpaceModelRGB;
-		*components = 3;
-		/* THE CINEMA SPACE, AND THE REASON IT IS NOT `DisplayP3`: DCI-P3 is the THEATRE projection
-		 * space — its own white point (x 0.314, y 0.351, greener than D65) and gamma 2.6 — while
-		 * Display P3 is the same primaries with D65 and the sRGB curve. THAT DIFFERENCE IS WHY BOTH
-		 * NAMES EXIST, so building one out of the other would erase the only thing separating them. */
-		return cg_rgb_profile(0.3140, 0.3510, 0.6800, 0.3200, 0.2650, 0.6900, 0.1500, 0.0600,
-				      2.6);
-	}
-	if ([name isEqual:kCGColorSpaceLinearGray]) {
-		*model = kCGColorSpaceModelMonochrome;
-		*components = 1;
-		/* D65 WITH GAMMA 1: the linear counterpart of the gray this library already names, with
-		 * the same white point and no transfer function at all. */
-		wp = cg_xy(CG_D65_X, CG_D65_Y);
-		g = cmsBuildGamma(NULL, 1.0);
-		if (g == NULL) {
-			return NULL;
-		}
-		p = cmsCreateGrayProfile(&wp, g);
-		cmsFreeToneCurve(g);
-		return p;
-	}
+	/* !! FIVE BRANCHES STOOD HERE AND WERE REMOVED (2026-10-05): linear sRGB (10.12), Display P3
+	 * (10.11.2), linear Display P3 (12.0), DCI-P3 (10.11) and linear gray (10.12) are all out of
+	 * era, so `CGColorSpaceCreateWithName` no longer answers to those names. THE DEFINITIONS ARE
+	 * IN HISTORY — DCI-P3's own white point and gamma 2.6, Display P3's P3 primaries with the sRGB
+	 * curve, the linear forms' gamma 1 — each measured when it was built rather than recalled. */
 	if ([name isEqual:kCGColorSpaceAdobeRGB1998]) {
 		*model = kCGColorSpaceModelRGB;
 		*components = 3;
 		return cg_rgb_profile(CG_D65_X, CG_D65_Y, 0.6400, 0.3300, 0.2100, 0.7100, 0.1500, 0.0600,
 				      563.0 / 256.0);
 	}
-	if ([name isEqual:kCGColorSpaceROMMRGB]) {
-		*model = kCGColorSpaceModelRGB;
-		*components = 3;
-		return cg_rgb_profile(CG_D50_X, CG_D50_Y, 0.7347, 0.2653, 0.1596, 0.8404, 0.0366, 0.0001,
-				      1.8);
-	}
-	if ([name isEqual:kCGColorSpaceGenericLab]) {
-		*model = kCGColorSpaceModelLab;
-		*components = 3;
-		return cmsCreateLab4Profile(NULL);   /* NULL is D50, the ICC's default */
-	}
-	if ([name isEqual:kCGColorSpaceGenericXYZ]) {
-		*model = kCGColorSpaceModelXYZ;
-		*components = 3;
-		/* THE ENGINE'S XYZ PROFILE IS THE ICC PCS ITSELF, which is D50 — the same white point
-		 * Apple's generic XYZ names — so there is no white point to choose here and none is
-		 * invented. */
-		return cmsCreateXYZProfile();
-	}
-	if ([name isEqual:kCGColorSpaceITUR_2020]) {
-		*model = kCGColorSpaceModelRGB;
-		*components = 3;
-		/* REC.2020'S PRIMARIES WITH ITS OWN PIECEWISE CURVE, WHICH IS WHY THIS IS THE SECOND SPACE
-		 * HERE THAT CANNOT BE A POWER: BT.2020's transfer function has a breakpoint (beta) and a
-		 * straight line below it, exactly as sRGB's has, with different constants — and both bands
-		 * are the specification's, inverted into the direction a profile stores. */
-		return cg_rgb_profile_pc(CG_D65_X, CG_D65_Y, 0.7080, 0.2920, 0.1700, 0.7970, 0.1310,
-					 0.0460, cg_bt2020_params);
-	}
+	/* !! FOUR MORE BRANCHES STOOD HERE AND WERE REMOVED (2026-10-05): ProPhoto/ROMM (10.11),
+	 * generic Lab (10.13), generic XYZ (10.11) and ITU-R BT.2020 (10.11). LAB IS STILL REACHABLE
+	 * WITHOUT A NAME — through `CGColorSpaceCreateLab` and through an ICC profile — so what went
+	 * is a name rather than a capability, and XYZ is reachable the same way through a profile. */
 	if ([name isEqual:kCGColorSpaceGenericGrayGamma2_2]) {
 		*model = kCGColorSpaceModelMonochrome;
 		*components = 1;

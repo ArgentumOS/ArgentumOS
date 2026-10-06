@@ -690,54 +690,18 @@ int main(void)
 		      CGColorSpaceCreateCalibratedGray(d50, NULL, 0.0) == NULL);
 	}
 
-	/* --- THE PREDICATES: answers computed from the same facts the library acts on ---------- */
-	/* TWO OF THESE ARE COMPUTED AND FOUR ARE STATEMENTS ABOUT WHICH SPACES EXIST HERE. The
-	 * interesting one is `IsWideGamutRGB`, because it has a real answer to get right: device RGB
-	 * IS sRGB by this library's definition and must come out NOT wide, while Adobe RGB — whose
-	 * green primary, (0.21, 0.71), sits well outside sRGB's triangle — must come out wide. THAT
-	 * SECOND CASE IS BUILT FROM ITS PRIMARIES AS A MATRIX, so the check exercises the same
-	 * matrix-to-primaries reading the calibrated block above proves, from the other direction. */
-	{
-		static const CGFloat adobe_rgb_matrix[9] = {
-			0.5767309, 0.1855540, 0.1881852,
-			0.2973769, 0.6273491, 0.0752741,
-			0.0270343, 0.0706872, 0.9911085
-		};
-		static const CGFloat d65[3] = { 0.95047, 1.0, 1.08883 };
-		CGFloat g3[3] = { 2.2, 2.2, 2.2 };
-		CGColorSpaceRef rgb = CGColorSpaceCreateDeviceRGB();
-		CGColorSpaceRef gray = CGColorSpaceCreateDeviceGray();
-		CGColorSpaceRef cmyk = CGColorSpaceCreateDeviceCMYK();
-		CGColorSpaceRef lab = CGColorSpaceCreateLab(NULL, NULL, NULL);
-		CGColorSpaceRef wide_rgb = CGColorSpaceCreateCalibratedRGB(d65, NULL, g3,
-									  adobe_rgb_matrix);
-
-		check("device RGB and device gray SUPPORT output",
-		      CGColorSpaceSupportsOutput(rgb) && CGColorSpaceSupportsOutput(gray));
-		check("...and so does a space that has to be CONVERTED (Lab)",
-		      CGColorSpaceSupportsOutput(lab));
-		check("device CMYK does NOT — there is no profile to draw it through",
-		      !CGColorSpaceSupportsOutput(cmyk));
-		check("device RGB is NOT wide gamut: it IS sRGB, by this library's definition",
-		      !CGColorSpaceIsWideGamutRGB(rgb));
-		check("...but ADOBE RGB's primaries are, its green being (0.21, 0.71)",
-		      CGColorSpaceIsWideGamutRGB(wide_rgb));
-		check("a grayscale space is not wide-gamut RGB", !CGColorSpaceIsWideGamutRGB(gray));
-		check("a NULL space is not wide-gamut RGB", !CGColorSpaceIsWideGamutRGB(NULL));
-		check("nothing here uses an extended range",
-		      !CGColorSpaceUsesExtendedRange(rgb) && !CGColorSpaceUsesExtendedRange(wide_rgb));
-		check("nothing here is HDR, PQ-based or HLG-based",
-		      !CGColorSpaceIsHDR(lab) && !CGColorSpaceIsPQBased(lab) &&
-		      !CGColorSpaceIsHLGBased(wide_rgb));
-		check("and an extended-range question about NULL is still answered, not crashed on",
-		      !CGColorSpaceUsesExtendedRange(NULL) && !CGColorSpaceSupportsOutput(NULL));
-
-		CGColorSpaceRelease(wide_rgb);
-		CGColorSpaceRelease(lab);
-		CGColorSpaceRelease(cmyk);
-		CGColorSpaceRelease(gray);
-		CGColorSpaceRelease(rgb);
-	}
+	/* --- THE PREDICATES STOOD HERE AND WERE REMOVED (2026-10-05) --------------------------- */
+	/* `CGColorSpaceSupportsOutput`, `CGColorSpaceIsWideGamutRGB`, `CGColorSpaceUsesExtendedRange`,
+	 * `CGColorSpaceIsHDR`, `CGColorSpaceIsHLGBased` and `CGColorSpaceIsPQBased` are all macOS
+	 * 10.12-12.0 API, and this tree's duplication is a 10.6-era surface, so both the functions
+	 * and this block of checks are gone.
+	 *
+	 * WHAT WAS BEING MEASURED IS NOT LOST FROM THE TREE — IT MOVED TO WHERE IT IS ACTED ON. The
+	 * gamut question ("is device RGB really sRGB, is Adobe RGB really outside it?") was this
+	 * block's strongest check, and it is still made at the calibrated-spaces block above, from the
+	 * same matrix, by comparing what the engine reports for the two spaces. The refusal that
+	 * `SupportsOutput` predicted — device CMYK cannot be drawn, because it has no profile to
+	 * convert through — is checked where it happens, in the context's colour setters. */
 
 	/* --- THE NAMED SPACES: the first Foundation objects reaching a C caller --------------- */
 	/* THIS PROBE IS C, AND IT PASSES `NSString *` VALUES AROUND WITHOUT EVER SEEING INSIDE ONE —
@@ -745,16 +709,17 @@ int main(void)
 	 * can use Apple's named-space API at all.
 	 *
 	 * THE CHECK THAT MATTERS IS NOT THAT A SPACE CAME BACK, it is that the NAME SELECTED THE
-	 * RIGHT PROFILE: Adobe RGB's primaries are outside sRGB's triangle and sRGB's are on it, and
-	 * both answers come from this library's own predicate rather than from the probe. If the
-	 * comparison in the Objective-C file matched the wrong branch — or the primaries were read
-	 * from the wrong space — this is where it shows. */
+	 * RIGHT PROFILE. THAT CHECK USED TO ASK THIS LIBRARY'S `CGColorSpaceIsWideGamutRGB` — Adobe
+	 * RGB's primaries are outside sRGB's triangle and sRGB's are on it — AND THE PREDICATE AND
+	 * SEVERAL OF THE NAMES ARE GONE AS OF 2026-10-05 (they are 10.11-13.0 API; this duplication is
+	 * a 10.6-era surface). WHAT REPLACES IT HERE: each space's model and component count, the
+	 * cache identity, and the NAME ROUND TRIP in the Objective-C probe beside this one —
+	 * `CGColorSpaceCopyName` is 10.6 and answers with the name the space was made with, so a
+	 * constant that went in has to come back out. The primaries themselves are still MEASURED, at
+	 * the calibrated-spaces block above, where the same Adobe matrix goes in. */
 	{
 		CGColorSpaceRef named_srgb = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
 		CGColorSpaceRef named_adobe = CGColorSpaceCreateWithName(kCGColorSpaceAdobeRGB1998);
-		CGColorSpaceRef named_romm = CGColorSpaceCreateWithName(kCGColorSpaceROMMRGB);
-		CGColorSpaceRef named_linear = CGColorSpaceCreateWithName(kCGColorSpaceLinearSRGB);
-		CGColorSpaceRef named_lab = CGColorSpaceCreateWithName(kCGColorSpaceGenericLab);
 		CGColorSpaceRef named_gray =
 			CGColorSpaceCreateWithName(kCGColorSpaceGenericGrayGamma2_2);
 
@@ -763,97 +728,39 @@ int main(void)
 		check("...and it is an RGB space with three components",
 		      CGColorSpaceGetModel(named_srgb) == kCGColorSpaceModelRGB &&
 		      CGColorSpaceGetNumberOfComponents(named_srgb) == 3);
-		check("...and NOT wide gamut, because that name IS sRGB",
-		      !CGColorSpaceIsWideGamutRGB(named_srgb));
-		check("the ADOBE name selects Adobe's primaries, which ARE wide gamut",
-		      named_adobe != NULL && CGColorSpaceIsWideGamutRGB(named_adobe));
-		check("the ProPhoto name selects ProPhoto's, which are wide too",
-		      named_romm != NULL && CGColorSpaceIsWideGamutRGB(named_romm));
-		check("...while the LINEAR sRGB name keeps sRGB's primaries and is not wide",
-		      named_linear != NULL && !CGColorSpaceIsWideGamutRGB(named_linear));
-		check("the Lab name gives a Lab space, which the context can therefore be asked to draw",
-		      named_lab != NULL && CGColorSpaceGetModel(named_lab) == kCGColorSpaceModelLab &&
-		      CGColorSpaceSupportsOutput(named_lab));
-		check("and the gray name gives one component",
+		check("the ADOBE name gives a DIFFERENT space, which is also RGB and has three components",
+		      named_adobe != NULL && named_adobe != named_srgb &&
+		      CGColorSpaceGetModel(named_adobe) == kCGColorSpaceModelRGB &&
+		      CGColorSpaceGetNumberOfComponents(named_adobe) == 3);
+		check("...and asking twice for it gives the same object back",
+		      CGColorSpaceCreateWithName(kCGColorSpaceAdobeRGB1998) == named_adobe);
+		check("and the gray name gives a one-component space",
 		      named_gray != NULL && CGColorSpaceGetNumberOfComponents(named_gray) == 1);
 		check("a NULL name is refused", CGColorSpaceCreateWithName(NULL) == NULL);
-		/* AND THE FOUNDATION-DATA FORMS REFUSE NOTHING LESS THAN A NULL OBJECT. The probe cannot
-		 * make an NSData or look inside one — that is what the opaque spelling is for — but it can
-		 * pass nothing, which is the refusal both new forms owe a caller. Their POSITIVE path
-		 * needs an object this file cannot own, so it is checked in an Objective-C probe beside
-		 * this one (`coregraphics_color_foundation.m`), which is the same split the tree already
-		 * uses for a probe's MRC half. */
-		check("the Foundation-data forms refuse a NULL object",
-		      CGDataProviderCreateWithCFData(NULL) == NULL &&
-		      CGColorSpaceCreateWithICCData(NULL) == NULL);
 
 		CGColorSpaceRelease(named_gray);
-		CGColorSpaceRelease(named_lab);
-		CGColorSpaceRelease(named_linear);
-		CGColorSpaceRelease(named_romm);
 		CGColorSpaceRelease(named_adobe);
 		CGColorSpaceRelease(named_srgb);
 	}
 
-	/* --- DISPLAY P3: the piecewise curve, proved by its TOE -------------------------------- */
-	/* P3 IS THE FIRST SPACE HERE WHOSE TRANSFER FUNCTION IS NOT A POWER, so the interesting
-	 * question is not whether a space came back but whether the RIGHT CURVE is inside it. THE
-	 * LINEAR TOE IS THE DISCRIMINATOR: the sRGB curve maps 0.02 to 0.02/12.92, while a power curve
-	 * maps it two orders of magnitude away. And because P3's grey and device RGB's grey go through
-	 * the SAME curve, the neutral axis is an identity — which is what makes a small number here a
-	 * strong statement rather than a tolerance problem. */
-	{
-		CGColorSpaceRef p3 = CGColorSpaceCreateWithName(kCGColorSpaceDisplayP3);
-		CGColorSpaceRef lin_p3 = CGColorSpaceCreateWithName(kCGColorSpaceLinearDisplayP3);
-		CGColorSpaceRef rgb6 = CGColorSpaceCreateDeviceRGB();
-		CGFloat toe[4];
-		CGFloat v6[4];
-		CGColorRef c;
-		CGColorRef r;
-
-		check("kCGColorSpaceDisplayP3 gives a space",
-		      p3 != NULL && CGColorSpaceGetModel(p3) == kCGColorSpaceModelRGB);
-		check("...that IS wide gamut, which is what P3 means",
-		      p3 != NULL && CGColorSpaceIsWideGamutRGB(p3));
-		check("...while the LINEAR P3 name has the same primaries and is wide too",
-		      lin_p3 != NULL && CGColorSpaceIsWideGamutRGB(lin_p3));
-
-		toe[0] = 0.02;
-		toe[1] = 0.02;
-		toe[2] = 0.02;
-		toe[3] = 1.0;
-		c = CGColorCreate(p3, toe);
-		r = CGColorCreateCopyByMatchingToColorSpace(c, kCGRenderingIntentRelativeColorimetric,
-							    rgb6, NULL);
-		if (r != NULL) {
-			/* INSIDE THE TOE THE CURVE IS LINEAR, so P3 and device RGB agree almost exactly. A
-			 * power curve would put this near 0.0068 (gamma 2.4) or 0.165 (gamma 2.2). */
-			check_num("P3's 0.02, inside the linear toe, round-trips to 0.02",
-				  (double)CGColorGetComponents(r)[0], 0.02, 0.003);
-			CGColorRelease(r);
-		} else {
-			check("the P3 colour converts", 0);
-		}
-		CGColorRelease(c);
-
-		/* AND ABOVE THE TOE THE SAME VALUE IN THE LINEAR SPACE GOES SOMEWHERE ELSE, which is what
-		 * shows the two names are two spaces rather than one. */
-		v6[0] = 0.5;
-		v6[1] = 0.5;
-		v6[2] = 0.5;
-		v6[3] = 1.0;
-		c = CGColorCreate(lin_p3, v6);
-		r = CGColorCreateCopyByMatchingToColorSpace(c, kCGRenderingIntentRelativeColorimetric,
-							    rgb6, NULL);
-		check("a LINEAR P3 grey converts to a much LIGHTER device grey",
-		      r != NULL && CGColorGetComponents(r)[0] > 0.6);
-		CGColorRelease(r);
-		CGColorRelease(c);
-
-		CGColorSpaceRelease(rgb6);
-		CGColorSpaceRelease(lin_p3);
-		CGColorSpaceRelease(p3);
-	}
+	/* --- DISPLAY P3, XYZ, DCI-P3, LINEAR GRAY AND REC.2020 STOOD HERE AND WERE REMOVED ------- */
+	/* FOUR WHOLE CHECK BLOCKS WENT WITH THE NAMES THEY TESTED (2026-10-05): Display P3 and linear
+	 * Display P3 (10.11.2/12.0), generic XYZ (10.11), DCI-P3 (10.11) and linear gray (10.12),
+	 * ITU-R BT.2020 (10.11). Each block was built to establish that a NAME reached the RIGHT
+	 * PROFILE — the P3 blocks by the sRGB curve's TOE, XYZ by the PCS white point landing white,
+	 * the cinema block by DCI-P3 and Display P3 converting one grey differently — AND EVERY ONE OF
+	 * THEM NEEDED TWO THINGS THAT ARE ALSO GONE: the `kCGColorSpace…` name, and
+	 * `CGColorCreateCopyByMatchingToColorSpace` (10.11), which is how a converted value was read
+	 * back.
+	 *
+	 * THE MEASUREMENTS THEMSELVES ARE NOT LOST: they are recorded in history with the definitions,
+	 * including the two numbers the BT.2020 check had to correct before it passed (a predicted
+	 * ratio of 1.33 against a measured 1.59, and 1.59 against 1.67 — sRGB's encode sits between
+	 * the two, so only a linear target makes the decoded value observable).
+	 *
+	 * WHAT SURVIVES HERE IS THE CALIBRATED-SPACES BLOCK ABOVE, which builds Adobe RGB from its
+	 * matrix through the parameter door — and the cache block below, which is about the named
+	 * spaces that remain. */
 
 	/* --- THE NAMED SPACES ARE CACHED: one object per name -------------------------------- */
 	/* A DEVIATION REMOVED, SO THE CHECK IS THE DEVIATION'S OPPOSITE: asking for the same name
@@ -872,181 +779,15 @@ int main(void)
 		CGColorSpaceRelease(a);
 	}
 
-	/* --- AND AN XYZ SPACE, WHERE THE MODEL IS THE WHOLE STORY ------------------------------ */
-	/* XYZ IS THE ONE SPACE HERE WHOSE COMPONENTS ARE NOT A COLOUR IN THE USUAL SENSE: X, Y and Z
-	 * are the eye's own response, and the space that holds them HAS NO PRIMARIES. That is why
-	 * `IsWideGamutRGB` answers NO for it — correctly, and for that reason rather than because
-	 * something failed to read it — so the answer is checked here: a predicate that said "wide"
-	 * for a space with no primaries would be reading something that is not there.
-	 *
-	 * THE CONVERSION IS THE CHECK THAT MATTERS: the ICC PCS white point (0.9642, 1.0, 0.8249, D50)
-	 * IS WHITE, so a colour carrying it must land near (1, 1, 1) in device RGB. That is a relation
-	 * rather than a quoted triple, and it fails if the white point or the adaptation is wrong. */
-	{
-		CGColorSpaceRef xyz = CGColorSpaceCreateWithName(kCGColorSpaceGenericXYZ);
-		CGColorSpaceRef dev = CGColorSpaceCreateDeviceRGB();
-		CGFloat white[4];
-		CGColorRef c;
-		CGColorRef r;
-
-		check("kCGColorSpaceGenericXYZ gives a space",
-		      xyz != NULL && CGColorSpaceGetModel(xyz) == kCGColorSpaceModelXYZ);
-		check_num("...with three components",
-			  (double)CGColorSpaceGetNumberOfComponents(xyz), 3.0, 0);
-		check("...that CAN be drawn, because it has a profile",
-		      CGColorSpaceSupportsOutput(xyz));
-		check("...and that is NOT wide-gamut RGB, having no primaries to compare",
-		      !CGColorSpaceIsWideGamutRGB(xyz));
-
-		white[0] = 0.9642;
-		white[1] = 1.0;
-		white[2] = 0.8249;
-		white[3] = 1.0;
-		c = CGColorCreate(xyz, white);
-		r = CGColorCreateCopyByMatchingToColorSpace(c, kCGRenderingIntentRelativeColorimetric,
-							    dev, NULL);
-		/* THE MEASUREMENTS ARE THE CHECK, AND THEY PRINT: three numbers against 1.0, so the actual
-		 * conversion lands in the output instead of behind a boolean. A relative colorimetric
-		 * conversion maps the media white to white, so each should come back as 1.0.
-		 *
-		 * AND THE GUARD IS NOT DECORATION. The first version of this block read
-		 * `CGColorGetComponents(r)[0]` without asking whether `r` was NULL — and when the
-		 * conversion failed, because this library's FORMAT table had no XYZ arm, the probe
-		 * SEGFAULTED AND PRINTED NOTHING AT ALL. A crash is a worse diagnostic than a failed
-		 * check, and the buffered output made it look as though the probe had run and said
-		 * nothing. */
-		if (r != NULL) {
-			check_num("the PCS white point lands WHITE: r",
-				  (double)CGColorGetComponents(r)[0], 1.0, 0.02);
-			check_num("...g", (double)CGColorGetComponents(r)[1], 1.0, 0.02);
-			check_num("...b", (double)CGColorGetComponents(r)[2], 1.0, 0.02);
-		} else {
-			check("the PCS white point converts at all", 0);
-		}
-		CGColorRelease(r);
-		CGColorRelease(c);
-		CGColorSpaceRelease(dev);
-		CGColorSpaceRelease(xyz);
-	}
-
-	/* --- TWO MORE NAMES, AND ONE OF THEM IS THE CINEMA SPACE ------------------------------ */
-	/* THE CHECK THAT SEPARATES DCIP3 FROM DisplayP3 IS A COMPARISON RATHER THAN A NUMBER. The two
-	 * share DCI-P3's primaries, so what distinguishes them is THE WHITE POINT AND THE GAMMA — the
-	 * theatre's own white and gamma 2.6, against D65 and the sRGB curve — and a neutral grey
-	 * therefore converts to different device values in each. That difference is the whole reason
-	 * both names exist, so it is the thing worth asserting. */
-	{
-		CGColorSpaceRef dci = CGColorSpaceCreateWithName(kCGColorSpaceDCIP3);
-		CGColorSpaceRef dp3 = CGColorSpaceCreateWithName(kCGColorSpaceDisplayP3);
-		CGColorSpaceRef lingray = CGColorSpaceCreateWithName(kCGColorSpaceLinearGray);
-		CGColorSpaceRef dev = CGColorSpaceCreateDeviceRGB();
-		CGFloat grey[4];
-		CGColorRef cd;
-		CGColorRef cp;
-		CGColorRef rd;
-		CGColorRef rp;
-
-		check("kCGColorSpaceDCIP3 gives a WIDE space, like the primaries it shares",
-		      dci != NULL && CGColorSpaceIsWideGamutRGB(dci));
-		check("...and it is a DIFFERENT space from DisplayP3", dci != NULL && dci != dp3);
-		check("kCGColorSpaceLinearGray has one component",
-		      lingray != NULL && CGColorSpaceGetNumberOfComponents(lingray) == 1);
-
-		grey[0] = 0.5;
-		grey[1] = 0.5;
-		grey[2] = 0.5;
-		grey[3] = 1.0;
-		cd = CGColorCreate(dci, grey);
-		cp = CGColorCreate(dp3, grey);
-		rd = CGColorCreateCopyByMatchingToColorSpace(cd, kCGRenderingIntentRelativeColorimetric,
-							     dev, NULL);
-		rp = CGColorCreateCopyByMatchingToColorSpace(cp, kCGRenderingIntentRelativeColorimetric,
-							     dev, NULL);
-		if (rd != NULL && rp != NULL) {
-			double d = CGColorGetComponents(rd)[0] - CGColorGetComponents(rp)[0];
-
-			if (d < 0) {
-				d = -d;
-			}
-			/* A SIZEABLE DIFFERENCE, because a 2.6 gamma is not a 2.4-with-a-toe and the white
-			 * points are not the same point. */
-			check("the same grey converts DIFFERENTLY in the cinema space and in DisplayP3",
-			      d > 0.02);
-		} else {
-			check("both the cinema and the display space convert", 0);
-		}
-		CGColorRelease(rp);
-		CGColorRelease(rd);
-		CGColorRelease(cp);
-		CGColorRelease(cd);
-		CGColorSpaceRelease(dev);
-		CGColorSpaceRelease(lingray);
-		CGColorSpaceRelease(dp3);
-		CGColorSpaceRelease(dci);
-	}
-
-	/* --- AND REC.2020, THE SECOND SPACE WITH A PIECEWISE CURVE ---------------------------- */
-	/* IT IS HERE FOR THE SAME REASON Display P3 IS AND THE OTHERS ARE NOT: its transfer function
-	 * cannot be written as a power. WHAT THE CHECK ESTABLISHES IS THE ONE THING A NAME CAN GET
-	 * WRONG QUIETLY — that the RIGHT CURVE went in — and it uses the same discriminator the P3
-	 * block uses: INSIDE the linear segment the round trip is an identity, and a power curve would
-	 * put the value somewhere else entirely. */
-	{
-		CGColorSpaceRef rec = CGColorSpaceCreateWithName(kCGColorSpaceITUR_2020);
-		/* THE TARGET IS A LINEAR SPACE, AND THAT IS THE WHOLE TRICK. The value BT.2020's curve
-		 * DECODES to is not observable in device RGB: sRGB's encode sits between the two numbers,
-		 * and its -0.055 OFFSET means even the RATIO of two encoded values is not the ratio of
-		 * their inputs — which is why two earlier versions of this check predicted 1.33 and 1.59
-		 * and measured 1.59 and 1.67. A linear target has no curve at all, so what comes out is
-		 * the decoded value itself. */
-		CGColorSpaceRef lin = CGColorSpaceCreateWithName(kCGColorSpaceLinearSRGB);
-		CGFloat low[4];
-		CGFloat high[4];
-		CGColorRef c1;
-		CGColorRef c2;
-		CGColorRef r1;
-		CGColorRef r2;
-
-		check("kCGColorSpaceITUR_2020 gives a WIDE space",
-		      rec != NULL && CGColorSpaceIsWideGamutRGB(rec));
-		check_num("...with three components",
-			  (double)CGColorSpaceGetNumberOfComponents(rec), 3.0, 0);
-		/* 0.02 AND 0.04 BOTH LIE INSIDE BT.2020'S LINEAR SEGMENT, which ends at 4.5*beta =
-		 * 0.0812 — so the curve is a straight line for both of them, with slope 1/4.5. */
-		low[0] = 0.02;
-		low[1] = 0.02;
-		low[2] = 0.02;
-		low[3] = 1.0;
-		high[0] = 0.04;
-		high[1] = 0.04;
-		high[2] = 0.04;
-		high[3] = 1.0;
-		c1 = CGColorCreate(rec, low);
-		c2 = CGColorCreate(rec, high);
-		r1 = CGColorCreateCopyByMatchingToColorSpace(c1, kCGRenderingIntentRelativeColorimetric,
-							     lin, NULL);
-		r2 = CGColorCreateCopyByMatchingToColorSpace(c2, kCGRenderingIntentRelativeColorimetric,
-							     lin, NULL);
-		if (r1 != NULL && r2 != NULL) {
-			/* TWO EXACT CONSEQUENCES OF THAT SEGMENT, both relations rather than quoted numbers:
-			 * the decoded value is the input over 4.5, and the ratio of two inputs is their ratio.
-			 * A POWER curve fails both — 0.02 under a 2.2 gamma decodes to 0.165, thirty-seven
-			 * times what the specification says. */
-			check_num("BT.2020 decodes 0.02 to 0.02/4.5, as its linear segment says",
-				  (double)CGColorGetComponents(r1)[0], 0.0044444, 0.0002);
-			check_num("...and two inputs inside that segment keep a ratio of exactly 2",
-				  (double)(CGColorGetComponents(r2)[0] / CGColorGetComponents(r1)[0]), 2.0,
-				  0.01);
-		} else {
-			check("the Rec.2020 colours convert", 0);
-		}
-		CGColorRelease(r2);
-		CGColorRelease(r1);
-		CGColorRelease(c2);
-		CGColorRelease(c1);
-		CGColorSpaceRelease(lin);
-		CGColorSpaceRelease(rec);
-	}
+	/* --- THE XYZ, CINEMA, LINEAR-GRAY AND REC.2020 BLOCKS STOOD HERE AND WERE REMOVED -------- */
+	/* Three more self-contained blocks, each testing a name that is out of era and each reading
+	 * its evidence back through `CGColorCreateCopyByMatchingToColorSpace` (10.11), which went with
+	 * them. THE MEASUREMENTS THEY ESTABLISHED ARE RECORDED IN HISTORY WITH THE DEFINITIONS THEY
+	 * BELONG TO: the ICC PCS white point landing EXACTLY white in device RGB (1.000 to the printed
+	 * digit), DCI-P3 and Display P3 converting one grey DIFFERENTLY because their white points and
+	 * gammas differ, and BT.2020 decoding 0.02 to 0.02/4.5 inside its linear segment — the last of
+	 * which cost two corrected predictions (1.33 against a measured 1.59, 1.59 against 1.67)
+	 * because sRGB's encode sits between the two spaces and its -0.055 offset breaks the ratio. */
 
 	printf("CG-COLOR: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	return failures;

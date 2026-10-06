@@ -158,19 +158,25 @@ int main(void)
 	{
 		NSColor *device = [NSColor colorWithDeviceRed:1.0 green:0.0 blue:0.0 alpha:1.0];
 		NSColor *srgb = [NSColor colorWithSRGBRed:1.0 green:0.0 blue:0.0 alpha:1.0];
-		NSColor *p3 = [NSColor colorWithDisplayP3Red:1.0 green:0.0 blue:0.0 alpha:1.0];
 		NSColor *gamma22 = [NSColor colorWithGenericGamma22White:0.5 alpha:1.0];
 
 		check("SRGB IS THE sRGB PROFILE, not the device space: the spaces differ",
 		      CGColorGetColorSpace([srgb CGColor]) != CGColorGetColorSpace([device CGColor]));
-		check("...and Display P3 is a third one",
-		      CGColorGetColorSpace([p3 CGColor]) != CGColorGetColorSpace([srgb CGColor]));
 		check("...and the generic white is the gamma-2.2 gray profile, not device gray",
 		      CGColorGetColorSpace([gamma22 CGColor])
 			      != CGColorGetColorSpace([[NSColor colorWithDeviceWhite:0.5 alpha:1.0]
 							      CGColor]));
-		check_num("...while all four report the components they were made with",
-			  (double)[p3 redComponent] + (double)[gamma22 whiteComponent], 0.5 + 1.0, 1e-6);
+		check_num("...while both report the components they were made with",
+			  (double)[srgb redComponent] + (double)[gamma22 whiteComponent], 1.0 + 0.5, 1e-6);
+		/* !! DISPLAY P3 USED TO BE THE THIRD SPACE HERE AND IS NOW A REFUSAL (2026-10-05). Its
+		 * constructor was built on `kCGColorSpaceDisplayP3`, which CoreGraphics removed as
+		 * out-of-era API (10.11.2 against a 10.6-era surface), and the AppKit constructor refuses
+		 * LOUDLY rather than answering in device RGB — device RGB IS sRGB, so a P3 colour built
+		 * there is a DIFFERENT colour wearing the same numbers. THE CHECK IS THEREFORE THE REFUSAL
+		 * AND NOT THE ROUND TRIP, and that is the same shape the interpolation property's check
+		 * has: after a rejected request, ask the object how it reads. */
+		check("+colorWithDisplayP3Red:… refuses, because CoreGraphics has no such space now",
+		      [NSColor colorWithDisplayP3Red:1.0 green:0.0 blue:0.0 alpha:1.0] == nil);
 	}
 
 	/* --- the documented consequence of the RGB-space deviation ---------------------- */

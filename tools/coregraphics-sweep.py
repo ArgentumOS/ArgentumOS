@@ -213,7 +213,7 @@ _CG_FORM_RX = (
     re.compile(r"NS_OPTIONS\s*\(\s*[^,]+,\s*([A-Za-z_]\w*)\s*\)"),  # an NS_OPTIONS
     re.compile(r"\b([A-Za-z_]\w*)\s*[=,}]"),                       # an enum member
     re.compile(r"struct\s+([A-Za-z_]\w*)"),                        # a struct tag
-    re.compile(r"^[A-Za-z_][\w \t\*]*\b([A-Za-z_]\w*)\s*\([^;{]*\)\s*[;{]", re.M | re.S),  # a prototype
+    re.compile(r"^[A-Za-z_][\w \t\*]*\b([A-Za-z_]\w*)\s*\([^;{]*\)\s*(?:[A-Za-z_]\w*)?\s*[;{]", re.M | re.S),  # a prototype, with an optional trailing macro
     re.compile(r"\b([A-Za-z_]\w*)\s*;"),                           # a variable declarator
 )
 
