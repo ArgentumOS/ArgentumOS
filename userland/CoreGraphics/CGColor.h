@@ -125,4 +125,10 @@ CGFloat CGColorGetAlpha(CGColorRef color);
  * is nothing to compare — which is a choice, and the one that keeps the answer meaningful. */
 bool CGColorEqualToColor(CGColorRef color1, CGColorRef color2);
 
+/* THE TYPE IDENTITY OF THIS CLASS: a `CFTypeID`, the same for every object of the class and
+ * different from every other class's. The value is THIS LIBRARY'S (Apple's are runtime-assigned and
+ * published nowhere), which is why the header says so rather than implying a constant someone could
+ * port; identity is the whole of what the door promises. See CGTypeID_internal.h. */
+CFTypeID CGColorGetTypeID(void);
+
 #endif /* CORE_GRAPHICS_CGCOLOR_H */

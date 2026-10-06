@@ -73,4 +73,10 @@ NSData *CGDataProviderCopyData(CGDataProviderRef provider) CG_RETURNS_RETAINED;
 }
 #endif
 
+/* THE TYPE IDENTITY OF THIS CLASS: a `CFTypeID`, the same for every object of the class and
+ * different from every other class's. The value is THIS LIBRARY'S (Apple's are runtime-assigned and
+ * published nowhere), which is why the header says so rather than implying a constant someone could
+ * port; identity is the whole of what the door promises. See CGTypeID_internal.h. */
+CFTypeID CGDataProviderGetTypeID(void);
+
 #endif /* CORE_GRAPHICS_CGDATAPROVIDER_H */

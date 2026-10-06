@@ -41,6 +41,7 @@
 #ifndef CORE_GRAPHICS_CGCONTEXT_H
 #define CORE_GRAPHICS_CGCONTEXT_H
 
+#include <CoreGraphics/CGBase.h>
 #include <CoreGraphics/CGAffineTransform.h>
 #include <CoreGraphics/CGColor.h>
 #include <CoreGraphics/CGColorSpace.h>
@@ -523,5 +524,11 @@ void CGContextSelectFont(CGContextRef context, const char *name, CGFloat size,
 void CGContextShowText(CGContextRef context, const char *string, size_t length);
 void CGContextShowTextAtPoint(CGContextRef context, CGFloat x, CGFloat y, const char *string,
 			      size_t length);
+
+/* THE TYPE IDENTITY OF THIS CLASS: a `CFTypeID`, the same for every object of the class and
+ * different from every other class's. The value is THIS LIBRARY'S (Apple's are runtime-assigned and
+ * published nowhere), which is why the header says so rather than implying a constant someone could
+ * port; identity is the whole of what the door promises. See CGTypeID_internal.h. */
+CFTypeID CGContextGetTypeID(void);
 
 #endif /* CORE_GRAPHICS_CGCONTEXT_H */

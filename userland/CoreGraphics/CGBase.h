@@ -113,4 +113,13 @@ typedef double CGFloat;
 #define CG_EXTERN extern
 #endif
 
+/* THE CORE FOUNDATION TYPE IDENTITY, DECLARED HERE BECAUSE THIS TREE HAS NO COREFOUNDATION. Apple puts
+ * `CFTypeID` in `<CoreFoundation/CFBase.h>` and every `CG*GetTypeID` door returns one; this library's
+ * spelling of it is Apple's (`unsigned long`) and it means what Apple's means: AN OPAQUE IDENTITY, THE SAME
+ * FOR EVERY OBJECT OF ONE CLASS AND DIFFERENT FOR TWO. WHAT CANNOT BE COPIED IS THE VALUE: Apple's ids are
+ * assigned by its runtime at load and published nowhere, so ours are this library's own — stable across
+ * runs, unique per class — and IDENTITY IS THE WHOLE OF WHAT THE CONTRACT PROMISES. See
+ * CGTypeID_internal.h for the registry and CGTypeID.c for the doors. */
+typedef unsigned long CFTypeID;
+
 #endif /* CORE_GRAPHICS_CGBASE_H */

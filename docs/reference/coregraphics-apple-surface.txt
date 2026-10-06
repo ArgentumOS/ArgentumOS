@@ -77,7 +77,7 @@
 # why the struck rows are struck: after-10.6 253, post-10.6 178, x11-territory 475
 #
 # counts by kind:
-#   func       shipped  233   open   94   struck  310   deferred   98
+#   func       shipped  244   open   83   struck  310   deferred   98
 #   macro      shipped    7   open    8   struck   92   deferred    0
 #   enum       shipped   14   open    2   struck   38   deferred    3
 #   case       shipped   95   open    7   struck  325   deferred   17
@@ -644,7 +644,7 @@ func	open	CGColorGetConstantColor	-	Opaque Types / Creating Colors	-	objc
 func	struck	CGColorGetContentHeadroom	-	Functions	after-10.6	objc
 func	shipped	CGColorGetNumberOfComponents	-	Opaque Types / Examining a Color	-	objc
 func	shipped	CGColorGetPattern	-	Opaque Types / Examining a Color	-	objc
-func	open	CGColorGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
+func	shipped	CGColorGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGColorRelease	-	Opaque Types / Retaining and Releasing Color Objects	-	objc
 func	shipped	CGColorRetain	-	Opaque Types / Retaining and Releasing Color Objects	-	objc
 func	struck	CGColorSpaceCopyBaseColorSpace	-	Reference / Functions	after-10.6	objc
@@ -677,7 +677,7 @@ func	open	CGColorSpaceGetColorTableCount	-	Opaque Types / Examining a Color Spac
 func	shipped	CGColorSpaceGetModel	-	Opaque Types / Examining a Color Space	-	objc
 func	struck	CGColorSpaceGetName	-	Reference / Functions	after-10.6	objc
 func	shipped	CGColorSpaceGetNumberOfComponents	-	Opaque Types / Examining a Color Space	-	objc
-func	open	CGColorSpaceGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
+func	shipped	CGColorSpaceGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	struck	CGColorSpaceIsHDR	-	Reference / Functions	after-10.6	objc
 func	struck	CGColorSpaceIsHLGBased	-	Reference / Functions	after-10.6	objc
 func	struck	CGColorSpaceIsPQBased	-	Reference / Functions	after-10.6	objc
@@ -752,7 +752,7 @@ func	shipped	CGContextGetPathBoundingBox	-	Opaque Types / Examining the Current 
 func	shipped	CGContextGetPathCurrentPoint	-	Opaque Types / Examining the Current Graphics Path	-	objc
 func	shipped	CGContextGetTextMatrix	-	Opaque Types / Drawing Text	-	objc
 func	shipped	CGContextGetTextPosition	-	Opaque Types / Drawing Text	-	objc
-func	open	CGContextGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
+func	shipped	CGContextGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGContextGetUserSpaceToDeviceSpaceTransform	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
 func	shipped	CGContextIsPathEmpty	-	Opaque Types / Examining the Current Graphics Path	-	objc
 func	shipped	CGContextMoveToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
@@ -840,7 +840,7 @@ func	shipped	CGDataProviderCreateWithData	-	Opaque Types / Creating Direct-Acces
 func	shipped	CGDataProviderCreateWithFilename	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 func	open	CGDataProviderCreateWithURL	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 func	struck	CGDataProviderGetInfo	-	Reference / Functions	after-10.6	objc
-func	open	CGDataProviderGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
+func	shipped	CGDataProviderGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGDataProviderRelease	-	Opaque Types / Retaining and Releasing Data Providers	-	objc
 func	shipped	CGDataProviderRetain	-	Opaque Types / Retaining and Releasing Data Providers	-	objc
 func	struck	CGDirectDisplayCopyCurrentMetalDevice	-	Reference / Functions	after-10.6	objc
@@ -997,13 +997,13 @@ func	shipped	CGFontGetItalicAngle	-	Opaque Types / Examining Font Metrics	-	objc
 func	shipped	CGFontGetLeading	-	Opaque Types / Examining Font Metrics	-	objc
 func	shipped	CGFontGetNumberOfGlyphs	-	Opaque Types / Working with Glyphs	-	objc
 func	shipped	CGFontGetStemV	-	Opaque Types / Examining Font Metrics	-	objc
-func	open	CGFontGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
+func	shipped	CGFontGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGFontGetUnitsPerEm	-	Opaque Types / Examining Font Metrics	-	objc
 func	shipped	CGFontGetXHeight	-	Opaque Types / Examining Font Metrics	-	objc
 func	shipped	CGFontRelease	-	Opaque Types / Retaining and Releasing a CGFont Object	-	objc
 func	shipped	CGFontRetain	-	Opaque Types / Retaining and Releasing a CGFont Object	-	objc
 func	shipped	CGFunctionCreate	-	Opaque Types / Creating Function Objects	-	objc
-func	open	CGFunctionGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
+func	shipped	CGFunctionGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGFunctionRelease	-	Opaque Types / Retaining and Releasing CGFunction Objects	-	objc
 func	shipped	CGFunctionRetain	-	Opaque Types / Retaining and Releasing CGFunction Objects	-	objc
 func	struck	CGGetActiveDisplayList	-	Services / Finding Displays	x11-territory	objc
@@ -1019,7 +1019,7 @@ func	shipped	CGGradientCreateWithColorComponents	-	Opaque Types / Creating Gradi
 func	shipped	CGGradientCreateWithColors	-	Opaque Types / Creating Gradient Instances	-	objc
 func	struck	CGGradientCreateWithContentHeadroom	-	Functions	after-10.6	objc
 func	struck	CGGradientGetContentHeadroom	-	Functions	after-10.6	objc
-func	open	CGGradientGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
+func	shipped	CGGradientGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGGradientRelease	-	Opaque Types / Retaining and Releasing a Gradient	-	objc
 func	shipped	CGGradientRetain	-	Opaque Types / Retaining and Releasing a Gradient	-	objc
 func	struck	CGImageCalculateContentAverageLightLevel	-	Opaque Types / Adopting high dynamic range (HDR)	after-10.6	objc
@@ -1052,7 +1052,7 @@ func	shipped	CGImageGetHeight	-	Opaque Types / Examining an image	-	objc
 func	struck	CGImageGetPixelFormatInfo	-	Reference / Functions	after-10.6	objc
 func	shipped	CGImageGetRenderingIntent	-	Opaque Types / Examining an image	-	objc
 func	shipped	CGImageGetShouldInterpolate	-	Opaque Types / Examining an image	-	objc
-func	open	CGImageGetTypeID	-	Opaque Types / Working with Core Foundation types	-	objc
+func	shipped	CGImageGetTypeID	-	Opaque Types / Working with Core Foundation types	-	objc
 func	struck	CGImageGetUTType	-	Opaque Types / Examining an image	after-10.6	objc
 func	shipped	CGImageGetWidth	-	Opaque Types / Examining an image	-	objc
 func	open	CGImageIsMask	-	Opaque Types / Examining an image	-	objc
@@ -1223,14 +1223,14 @@ func	open	CGPathEqualToPath	-	Opaque Types / Examining a Graphics Path	-	objc
 func	shipped	CGPathGetBoundingBox	-	Opaque Types / Examining a Graphics Path	-	objc
 func	shipped	CGPathGetCurrentPoint	-	Opaque Types / Examining a Graphics Path	-	objc
 func	shipped	CGPathGetPathBoundingBox	-	Opaque Types / Examining a Graphics Path	-	objc
-func	open	CGPathGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
+func	shipped	CGPathGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	struck	CGPathIntersectsPath	-	Reference / Functions	after-10.6	objc
 func	shipped	CGPathIsEmpty	-	Opaque Types / Examining a Graphics Path	-	objc
 func	open	CGPathIsRect	-	Opaque Types / Examining a Graphics Path	-	objc
 func	shipped	CGPathRelease	-	Opaque Types / Retaining and Releasing a Path	-	objc
 func	shipped	CGPathRetain	-	Opaque Types / Retaining and Releasing a Path	-	objc
 func	shipped	CGPatternCreate	-	Opaque Types / Creating a Pattern	-	objc
-func	open	CGPatternGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
+func	shipped	CGPatternGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGPatternRelease	-	Opaque Types / Retaining and Releasing a Pattern	-	objc
 func	shipped	CGPatternRetain	-	Opaque Types / Retaining and Releasing a Pattern	-	objc
 func	shipped	CGPointApplyAffineTransform	-	Reference / Applying Affine Transformations	-	objc
@@ -1297,7 +1297,7 @@ func	struck	CGShadingCreateAxialWithContentHeadroom	-	Functions	after-10.6	objc
 func	shipped	CGShadingCreateRadial	-	Opaque Types / Creating Shading Objects	-	objc
 func	struck	CGShadingCreateRadialWithContentHeadroom	-	Functions	after-10.6	objc
 func	struck	CGShadingGetContentHeadroom	-	Functions	after-10.6	objc
-func	open	CGShadingGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
+func	shipped	CGShadingGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGShadingRelease	-	Opaque Types / Retaining and Releasing Shading Objects	-	objc
 func	shipped	CGShadingRetain	-	Opaque Types / Retaining and Releasing Shading Objects	-	objc
 func	struck	CGShieldingWindowID	-	Services / Capturing and Releasing Displays	x11-territory	objc

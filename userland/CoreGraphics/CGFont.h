@@ -41,6 +41,7 @@
 #ifndef CORE_GRAPHICS_CGFONT_H
 #define CORE_GRAPHICS_CGFONT_H
 
+#include <CoreGraphics/CGBase.h>
 #include <CoreGraphics/CGGeometry.h>
 #include <CoreGraphics/CGDataProvider.h>
 
@@ -121,5 +122,11 @@ NSString *CGFontCopyGlyphNameForGlyph(CGFontRef font, CGGlyph glyph);
 /* BOTH RETURN +1, which is what `Copy` means; NULL when the face carries no such name. */
 NSString *CGFontCopyPostScriptName(CGFontRef font);
 NSString *CGFontCopyFullName(CGFontRef font);
+
+/* THE TYPE IDENTITY OF THIS CLASS: a `CFTypeID`, the same for every object of the class and
+ * different from every other class's. The value is THIS LIBRARY'S (Apple's are runtime-assigned and
+ * published nowhere), which is why the header says so rather than implying a constant someone could
+ * port; identity is the whole of what the door promises. See CGTypeID_internal.h. */
+CFTypeID CGFontGetTypeID(void);
 
 #endif /* CORE_GRAPHICS_CGFONT_H */

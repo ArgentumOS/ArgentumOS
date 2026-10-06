@@ -38,6 +38,15 @@
  * Output: one line per check, then a total. The exit status is the failure count, so
  * the caller needs no log parsing.
  */
+#include <CoreGraphics/CGShading.h>
+#include <CoreGraphics/CGPattern.h>
+#include <CoreGraphics/CGImage.h>
+#include <CoreGraphics/CGGradient.h>
+#include <CoreGraphics/CGFunction.h>
+#include <CoreGraphics/CGFont.h>
+#include <CoreGraphics/CGColorSpace.h>
+#include <CoreGraphics/CGColor.h>
+#include <CoreGraphics/CGBase.h>
 #include <CoreGraphics/CGBitmapContext.h>
 #include <CoreGraphics/CGContext.h>
 #include <CoreGraphics/CGContext_internal.h>
@@ -687,6 +696,44 @@ int main(void)
 		check("...and it CONSUMES the current path", CGContextIsPathEmpty(k));
 		CGContextRelease(k);
 		CGPathRelease(rp);
+	}
+
+	/* --- THE TYPE IDENTITIES: one per class, stable, and never shared ------------------ */
+	/* THE PROPERTY A TYPE ID EXISTS FOR IS THE PAIR: the same class always answers the same number, and two
+	 * classes never answer the same one. Nothing here can check a CONSTANT against Apple's (its ids are
+	 * assigned by its runtime and published nowhere), so what is checked is the contract: non-zero, stable,
+	 * and pairwise distinct. THE TWO MISSING DOORS ARE NAMED WHERE THEY ARE OWED: `CGDataConsumerGetTypeID`
+	 * and `CGLayerGetTypeID` have no class in this library to identify. */
+	{
+		CFTypeID ids[11];
+		int i, j, nonzero = 1, distinct = 1;
+
+		ids[0] = CGColorGetTypeID();
+		ids[1] = CGColorSpaceGetTypeID();
+		ids[2] = CGContextGetTypeID();
+		ids[3] = CGDataProviderGetTypeID();
+		ids[4] = CGFontGetTypeID();
+		ids[5] = CGFunctionGetTypeID();
+		ids[6] = CGGradientGetTypeID();
+		ids[7] = CGImageGetTypeID();
+		ids[8] = CGPathGetTypeID();
+		ids[9] = CGPatternGetTypeID();
+		ids[10] = CGShadingGetTypeID();
+
+		for (i = 0; i < 11; i++) {
+			if (ids[i] == 0) {
+				nonzero = 0;
+			}
+			for (j = i + 1; j < 11; j++) {
+				if (ids[i] == ids[j]) {
+					distinct = 0;
+				}
+			}
+		}
+		check("every class has a type id and none of them is the invalid zero", nonzero);
+		check("...and no two classes share one, which is the whole point of a type id", distinct);
+		check("...and asking twice gives the same answer: a constant, not an allocation",
+		      ids[0] == CGColorGetTypeID() && ids[6] == CGGradientGetTypeID());
 	}
 
 	printf("CG-PROBE: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
