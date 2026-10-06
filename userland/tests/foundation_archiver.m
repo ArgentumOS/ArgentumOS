@@ -152,6 +152,7 @@ int main(void)
 		      a != Nil && u != Nil && class_getSuperclass(a) == [NSCoder class] &&
 		      class_getSuperclass(u) == [NSCoder class],
 		      @"NSArchiver and NSUnarchiver exist and are NSCoder subclasses");
+	covers("NSCoder", "encodeObject:");
 		check("the-refused-doors-are-absent-rather-than-stubbed",
 		      ![a instancesRespondToSelector:NSSelectorFromString(@"setObjectZone:")] &&
 		      ![a instancesRespondToSelector:NSSelectorFromString(@"objectZone")] &&
@@ -178,6 +179,7 @@ int main(void)
 		check("a-keyed-door-on-the-sequential-archiver-raises",
 		      [keyedOnSequential isEqualToString:NSInvalidArgumentException],
 		      @"the keyed doors are not answered by this pair");
+	covers("NSCoder", "encodeObject:");
 		check("a-sequential-door-on-the-keyed-archiver-raises",
 		      [sequentialOnKeyed isEqualToString:NSInvalidArgumentException],
 		      @"and the other direction is a refusal too, so neither family is the other's fallback");
@@ -305,6 +307,7 @@ int main(void)
 		      [nilWrite isEqualToString:NSInvalidArgumentException] &&
 		      [nilRead isEqualToString:NSInvalidArgumentException],
 		      @"nil data is a programming error, not an empty archive");
+	covers("NSCoder", "encodeRootObject:");
 		check("a-second-root-object-raises",
 		      [twice isEqualToString:NSInvalidArgumentException],
 		      @"one archive holds one root");
@@ -386,6 +389,7 @@ int main(void)
 		      [back count] == 2 && [[back objectAtIndex:0] isEqualToString:@"substituted"] &&
 		      [[back objectAtIndex:1] isEqualToString:@"substituted"],
 		      @"the object is written as its replacement, both times it appears");
+	covers("NSCoder", "encodeRootObject:");
 
 		/* THE READING SIDE: the same archive, substituted on the way in. */
 		{
