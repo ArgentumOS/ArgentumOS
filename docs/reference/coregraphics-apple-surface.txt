@@ -10,7 +10,7 @@
 #
 # kind	status	name	owner	family	why	src
 #
-# AND 68 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
+# AND 36 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): to support porting older Mac applications, all items removed for being
 # deprecated are un-deprecated and added to the work list. They carry `deprecated` in the
 # `why` column, which says what KIND of work a row is, and they are open/shipped like any other.
@@ -51,16 +51,16 @@
 # counted, NOT excluded: 0 distinct names Apple documents on a `swift.` page
 # but which carry the CG spelling.
 #
-# why the struck rows are struck: after-10.6 253, post-10.6 178
+# why the struck rows are struck: after-10.6 253, post-10.6 178, x11-territory 465
 #
 # counts by kind:
-#   func       shipped  192   open  399   struck  144
-#   macro      shipped    7   open   76   struck   24
-#   enum       shipped   12   open   29   struck   16
-#   case       shipped   85   open  207   struck  152
-#   var        shipped   11   open   50   struck   74
-#   typealias  shipped   17   open   69   struck   14
-#   struct     shipped    7   open    6   struck    7
+#   func       shipped  192   open  233   struck  310
+#   macro      shipped    7   open    8   struck   92
+#   enum       shipped   12   open    7   struck   38
+#   case       shipped   85   open   44   struck  315
+#   var        shipped   11   open   37   struck   87
+#   typealias  shipped   17   open   38   struck   45
+#   struct     shipped    7   open    4   struck    9
 case	open	CGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
 case	open	CGGlyphMin	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
 case	open	CGPDFDataFormatJPEG2000	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
@@ -121,13 +121,13 @@ case	shipped	CGRectMaxXEdge	-	CoreFoundation, CG-named / Reference / Enumeration
 case	shipped	CGRectMaxYEdge	-	CoreFoundation, CG-named / Reference / Enumerations / Enumeration Cases	-	objc
 case	shipped	CGRectMinXEdge	-	CoreFoundation, CG-named / Reference / Enumerations / Enumeration Cases	-	objc
 case	shipped	CGRectMinYEdge	-	CoreFoundation, CG-named / Reference / Enumerations / Enumeration Cases	-	objc
-case	open	kCGAnnotatedSessionEventTap	-	Services / Constants / Constants	-	objc
-case	open	kCGAssistiveTechHighWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
-case	open	kCGBackingStoreBuffered	-	Services / Data Types / Constants	-	objc
-case	open	kCGBackingStoreNonretained	-	Services / Data Types / Constants	-	objc
-case	open	kCGBackingStoreRetained	-	Services / Data Types / Constants	-	objc
-case	open	kCGBackstopMenuLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
-case	open	kCGBaseWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
+case	struck	kCGAnnotatedSessionEventTap	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGAssistiveTechHighWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
+case	struck	kCGBackingStoreBuffered	-	Services / Data Types / Constants	x11-territory	objc
+case	struck	kCGBackingStoreNonretained	-	Services / Data Types / Constants	x11-territory	objc
+case	struck	kCGBackingStoreRetained	-	Services / Data Types / Constants	x11-territory	objc
+case	struck	kCGBackstopMenuLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
+case	struck	kCGBaseWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
 case	shipped	kCGBitmapAlphaInfoMask	-	Opaque Types / Examining an image / Enumeration Cases	-	objc
 case	shipped	kCGBitmapByteOrder16Big	-	Opaque Types / Examining an image / Constants	deprecated	objc
 case	shipped	kCGBitmapByteOrder16Little	-	Opaque Types / Examining an image / Constants	deprecated	objc
@@ -180,8 +180,8 @@ case	shipped	kCGBlendModeSourceAtop	-	Opaque Types / Managing a Graphics Context
 case	shipped	kCGBlendModeSourceIn	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
 case	shipped	kCGBlendModeSourceOut	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
 case	shipped	kCGBlendModeXOR	-	Opaque Types / Managing a Graphics Context / Constants	-	objc
-case	open	kCGCaptureNoFill	-	Services / Constants / Constants	-	objc
-case	open	kCGCaptureNoOptions	-	Services / Constants / Constants	-	objc
+case	struck	kCGCaptureNoFill	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGCaptureNoOptions	-	Services / Constants / Constants	x11-territory	objc
 case	struck	kCGColorConversionTransformApplySpace	-	Opaque Types / Creating a Color Conversion / Enumeration Cases	post-10.6	objc
 case	struck	kCGColorConversionTransformFromSpace	-	Opaque Types / Creating a Color Conversion / Enumeration Cases	post-10.6	objc
 case	struck	kCGColorConversionTransformToSpace	-	Opaque Types / Creating a Color Conversion / Enumeration Cases	post-10.6	objc
@@ -207,22 +207,22 @@ case	struck	kCGComponentInteger16Bit	-	Enumerations / Enumeration Cases	post-10.
 case	struck	kCGComponentInteger32Bit	-	Enumerations / Enumeration Cases	post-10.6	objc
 case	struck	kCGComponentInteger8Bit	-	Enumerations / Enumeration Cases	post-10.6	objc
 case	struck	kCGComponentUnknown	-	Enumerations / Enumeration Cases	post-10.6	objc
-case	open	kCGConfigureForAppOnly	-	Services / Constants / Type Properties	-	objc
-case	open	kCGConfigureForSession	-	Services / Constants / Type Properties	-	objc
-case	open	kCGConfigurePermanently	-	Services / Constants / Type Properties	-	objc
-case	open	kCGCursorWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
-case	open	kCGDesktopIconWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
-case	open	kCGDesktopWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
-case	open	kCGDisplayAddFlag	-	Services / Constants / Constants	-	objc
-case	open	kCGDisplayBeginConfigurationFlag	-	Services / Constants / Constants	-	objc
-case	open	kCGDisplayDesktopShapeChangedFlag	-	Services / Constants / Constants	-	objc
-case	open	kCGDisplayDisabledFlag	-	Services / Constants / Constants	-	objc
-case	open	kCGDisplayEnabledFlag	-	Services / Constants / Constants	-	objc
-case	open	kCGDisplayMirrorFlag	-	Services / Constants / Constants	-	objc
-case	open	kCGDisplayMovedFlag	-	Services / Constants / Constants	-	objc
-case	open	kCGDisplayRemoveFlag	-	Services / Constants / Constants	-	objc
-case	open	kCGDisplaySetMainFlag	-	Services / Constants / Constants	-	objc
-case	open	kCGDisplaySetModeFlag	-	Services / Constants / Constants	-	objc
+case	struck	kCGConfigureForAppOnly	-	Services / Constants / Type Properties	x11-territory	objc
+case	struck	kCGConfigureForSession	-	Services / Constants / Type Properties	x11-territory	objc
+case	struck	kCGConfigurePermanently	-	Services / Constants / Type Properties	x11-territory	objc
+case	struck	kCGCursorWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
+case	struck	kCGDesktopIconWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
+case	struck	kCGDesktopWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
+case	struck	kCGDisplayAddFlag	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGDisplayBeginConfigurationFlag	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGDisplayDesktopShapeChangedFlag	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGDisplayDisabledFlag	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGDisplayEnabledFlag	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGDisplayMirrorFlag	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGDisplayMovedFlag	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGDisplayRemoveFlag	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGDisplaySetMainFlag	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGDisplaySetModeFlag	-	Services / Constants / Constants	x11-territory	objc
 case	struck	kCGDisplayStreamFrameStatusFrameBlank	-	Services / Constants / Constants	post-10.6	objc
 case	struck	kCGDisplayStreamFrameStatusFrameComplete	-	Services / Constants / Constants	post-10.6	objc
 case	struck	kCGDisplayStreamFrameStatusFrameIdle	-	Services / Constants / Constants	post-10.6	objc
@@ -231,9 +231,9 @@ case	struck	kCGDisplayStreamUpdateDirtyRects	-	Services / Constants / Constants	
 case	struck	kCGDisplayStreamUpdateMovedRects	-	Services / Constants / Constants	post-10.6	objc
 case	struck	kCGDisplayStreamUpdateReducedDirtyRects	-	Services / Constants / Constants	post-10.6	objc
 case	struck	kCGDisplayStreamUpdateRefreshedRects	-	Services / Constants / Constants	post-10.6	objc
-case	open	kCGDisplayUnMirrorFlag	-	Services / Constants / Constants	-	objc
-case	open	kCGDockWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
-case	open	kCGDraggingWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
+case	struck	kCGDisplayUnMirrorFlag	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGDockWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
+case	struck	kCGDraggingWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
 case	open	kCGEncodingFontSpecific	-	Opaque Types / Constants / Constants	deprecated	objc
 case	open	kCGEncodingMacRoman	-	Opaque Types / Constants / Constants	deprecated	objc
 case	open	kCGErrorCannotComplete	-	Reference / Enumerations / Constants	-	objc
@@ -245,59 +245,59 @@ case	open	kCGErrorInvalidOperation	-	Reference / Enumerations / Constants	-	objc
 case	open	kCGErrorNoneAvailable	-	Reference / Enumerations / Constants	-	objc
 case	open	kCGErrorNotImplemented	-	Reference / Enumerations / Constants	-	objc
 case	open	kCGErrorRangeCheck	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGErrorSuccess	-	Reference / Enumerations / Constants	-	objc
+case	struck	kCGErrorSuccess	-	Reference / Enumerations / Constants	x11-territory	objc
 case	open	kCGErrorTypeCheck	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGEventFilterMaskPermitLocalKeyboardEvents	-	Services / Constants / Type Properties	-	objc
-case	open	kCGEventFilterMaskPermitLocalMouseEvents	-	Services / Constants / Type Properties	-	objc
-case	open	kCGEventFilterMaskPermitSystemDefinedEvents	-	Services / Constants / Type Properties	-	objc
-case	open	kCGEventFlagMaskAlphaShift	-	Services / Constants / Constants	-	objc
-case	open	kCGEventFlagMaskAlternate	-	Services / Constants / Constants	-	objc
-case	open	kCGEventFlagMaskCommand	-	Services / Constants / Constants	-	objc
-case	open	kCGEventFlagMaskControl	-	Services / Constants / Constants	-	objc
-case	open	kCGEventFlagMaskHelp	-	Services / Constants / Constants	-	objc
-case	open	kCGEventFlagMaskNonCoalesced	-	Services / Constants / Constants	-	objc
-case	open	kCGEventFlagMaskNumericPad	-	Services / Constants / Constants	-	objc
-case	open	kCGEventFlagMaskSecondaryFn	-	Services / Constants / Constants	-	objc
-case	open	kCGEventFlagMaskShift	-	Services / Constants / Constants	-	objc
-case	open	kCGEventFlagsChanged	-	Services / Constants / Constants	-	objc
-case	open	kCGEventKeyDown	-	Services / Constants / Constants	-	objc
-case	open	kCGEventKeyUp	-	Services / Constants / Constants	-	objc
-case	open	kCGEventLeftMouseDown	-	Services / Constants / Constants	-	objc
-case	open	kCGEventLeftMouseDragged	-	Services / Constants / Constants	-	objc
-case	open	kCGEventLeftMouseUp	-	Services / Constants / Constants	-	objc
-case	open	kCGEventMouseMoved	-	Services / Constants / Constants	-	objc
-case	open	kCGEventMouseSubtypeDefault	-	Services / Constants / Constants	-	objc
-case	open	kCGEventMouseSubtypeTabletPoint	-	Services / Constants / Constants	-	objc
-case	open	kCGEventMouseSubtypeTabletProximity	-	Services / Constants / Constants	-	objc
-case	open	kCGEventNull	-	Services / Constants / Constants	-	objc
-case	open	kCGEventOtherMouseDown	-	Services / Constants / Constants	-	objc
-case	open	kCGEventOtherMouseDragged	-	Services / Constants / Constants	-	objc
-case	open	kCGEventOtherMouseUp	-	Services / Constants / Constants	-	objc
-case	open	kCGEventRightMouseDown	-	Services / Constants / Constants	-	objc
-case	open	kCGEventRightMouseDragged	-	Services / Constants / Constants	-	objc
-case	open	kCGEventRightMouseUp	-	Services / Constants / Constants	-	objc
-case	open	kCGEventScrollWheel	-	Services / Constants / Constants	-	objc
-case	open	kCGEventSourceGroupID	-	Services / Constants / Constants	-	objc
-case	open	kCGEventSourceStateCombinedSessionState	-	Services / Constants / Constants	-	objc
-case	open	kCGEventSourceStateHIDSystemState	-	Services / Constants / Constants	-	objc
-case	open	kCGEventSourceStateID	-	Services / Constants / Constants	-	objc
-case	open	kCGEventSourceStatePrivate	-	Services / Constants / Constants	-	objc
-case	open	kCGEventSourceUnixProcessID	-	Services / Constants / Constants	-	objc
-case	open	kCGEventSourceUserData	-	Services / Constants / Constants	-	objc
-case	open	kCGEventSourceUserID	-	Services / Constants / Constants	-	objc
-case	open	kCGEventSuppressionStateRemoteMouseDrag	-	Services / Constants / Constants	-	objc
-case	open	kCGEventSuppressionStateSuppressionInterval	-	Services / Constants / Constants	-	objc
-case	open	kCGEventTabletPointer	-	Services / Constants / Constants	-	objc
-case	open	kCGEventTabletProximity	-	Services / Constants / Constants	-	objc
-case	open	kCGEventTapDisabledByTimeout	-	Services / Constants / Constants	-	objc
-case	open	kCGEventTapDisabledByUserInput	-	Services / Constants / Constants	-	objc
-case	open	kCGEventTapOptionDefault	-	Services / Constants / Constants	-	objc
-case	open	kCGEventTapOptionListenOnly	-	Services / Constants / Constants	-	objc
-case	open	kCGEventTargetProcessSerialNumber	-	Services / Constants / Constants	-	objc
-case	open	kCGEventTargetUnixProcessID	-	Services / Constants / Constants	-	objc
+case	struck	kCGEventFilterMaskPermitLocalKeyboardEvents	-	Services / Constants / Type Properties	x11-territory	objc
+case	struck	kCGEventFilterMaskPermitLocalMouseEvents	-	Services / Constants / Type Properties	x11-territory	objc
+case	struck	kCGEventFilterMaskPermitSystemDefinedEvents	-	Services / Constants / Type Properties	x11-territory	objc
+case	struck	kCGEventFlagMaskAlphaShift	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventFlagMaskAlternate	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventFlagMaskCommand	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventFlagMaskControl	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventFlagMaskHelp	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventFlagMaskNonCoalesced	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventFlagMaskNumericPad	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventFlagMaskSecondaryFn	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventFlagMaskShift	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventFlagsChanged	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventKeyDown	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventKeyUp	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventLeftMouseDown	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventLeftMouseDragged	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventLeftMouseUp	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventMouseMoved	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventMouseSubtypeDefault	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventMouseSubtypeTabletPoint	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventMouseSubtypeTabletProximity	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventNull	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventOtherMouseDown	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventOtherMouseDragged	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventOtherMouseUp	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventRightMouseDown	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventRightMouseDragged	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventRightMouseUp	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventScrollWheel	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventSourceGroupID	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventSourceStateCombinedSessionState	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventSourceStateHIDSystemState	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventSourceStateID	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventSourceStatePrivate	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventSourceUnixProcessID	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventSourceUserData	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventSourceUserID	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventSuppressionStateRemoteMouseDrag	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventSuppressionStateSuppressionInterval	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventTabletPointer	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventTabletProximity	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventTapDisabledByTimeout	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventTapDisabledByUserInput	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventTapOptionDefault	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventTapOptionListenOnly	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventTargetProcessSerialNumber	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGEventTargetUnixProcessID	-	Services / Constants / Constants	x11-territory	objc
 case	struck	kCGEventUnacceleratedPointerMovementX	-	Services / Constants / Enumeration Cases	post-10.6	objc
 case	struck	kCGEventUnacceleratedPointerMovementY	-	Services / Constants / Enumeration Cases	post-10.6	objc
-case	open	kCGFloatingWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
+case	struck	kCGFloatingWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
 case	open	kCGFontPostScriptFormatType1	-	Opaque Types / Working with PostScript Fonts / Constants	-	objc
 case	open	kCGFontPostScriptFormatType3	-	Opaque Types / Working with PostScript Fonts / Constants	-	objc
 case	open	kCGFontPostScriptFormatType42	-	Opaque Types / Working with PostScript Fonts / Constants	-	objc
@@ -309,9 +309,9 @@ case	struck	kCGGesturePhaseMayBegin	-	Reference / Enumerations / Constants	post-
 case	struck	kCGGesturePhaseNone	-	Reference / Enumerations / Constants	post-10.6	objc
 case	shipped	kCGGradientDrawsAfterEndLocation	-	Opaque Types / Drawing Gradients and Shadings / Constants	-	objc
 case	shipped	kCGGradientDrawsBeforeStartLocation	-	Opaque Types / Drawing Gradients and Shadings / Constants	-	objc
-case	open	kCGHIDEventTap	-	Services / Constants / Constants	-	objc
-case	open	kCGHeadInsertEventTap	-	Services / Constants / Constants	-	objc
-case	open	kCGHelpWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
+case	struck	kCGHIDEventTap	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGHeadInsertEventTap	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGHelpWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
 case	shipped	kCGImageAlphaFirst	-	Opaque Types / Examining an image / Constants	-	objc
 case	shipped	kCGImageAlphaLast	-	Opaque Types / Examining an image / Constants	-	objc
 case	shipped	kCGImageAlphaNone	-	Opaque Types / Examining an image / Constants	-	objc
@@ -341,40 +341,40 @@ case	shipped	kCGInterpolationHigh	-	Opaque Types / Drawing Images and PDF Conten
 case	shipped	kCGInterpolationLow	-	Opaque Types / Drawing Images and PDF Content / Constants	-	objc
 case	shipped	kCGInterpolationMedium	-	Opaque Types / Drawing Images and PDF Content / Constants	-	objc
 case	shipped	kCGInterpolationNone	-	Opaque Types / Drawing Images and PDF Content / Constants	-	objc
-case	open	kCGKeyboardEventAutorepeat	-	Services / Constants / Constants	-	objc
-case	open	kCGKeyboardEventKeyboardType	-	Services / Constants / Constants	-	objc
-case	open	kCGKeyboardEventKeycode	-	Services / Constants / Constants	-	objc
+case	struck	kCGKeyboardEventAutorepeat	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGKeyboardEventKeyboardType	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGKeyboardEventKeycode	-	Services / Constants / Constants	x11-territory	objc
 case	shipped	kCGLineCapButt	-	Opaque Types / Constants / Constants	-	objc
 case	shipped	kCGLineCapRound	-	Opaque Types / Constants / Constants	-	objc
 case	shipped	kCGLineCapSquare	-	Opaque Types / Constants / Constants	-	objc
 case	shipped	kCGLineJoinBevel	-	Opaque Types / Constants / Constants	-	objc
 case	shipped	kCGLineJoinMiter	-	Opaque Types / Constants / Constants	-	objc
 case	shipped	kCGLineJoinRound	-	Opaque Types / Constants / Constants	-	objc
-case	open	kCGMainMenuWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
-case	open	kCGMaximumWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
-case	open	kCGMinimumWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
-case	open	kCGModalPanelWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
+case	struck	kCGMainMenuWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
+case	struck	kCGMaximumWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
+case	struck	kCGMinimumWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
+case	struck	kCGModalPanelWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
 case	struck	kCGMomentumScrollPhaseBegin	-	Reference / Enumerations / Constants	post-10.6	objc
 case	struck	kCGMomentumScrollPhaseContinue	-	Reference / Enumerations / Constants	post-10.6	objc
 case	struck	kCGMomentumScrollPhaseEnd	-	Reference / Enumerations / Constants	post-10.6	objc
 case	struck	kCGMomentumScrollPhaseNone	-	Reference / Enumerations / Constants	post-10.6	objc
-case	open	kCGMouseButtonCenter	-	Services / Constants / Constants	-	objc
-case	open	kCGMouseButtonLeft	-	Services / Constants / Constants	-	objc
-case	open	kCGMouseButtonRight	-	Services / Constants / Constants	-	objc
-case	open	kCGMouseEventButtonNumber	-	Services / Constants / Constants	-	objc
-case	open	kCGMouseEventClickState	-	Services / Constants / Constants	-	objc
-case	open	kCGMouseEventDeltaX	-	Services / Constants / Constants	-	objc
-case	open	kCGMouseEventDeltaY	-	Services / Constants / Constants	-	objc
-case	open	kCGMouseEventInstantMouser	-	Services / Constants / Constants	-	objc
-case	open	kCGMouseEventNumber	-	Services / Constants / Constants	-	objc
-case	open	kCGMouseEventPressure	-	Services / Constants / Constants	-	objc
-case	open	kCGMouseEventSubtype	-	Services / Constants / Constants	-	objc
+case	struck	kCGMouseButtonCenter	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGMouseButtonLeft	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGMouseButtonRight	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGMouseEventButtonNumber	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGMouseEventClickState	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGMouseEventDeltaX	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGMouseEventDeltaY	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGMouseEventInstantMouser	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGMouseEventNumber	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGMouseEventPressure	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGMouseEventSubtype	-	Services / Constants / Constants	x11-territory	objc
 case	struck	kCGMouseEventWindowUnderMousePointer	-	Services / Constants / Constants	post-10.6	objc
 case	struck	kCGMouseEventWindowUnderMousePointerThatCanHandleThisEvent	-	Services / Constants / Constants	post-10.6	objc
-case	open	kCGNormalWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
-case	open	kCGNumberOfEventSuppressionStates	-	Services / Constants / Constants	-	objc
-case	open	kCGNumberOfWindowLevelKeys	-	Services / Data Types / Window levels / Constants	-	objc
-case	open	kCGOverlayWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
+case	struck	kCGNormalWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
+case	struck	kCGNumberOfEventSuppressionStates	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGNumberOfWindowLevelKeys	-	Services / Data Types / Window levels / Constants	x11-territory	objc
+case	struck	kCGOverlayWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
 case	struck	kCGPDFAllowsCommenting	-	Reference / Structures / Type Properties	post-10.6	objc
 case	struck	kCGPDFAllowsContentAccessibility	-	Reference / Structures / Type Properties	post-10.6	objc
 case	struck	kCGPDFAllowsContentCopying	-	Reference / Structures / Type Properties	post-10.6	objc
@@ -410,18 +410,18 @@ case	shipped	kCGPathStroke	-	Opaque Types / Drawing the Current Graphics Path / 
 case	shipped	kCGPatternTilingConstantSpacing	-	Opaque Types / Constants / Constants	-	objc
 case	shipped	kCGPatternTilingConstantSpacingMinimalDistortion	-	Opaque Types / Constants / Constants	-	objc
 case	shipped	kCGPatternTilingNoDistortion	-	Opaque Types / Constants / Constants	-	objc
-case	open	kCGPopUpMenuWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
+case	struck	kCGPopUpMenuWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
 case	shipped	kCGRenderingIntentAbsoluteColorimetric	-	Opaque Types / Data Types / Constants	-	objc
 case	shipped	kCGRenderingIntentDefault	-	Opaque Types / Data Types / Constants	-	objc
 case	shipped	kCGRenderingIntentPerceptual	-	Opaque Types / Data Types / Constants	-	objc
 case	shipped	kCGRenderingIntentRelativeColorimetric	-	Opaque Types / Data Types / Constants	-	objc
 case	shipped	kCGRenderingIntentSaturation	-	Opaque Types / Data Types / Constants	-	objc
-case	open	kCGScreenSaverWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
-case	open	kCGScreenUpdateOperationMove	-	Services / Constants / Constants	-	objc
-case	open	kCGScreenUpdateOperationReducedDirtyRectangleCount	-	Services / Constants / Constants	-	objc
-case	open	kCGScreenUpdateOperationRefresh	-	Services / Constants / Constants	-	objc
-case	open	kCGScrollEventUnitLine	-	Services / Constants / Constants	-	objc
-case	open	kCGScrollEventUnitPixel	-	Services / Constants / Constants	-	objc
+case	struck	kCGScreenSaverWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
+case	struck	kCGScreenUpdateOperationMove	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGScreenUpdateOperationReducedDirtyRectangleCount	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGScreenUpdateOperationRefresh	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGScrollEventUnitLine	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGScrollEventUnitPixel	-	Services / Constants / Constants	x11-territory	objc
 case	struck	kCGScrollPhaseBegan	-	Reference / Enumerations / Constants	post-10.6	objc
 case	struck	kCGScrollPhaseCancelled	-	Reference / Enumerations / Constants	post-10.6	objc
 case	struck	kCGScrollPhaseChanged	-	Reference / Enumerations / Constants	post-10.6	objc
@@ -429,50 +429,50 @@ case	struck	kCGScrollPhaseEnded	-	Reference / Enumerations / Constants	post-10.6
 case	struck	kCGScrollPhaseMayBegin	-	Reference / Enumerations / Constants	post-10.6	objc
 case	struck	kCGScrollWheelEventAcceleratedDeltaAxis1	-	Services / Constants / Enumeration Cases	post-10.6	objc
 case	struck	kCGScrollWheelEventAcceleratedDeltaAxis2	-	Services / Constants / Enumeration Cases	post-10.6	objc
-case	open	kCGScrollWheelEventDeltaAxis1	-	Services / Constants / Constants	-	objc
-case	open	kCGScrollWheelEventDeltaAxis2	-	Services / Constants / Constants	-	objc
-case	open	kCGScrollWheelEventDeltaAxis3	-	Services / Constants / Constants	-	objc
-case	open	kCGScrollWheelEventFixedPtDeltaAxis1	-	Services / Constants / Constants	-	objc
-case	open	kCGScrollWheelEventFixedPtDeltaAxis2	-	Services / Constants / Constants	-	objc
-case	open	kCGScrollWheelEventFixedPtDeltaAxis3	-	Services / Constants / Constants	-	objc
-case	open	kCGScrollWheelEventInstantMouser	-	Services / Constants / Constants	-	objc
-case	open	kCGScrollWheelEventIsContinuous	-	Services / Constants / Constants	-	objc
+case	struck	kCGScrollWheelEventDeltaAxis1	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGScrollWheelEventDeltaAxis2	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGScrollWheelEventDeltaAxis3	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGScrollWheelEventFixedPtDeltaAxis1	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGScrollWheelEventFixedPtDeltaAxis2	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGScrollWheelEventFixedPtDeltaAxis3	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGScrollWheelEventInstantMouser	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGScrollWheelEventIsContinuous	-	Services / Constants / Constants	x11-territory	objc
 case	struck	kCGScrollWheelEventMomentumOptionPhase	-	Services / Constants / Enumeration Cases	post-10.6	objc
 case	struck	kCGScrollWheelEventMomentumPhase	-	Services / Constants / Constants	post-10.6	objc
-case	open	kCGScrollWheelEventPointDeltaAxis1	-	Services / Constants / Constants	-	objc
-case	open	kCGScrollWheelEventPointDeltaAxis2	-	Services / Constants / Constants	-	objc
-case	open	kCGScrollWheelEventPointDeltaAxis3	-	Services / Constants / Constants	-	objc
+case	struck	kCGScrollWheelEventPointDeltaAxis1	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGScrollWheelEventPointDeltaAxis2	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGScrollWheelEventPointDeltaAxis3	-	Services / Constants / Constants	x11-territory	objc
 case	struck	kCGScrollWheelEventRawDeltaAxis1	-	Services / Constants / Enumeration Cases	post-10.6	objc
 case	struck	kCGScrollWheelEventRawDeltaAxis2	-	Services / Constants / Enumeration Cases	post-10.6	objc
 case	struck	kCGScrollWheelEventScrollCount	-	Services / Constants / Constants	post-10.6	objc
 case	struck	kCGScrollWheelEventScrollPhase	-	Services / Constants / Constants	post-10.6	objc
-case	open	kCGSessionEventTap	-	Services / Constants / Constants	-	objc
-case	open	kCGStatusWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
-case	open	kCGTabletEventDeviceID	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletEventPointButtons	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletEventPointPressure	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletEventPointX	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletEventPointY	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletEventPointZ	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletEventRotation	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletEventTangentialPressure	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletEventTiltX	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletEventTiltY	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletEventVendor1	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletEventVendor2	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletEventVendor3	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletProximityEventCapabilityMask	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletProximityEventDeviceID	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletProximityEventEnterProximity	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletProximityEventPointerID	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletProximityEventPointerType	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletProximityEventSystemTabletID	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletProximityEventTabletID	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletProximityEventVendorID	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletProximityEventVendorPointerSerialNumber	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletProximityEventVendorPointerType	-	Services / Constants / Constants	-	objc
-case	open	kCGTabletProximityEventVendorUniqueID	-	Services / Constants / Constants	-	objc
-case	open	kCGTailAppendEventTap	-	Services / Constants / Constants	-	objc
+case	struck	kCGSessionEventTap	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGStatusWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
+case	struck	kCGTabletEventDeviceID	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletEventPointButtons	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletEventPointPressure	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletEventPointX	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletEventPointY	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletEventPointZ	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletEventRotation	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletEventTangentialPressure	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletEventTiltX	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletEventTiltY	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletEventVendor1	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletEventVendor2	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletEventVendor3	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletProximityEventCapabilityMask	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletProximityEventDeviceID	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletProximityEventEnterProximity	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletProximityEventPointerID	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletProximityEventPointerType	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletProximityEventSystemTabletID	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletProximityEventTabletID	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletProximityEventVendorID	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletProximityEventVendorPointerSerialNumber	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletProximityEventVendorPointerType	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTabletProximityEventVendorUniqueID	-	Services / Constants / Constants	x11-territory	objc
+case	struck	kCGTailAppendEventTap	-	Services / Constants / Constants	x11-territory	objc
 case	open	kCGTextClip	-	Opaque Types / Drawing Text / Constants	-	objc
 case	open	kCGTextFill	-	Opaque Types / Drawing Text / Constants	-	objc
 case	open	kCGTextFillClip	-	Opaque Types / Drawing Text / Constants	-	objc
@@ -488,47 +488,47 @@ case	struck	kCGToneMappingITURecommended	-	Reference / Enumerations / Enumeratio
 case	struck	kCGToneMappingImageSpecificLumaScaling	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
 case	struck	kCGToneMappingNone	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
 case	struck	kCGToneMappingReferenceWhiteBased	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
-case	open	kCGTornOffMenuWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
-case	open	kCGUtilityWindowLevelKey	-	Services / Data Types / Window levels / Constants	-	objc
+case	struck	kCGTornOffMenuWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
+case	struck	kCGUtilityWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
 case	struck	kCGWindowImageBestResolution	-	Services / Data Types / Type Properties	post-10.6	objc
-case	open	kCGWindowImageBoundsIgnoreFraming	-	Services / Data Types / Type Properties	-	objc
-case	open	kCGWindowImageDefault	-	Services / Data Types / Type Properties	-	objc
+case	struck	kCGWindowImageBoundsIgnoreFraming	-	Services / Data Types / Type Properties	x11-territory	objc
+case	struck	kCGWindowImageDefault	-	Services / Data Types / Type Properties	x11-territory	objc
 case	struck	kCGWindowImageNominalResolution	-	Services / Data Types / Type Properties	post-10.6	objc
-case	open	kCGWindowImageOnlyShadows	-	Services / Data Types / Type Properties	-	objc
-case	open	kCGWindowImageShouldBeOpaque	-	Services / Data Types / Type Properties	-	objc
-case	open	kCGWindowListExcludeDesktopElements	-	Services / Data Types / Type Properties	-	objc
-case	open	kCGWindowListOptionAll	-	Services / Data Types / Type Properties	-	objc
-case	open	kCGWindowListOptionIncludingWindow	-	Services / Data Types / Type Properties	-	objc
-case	open	kCGWindowListOptionOnScreenAboveWindow	-	Services / Data Types / Type Properties	-	objc
-case	open	kCGWindowListOptionOnScreenBelowWindow	-	Services / Data Types / Type Properties	-	objc
-case	open	kCGWindowListOptionOnScreenOnly	-	Services / Data Types / Type Properties	-	objc
-case	open	kCGWindowSharingNone	-	Services / Data Types / Constants	-	objc
-case	open	kCGWindowSharingReadOnly	-	Services / Data Types / Constants	-	objc
-case	open	kCGWindowSharingReadWrite	-	Services / Data Types / Constants	-	objc
+case	struck	kCGWindowImageOnlyShadows	-	Services / Data Types / Type Properties	x11-territory	objc
+case	struck	kCGWindowImageShouldBeOpaque	-	Services / Data Types / Type Properties	x11-territory	objc
+case	struck	kCGWindowListExcludeDesktopElements	-	Services / Data Types / Type Properties	x11-territory	objc
+case	struck	kCGWindowListOptionAll	-	Services / Data Types / Type Properties	x11-territory	objc
+case	struck	kCGWindowListOptionIncludingWindow	-	Services / Data Types / Type Properties	x11-territory	objc
+case	struck	kCGWindowListOptionOnScreenAboveWindow	-	Services / Data Types / Type Properties	x11-territory	objc
+case	struck	kCGWindowListOptionOnScreenBelowWindow	-	Services / Data Types / Type Properties	x11-territory	objc
+case	struck	kCGWindowListOptionOnScreenOnly	-	Services / Data Types / Type Properties	x11-territory	objc
+case	struck	kCGWindowSharingNone	-	Services / Data Types / Constants	x11-territory	objc
+case	struck	kCGWindowSharingReadOnly	-	Services / Data Types / Constants	x11-territory	objc
+case	struck	kCGWindowSharingReadWrite	-	Services / Data Types / Constants	x11-territory	objc
 enum	open	CGBitmapInfo	-	Opaque Types / Examining an image	-	objc
 enum	struck	CGBitmapLayout	-	Enumerations	post-10.6	objc
 enum	shipped	CGBlendMode	-	Opaque Types / Managing a Graphics Context	-	objc
-enum	open	CGCaptureOptions	-	Services / Constants	-	objc
+enum	struck	CGCaptureOptions	-	Services / Constants	x11-territory	objc
 enum	struck	CGColorConversionInfoTransformType	-	Opaque Types / Creating a Color Conversion	post-10.6	objc
 enum	struck	CGColorModel	-	Enumerations	post-10.6	objc
 enum	shipped	CGColorRenderingIntent	-	Opaque Types / Data Types	-	objc
 enum	shipped	CGColorSpaceModel	-	Opaque Types / Examining a Color Space	-	objc
 enum	struck	CGComponent	-	Enumerations	post-10.6	objc
-enum	open	CGConfigureOption	-	Services / Constants	-	objc
-enum	open	CGDisplayChangeSummaryFlags	-	Services / Constants	-	objc
+enum	struck	CGConfigureOption	-	Services / Constants	x11-territory	objc
+enum	struck	CGDisplayChangeSummaryFlags	-	Services / Constants	x11-territory	objc
 enum	struck	CGDisplayStreamFrameStatus	-	Services / Constants	post-10.6	objc
 enum	struck	CGDisplayStreamUpdateRectType	-	Services / Constants	post-10.6	objc
-enum	open	CGError	-	Reference / Enumerations	-	objc
-enum	open	CGEventField	-	Services / Constants	-	objc
-enum	open	CGEventFilterMask	-	Services / Constants	-	objc
-enum	open	CGEventFlags	-	Services / Constants	-	objc
-enum	open	CGEventMouseSubtype	-	Services / Constants	-	objc
-enum	open	CGEventSourceStateID	-	Services / Constants	-	objc
-enum	open	CGEventSuppressionState	-	Services / Constants	-	objc
-enum	open	CGEventTapLocation	-	Services / Constants	-	objc
-enum	open	CGEventTapOptions	-	Services / Constants	-	objc
-enum	open	CGEventTapPlacement	-	Services / Constants	-	objc
-enum	open	CGEventType	-	Services / Constants	-	objc
+enum	struck	CGError	-	Reference / Enumerations	x11-territory	objc
+enum	struck	CGEventField	-	Services / Constants	x11-territory	objc
+enum	struck	CGEventFilterMask	-	Services / Constants	x11-territory	objc
+enum	struck	CGEventFlags	-	Services / Constants	x11-territory	objc
+enum	struck	CGEventMouseSubtype	-	Services / Constants	x11-territory	objc
+enum	struck	CGEventSourceStateID	-	Services / Constants	x11-territory	objc
+enum	struck	CGEventSuppressionState	-	Services / Constants	x11-territory	objc
+enum	struck	CGEventTapLocation	-	Services / Constants	x11-territory	objc
+enum	struck	CGEventTapOptions	-	Services / Constants	x11-territory	objc
+enum	struck	CGEventTapPlacement	-	Services / Constants	x11-territory	objc
+enum	struck	CGEventType	-	Services / Constants	x11-territory	objc
 enum	open	CGFontPostScriptFormat	-	Opaque Types / Working with PostScript Fonts	-	objc
 enum	struck	CGGesturePhase	-	Reference / Enumerations	post-10.6	objc
 enum	struck	CGGlyphDeprecatedEnum	-	Reference / Enumerations	post-10.6	objc
@@ -541,7 +541,7 @@ enum	shipped	CGInterpolationQuality	-	Opaque Types / Drawing Images and PDF Cont
 enum	shipped	CGLineCap	-	Opaque Types / Constants	-	objc
 enum	shipped	CGLineJoin	-	Opaque Types / Constants	-	objc
 enum	struck	CGMomentumScrollPhase	-	Reference / Enumerations	post-10.6	objc
-enum	open	CGMouseButton	-	Services / Constants	-	objc
+enum	struck	CGMouseButton	-	Services / Constants	x11-territory	objc
 enum	struck	CGPDFAccessPermissions	-	Reference / Structures	post-10.6	objc
 enum	open	CGPDFBox	-	Opaque Types / Abstract Types for PDF Document Content / Constants	-	objc
 enum	open	CGPDFDataFormat	-	Opaque Types / Abstract Types for PDF Document Content / Constants	-	objc
@@ -551,18 +551,18 @@ enum	shipped	CGPathDrawingMode	-	Opaque Types / Drawing the Current Graphics Pat
 enum	shipped	CGPathElementType	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
 enum	shipped	CGPatternTiling	-	Opaque Types / Constants	-	objc
 enum	shipped	CGRectEdge	-	CoreFoundation, CG-named / Reference / Enumerations	-	objc
-enum	open	CGScreenUpdateOperation	-	Services / Constants	-	objc
-enum	open	CGScrollEventUnit	-	Services / Constants	-	objc
+enum	struck	CGScreenUpdateOperation	-	Services / Constants	x11-territory	objc
+enum	struck	CGScrollEventUnit	-	Services / Constants	x11-territory	objc
 enum	struck	CGScrollPhase	-	Reference / Enumerations	post-10.6	objc
 enum	open	CGTextDrawingMode	-	Opaque Types / Drawing Text	-	objc
 enum	open	CGTextEncoding	-	Opaque Types / Constants	deprecated	objc
 enum	struck	CGToneMapping	-	Reference / Enumerations	after-10.6	objc
-enum	open	CGWindowBackingType	-	Services / Data Types	-	objc
-enum	open	CGWindowImageOption	-	Services / Data Types	-	objc
-enum	open	CGWindowLevelKey	-	Services / Data Types / Window levels	-	objc
-enum	open	CGWindowListOption	-	Services / Data Types	-	objc
-enum	open	CGWindowSharingType	-	Services / Data Types	-	objc
-func	open	CGAcquireDisplayFadeReservation	-	Services / Display Fade Effects	-	objc
+enum	struck	CGWindowBackingType	-	Services / Data Types	x11-territory	objc
+enum	struck	CGWindowImageOption	-	Services / Data Types	x11-territory	objc
+enum	struck	CGWindowLevelKey	-	Services / Data Types / Window levels	x11-territory	objc
+enum	struck	CGWindowListOption	-	Services / Data Types	x11-territory	objc
+enum	struck	CGWindowSharingType	-	Services / Data Types	x11-territory	objc
+func	struck	CGAcquireDisplayFadeReservation	-	Services / Display Fade Effects	x11-territory	objc
 func	shipped	CGAffineTransformConcat	-	Reference / Modifying Affine Transformations	-	objc
 func	struck	CGAffineTransformDecompose	-	Reference / Functions	after-10.6	objc
 func	shipped	CGAffineTransformEqualToTransform	-	Reference / Evaluating Affine Transforms	-	objc
@@ -576,8 +576,8 @@ func	struck	CGAffineTransformMakeWithComponents	-	Reference / Functions	after-10
 func	shipped	CGAffineTransformRotate	-	Reference / Modifying Affine Transformations	-	objc
 func	shipped	CGAffineTransformScale	-	Reference / Modifying Affine Transformations	-	objc
 func	shipped	CGAffineTransformTranslate	-	Reference / Modifying Affine Transformations	-	objc
-func	open	CGAssociateMouseAndMouseCursorPosition	-	Services / Controlling the Mouse Cursor	-	objc
-func	open	CGBeginDisplayConfiguration	-	Services / Configuring Displays	-	objc
+func	struck	CGAssociateMouseAndMouseCursorPosition	-	Services / Controlling the Mouse Cursor	x11-territory	objc
+func	struck	CGBeginDisplayConfiguration	-	Services / Configuring Displays	x11-territory	objc
 func	shipped	CGBitmapContextCreate	-	Functions	-	objc
 func	struck	CGBitmapContextCreateAdaptive	-	Functions	after-10.6	objc
 func	open	CGBitmapContextCreateImage	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
@@ -592,9 +592,9 @@ func	shipped	CGBitmapContextGetData	-	Opaque Types / Managing a Bitmap Graphics 
 func	shipped	CGBitmapContextGetHeight	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
 func	shipped	CGBitmapContextGetWidth	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
 func	struck	CGBitmapInfoMake	-	Functions	after-10.6	objc
-func	open	CGCancelDisplayConfiguration	-	Services / Configuring Displays	-	objc
-func	open	CGCaptureAllDisplays	-	Services / Capturing and Releasing Displays	-	objc
-func	open	CGCaptureAllDisplaysWithOptions	-	Services / Capturing and Releasing Displays	-	objc
+func	struck	CGCancelDisplayConfiguration	-	Services / Configuring Displays	x11-territory	objc
+func	struck	CGCaptureAllDisplays	-	Services / Capturing and Releasing Displays	x11-territory	objc
+func	struck	CGCaptureAllDisplaysWithOptions	-	Services / Capturing and Releasing Displays	x11-territory	objc
 func	struck	CGColorConversionInfoConvertData	-	Reference / Functions	after-10.6	objc
 func	struck	CGColorConversionInfoCreate	-	Opaque Types / Creating a Color Conversion	after-10.6	objc
 func	struck	CGColorConversionInfoCreateForToneMapping	-	Functions	after-10.6	objc
@@ -664,13 +664,13 @@ func	shipped	CGColorSpaceRetain	-	Opaque Types / Retaining and Releasing Color S
 func	struck	CGColorSpaceSupportsOutput	-	Opaque Types / Examining a Color Space	after-10.6	objc
 func	struck	CGColorSpaceUsesExtendedRange	-	Reference / Functions	after-10.6	objc
 func	struck	CGColorSpaceUsesITUR_2100TF	-	Reference / Functions	after-10.6	objc
-func	open	CGCompleteDisplayConfiguration	-	Services / Configuring Displays	-	objc
-func	open	CGConfigureDisplayFadeEffect	-	Services / Display Fade Effects	-	objc
-func	open	CGConfigureDisplayMirrorOfDisplay	-	Services / Configuring Displays	-	objc
-func	open	CGConfigureDisplayMode	-	Services / Configuring Displays	deprecated	objc
-func	open	CGConfigureDisplayOrigin	-	Services / Configuring Displays	-	objc
-func	open	CGConfigureDisplayStereoOperation	-	Services / Configuring Displays	-	objc
-func	open	CGConfigureDisplayWithDisplayMode	-	Services / Configuring Displays	-	objc
+func	struck	CGCompleteDisplayConfiguration	-	Services / Configuring Displays	x11-territory	objc
+func	struck	CGConfigureDisplayFadeEffect	-	Services / Display Fade Effects	x11-territory	objc
+func	struck	CGConfigureDisplayMirrorOfDisplay	-	Services / Configuring Displays	x11-territory	objc
+func	struck	CGConfigureDisplayMode	-	Services / Configuring Displays	x11-territory	objc
+func	struck	CGConfigureDisplayOrigin	-	Services / Configuring Displays	x11-territory	objc
+func	struck	CGConfigureDisplayStereoOperation	-	Services / Configuring Displays	x11-territory	objc
+func	struck	CGConfigureDisplayWithDisplayMode	-	Services / Configuring Displays	x11-territory	objc
 func	shipped	CGContextAddArc	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	open	CGContextAddArcToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	shipped	CGContextAddCurveToPoint	-	Opaque Types / Constructing a Current Graphics Path	-	objc
@@ -801,8 +801,8 @@ func	shipped	CGContextSynchronize	-	Opaque Types / Managing a Graphics Context	-
 func	struck	CGContextSynchronizeAttributes	-	Functions	after-10.6	objc
 func	shipped	CGContextTranslateCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
 func	struck	CGConvertColorDataWithFormat	-	Reference / Functions	post-10.6	objc
-func	open	CGCursorIsDrawnInFramebuffer	-	Services / Controlling the Mouse Cursor	deprecated	objc
-func	open	CGCursorIsVisible	-	Services / Controlling the Mouse Cursor	deprecated	objc
+func	struck	CGCursorIsDrawnInFramebuffer	-	Services / Controlling the Mouse Cursor	x11-territory	objc
+func	struck	CGCursorIsVisible	-	Services / Controlling the Mouse Cursor	x11-territory	objc
 func	open	CGDataConsumerCreate	-	Opaque Types / Creating Data Consumers	-	objc
 func	open	CGDataConsumerCreateWithCFData	-	Opaque Types / Creating Data Consumers	-	objc
 func	open	CGDataConsumerCreateWithURL	-	Opaque Types / Creating Data Consumers	-	objc
@@ -821,63 +821,63 @@ func	open	CGDataProviderGetTypeID	-	Opaque Types / Working with Core Foundation 
 func	shipped	CGDataProviderRelease	-	Opaque Types / Retaining and Releasing Data Providers	-	objc
 func	shipped	CGDataProviderRetain	-	Opaque Types / Retaining and Releasing Data Providers	-	objc
 func	struck	CGDirectDisplayCopyCurrentMetalDevice	-	Reference / Functions	after-10.6	objc
-func	open	CGDisplayAvailableModes	-	Services / Creating and Managing Display Modes	deprecated	objc
-func	open	CGDisplayBestModeForParameters	-	Services / Creating and Managing Display Modes	deprecated	objc
-func	open	CGDisplayBestModeForParametersAndRefreshRate	-	Services / Creating and Managing Display Modes	deprecated	objc
-func	open	CGDisplayBounds	-	Services / Retrieving Display Parameters	-	objc
-func	open	CGDisplayCapture	-	Services / Capturing and Releasing Displays	-	objc
-func	open	CGDisplayCaptureWithOptions	-	Services / Capturing and Releasing Displays	-	objc
-func	open	CGDisplayCopyAllDisplayModes	-	Services / Creating and Managing Display Modes	-	objc
-func	open	CGDisplayCopyColorSpace	-	Services / Getting the Display Configuration	-	objc
-func	open	CGDisplayCopyDisplayMode	-	Services / Creating and Managing Display Modes	-	objc
-func	open	CGDisplayCreateImage	-	Functions	-	objc
-func	open	CGDisplayCreateImageForRect	-	Functions	-	objc
-func	open	CGDisplayCurrentMode	-	Services / Creating and Managing Display Modes	deprecated	objc
-func	open	CGDisplayFade	-	Services / Display Fade Effects	-	objc
-func	open	CGDisplayFadeOperationInProgress	-	Services / Display Fade Effects	deprecated	objc
-func	open	CGDisplayGammaTableCapacity	-	Services / Adjusting the Display Gamma	-	objc
-func	open	CGDisplayGetDrawingContext	-	Services / Capturing and Releasing Displays	-	objc
-func	open	CGDisplayHideCursor	-	Services / Controlling the Mouse Cursor	-	objc
-func	open	CGDisplayIDToOpenGLDisplayMask	-	Services / Finding Displays	-	objc
-func	open	CGDisplayIOServicePort	-	Services / Getting the Display Configuration	deprecated	objc
-func	open	CGDisplayIsActive	-	Services / Getting the Display Configuration	-	objc
-func	open	CGDisplayIsAlwaysInMirrorSet	-	Services / Getting the Display Configuration	-	objc
-func	open	CGDisplayIsAsleep	-	Services / Getting the Display Configuration	-	objc
-func	open	CGDisplayIsBuiltin	-	Services / Getting the Display Configuration	-	objc
-func	open	CGDisplayIsCaptured	-	Services / Capturing and Releasing Displays	deprecated	objc
-func	open	CGDisplayIsInHWMirrorSet	-	Services / Getting the Display Configuration	-	objc
-func	open	CGDisplayIsInMirrorSet	-	Services / Getting the Display Configuration	-	objc
-func	open	CGDisplayIsMain	-	Services / Getting the Display Configuration	-	objc
-func	open	CGDisplayIsOnline	-	Services / Getting the Display Configuration	-	objc
-func	open	CGDisplayIsStereo	-	Services / Getting the Display Configuration	-	objc
-func	open	CGDisplayMirrorsDisplay	-	Services / Getting the Display Configuration	-	objc
-func	open	CGDisplayModeCopyPixelEncoding	-	Services / Getting Information About a Display Mode	deprecated	objc
-func	open	CGDisplayModeGetHeight	-	Services / Getting Information About a Display Mode	-	objc
-func	open	CGDisplayModeGetIODisplayModeID	-	Services / Getting Information About a Display Mode	-	objc
-func	open	CGDisplayModeGetIOFlags	-	Services / Getting Information About a Display Mode	-	objc
+func	struck	CGDisplayAvailableModes	-	Services / Creating and Managing Display Modes	x11-territory	objc
+func	struck	CGDisplayBestModeForParameters	-	Services / Creating and Managing Display Modes	x11-territory	objc
+func	struck	CGDisplayBestModeForParametersAndRefreshRate	-	Services / Creating and Managing Display Modes	x11-territory	objc
+func	struck	CGDisplayBounds	-	Services / Retrieving Display Parameters	x11-territory	objc
+func	struck	CGDisplayCapture	-	Services / Capturing and Releasing Displays	x11-territory	objc
+func	struck	CGDisplayCaptureWithOptions	-	Services / Capturing and Releasing Displays	x11-territory	objc
+func	struck	CGDisplayCopyAllDisplayModes	-	Services / Creating and Managing Display Modes	x11-territory	objc
+func	struck	CGDisplayCopyColorSpace	-	Services / Getting the Display Configuration	x11-territory	objc
+func	struck	CGDisplayCopyDisplayMode	-	Services / Creating and Managing Display Modes	x11-territory	objc
+func	struck	CGDisplayCreateImage	-	Functions	x11-territory	objc
+func	struck	CGDisplayCreateImageForRect	-	Functions	x11-territory	objc
+func	struck	CGDisplayCurrentMode	-	Services / Creating and Managing Display Modes	x11-territory	objc
+func	struck	CGDisplayFade	-	Services / Display Fade Effects	x11-territory	objc
+func	struck	CGDisplayFadeOperationInProgress	-	Services / Display Fade Effects	x11-territory	objc
+func	struck	CGDisplayGammaTableCapacity	-	Services / Adjusting the Display Gamma	x11-territory	objc
+func	struck	CGDisplayGetDrawingContext	-	Services / Capturing and Releasing Displays	x11-territory	objc
+func	struck	CGDisplayHideCursor	-	Services / Controlling the Mouse Cursor	x11-territory	objc
+func	struck	CGDisplayIDToOpenGLDisplayMask	-	Services / Finding Displays	x11-territory	objc
+func	struck	CGDisplayIOServicePort	-	Services / Getting the Display Configuration	x11-territory	objc
+func	struck	CGDisplayIsActive	-	Services / Getting the Display Configuration	x11-territory	objc
+func	struck	CGDisplayIsAlwaysInMirrorSet	-	Services / Getting the Display Configuration	x11-territory	objc
+func	struck	CGDisplayIsAsleep	-	Services / Getting the Display Configuration	x11-territory	objc
+func	struck	CGDisplayIsBuiltin	-	Services / Getting the Display Configuration	x11-territory	objc
+func	struck	CGDisplayIsCaptured	-	Services / Capturing and Releasing Displays	x11-territory	objc
+func	struck	CGDisplayIsInHWMirrorSet	-	Services / Getting the Display Configuration	x11-territory	objc
+func	struck	CGDisplayIsInMirrorSet	-	Services / Getting the Display Configuration	x11-territory	objc
+func	struck	CGDisplayIsMain	-	Services / Getting the Display Configuration	x11-territory	objc
+func	struck	CGDisplayIsOnline	-	Services / Getting the Display Configuration	x11-territory	objc
+func	struck	CGDisplayIsStereo	-	Services / Getting the Display Configuration	x11-territory	objc
+func	struck	CGDisplayMirrorsDisplay	-	Services / Getting the Display Configuration	x11-territory	objc
+func	struck	CGDisplayModeCopyPixelEncoding	-	Services / Getting Information About a Display Mode	x11-territory	objc
+func	struck	CGDisplayModeGetHeight	-	Services / Getting Information About a Display Mode	x11-territory	objc
+func	struck	CGDisplayModeGetIODisplayModeID	-	Services / Getting Information About a Display Mode	x11-territory	objc
+func	struck	CGDisplayModeGetIOFlags	-	Services / Getting Information About a Display Mode	x11-territory	objc
 func	struck	CGDisplayModeGetPixelHeight	-	Services / Data Types / Instance Properties	after-10.6	objc
 func	struck	CGDisplayModeGetPixelWidth	-	Services / Data Types / Instance Properties	after-10.6	objc
-func	open	CGDisplayModeGetRefreshRate	-	Services / Getting Information About a Display Mode	-	objc
-func	open	CGDisplayModeGetTypeID	-	Services / Getting Information About a Display Mode	-	objc
-func	open	CGDisplayModeGetWidth	-	Services / Getting Information About a Display Mode	-	objc
-func	open	CGDisplayModeIsUsableForDesktopGUI	-	Services / Getting Information About a Display Mode	-	objc
-func	open	CGDisplayModeRelease	-	Services / Creating and Managing Display Modes	-	objc
-func	open	CGDisplayModeRetain	-	Services / Creating and Managing Display Modes	-	objc
-func	open	CGDisplayModelNumber	-	Services / Getting the Display Configuration	-	objc
-func	open	CGDisplayMoveCursorToPoint	-	Services / Controlling the Mouse Cursor	-	objc
-func	open	CGDisplayPixelsHigh	-	Services / Retrieving Display Parameters	-	objc
-func	open	CGDisplayPixelsWide	-	Services / Retrieving Display Parameters	-	objc
-func	open	CGDisplayPrimaryDisplay	-	Services / Getting the Display Configuration	-	objc
-func	open	CGDisplayRegisterReconfigurationCallback	-	Services / Registering for Notification of Display Configuration Changes	-	objc
-func	open	CGDisplayRelease	-	Services / Capturing and Releasing Displays	-	objc
-func	open	CGDisplayRemoveReconfigurationCallback	-	Services / Registering for Notification of Display Configuration Changes	-	objc
-func	open	CGDisplayRestoreColorSyncSettings	-	Services / Adjusting the Display Gamma	-	objc
-func	open	CGDisplayRotation	-	Services / Getting the Display Configuration	-	objc
-func	open	CGDisplayScreenSize	-	Services / Getting the Display Configuration	-	objc
-func	open	CGDisplaySerialNumber	-	Services / Getting the Display Configuration	-	objc
-func	open	CGDisplaySetDisplayMode	-	Services / Creating and Managing Display Modes	-	objc
-func	open	CGDisplaySetStereoOperation	-	Services / Configuring Displays	-	objc
-func	open	CGDisplayShowCursor	-	Services / Controlling the Mouse Cursor	-	objc
+func	struck	CGDisplayModeGetRefreshRate	-	Services / Getting Information About a Display Mode	x11-territory	objc
+func	struck	CGDisplayModeGetTypeID	-	Services / Getting Information About a Display Mode	x11-territory	objc
+func	struck	CGDisplayModeGetWidth	-	Services / Getting Information About a Display Mode	x11-territory	objc
+func	struck	CGDisplayModeIsUsableForDesktopGUI	-	Services / Getting Information About a Display Mode	x11-territory	objc
+func	struck	CGDisplayModeRelease	-	Services / Creating and Managing Display Modes	x11-territory	objc
+func	struck	CGDisplayModeRetain	-	Services / Creating and Managing Display Modes	x11-territory	objc
+func	struck	CGDisplayModelNumber	-	Services / Getting the Display Configuration	x11-territory	objc
+func	struck	CGDisplayMoveCursorToPoint	-	Services / Controlling the Mouse Cursor	x11-territory	objc
+func	struck	CGDisplayPixelsHigh	-	Services / Retrieving Display Parameters	x11-territory	objc
+func	struck	CGDisplayPixelsWide	-	Services / Retrieving Display Parameters	x11-territory	objc
+func	struck	CGDisplayPrimaryDisplay	-	Services / Getting the Display Configuration	x11-territory	objc
+func	struck	CGDisplayRegisterReconfigurationCallback	-	Services / Registering for Notification of Display Configuration Changes	x11-territory	objc
+func	struck	CGDisplayRelease	-	Services / Capturing and Releasing Displays	x11-territory	objc
+func	struck	CGDisplayRemoveReconfigurationCallback	-	Services / Registering for Notification of Display Configuration Changes	x11-territory	objc
+func	struck	CGDisplayRestoreColorSyncSettings	-	Services / Adjusting the Display Gamma	x11-territory	objc
+func	struck	CGDisplayRotation	-	Services / Getting the Display Configuration	x11-territory	objc
+func	struck	CGDisplayScreenSize	-	Services / Getting the Display Configuration	x11-territory	objc
+func	struck	CGDisplaySerialNumber	-	Services / Getting the Display Configuration	x11-territory	objc
+func	struck	CGDisplaySetDisplayMode	-	Services / Creating and Managing Display Modes	x11-territory	objc
+func	struck	CGDisplaySetStereoOperation	-	Services / Configuring Displays	x11-territory	objc
+func	struck	CGDisplayShowCursor	-	Services / Controlling the Mouse Cursor	x11-territory	objc
 func	struck	CGDisplayStreamCreate	-	Functions	post-10.6	objc
 func	struck	CGDisplayStreamCreateWithDispatchQueue	-	Functions	post-10.6	objc
 func	struck	CGDisplayStreamGetRunLoopSource	-	Functions	post-10.6	objc
@@ -889,66 +889,66 @@ func	struck	CGDisplayStreamUpdateGetDropCount	-	Functions	post-10.6	objc
 func	struck	CGDisplayStreamUpdateGetMovedRectsDelta	-	Functions	post-10.6	objc
 func	struck	CGDisplayStreamUpdateGetRects	-	Functions	post-10.6	objc
 func	struck	CGDisplayStreamUpdateGetTypeID	-	Functions	post-10.6	objc
-func	open	CGDisplaySwitchToMode	-	Services / Creating and Managing Display Modes	deprecated	objc
-func	open	CGDisplayUnitNumber	-	Services / Getting the Display Configuration	-	objc
-func	open	CGDisplayUsesOpenGLAcceleration	-	Services / Getting the Display Configuration	-	objc
-func	open	CGDisplayVendorNumber	-	Services / Getting the Display Configuration	-	objc
+func	struck	CGDisplaySwitchToMode	-	Services / Creating and Managing Display Modes	x11-territory	objc
+func	struck	CGDisplayUnitNumber	-	Services / Getting the Display Configuration	x11-territory	objc
+func	struck	CGDisplayUsesOpenGLAcceleration	-	Services / Getting the Display Configuration	x11-territory	objc
+func	struck	CGDisplayVendorNumber	-	Services / Getting the Display Configuration	x11-territory	objc
 func	struck	CGEXRToneMappingGammaGetDefaultOptions	-	Functions	after-10.6	objc
-func	open	CGEnableEventStateCombining	-	Services / Deprecated Functions	deprecated	objc
+func	struck	CGEnableEventStateCombining	-	Services / Deprecated Functions	x11-territory	objc
 func	struck	CGErrorSetCallback	-	Reference / Functions	post-10.6	objc
-func	open	CGEventCreate	-	Services / Working With Events	-	objc
-func	open	CGEventCreateCopy	-	Services / Working With Events	-	objc
-func	open	CGEventCreateData	-	Services / Working With Events	-	objc
-func	open	CGEventCreateFromData	-	Services / Working With Events	-	objc
-func	open	CGEventCreateKeyboardEvent	-	Services / Working With Events	-	objc
-func	open	CGEventCreateMouseEvent	-	Services / Working With Events	-	objc
-func	open	CGEventCreateScrollWheelEvent	-	Services / Working With Events	-	objc
+func	struck	CGEventCreate	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventCreateCopy	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventCreateData	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventCreateFromData	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventCreateKeyboardEvent	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventCreateMouseEvent	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventCreateScrollWheelEvent	-	Services / Working With Events	x11-territory	objc
 func	struck	CGEventCreateScrollWheelEvent2	-	Services / Data Types / Initializers	after-10.6	objc
-func	open	CGEventCreateSourceFromEvent	-	Services / Working With Events	-	objc
-func	open	CGEventGetDoubleValueField	-	Services / Working With Events	-	objc
-func	open	CGEventGetFlags	-	Services / Working With Events	-	objc
-func	open	CGEventGetIntegerValueField	-	Services / Working With Events	-	objc
-func	open	CGEventGetLocation	-	Services / Working With Events	-	objc
-func	open	CGEventGetTimestamp	-	Services / Working With Events	-	objc
-func	open	CGEventGetType	-	Services / Working With Events	-	objc
-func	open	CGEventGetTypeID	-	Services / Working With Events	-	objc
-func	open	CGEventGetUnflippedLocation	-	Services / Working With Events	-	objc
-func	open	CGEventKeyboardGetUnicodeString	-	Services / Working With Events	-	objc
-func	open	CGEventKeyboardSetUnicodeString	-	Services / Working With Events	-	objc
-func	open	CGEventPost	-	Services / Working With Event Taps	-	objc
-func	open	CGEventPostToPSN	-	Services / Working With Event Taps	-	objc
+func	struck	CGEventCreateSourceFromEvent	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventGetDoubleValueField	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventGetFlags	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventGetIntegerValueField	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventGetLocation	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventGetTimestamp	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventGetType	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventGetTypeID	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventGetUnflippedLocation	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventKeyboardGetUnicodeString	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventKeyboardSetUnicodeString	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventPost	-	Services / Working With Event Taps	x11-territory	objc
+func	struck	CGEventPostToPSN	-	Services / Working With Event Taps	x11-territory	objc
 func	struck	CGEventPostToPid	-	Services / Data Types / Instance Methods	after-10.6	objc
-func	open	CGEventSetDoubleValueField	-	Services / Working With Events	-	objc
-func	open	CGEventSetFlags	-	Services / Working With Events	-	objc
-func	open	CGEventSetIntegerValueField	-	Services / Working With Events	-	objc
-func	open	CGEventSetLocation	-	Services / Working With Events	-	objc
-func	open	CGEventSetSource	-	Services / Working With Events	-	objc
-func	open	CGEventSetTimestamp	-	Services / Working With Events	-	objc
-func	open	CGEventSetType	-	Services / Working With Events	-	objc
-func	open	CGEventSourceButtonState	-	Services / Working With Event Sources	-	objc
-func	open	CGEventSourceCounterForEventType	-	Services / Working With Event Sources	-	objc
-func	open	CGEventSourceCreate	-	Services / Working With Event Sources	-	objc
-func	open	CGEventSourceFlagsState	-	Services / Working With Event Sources	-	objc
-func	open	CGEventSourceGetKeyboardType	-	Services / Working With Event Sources	-	objc
-func	open	CGEventSourceGetLocalEventsFilterDuringSuppressionState	-	Services / Working With Event Sources	-	objc
-func	open	CGEventSourceGetLocalEventsSuppressionInterval	-	Services / Working With Event Sources	-	objc
-func	open	CGEventSourceGetPixelsPerLine	-	Services / Working With Event Sources	-	objc
-func	open	CGEventSourceGetSourceStateID	-	Services / Working With Event Sources	-	objc
-func	open	CGEventSourceGetTypeID	-	Services / Working With Event Sources	-	objc
-func	open	CGEventSourceGetUserData	-	Services / Working With Event Sources	-	objc
-func	open	CGEventSourceKeyState	-	Services / Working With Event Sources	-	objc
-func	open	CGEventSourceSecondsSinceLastEventType	-	Services / Working With Event Sources	-	objc
-func	open	CGEventSourceSetKeyboardType	-	Services / Working With Event Sources	-	objc
-func	open	CGEventSourceSetLocalEventsFilterDuringSuppressionState	-	Services / Working With Event Sources	-	objc
-func	open	CGEventSourceSetLocalEventsSuppressionInterval	-	Services / Working With Event Sources	-	objc
-func	open	CGEventSourceSetPixelsPerLine	-	Services / Working With Event Sources	-	objc
-func	open	CGEventSourceSetUserData	-	Services / Working With Event Sources	-	objc
-func	open	CGEventTapCreate	-	Services / Working With Event Taps	-	objc
-func	open	CGEventTapCreateForPSN	-	Services / Working With Event Taps	-	objc
+func	struck	CGEventSetDoubleValueField	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventSetFlags	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventSetIntegerValueField	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventSetLocation	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventSetSource	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventSetTimestamp	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventSetType	-	Services / Working With Events	x11-territory	objc
+func	struck	CGEventSourceButtonState	-	Services / Working With Event Sources	x11-territory	objc
+func	struck	CGEventSourceCounterForEventType	-	Services / Working With Event Sources	x11-territory	objc
+func	struck	CGEventSourceCreate	-	Services / Working With Event Sources	x11-territory	objc
+func	struck	CGEventSourceFlagsState	-	Services / Working With Event Sources	x11-territory	objc
+func	struck	CGEventSourceGetKeyboardType	-	Services / Working With Event Sources	x11-territory	objc
+func	struck	CGEventSourceGetLocalEventsFilterDuringSuppressionState	-	Services / Working With Event Sources	x11-territory	objc
+func	struck	CGEventSourceGetLocalEventsSuppressionInterval	-	Services / Working With Event Sources	x11-territory	objc
+func	struck	CGEventSourceGetPixelsPerLine	-	Services / Working With Event Sources	x11-territory	objc
+func	struck	CGEventSourceGetSourceStateID	-	Services / Working With Event Sources	x11-territory	objc
+func	struck	CGEventSourceGetTypeID	-	Services / Working With Event Sources	x11-territory	objc
+func	struck	CGEventSourceGetUserData	-	Services / Working With Event Sources	x11-territory	objc
+func	struck	CGEventSourceKeyState	-	Services / Working With Event Sources	x11-territory	objc
+func	struck	CGEventSourceSecondsSinceLastEventType	-	Services / Working With Event Sources	x11-territory	objc
+func	struck	CGEventSourceSetKeyboardType	-	Services / Working With Event Sources	x11-territory	objc
+func	struck	CGEventSourceSetLocalEventsFilterDuringSuppressionState	-	Services / Working With Event Sources	x11-territory	objc
+func	struck	CGEventSourceSetLocalEventsSuppressionInterval	-	Services / Working With Event Sources	x11-territory	objc
+func	struck	CGEventSourceSetPixelsPerLine	-	Services / Working With Event Sources	x11-territory	objc
+func	struck	CGEventSourceSetUserData	-	Services / Working With Event Sources	x11-territory	objc
+func	struck	CGEventTapCreate	-	Services / Working With Event Taps	x11-territory	objc
+func	struck	CGEventTapCreateForPSN	-	Services / Working With Event Taps	x11-territory	objc
 func	struck	CGEventTapCreateForPid	-	Services / Data Types / Type Methods	after-10.6	objc
-func	open	CGEventTapEnable	-	Services / Working With Event Taps	-	objc
-func	open	CGEventTapIsEnabled	-	Services / Working With Event Taps	-	objc
-func	open	CGEventTapPostEvent	-	Services / Working With Event Taps	-	objc
+func	struck	CGEventTapEnable	-	Services / Working With Event Taps	x11-territory	objc
+func	struck	CGEventTapIsEnabled	-	Services / Working With Event Taps	x11-territory	objc
+func	struck	CGEventTapPostEvent	-	Services / Working With Event Taps	x11-territory	objc
 func	open	CGFontCanCreatePostScriptSubset	-	Opaque Types / Working with PostScript Fonts	-	objc
 func	open	CGFontCopyFullName	-	Opaque Types / Examining Font Metadata	-	objc
 func	open	CGFontCopyGlyphNameForGlyph	-	Opaque Types / Working with Glyphs	-	objc
@@ -983,15 +983,15 @@ func	shipped	CGFunctionCreate	-	Opaque Types / Creating Function Objects	-	objc
 func	open	CGFunctionGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGFunctionRelease	-	Opaque Types / Retaining and Releasing CGFunction Objects	-	objc
 func	shipped	CGFunctionRetain	-	Opaque Types / Retaining and Releasing CGFunction Objects	-	objc
-func	open	CGGetActiveDisplayList	-	Services / Finding Displays	-	objc
-func	open	CGGetDisplayTransferByFormula	-	Services / Adjusting the Display Gamma	-	objc
-func	open	CGGetDisplayTransferByTable	-	Services / Adjusting the Display Gamma	-	objc
-func	open	CGGetDisplaysWithOpenGLDisplayMask	-	Services / Finding Displays	-	objc
-func	open	CGGetDisplaysWithPoint	-	Services / Finding Displays	-	objc
-func	open	CGGetDisplaysWithRect	-	Services / Finding Displays	-	objc
-func	open	CGGetEventTapList	-	Services / Working With Event Taps	-	objc
-func	open	CGGetLastMouseDelta	-	Services / Controlling the Mouse Cursor	-	objc
-func	open	CGGetOnlineDisplayList	-	Services / Finding Displays	-	objc
+func	struck	CGGetActiveDisplayList	-	Services / Finding Displays	x11-territory	objc
+func	struck	CGGetDisplayTransferByFormula	-	Services / Adjusting the Display Gamma	x11-territory	objc
+func	struck	CGGetDisplayTransferByTable	-	Services / Adjusting the Display Gamma	x11-territory	objc
+func	struck	CGGetDisplaysWithOpenGLDisplayMask	-	Services / Finding Displays	x11-territory	objc
+func	struck	CGGetDisplaysWithPoint	-	Services / Finding Displays	x11-territory	objc
+func	struck	CGGetDisplaysWithRect	-	Services / Finding Displays	x11-territory	objc
+func	struck	CGGetEventTapList	-	Services / Working With Event Taps	x11-territory	objc
+func	struck	CGGetLastMouseDelta	-	Services / Controlling the Mouse Cursor	x11-territory	objc
+func	struck	CGGetOnlineDisplayList	-	Services / Finding Displays	x11-territory	objc
 func	shipped	CGGradientCreateWithColorComponents	-	Opaque Types / Creating Gradient Instances	-	objc
 func	shipped	CGGradientCreateWithColors	-	Opaque Types / Creating Gradient Instances	-	objc
 func	struck	CGGradientCreateWithContentHeadroom	-	Functions	after-10.6	objc
@@ -1037,15 +1037,15 @@ func	open	CGImageMaskCreate	-	Opaque Types / Creating image masks	-	objc
 func	shipped	CGImageRelease	-	Opaque Types / Retaining and releasing images	-	objc
 func	shipped	CGImageRetain	-	Opaque Types / Retaining and releasing images	-	objc
 func	struck	CGImageShouldToneMap	-	Reference / Functions	after-10.6	objc
-func	open	CGInhibitLocalEvents	-	Services / Deprecated Functions	deprecated	objc
+func	struck	CGInhibitLocalEvents	-	Services / Deprecated Functions	x11-territory	objc
 func	open	CGLayerCreateWithContext	-	Opaque Types / Creating Layer Objects	-	objc
 func	open	CGLayerGetContext	-	Opaque Types / Examining a Layer	-	objc
 func	open	CGLayerGetSize	-	Opaque Types / Examining a Layer	-	objc
 func	open	CGLayerGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	open	CGLayerRelease	-	Opaque Types / Retaining and Releasing Color Objects	-	objc
 func	open	CGLayerRetain	-	Opaque Types / Retaining and Releasing Color Objects	-	objc
-func	open	CGMainDisplayID	-	Services / Finding Displays	-	objc
-func	open	CGOpenGLDisplayMaskToDisplayID	-	Services / Finding Displays	-	objc
+func	struck	CGMainDisplayID	-	Services / Finding Displays	x11-territory	objc
+func	struck	CGOpenGLDisplayMaskToDisplayID	-	Services / Finding Displays	x11-territory	objc
 func	struck	CGPDFArrayApplyBlock	-	Reference / Functions	after-10.6	objc
 func	open	CGPDFArrayGetArray	-	Opaque Types / Getting Data from a PDF Array	-	objc
 func	open	CGPDFArrayGetBoolean	-	Opaque Types / Getting Data from a PDF Array	-	objc
@@ -1215,9 +1215,9 @@ func	open	CGPointCreateDictionaryRepresentation	-	Reference / Creating a Diction
 func	shipped	CGPointEqualToPoint	-	Reference / Functions	deprecated	objc
 func	shipped	CGPointMake	-	Reference / Creating a Geometric Primitive from Values	-	objc
 func	open	CGPointMakeWithDictionaryRepresentation	-	Reference / Creating a Geometric Primitive from a Dictionary Representation	-	objc
-func	open	CGPostKeyboardEvent	-	Services / Deprecated Functions	deprecated	objc
-func	open	CGPostMouseEvent	-	Services / Deprecated Functions	deprecated	objc
-func	open	CGPostScrollWheelEvent	-	Services / Deprecated Functions	deprecated	objc
+func	struck	CGPostKeyboardEvent	-	Services / Deprecated Functions	x11-territory	objc
+func	struck	CGPostMouseEvent	-	Services / Deprecated Functions	x11-territory	objc
+func	struck	CGPostScrollWheelEvent	-	Services / Deprecated Functions	x11-territory	objc
 func	struck	CGPreflightListenEventAccess	-	Reference / Functions	after-10.6	objc
 func	struck	CGPreflightPostEventAccess	-	Reference / Functions	after-10.6	objc
 func	struck	CGPreflightScreenCaptureAccess	-	Reference / Functions	after-10.6	objc
@@ -1247,10 +1247,10 @@ func	open	CGRectMakeWithDictionaryRepresentation	-	Reference / Creating a Geomet
 func	shipped	CGRectOffset	-	Reference / Modifying Rectangles	-	objc
 func	shipped	CGRectStandardize	-	Reference / Modifying Rectangles	-	objc
 func	shipped	CGRectUnion	-	Reference / Modifying Rectangles	-	objc
-func	open	CGRegisterScreenRefreshCallback	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
-func	open	CGReleaseAllDisplays	-	Services / Capturing and Releasing Displays	-	objc
-func	open	CGReleaseDisplayFadeReservation	-	Services / Display Fade Effects	-	objc
-func	open	CGReleaseScreenRefreshRects	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
+func	struck	CGRegisterScreenRefreshCallback	-	Services / Getting Information About Refresh and Move Operations	x11-territory	objc
+func	struck	CGReleaseAllDisplays	-	Services / Capturing and Releasing Displays	x11-territory	objc
+func	struck	CGReleaseDisplayFadeReservation	-	Services / Display Fade Effects	x11-territory	objc
+func	struck	CGReleaseScreenRefreshRects	-	Services / Getting Information About Refresh and Move Operations	x11-territory	objc
 func	struck	CGRenderingBufferLockBytePtr	-	Functions	after-10.6	objc
 func	struck	CGRenderingBufferProviderCreate	-	Functions	after-10.6	objc
 func	struck	CGRenderingBufferProviderCreateWithCFData	-	Functions	after-10.6	objc
@@ -1260,15 +1260,15 @@ func	struck	CGRenderingBufferUnlockBytePtr	-	Functions	after-10.6	objc
 func	struck	CGRequestListenEventAccess	-	Reference / Functions	after-10.6	objc
 func	struck	CGRequestPostEventAccess	-	Reference / Functions	after-10.6	objc
 func	struck	CGRequestScreenCaptureAccess	-	Reference / Functions	after-10.6	objc
-func	open	CGRestorePermanentDisplayConfiguration	-	Services / Configuring Displays	-	objc
-func	open	CGScreenRegisterMoveCallback	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
-func	open	CGScreenUnregisterMoveCallback	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
-func	open	CGSessionCopyCurrentDictionary	-	Services / Getting Window Server Information	-	objc
-func	open	CGSetDisplayTransferByByteTable	-	Services / Adjusting the Display Gamma	-	objc
-func	open	CGSetDisplayTransferByFormula	-	Services / Adjusting the Display Gamma	-	objc
-func	open	CGSetDisplayTransferByTable	-	Services / Adjusting the Display Gamma	-	objc
-func	open	CGSetLocalEventsFilterDuringSuppressionState	-	Services / Deprecated Functions	deprecated	objc
-func	open	CGSetLocalEventsSuppressionInterval	-	Services / Deprecated Functions	deprecated	objc
+func	struck	CGRestorePermanentDisplayConfiguration	-	Services / Configuring Displays	x11-territory	objc
+func	struck	CGScreenRegisterMoveCallback	-	Services / Getting Information About Refresh and Move Operations	x11-territory	objc
+func	struck	CGScreenUnregisterMoveCallback	-	Services / Getting Information About Refresh and Move Operations	x11-territory	objc
+func	struck	CGSessionCopyCurrentDictionary	-	Services / Getting Window Server Information	x11-territory	objc
+func	struck	CGSetDisplayTransferByByteTable	-	Services / Adjusting the Display Gamma	x11-territory	objc
+func	struck	CGSetDisplayTransferByFormula	-	Services / Adjusting the Display Gamma	x11-territory	objc
+func	struck	CGSetDisplayTransferByTable	-	Services / Adjusting the Display Gamma	x11-territory	objc
+func	struck	CGSetLocalEventsFilterDuringSuppressionState	-	Services / Deprecated Functions	x11-territory	objc
+func	struck	CGSetLocalEventsSuppressionInterval	-	Services / Deprecated Functions	x11-territory	objc
 func	shipped	CGShadingCreateAxial	-	Opaque Types / Creating Shading Objects	-	objc
 func	struck	CGShadingCreateAxialWithContentHeadroom	-	Functions	after-10.6	objc
 func	shipped	CGShadingCreateRadial	-	Opaque Types / Creating Shading Objects	-	objc
@@ -1277,31 +1277,31 @@ func	struck	CGShadingGetContentHeadroom	-	Functions	after-10.6	objc
 func	open	CGShadingGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGShadingRelease	-	Opaque Types / Retaining and Releasing Shading Objects	-	objc
 func	shipped	CGShadingRetain	-	Opaque Types / Retaining and Releasing Shading Objects	-	objc
-func	open	CGShieldingWindowID	-	Services / Capturing and Releasing Displays	-	objc
-func	open	CGShieldingWindowLevel	-	Services / Capturing and Releasing Displays	-	objc
+func	struck	CGShieldingWindowID	-	Services / Capturing and Releasing Displays	x11-territory	objc
+func	struck	CGShieldingWindowLevel	-	Services / Capturing and Releasing Displays	x11-territory	objc
 func	shipped	CGSizeApplyAffineTransform	-	Reference / Applying Affine Transformations	-	objc
 func	open	CGSizeCreateDictionaryRepresentation	-	Reference / Creating a Dictionary Representation from a Geometric Primitive	-	objc
 func	shipped	CGSizeEqualToSize	-	Reference / Functions	deprecated	objc
 func	shipped	CGSizeMake	-	Reference / Creating a Geometric Primitive from Values	-	objc
 func	open	CGSizeMakeWithDictionaryRepresentation	-	Reference / Creating a Geometric Primitive from a Dictionary Representation	-	objc
-func	open	CGUnregisterScreenRefreshCallback	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
+func	struck	CGUnregisterScreenRefreshCallback	-	Services / Getting Information About Refresh and Move Operations	x11-territory	objc
 func	struck	CGVectorMake	-	Reference / Creating a Geometric Primitive from Values	post-10.6	objc
-func	open	CGWaitForScreenRefreshRects	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
-func	open	CGWaitForScreenUpdateRects	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
-func	open	CGWarpMouseCursorPosition	-	Services / Controlling the Mouse Cursor	-	objc
-func	open	CGWindowLevelForKey	-	Services / Getting Window Server Information	-	objc
-func	open	CGWindowListCopyWindowInfo	-	Services / Getting Window Information	-	objc
-func	open	CGWindowListCreate	-	Services / Getting Window Information	-	objc
-func	open	CGWindowListCreateDescriptionFromArray	-	Services / Getting Window Information	-	objc
-func	open	CGWindowListCreateImage	-	Functions	-	objc
-func	open	CGWindowListCreateImageFromArray	-	Functions	-	objc
-func	open	CGWindowServerCFMachPort	-	Services / Getting Window Server Information	deprecated	objc
+func	struck	CGWaitForScreenRefreshRects	-	Services / Getting Information About Refresh and Move Operations	x11-territory	objc
+func	struck	CGWaitForScreenUpdateRects	-	Services / Getting Information About Refresh and Move Operations	x11-territory	objc
+func	struck	CGWarpMouseCursorPosition	-	Services / Controlling the Mouse Cursor	x11-territory	objc
+func	struck	CGWindowLevelForKey	-	Services / Getting Window Server Information	x11-territory	objc
+func	struck	CGWindowListCopyWindowInfo	-	Services / Getting Window Information	x11-territory	objc
+func	struck	CGWindowListCreate	-	Services / Getting Window Information	x11-territory	objc
+func	struck	CGWindowListCreateDescriptionFromArray	-	Services / Getting Window Information	x11-territory	objc
+func	struck	CGWindowListCreateImage	-	Functions	x11-territory	objc
+func	struck	CGWindowListCreateImageFromArray	-	Functions	x11-territory	objc
+func	struck	CGWindowServerCFMachPort	-	Services / Getting Window Server Information	x11-territory	objc
 func	struck	CGWindowServerCreateServerPort	-	Reference / Functions	after-10.6	objc
 macro	shipped	CGAffineTransformMake	-	Reference / Macros	-	objc
-macro	open	CGDisplayNoErr	-	Reference / Constants	-	objc
-macro	open	CGEventMaskBit	-	Services / Working With Event Taps	-	objc
-macro	open	CGEventNoErr	-	Reference / Constants	-	objc
-macro	open	CGEventSupressionState	-	Reference / Macros	-	objc
+macro	struck	CGDisplayNoErr	-	Reference / Constants	x11-territory	objc
+macro	struck	CGEventMaskBit	-	Services / Working With Event Taps	x11-territory	objc
+macro	struck	CGEventNoErr	-	Reference / Constants	x11-territory	objc
+macro	struck	CGEventSupressionState	-	Reference / Macros	x11-territory	objc
 macro	open	CGFLOAT_DEFINED	-	CoreFoundation, CG-named / Reference / Macros	-	objc
 macro	struck	CGFLOAT_EPSILON	-	CoreFoundation, CG-named / Reference / Constants	post-10.6	objc
 macro	open	CGFLOAT_IS_DOUBLE	-	CoreFoundation, CG-named / Reference / Constants	-	objc
@@ -1310,7 +1310,7 @@ macro	open	CGFLOAT_MIN	-	CoreFoundation, CG-named / Reference / Constants	-	objc
 macro	open	CGFLOAT_TYPE	-	CoreFoundation, CG-named / Reference / Macros	-	objc
 macro	shipped	CGPointApplyAffineTransform	-	Reference / Macros	-	objc
 macro	shipped	CGPointEqualToPoint	-	Reference / Comparing Values	-	objc
-macro	open	CGSetLocalEventsFilterDuringSupressionState	-	Services / Deprecated Functions	-	objc
+macro	struck	CGSetLocalEventsFilterDuringSupressionState	-	Services / Deprecated Functions	x11-territory	objc
 macro	shipped	CGSizeApplyAffineTransform	-	Reference / Macros	-	objc
 macro	shipped	CGSizeEqualToSize	-	Reference / Comparing Values	-	objc
 macro	struck	CGVECTOR_DEFINED	-	CoreFoundation, CG-named / Reference / Macros	post-10.6	objc
@@ -1340,70 +1340,70 @@ macro	struck	CG_WATCH_VERSION	-	Reference / Macros	post-10.6	objc
 macro	struck	NS_RETURNS_RETAINED	-	Reference / Macros	post-10.6	objc
 macro	struck	SCREEN_CAPTURE_OBSOLETE	-	Reference / Macros	post-10.6	objc
 macro	struck	cg_nullable	-	Reference / Macros	post-10.6	objc
-macro	open	kCGAnyInputEventType	-	Services / Constants / Constants	-	objc
-macro	open	kCGAssistiveTechHighWindowLevel	-	Reference / Constants	-	objc
-macro	open	kCGBackstopMenuLevel	-	Reference / Constants	-	objc
-macro	open	kCGBaseWindowLevel	-	Reference / Constants	-	objc
-macro	open	kCGCursorWindowLevel	-	Reference / Constants	-	objc
-macro	open	kCGDesktopIconWindowLevel	-	Reference / Constants	-	objc
-macro	open	kCGDesktopWindowLevel	-	Reference / Constants	-	objc
-macro	open	kCGDirectMainDisplay	-	Services / Constants / Constants	-	objc
-macro	open	kCGDisplayBitsPerPixel	-	Services / Constants / Constants	-	objc
-macro	open	kCGDisplayBitsPerSample	-	Services / Constants / Constants	-	objc
-macro	open	kCGDisplayBlendNormal	-	Services / Constants / Constants	-	objc
-macro	open	kCGDisplayBlendSolidColor	-	Services / Constants / Constants	-	objc
-macro	open	kCGDisplayBytesPerRow	-	Services / Constants / Constants	-	objc
-macro	open	kCGDisplayFadeReservationInvalidToken	-	Services / Constants / Constants	-	objc
-macro	open	kCGDisplayHeight	-	Services / Constants / Constants	-	objc
-macro	open	kCGDisplayIOFlags	-	Services / Constants / Constants	-	objc
-macro	open	kCGDisplayMode	-	Services / Constants / Constants	-	objc
-macro	open	kCGDisplayModeIsInterlaced	-	Services / Constants / Constants	-	objc
-macro	open	kCGDisplayModeIsSafeForHardware	-	Services / Constants / Constants	deprecated	objc
-macro	open	kCGDisplayModeIsStretched	-	Services / Constants / Constants	-	objc
-macro	open	kCGDisplayModeIsTelevisionOutput	-	Services / Constants / Constants	-	objc
-macro	open	kCGDisplayModeUsableForDesktopGUI	-	Services / Constants / Constants	-	objc
-macro	open	kCGDisplayRefreshRate	-	Services / Constants / Constants	-	objc
-macro	open	kCGDisplaySamplesPerPixel	-	Services / Constants / Constants	-	objc
-macro	open	kCGDisplayWidth	-	Services / Constants / Constants	deprecated	objc
-macro	open	kCGDockWindowLevel	-	Reference / Constants	-	objc
-macro	open	kCGDraggingWindowLevel	-	Reference / Constants	-	objc
-macro	open	kCGEventFilterMaskPermitAllEvents	-	Reference / Macros	-	objc
-macro	open	kCGEventMaskForAllEvents	-	Services / Constants / Constants	-	objc
-macro	open	kCGEventSupressionStateRemoteMouseDrag	-	Reference / Macros	-	objc
-macro	open	kCGEventSupressionStateSupressionInterval	-	Reference / Macros	-	objc
-macro	open	kCGFloatingWindowLevel	-	Reference / Constants	-	objc
-macro	open	kCGHelpWindowLevel	-	Reference / Constants	-	objc
-macro	open	kCGIODisplayModeID	-	Reference / Constants	-	objc
-macro	open	kCGMainMenuWindowLevel	-	Reference / Constants	-	objc
-macro	open	kCGMaxDisplayReservationInterval	-	Services / Constants / Constants	-	objc
-macro	open	kCGMaximumWindowLevel	-	Reference / Constants	-	objc
-macro	open	kCGMinimumWindowLevel	-	Reference / Constants	-	objc
-macro	open	kCGModalPanelWindowLevel	-	Reference / Constants	-	objc
-macro	open	kCGMouseDownEventMaskingDeadSwitchTimeout	-	Reference / Constants	-	objc
-macro	open	kCGNormalWindowLevel	-	Reference / Constants	-	objc
-macro	open	kCGNotifyEventTapAdded	-	Reference / Constants	-	objc
-macro	open	kCGNotifyEventTapRemoved	-	Reference / Constants	-	objc
-macro	open	kCGNotifyGUIConsoleSessionChanged	-	Reference / Constants	-	objc
-macro	open	kCGNotifyGUISessionUserChanged	-	Reference / Constants	-	objc
-macro	open	kCGNullDirectDisplay	-	Services / Constants / Constants	-	objc
-macro	open	kCGNullWindowID	-	Services / Constants / Constants	-	objc
+macro	struck	kCGAnyInputEventType	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGAssistiveTechHighWindowLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGBackstopMenuLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGBaseWindowLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGCursorWindowLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGDesktopIconWindowLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGDesktopWindowLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGDirectMainDisplay	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGDisplayBitsPerPixel	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGDisplayBitsPerSample	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGDisplayBlendNormal	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGDisplayBlendSolidColor	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGDisplayBytesPerRow	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGDisplayFadeReservationInvalidToken	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGDisplayHeight	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGDisplayIOFlags	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGDisplayMode	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGDisplayModeIsInterlaced	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGDisplayModeIsSafeForHardware	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGDisplayModeIsStretched	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGDisplayModeIsTelevisionOutput	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGDisplayModeUsableForDesktopGUI	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGDisplayRefreshRate	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGDisplaySamplesPerPixel	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGDisplayWidth	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGDockWindowLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGDraggingWindowLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGEventFilterMaskPermitAllEvents	-	Reference / Macros	x11-territory	objc
+macro	struck	kCGEventMaskForAllEvents	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGEventSupressionStateRemoteMouseDrag	-	Reference / Macros	x11-territory	objc
+macro	struck	kCGEventSupressionStateSupressionInterval	-	Reference / Macros	x11-territory	objc
+macro	struck	kCGFloatingWindowLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGHelpWindowLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGIODisplayModeID	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGMainMenuWindowLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGMaxDisplayReservationInterval	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGMaximumWindowLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGMinimumWindowLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGModalPanelWindowLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGMouseDownEventMaskingDeadSwitchTimeout	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGNormalWindowLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGNotifyEventTapAdded	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGNotifyEventTapRemoved	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGNotifyGUIConsoleSessionChanged	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGNotifyGUISessionUserChanged	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGNullDirectDisplay	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGNullWindowID	-	Services / Constants / Constants	x11-territory	objc
 macro	struck	kCGNumReservedBaseWindowLevels	-	Reference / Constants	post-10.6	objc
-macro	open	kCGNumReservedWindowLevels	-	Services / Constants / Constants	-	objc
-macro	open	kCGNumberOfEventSupressionStates	-	Reference / Macros	-	objc
-macro	open	kCGOverlayWindowLevel	-	Reference / Constants	-	objc
-macro	open	kCGPopUpMenuWindowLevel	-	Reference / Constants	-	objc
-macro	open	kCGScreenSaverWindowLevel	-	Reference / Constants	-	objc
-macro	open	kCGSessionConsoleSetKey	-	Services / Constants / Constants	-	objc
-macro	open	kCGSessionLoginDoneKey	-	Services / Constants / Constants	-	objc
-macro	open	kCGSessionOnConsoleKey	-	Services / Constants / Constants	-	objc
-macro	open	kCGSessionUserIDKey	-	Services / Constants / Constants	-	objc
-macro	open	kCGSessionUserNameKey	-	Services / Constants / Constants	-	objc
-macro	open	kCGStatusWindowLevel	-	Reference / Constants	-	objc
-macro	open	kCGTornOffMenuWindowLevel	-	Reference / Constants	-	objc
-macro	open	kCGUtilityWindowLevel	-	Reference / Constants	-	objc
-macro	open	kCGWindowBackingCFNumberType	-	Services / Constants / Constants	-	objc
-macro	open	kCGWindowIDCFNumberType	-	Services / Constants / Constants	-	objc
-macro	open	kCGWindowSharingCFNumberType	-	Services / Constants / Constants	-	objc
+macro	struck	kCGNumReservedWindowLevels	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGNumberOfEventSupressionStates	-	Reference / Macros	x11-territory	objc
+macro	struck	kCGOverlayWindowLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGPopUpMenuWindowLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGScreenSaverWindowLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGSessionConsoleSetKey	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGSessionLoginDoneKey	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGSessionOnConsoleKey	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGSessionUserIDKey	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGSessionUserNameKey	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGStatusWindowLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGTornOffMenuWindowLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGUtilityWindowLevel	-	Reference / Constants	x11-territory	objc
+macro	struck	kCGWindowBackingCFNumberType	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGWindowIDCFNumberType	-	Services / Constants / Constants	x11-territory	objc
+macro	struck	kCGWindowSharingCFNumberType	-	Services / Constants / Constants	x11-territory	objc
 struct	shipped	CGAffineTransform	-	CoreFoundation, CG-named / Reference / Structures	-	objc
 struct	struck	CGAffineTransformComponents	-	CoreFoundation, CG-named / Reference / Structures	post-10.6	objc
 struct	struck	CGBitmapParameters	-	Structures	post-10.6	objc
@@ -1414,19 +1414,19 @@ struct	struck	CGContentToneMappingInfo	-	Structures	post-10.6	objc
 struct	open	CGDataConsumerCallbacks	-	Opaque Types / Creating Data Consumers	-	objc
 struct	open	CGDataProviderDirectCallbacks	-	Opaque Types / Creating Direct-Access Data Providers	-	objc
 struct	open	CGDataProviderSequentialCallbacks	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
-struct	open	CGDeviceColor	-	Reference / Structures	-	objc
+struct	struck	CGDeviceColor	-	Reference / Structures	x11-territory	objc
 struct	shipped	CGFunctionCallbacks	-	Opaque Types / Callbacks	-	objc
 struct	open	CGPSConverterCallbacks	-	Opaque Types / Callbacks	-	objc
 struct	shipped	CGPathElement	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
 struct	shipped	CGPatternCallbacks	-	Opaque Types / Callbacks	-	objc
 struct	shipped	CGPoint	-	CoreFoundation, CG-named / Reference / Structures	-	objc
 struct	shipped	CGRect	-	CoreFoundation, CG-named / Reference / Structures	-	objc
-struct	open	CGScreenUpdateMoveDelta	-	Services / Data Types	-	objc
+struct	struck	CGScreenUpdateMoveDelta	-	Services / Data Types	x11-territory	objc
 struct	shipped	CGSize	-	CoreFoundation, CG-named / Reference / Structures	-	objc
 struct	struck	CGVector	-	CoreFoundation, CG-named / Reference / Structures	post-10.6	objc
 typealias	open	CGBitmapContextReleaseDataCallback	-	Opaque Types / Creating Bitmap Graphics Contexts	-	objc
-typealias	open	CGButtonCount	-	Services / Data Types	-	objc
-typealias	open	CGCharCode	-	Services / Data Types	-	objc
+typealias	struck	CGButtonCount	-	Services / Data Types	x11-territory	objc
+typealias	struck	CGCharCode	-	Services / Data Types	x11-territory	objc
 typealias	struck	CGColorConversionInfoRef	-	Opaque Types	post-10.6	objc
 typealias	shipped	CGColorRef	-	Opaque Types	-	objc
 typealias	shipped	CGColorSpaceRef	-	Opaque Types	-	objc
@@ -1443,42 +1443,42 @@ typealias	shipped	CGDataProviderReleaseDataCallback	-	Opaque Types / Creating Di
 typealias	open	CGDataProviderReleaseInfoCallback	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
 typealias	open	CGDataProviderRewindCallback	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
 typealias	open	CGDataProviderSkipForwardCallback	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
-typealias	open	CGDirectDisplayID	-	Services / Data Types	-	objc
-typealias	open	CGDisplayBlendFraction	-	Services / Data Types	-	objc
-typealias	open	CGDisplayConfigRef	-	Services / Data Types	-	objc
-typealias	open	CGDisplayCount	-	Services / Data Types	deprecated	objc
-typealias	open	CGDisplayErr	-	Services / Data Types	deprecated	objc
-typealias	open	CGDisplayFadeInterval	-	Services / Data Types	-	objc
-typealias	open	CGDisplayFadeReservationToken	-	Services / Data Types	-	objc
-typealias	open	CGDisplayModeRef	-	Services / Data Types	-	objc
-typealias	open	CGDisplayReconfigurationCallBack	-	Services / Callbacks	-	objc
-typealias	open	CGDisplayReservationInterval	-	Services / Data Types	-	objc
+typealias	struck	CGDirectDisplayID	-	Services / Data Types	x11-territory	objc
+typealias	struck	CGDisplayBlendFraction	-	Services / Data Types	x11-territory	objc
+typealias	struck	CGDisplayConfigRef	-	Services / Data Types	x11-territory	objc
+typealias	struck	CGDisplayCount	-	Services / Data Types	x11-territory	objc
+typealias	struck	CGDisplayErr	-	Services / Data Types	x11-territory	objc
+typealias	struck	CGDisplayFadeInterval	-	Services / Data Types	x11-territory	objc
+typealias	struck	CGDisplayFadeReservationToken	-	Services / Data Types	x11-territory	objc
+typealias	struck	CGDisplayModeRef	-	Services / Data Types	x11-territory	objc
+typealias	struck	CGDisplayReconfigurationCallBack	-	Services / Callbacks	x11-territory	objc
+typealias	struck	CGDisplayReservationInterval	-	Services / Data Types	x11-territory	objc
 typealias	struck	CGDisplayStreamFrameAvailableHandler	-	Services / Data Types	post-10.6	objc
 typealias	struck	CGDisplayStreamRef	-	Services / Data Types	post-10.6	objc
 typealias	struck	CGDisplayStreamUpdateRef	-	Services / Data Types	post-10.6	objc
 typealias	struck	CGErrorCallback	-	Reference / Data Types	post-10.6	objc
-typealias	open	CGEventErr	-	Reference / Data Types	-	objc
-typealias	open	CGEventMask	-	Services / Data Types	-	objc
-typealias	open	CGEventRef	-	Services / Data Types	-	objc
-typealias	open	CGEventSourceKeyboardType	-	Services / Data Types	-	objc
-typealias	open	CGEventSourceRef	-	Services / Data Types	-	objc
-typealias	open	CGEventTapCallBack	-	Services / Callbacks	-	objc
-typealias	open	CGEventTapInformation	-	Services / Data Types	-	objc
-typealias	open	CGEventTapProxy	-	Services / Data Types	-	objc
-typealias	open	CGEventTimestamp	-	Services / Data Types	-	objc
+typealias	struck	CGEventErr	-	Reference / Data Types	x11-territory	objc
+typealias	struck	CGEventMask	-	Services / Data Types	x11-territory	objc
+typealias	struck	CGEventRef	-	Services / Data Types	x11-territory	objc
+typealias	struck	CGEventSourceKeyboardType	-	Services / Data Types	x11-territory	objc
+typealias	struck	CGEventSourceRef	-	Services / Data Types	x11-territory	objc
+typealias	struck	CGEventTapCallBack	-	Services / Callbacks	x11-territory	objc
+typealias	struck	CGEventTapInformation	-	Services / Data Types	x11-territory	objc
+typealias	struck	CGEventTapProxy	-	Services / Data Types	x11-territory	objc
+typealias	struck	CGEventTimestamp	-	Services / Data Types	x11-territory	objc
 typealias	shipped	CGFloat	-	CoreFoundation, CG-named / Reference / Data Types	-	objc
 typealias	open	CGFontIndex	-	Opaque Types / Working with Glyphs	-	objc
 typealias	open	CGFontRef	-	Opaque Types	-	objc
 typealias	shipped	CGFunctionEvaluateCallback	-	Opaque Types / Callbacks	-	objc
 typealias	shipped	CGFunctionRef	-	Opaque Types	-	objc
 typealias	shipped	CGFunctionReleaseInfoCallback	-	Opaque Types / Callbacks	-	objc
-typealias	open	CGGammaValue	-	Services / Data Types	-	objc
+typealias	struck	CGGammaValue	-	Services / Data Types	x11-territory	objc
 typealias	open	CGGlyph	-	Opaque Types / Working with Glyphs	-	objc
 typealias	shipped	CGGradientRef	-	Opaque Types	-	objc
 typealias	shipped	CGImageRef	-	Opaque Types	-	objc
-typealias	open	CGKeyCode	-	Services / Data Types	-	objc
+typealias	struck	CGKeyCode	-	Services / Data Types	x11-territory	objc
 typealias	open	CGLayerRef	-	Opaque Types	-	objc
-typealias	open	CGOpenGLDisplayMask	-	Services / Data Types	-	objc
+typealias	struck	CGOpenGLDisplayMask	-	Services / Data Types	x11-territory	objc
 typealias	struck	CGPDFArrayApplierBlock	-	Reference / Data Types	post-10.6	objc
 typealias	open	CGPDFArrayRef	-	Opaque Types / Data Types	-	objc
 typealias	open	CGPDFBoolean	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	-	objc
@@ -1513,15 +1513,15 @@ typealias	shipped	CGPathRef	-	Opaque Types	-	objc
 typealias	shipped	CGPatternDrawPatternCallback	-	Opaque Types / Callbacks	-	objc
 typealias	shipped	CGPatternRef	-	Opaque Types	-	objc
 typealias	shipped	CGPatternReleaseInfoCallback	-	Opaque Types / Callbacks	-	objc
-typealias	open	CGRectCount	-	Services / Data Types	-	objc
-typealias	open	CGRefreshRate	-	Services / Data Types	-	objc
+typealias	struck	CGRectCount	-	Services / Data Types	x11-territory	objc
+typealias	struck	CGRefreshRate	-	Services / Data Types	x11-territory	objc
 typealias	struck	CGRenderingBufferProviderRef	-	Type Aliases	post-10.6	objc
-typealias	open	CGScreenRefreshCallback	-	Services / Callbacks	-	objc
-typealias	open	CGScreenUpdateMoveCallback	-	Services / Callbacks	-	objc
+typealias	struck	CGScreenRefreshCallback	-	Services / Callbacks	x11-territory	objc
+typealias	struck	CGScreenUpdateMoveCallback	-	Services / Callbacks	x11-territory	objc
 typealias	shipped	CGShadingRef	-	Opaque Types	-	objc
-typealias	open	CGWheelCount	-	Services / Data Types	-	objc
-typealias	open	CGWindowID	-	Services / Data Types	-	objc
-typealias	open	CGWindowLevel	-	Services / Data Types	-	objc
+typealias	struck	CGWheelCount	-	Services / Data Types	x11-territory	objc
+typealias	struck	CGWindowID	-	Services / Data Types	x11-territory	objc
+typealias	struck	CGWindowLevel	-	Services / Data Types	x11-territory	objc
 typealias	struck	ColorSyncProfileRef	-	Reference / Structures	post-10.6	objc
 typealias	struck	IOSurfaceRef	-	Reference / Structures	post-10.6	objc
 var	shipped	CGAffineTransformIdentity	-	Reference / Constants	-	objc
@@ -1646,16 +1646,16 @@ var	struck	kCGSkipBoostToHDR	-	Reference / Constants	after-10.6	objc
 var	struck	kCGUse100nitsHLGOOTF	-	Reference / Constants	after-10.6	objc
 var	struck	kCGUseBT1886ForCoreVideoGamma	-	Reference / Constants	after-10.6	objc
 var	struck	kCGUseLegacyHDREcosystem	-	Reference / Constants	after-10.6	objc
-var	open	kCGWindowAlpha	-	Services / Constants / Constants	-	objc
-var	open	kCGWindowBackingLocationVideoMemory	-	Services / Constants / Constants	-	objc
-var	open	kCGWindowBounds	-	Services / Constants / Constants	-	objc
-var	open	kCGWindowIsOnscreen	-	Services / Constants / Constants	-	objc
-var	open	kCGWindowLayer	-	Services / Constants / Constants	-	objc
-var	open	kCGWindowMemoryUsage	-	Services / Constants / Constants	-	objc
-var	open	kCGWindowName	-	Services / Constants / Constants	-	objc
-var	open	kCGWindowNumber	-	Services / Constants / Constants	-	objc
-var	open	kCGWindowOwnerName	-	Services / Constants / Constants	-	objc
-var	open	kCGWindowOwnerPID	-	Services / Constants / Constants	-	objc
-var	open	kCGWindowSharingState	-	Services / Constants / Constants	-	objc
-var	open	kCGWindowStoreType	-	Services / Constants / Constants	-	objc
-var	open	kCGWindowWorkspace	-	Services / Constants / Constants	deprecated	objc
+var	struck	kCGWindowAlpha	-	Services / Constants / Constants	x11-territory	objc
+var	struck	kCGWindowBackingLocationVideoMemory	-	Services / Constants / Constants	x11-territory	objc
+var	struck	kCGWindowBounds	-	Services / Constants / Constants	x11-territory	objc
+var	struck	kCGWindowIsOnscreen	-	Services / Constants / Constants	x11-territory	objc
+var	struck	kCGWindowLayer	-	Services / Constants / Constants	x11-territory	objc
+var	struck	kCGWindowMemoryUsage	-	Services / Constants / Constants	x11-territory	objc
+var	struck	kCGWindowName	-	Services / Constants / Constants	x11-territory	objc
+var	struck	kCGWindowNumber	-	Services / Constants / Constants	x11-territory	objc
+var	struck	kCGWindowOwnerName	-	Services / Constants / Constants	x11-territory	objc
+var	struck	kCGWindowOwnerPID	-	Services / Constants / Constants	x11-territory	objc
+var	struck	kCGWindowSharingState	-	Services / Constants / Constants	x11-territory	objc
+var	struck	kCGWindowStoreType	-	Services / Constants / Constants	x11-territory	objc
+var	struck	kCGWindowWorkspace	-	Services / Constants / Constants	x11-territory	objc

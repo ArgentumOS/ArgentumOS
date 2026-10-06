@@ -1150,3 +1150,43 @@ so it does not re-derive any of it:
   profiles, but nothing re-expresses a colour in another space — so a P3, Lab, ICC or CMYK
   colour is DRAWN NOWHERE. That is the era's answer, and it is the same answer
   `CGColorSpaceSupportsOutput` used to predict.
+
+## 13. The display/event services half — struck as territory (user, 2026-10-05)
+
+**THE DECISION, IN THE USER'S WORDS: "strike the display/event services half — that territory belongs to
+Xfb and X11R7."** It is the first strike reason in this ledger that is a DECISION rather than a date, and it
+is the largest single cut the era work has made: **465 rows**, which takes the open count from 836 to 371.
+
+**WHAT THE TERRITORY IS, named from the 10.6 SDK's own headers rather than from memory** — Quartz Display
+Services and its display configuration, the fade reservation, the event system and its types and sources,
+window levels, remote operation (the cursor, mouse warping, event synthesis), the session, and the 8-bit
+direct palette:
+
+    CGDirectDisplay.h  CGDisplayConfiguration.h  CGDisplayFade.h   CGEvent.h  CGEventSource.h
+    CGEventTypes.h     CGRemoteOperation.h       CGSession.h       CGWindow.h  CGWindowLevel.h
+    CGDirectPalette.h
+
+**THE RULE IS MEASURED, NOT RECALLED:** a row strikes only when the artefact says its 10.6 verdict is
+`present` AND its HOME header is one of those eleven — `--check` re-derives exactly that, and any row struck
+without the evidence is an inconsistency the tool reports. The artefact is
+`docs/reference/coregraphics-sdk106.txt` and it is also why this ground needed no new fetch.
+
+**TWO THINGS THE SET IS DELIBERATELY WITHOUT, both measured rather than argued:**
+  * `CGError.h`. `CGError` is the error type of the whole framework, so the HEADER is not this half's
+    property — but the five NAMES that come from it (`CGError`, `kCGErrorSuccess`, `CGDisplayNoErr`,
+    `CGEventNoErr`, `CGEventErr`) are struck all the same, on the display headers the artefact records for
+    them, and that is the honest outcome: nothing in this tree returns a `CGError`, and the functions that
+    do are all in the half that just went.
+  * `CGDisplayStream.h`. The 10.6 artefact does not carry it at all — screen capture is 10.8 API, so
+    `CGDisplayStream`, `CGWindowListCreateImage` and their siblings were struck by the ERA ground before this
+    decision was made. Same territory, different reason, and the reason recorded is the fact.
+
+**AND THE MISSES ARE ZERO, MEASURED BOTH WAYS:** of the 465, Apple's own index files 423 under its
+`Services` area and 42 under `Reference`/`Functions` (the window-level constants, the screen-capture
+functions, the error names, `CGDeviceColor`); and of the open rows Apple DOES file under `Services`, none has
+a 10.6 home outside the eleven. The two classifiers agree on every overlap — which is why the rule can use
+the mechanical one.
+
+**WHAT THIS COSTS, said plainly:** nothing in the tree is deleted, because nothing in the tree implemented
+any of it (measured: of the 465, every one is OPEN — zero shipped). This is a ledger cut, and the first one
+justified by ownership rather than by era.

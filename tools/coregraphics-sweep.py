@@ -134,7 +134,16 @@ STATUS_STRUCK = "struck"
 # version to settle presence: a name the 10.6 headers mention existed then, and a name they do not is
 # post-10.6.
 POST_106 = "post-10.6"
-STRIKE_REASONS = ("swift-only", "after-10.6", POST_106)
+# AND A REASON THAT IS A DECISION RATHER THAN A DATE (user, 2026-10-05): "strike the display/event
+# services half — that territory belongs to Xfb and X11R7." The two era reasons above say when a
+# symbol was introduced; this one says WHO OWNS THE TERRITORY, and the display services half of
+# Core Graphics — Quartz Display Services, the event system, window levels, remote operation (the
+# cursor and event synthesis) and the 8-bit palette — is owned here by Xfb, X11R7 and Kestrel. A
+# row struck this way is API this tree does not owe ANYBODY, however in era it is. THE RULE IS
+# STILL MEASURED rather than recalled: the row must have a display/event HOME in the 10.6 headers,
+# which is the artefact SDK106_FILE carries, so nothing strikes by name-guessing.
+X11_TERRITORY = "x11-territory"
+STRIKE_REASONS = ("swift-only", "after-10.6", POST_106, X11_TERRITORY)
 
 # THE ERA GROUND'S ARTEFACT AND ITS RULE. The file is `name<TAB>introducedAt<TAB>deprecatedAt<TAB>page`, one line
 # per ledger name, written by the fetch tool above. An ABSENT FILE IS AN EMPTY MAP AND NOTHING IS STRUCK ON THIS
@@ -159,6 +168,41 @@ ERA_UNKNOWN = (None, "")                # no page, or a page with no macOS entry
 # tree already SHIPS and the 10.6 headers do not have is REPORTED rather than struck, because a
 # symbol that is already implemented is not owed and removing it is a different decision.
 SDK106_FILE = os.path.join(ROOT, "docs/reference/coregraphics-sdk106.txt")
+
+
+# THE DISPLAY/EVENT HEADER FAMILY OF THE 10.6 SDK — the header names, and they are the whole rule for
+# the territory ground. NAMED FROM THE MEASUREMENT, not recalled: these eleven are the headers whose
+# names land in Quartz Display Services, the event system, window levels, remote operation and the
+# 8-bit palette, and `--check` verifies every row struck this way against this set. TWO THINGS THE
+# SET IS DELIBERATELY WITHOUT: `CGError.h`, because `CGError` is the error type of the whole framework
+# and not this half's property (the five NAMES that come from it — `CGError`, `kCGErrorSuccess`,
+# `CGDisplayNoErr`, `CGEventNoErr`, `CGEventErr` — are struck all the same, on the display headers the
+# artefact records for them, which is the honest outcome: nothing in this tree returns a CGError); and
+# `CGDisplayStream.h`, which the 10.6 artefact does not carry at all — screen capture is post-10.6 and
+# the era ground had already struck it before this decision was made.
+SDK106_DISPLAY_HEADERS = frozenset((
+    "CGDirectDisplay.h", "CGDisplayConfiguration.h", "CGDisplayFade.h", "CGEvent.h",
+    "CGEventSource.h", "CGEventTypes.h", "CGRemoteOperation.h", "CGSession.h", "CGWindow.h",
+    "CGWindowLevel.h", "CGDirectPalette.h",
+))
+
+
+def read_sdk106_headers():
+    """{name: header basename} from the same artefact, for the ground that asks WHERE a name lives.
+    The scan records the first header, in sorted order, that mentions the name, so this is a HOME
+    rather than necessarily a declaring file — which is exactly the property the territory rule needs
+    (a display name is mentioned in the display headers first) and is STATED here rather than assumed.
+    Same absent-file rule as read_sdk106(): no artefact, no strikes."""
+    out = {}
+    if not os.path.exists(SDK106_FILE):
+        return out
+    for line in open(SDK106_FILE, encoding="utf-8"):
+        if line.startswith("#") or not line.strip():
+            continue
+        f = line.rstrip("\n").split("\t")
+        if len(f) >= 3:
+            out[f[0]] = f[2].rsplit("/", 1)[-1]
+    return out
 
 
 def read_sdk106():
@@ -323,6 +367,13 @@ def struck_reason(row):
     # both leave the row where it was, because an absence of data is not an absence of a symbol.
     if (row.get("sdk") or "") == "absent":
         return POST_106
+    # AND THE TERRITORY GROUND, LAST BECAUSE THE TWO ABOVE ARE FACTS ABOUT THE API AND THIS ONE IS A
+    # DECISION ABOUT OWNERSHIP: a row that is out of era keeps that reason even when it is also Xfb's
+    # territory, because the era statement is the stronger one. What is left for this arm is an IN-ERA
+    # name whose HOME in the 10.6 headers is one of the display/event headers — see
+    # SDK106_DISPLAY_HEADERS, and `--check` re-derives the membership rather than trusting this line.
+    if row.get("sdk") == "present" and row.get("sdk_header") in SDK106_DISPLAY_HEADERS:
+        return X11_TERRITORY
     return None
 
 
@@ -346,6 +397,11 @@ def status_of(kind, name, why, text, names=None):
     if why == ERA_STRIKE and declared(kind, name, text, names):
         return STATUS_SHIPPED
     if why == POST_106 and declared(kind, name, text, names):
+        return STATUS_SHIPPED
+    # Same shape for the territory ground, and it is not decoration: if this tree ever SHIPS a display/
+    # event door, the ledger must say so rather than deleting the fact. MEASURED when the ground landed:
+    # zero such rows (all 465 are open), so this arm is a guard rather than a case.
+    if why == X11_TERRITORY and declared(kind, name, text, names):
         return STATUS_SHIPPED
     if why in STRIKE_REASONS:
         return STATUS_STRUCK
@@ -455,6 +511,7 @@ def refresh():
     declared_set = declared_names(text)     # ONE pass for every row (§62.112); see declared_names()
     era = read_era()
     sdk = read_sdk106()
+    sdk_h = read_sdk106_headers()
     out = []
     counts = {}
     reasons = {}
@@ -463,6 +520,7 @@ def refresh():
         r = rows[key]
         r["era"] = era.get(r["name"], ERA_UNKNOWN)
         r["sdk"] = sdk.get(r["name"])
+        r["sdk_header"] = sdk_h.get(r["name"])
         why = why_of(r)
         if why == "deprecated":
             deprecated = deprecated + 1
@@ -579,6 +637,7 @@ def check(strict=False):
     live_names = {r[2] for r in rows if r[1] != STATUS_STRUCK}
     era = read_era()
     sdk = read_sdk106()
+    sdk_h = read_sdk106_headers()
     out_of_era, no_era, sdk_in_era = [], [], []
     for kind, status, name, owner, family, why, src in rows:
         counts[(kind, status)] = counts.get((kind, status), 0) + 1
@@ -625,6 +684,15 @@ def check(strict=False):
                        % (kind, name, POST_106, sdk.get(name) or "nothing"))
         if sdk.get(name) == "absent" and status == STATUS_SHIPPED:
             out_of_era.append("%-9s %s — NOT in the 10.6 headers, and we ship it" % (kind, name))
+        # The territory ground's own verification, and its own report: the artefact must say the row's
+        # HOME is a display/event header, and a SHIPPED row in that territory is a fact to print rather
+        # than delete — Xfb does not stop this tree having built one, it stops it OWING one.
+        if why == X11_TERRITORY and status == STATUS_STRUCK and sdk_h.get(name) not in SDK106_DISPLAY_HEADERS:
+            bad.append("TERRITORY STRIKE WITH NO EVIDENCE %-9s %s — struck as %s and its 10.6 home is %s"
+                       % (kind, name, X11_TERRITORY, sdk_h.get(name) or "nothing"))
+        if why == X11_TERRITORY and status == STATUS_SHIPPED:
+            out_of_era.append("%-9s %s — display/event territory (Xfb's and X11R7's), and we ship it"
+                              % (kind, name))
     kinds = sorted({k for k, _ in counts})
     print("coregraphics-sweep: %d symbols in the ledger" % len(rows))
     for kind in kinds:
@@ -666,7 +734,8 @@ def check(strict=False):
     if strict and policy:
         return 1
     print("coregraphics-sweep: consistent — every shipped name is declared, every open name is absent, "
-          "and every era-struck row is dated after 10.6 by the artefact")
+          "every era-struck row is dated after 10.6 by the artefact, and every territory-struck row "
+          "has a display/event home in the 10.6 headers")
     return 0
 
 
