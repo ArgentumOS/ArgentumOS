@@ -742,6 +742,7 @@ int main(void)
 		      calls == 1 && total == 6 && bytesMatch &&
 		      stoppedEarly == 1,
 		      "enumerateByteRangesUsingBlock: hands over the real bytes and honours stop");
+	covers("NSData", "enumerateByteRangesUsingBlock:");
 	}
 
 	{
@@ -782,6 +783,7 @@ int main(void)
 		      back != nil && [back isEqualToData:expect],
 		      [[NSString stringWithFormat:@"read back %lu byte(s)",
 			(unsigned long)(back != nil ? [back length] : 0)] UTF8String]);
+	covers("NSData", "dataWithContentsOfURL:");
 		remove([path UTF8String]);
 	}
 

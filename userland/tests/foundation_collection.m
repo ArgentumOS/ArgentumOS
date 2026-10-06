@@ -991,6 +991,7 @@ NULL
 		      [path copy] == path &&	/* immutable: -copy is self */
 		      [[path description] isEqualToString:@"<NSIndexPath: 2 position(s) 3-1>"],
 		      "construction, O(1) positions, both derived forms, ordering, equality/hash and -description");
+	covers("NSIndexPath", "indexPathByAddingIndex:");
 		@try {
 			(void)[path indexAtPosition:2];
 		} @catch (NSException *e) {
@@ -1009,6 +1010,7 @@ NULL
 		check("indexpath-refusals",
 		      refusedPosition && refusedTrim && refusedNil,
 		      "a position past -length and trimming an empty path raise NSRangeException; -compare: with nil raises NSInvalidArgumentException");
+	covers("NSIndexPath", "indexAtPosition:");
 	}
 
 	{

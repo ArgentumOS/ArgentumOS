@@ -890,6 +890,7 @@ int main(void)
 		      dictArchive != nil && dictLength > 0 &&
 		      contains(dictBytes, dictLength, "NSDictionary"),
 		      "a real dictionary's archive must name the public class");
+	covers("NSDictionary", "objectForKeyedSubscript:");
 		check("nsdictionary-archive-names-no-private-class",
 		      !contains(dictBytes, dictLength, "AGDictionary"),
 		      "no private concrete name may reach an archive - what -classForCoder buys");
@@ -1638,6 +1639,7 @@ int main(void)
 		check("data-deprecated-base64-pair-and-get-bytes",
 		      enc != nil && back != nil && [back isEqualToData:plain] && refused == nil &&
 		      memcmp(buffer, "hello, world", 12) == 0, detail);
+	covers("NSData", "getBytes:");
 	}
 	{
 		/* THE NO-COPY DEALLOCATOR: ONCE, at deallocation, with the CALLER's pointer and length. The
@@ -1665,6 +1667,7 @@ int main(void)
 		check("data-no-copy-deallocator-runs-once",
 		      fn_probe_deallocator_calls == 1 && fn_probe_deallocator_bytes == mine &&
 		      fn_probe_deallocator_length == 4, detail);
+	covers("NSData", "initWithBytes:length:");
 		free(mine);
 	}
 	{
@@ -1689,6 +1692,7 @@ int main(void)
 			 [[NSData dataWithContentsOfMappedFile:path] isEqualToData:read]);
 		check("data-mapped-file-door-reads-the-file",
 		      read != nil && [read length] == 10 && memcmp([read bytes], "0123456789", 10) == 0, detail);
+	covers("NSData", "initWithContentsOfMappedFile:");
 	covers("NSData", "bytes");
 	covers("NSData", "length");
 	covers("NSData", "dataWithContentsOfMappedFile:");
