@@ -15,8 +15,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, const char *detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-CORE %s ok\n", name);
@@ -25,6 +28,15 @@ static void check(const char *name, int ok, const char *detail)
 		printf("FOUNDATION-CORE %s FAIL %s\n", name, detail ? detail : "");
 	}
 }
+
+/* covers("NSUndoManager", "undo") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* A NULL ENCODING ON PURPOSE: -signatureWithObjCTypes: takes a nonnull one, and the check below
  * hands it NULL to see the refusal. Fetching it says so; a literal at the call site would be a
@@ -1117,6 +1129,7 @@ int main(void)
 		check("undo-action-name-reaches-redo",
 		      [[undo redoActionName] isEqualToString:@"Typing"],
 		      "the name set for an action follows it onto the redo stack, which is what a Redo menu item shows");
+	covers("NSUndoManager", "setActionName:");
 
 		[undo removeAllActions];
 		[undo disableUndoRegistration];
@@ -1210,6 +1223,7 @@ int main(void)
 		      [[NSString stringWithFormat:@"quiet=%d registered=%d ran=%d redone=%d entries=%lu first=%@",
 			(int)quiet, (int)registered, (int)ran, (int)redone, (unsigned long)[[box log] count],
 			[[box log] count] > 0 ? [[box log] objectAtIndex:0] : @"(none)"] UTF8String]);
+	covers("NSUndoManager", "prepareWithInvocationTarget:");
 	}
 
 	{
@@ -1356,6 +1370,7 @@ int main(void)
 		      removed && kept && otherIntact,
 		      [[NSString stringWithFormat:@"removed=%d kept=%d otherIntact=%d u=%lu",
 			(int)removed, (int)kept, (int)otherIntact, (unsigned long)[undo undoCount]] UTF8String]);
+	covers("NSUndoManager", "removeAllActionsWithTarget:");
 	}
 
 	{
@@ -1402,6 +1417,8 @@ int main(void)
 		      onUndo && absent,
 		      [[NSString stringWithFormat:@"onUndo=%d absent=%d",
 			(int)onUndo, (int)absent] UTF8String]);
+	covers("NSUndoManager", "redoActionUserInfoValueForKey:");
+	covers("NSUndoManager", "undoActionUserInfoValueForKey:");
 	}
 
 	{
@@ -1427,6 +1444,7 @@ int main(void)
 		      defaultNo && marked && afterUndo,
 		      [[NSString stringWithFormat:@"defaultNo=%d marked=%d afterUndo=%d",
 			(int)defaultNo, (int)marked, (int)afterUndo] UTF8String]);
+	covers("NSUndoManager", "setActionIsDiscardable:");
 	}
 
 	/* §62.99: THE PROTOCOL PAIR. A protocol is a runtime object, so the two doors are the runtime's own
@@ -1522,6 +1540,8 @@ int main(void)
 			      [redo isEqual:@"Redo Typing"],
 			      [[NSString stringWithFormat:@"named=%@ bare=%@ empty=%@ redo=%@", named, bare, empty,
 				redo] UTF8String]);
+	covers("NSUndoManager", "redoMenuTitleForUndoActionName:");
+	covers("NSUndoManager", "undoMenuTitleForUndoActionName:");
 		}
 		/* AND AFTER AN UNDO THE REDO TITLE NAMES THE SAME ACTION. */
 		[manager undo];
