@@ -706,8 +706,8 @@ func	shipped	CGContextAddRect	-	Opaque Types / Constructing a Current Graphics P
 func	shipped	CGContextAddRects	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	open	CGContextBeginPage	-	Opaque Types / Managing a Page-Based Graphics Context	-	objc
 func	shipped	CGContextBeginPath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
-func	open	CGContextBeginTransparencyLayer	-	Opaque Types / Working with Transparency Layers	-	objc
-func	open	CGContextBeginTransparencyLayerWithRect	-	Opaque Types / Working with Transparency Layers	-	objc
+func	shipped	CGContextBeginTransparencyLayer	-	Opaque Types / Working with Transparency Layers	shipped with the transparency layers (plan §33)	objc
+func	shipped	CGContextBeginTransparencyLayerWithRect	-	Opaque Types / Working with Transparency Layers	shipped with the transparency layers (plan §33)	objc
 func	shipped	CGContextClearRect	-	Opaque Types / Drawing Shapes	-	objc
 func	shipped	CGContextClip	-	Opaque Types / Working with the Current Clipping Path	-	objc
 func	open	CGContextClipToMask	-	Opaque Types / Working with the Current Clipping Path	-	objc
@@ -737,7 +737,7 @@ func	open	CGContextDrawTiledImage	-	Opaque Types / Drawing Images and PDF Conten
 func	shipped	CGContextEOClip	-	Opaque Types / Working with the Current Clipping Path	-	objc
 func	shipped	CGContextEOFillPath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
 func	open	CGContextEndPage	-	Opaque Types / Managing a Page-Based Graphics Context	-	objc
-func	open	CGContextEndTransparencyLayer	-	Opaque Types / Working with Transparency Layers	-	objc
+func	shipped	CGContextEndTransparencyLayer	-	Opaque Types / Working with Transparency Layers	shipped with the transparency layers (plan §33)	objc
 func	shipped	CGContextFillEllipseInRect	-	Opaque Types / Drawing Shapes	shipped with the context conveniences (plan §28)	objc
 func	shipped	CGContextFillPath	-	Opaque Types / Drawing the Current Graphics Path	-	objc
 func	shipped	CGContextFillRect	-	Opaque Types / Drawing Shapes	-	objc
