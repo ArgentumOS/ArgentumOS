@@ -383,6 +383,8 @@ int main(void)
 		      [[cal description] length] > 0 &&
 		      [[cal copy] isEqual:cal],
 		      "the same instant is 05:30 in +05:30, and the zone is the calendar's");
+	covers("NSTimeZone", "isDaylightSavingTimeForDate:");
+	covers("NSTimeZone", "secondsFromGMTForDate:");
 	covers("NSTimeZone", "timeZoneForSecondsFromGMT:");
 	covers("NSCalendar", "components:fromDate:");
 	covers("NSCalendar", "timeZone");

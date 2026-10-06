@@ -382,6 +382,7 @@ int main(void)
 		check("condition-lock-hands-over-across-threads",
 		      [work handover],
 		      [NSString stringWithFormat:@"handover=%d", (int)[work handover]]);
+	covers("NSConditionLock", "initWithCondition:");
 	}
 
 	{
@@ -405,6 +406,7 @@ int main(void)
 			      exact && !wrong && freeAgain,
 			      [NSString stringWithFormat:@"exact=%d wrong=%d freeAgain=%d",
 				(int)exact, (int)wrong, (int)freeAgain]);
+	covers("NSConditionLock", "tryLockWhenCondition:");
 			if (freeAgain) {
 				[lock unlock];
 			}
@@ -419,6 +421,7 @@ int main(void)
 		check("condition-lock-unlock-sets-the-value",
 		      [lock condition] == 9,
 		      [NSString stringWithFormat:@"condition=%ld", (long)[lock condition]]);
+	covers("NSConditionLock", "unlockWithCondition:");
 	}
 
 	{
@@ -434,6 +437,7 @@ int main(void)
 		check("condition-lock-before-date-times-out",
 		      !got && elapsed >= 0.04,
 		      [NSString stringWithFormat:@"got=%d elapsed=%.3f", (int)got, elapsed]);
+	covers("NSConditionLock", "lockBeforeDate:");
 		[lock unlock];
 	}
 
@@ -450,6 +454,7 @@ int main(void)
 		      !got && elapsed >= 0.04 && free,
 		      [NSString stringWithFormat:@"got=%d elapsed=%.3f freeAfter=%d", (int)got, elapsed,
 			(int)free]);
+	covers("NSConditionLock", "lockWhenCondition:");
 		if (free) {
 			[lock unlock];
 		}

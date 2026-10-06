@@ -647,6 +647,7 @@ int main(void)
 		check("forwarding-target",
 		      [fast marker] == 4242 && [fast marker] == 4242,
 		      "-forwardingTargetForSelector: sends -marker to the backing object, twice");
+	covers("NSInvocation", "invokeWithTarget:");
 	}
 
 	{
@@ -681,6 +682,9 @@ int main(void)
 		      [invocation argumentsRetained] &&
 		      readBack == 41 && out == 7 && [counter value] == 41,
 		      "the signature, target and selector are kept; an argument and a return value round-trip; -invoke ran the method");
+	covers("NSInvocation", "getReturnValue:");
+	covers("NSInvocation", "setReturnValue:");
+	covers("NSInvocation", "invocationWithMethodSignature:");
 	}
 
 	{
@@ -715,6 +719,9 @@ int main(void)
 		check("affine-rotation-and-indexing",
 		      fabs(turned.x) < 1e-9 && fabs(turned.y - 1.0) < 1e-9,
 		      "a 90-degree rotation sends (1,0) to (0,1)");
+	covers("NSAffineTransform", "rotateByDegrees:");
+	covers("NSAffineTransform", "transformPoint:");
+	covers("NSAffineTransform", "transformSize:");
 	}
 
 	{
@@ -745,6 +752,9 @@ int main(void)
 		      fabs(throughAppend.y - throughPrepend.y) < 1e-9 &&
 		      fabs(size.width - 2.0) < 1e-9 && fabs(size.height - 2.0) < 1e-9,
 		      "the two product orders disagree about x, and translation does not move a size");
+	covers("NSAffineTransform", "appendTransform:");
+	covers("NSAffineTransform", "prependTransform:");
+	covers("NSAffineTransform", "scaleBy:");
 	}
 
 	{

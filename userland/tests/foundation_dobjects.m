@@ -32,8 +32,11 @@
 
 static int okc = 0, failc = 0;
 
+static int lastcheck;
+
 static void check(const char *name, BOOL held, NSString *why)
 {
+	lastcheck = held;	/* read by covers() */
 	if(held) {
 		okc++;
 		printf("FOUNDATION-DOBJECTS %s ok\n", name);
@@ -42,6 +45,15 @@ static void check(const char *name, BOOL held, NSString *why)
 		printf("FOUNDATION-DOBJECTS %s FAIL: %s\n", name, [why UTF8String]);
 	}
 }
+
+/* covers("NSConditionLock", "lockBeforeDate:") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* ---- the doors a client may call, and the ones it may not ---- */
 
@@ -229,6 +241,7 @@ int main(void)
 		check("connection-dispatch-with-components-refuses-a-payload-that-is-not-a-request",
 		      validBefore && [c isValid] && ![c multipleThreadsEnabled],
 		      [NSString stringWithFormat:@"before=%d after=%d", (int)validBefore, (int)[c isValid]]);
+	covers("NSConnection", "dispatchWithComponents:");
 	}
 
 
@@ -291,11 +304,13 @@ int main(void)
 		      [[[c requestModes] objectAtIndex:0] isEqualToString:@"NSDefaultRunLoopMode"] &&
 		      [[[c requestModes] objectAtIndex:1] isEqualToString:@"NSModalPanelRunLoopMode"],
 		      [NSString stringWithFormat:@"modes=%@", [c requestModes]]);
+	covers("NSConnection", "addRequestMode:");
 		[c removeRequestMode:@"NSDefaultRunLoopMode"];
 		check("connection-remove-request-mode-inverts-add",
 		      [[c requestModes] count] == 1 &&
 		      [[[c requestModes] objectAtIndex:0] isEqualToString:@"NSModalPanelRunLoopMode"],
 		      [NSString stringWithFormat:@"after-remove=%@", [c requestModes]]);
+	covers("NSConnection", "removeRequestMode:");
 		check("connection-request-modes-answer-a-copy-not-the-store",
 		      [[c requestModes] isKindOfClass:[NSArray class]] &&
 		      ![[c requestModes] isKindOfClass:[NSMutableArray class]],

@@ -126,6 +126,7 @@ int main(void)
 		      [[fixed abbreviation] isEqualToString:@"GMT+02:00"],
 		      [NSString stringWithFormat:@"dst=%g abbr=%@",
 			(double)[fixed daylightSavingTimeOffsetForDate:[NSDate date]], [fixed abbreviation]]);
+	covers("NSTimeZone", "daylightSavingTimeOffsetForDate:");
 		[NSTimeZone setDefaultTimeZone:tokyo];
 		check("timezone-default-is-settable-and-answers-what-was-set",
 		      [[NSTimeZone defaultTimeZone] isEqualToTimeZone:tokyo],
