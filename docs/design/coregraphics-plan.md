@@ -1381,3 +1381,33 @@ with `CG_TEXTSHOT=/path/out.png` in the environment it also writes the surface a
 tree already links for the decoder half; the surface is BGRA so the row is repacked, not pointed at). Its
 layout is BY GLYPH NAME, because this slice has no character map yet and a font spells its digits out
 ("zero", "one", ...) — which the first picture also showed, by their absence.
+
+## 16. A LATENT DEFECT FOUND WHILE TESTING TEXT CLIPPING: the graphics state's clip region is aliased
+
+**FOUND, RECORDED, NOT FIXED — and it is not about text.** `cg_state` holds the clip as
+`pixman_region32_t clip` **by value**, and a `pixman_region32_t` is an inline struct holding a **pointer** to
+its boxes. So `CGContextSaveGState`'s copy of the state **aliases the current boxes**, and any later
+operation that **intersects** the clip — `CGContextClip`, `CGContextClipToRect`, and the path clip a text
+mode would use — frees and reallocates those boxes **through the copy**, leaving the SAVED state pointing at
+a region that is no longer what was saved. (`pixman_region32_init`/`fini` are what make this reachable: the
+intersect path reinitialises the region rather than writing into its existing boxes.)
+
+**HOW IT SURFACED:** the first version of the text-mode checks framed the two clipping modes
+(`kCGTextClip`, `kCGTextFillClip`) in `SaveGState`/`RestoreGState` so they would not confine every later
+check to a glyph's silhouette. They still confined them — and the checks that failed were a dozen *unrelated*
+ones, which is the shape of a state bug rather than a drawing bug.
+
+**WHAT A FIX NEEDS, in the shape this file already uses for the pattern paint:** the clip must be *copied*
+with `pixman_region32_copy` (not assigned) at the two sites that copy a state inward, and *freed* with
+`pixman_region32_fini` at the two that discard one — the same four lifetime sites the pattern and (now) the
+font already have, and `clip_mask` is already refcounted like a pattern so the two halves would finally
+match. It affects ANY caller who saves state and then clips, not only text.
+
+**AND THE TEXT-MODE UNIT ITSELF was implemented and then REVERTED:** the six-mode dispatch (Fill through the
+rasterised mask, Stroke/FillStroke/Clip/FillClip through the glyph's OUTLINE as a path, Invisible drawing
+nothing while the pen advances) plus the outline seam (`cg_font_glyph_outline`, conics passed through as
+conics) and the two refusals (`kCGTextStrokeClip`, `kCGTextFillStrokeClip` — the header does not say whether
+their clip is the outline or the stroked region). It builds and the mask path stays intact, but the probe's
+verification did not reach a clean verdict inside the session's budget, so it was reverted rather than
+shipped unverified. **What it needs next:** the clip checks LAST in the probe (nothing to restore) and,
+ideally, the region fix above first.
