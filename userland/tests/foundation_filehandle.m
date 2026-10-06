@@ -657,6 +657,190 @@ int main(void)
 
 	[manager removeItemAtPath:root error:NULL];
 
+	printf("FOUNDATION-FILEHANDLE DIAG leg=standard-devices\n");
+	{
+		/* THE STANDARD DEVICES AND THE DESCRIPTOR DOOR, NEW ASSERTIONS. The class builds them ONCE behind a
+		 * pthread_once, so the law is SINGLETON IDENTITY plus the descriptor each was built from - a door
+		 * answering a fresh handle per call would pass "is not nil" and fail this one. */
+		NSFileHandle *stdinHandle = [NSFileHandle fileHandleWithStandardInput];
+		NSFileHandle *stdoutHandle = [NSFileHandle fileHandleWithStandardOutput];
+		NSFileHandle *stderrHandle = [NSFileHandle fileHandleWithStandardError];
+		NSFileHandle *again = [NSFileHandle fileHandleWithStandardOutput];
+
+		check("standard-device-handles-are-singletons-with-their-own-descriptors",
+		      stdinHandle != nil && stdoutHandle != nil && stderrHandle != nil &&
+		      stdinHandle == [NSFileHandle fileHandleWithStandardInput] &&
+		      stdoutHandle == again && stderrHandle == [NSFileHandle fileHandleWithStandardError] &&
+		      [stdinHandle fileDescriptor] == STDIN_FILENO &&
+		      [stdoutHandle fileDescriptor] == STDOUT_FILENO &&
+		      [stderrHandle fileDescriptor] == STDERR_FILENO,
+		      [NSString stringWithFormat:@"in=%d out=%d err=%d same=%d",
+			[stdinHandle fileDescriptor], [stdoutHandle fileDescriptor], [stderrHandle fileDescriptor],
+			(int)(stdoutHandle == again)]);
+		covers("NSFileHandle", "fileHandleWithStandardInput");
+		covers("NSFileHandle", "fileHandleWithStandardOutput");
+		covers("NSFileHandle", "fileHandleWithStandardError");
+		covers("NSFileHandle", "fileDescriptor");
+		printf("FOUNDATION-FILEHANDLE DIAG leg=standard-devices-done\n");
+	}
+
+	printf("FOUNDATION-FILEHANDLE DIAG leg=null-device\n");
+	{
+		/* THE NULL DEVICE: writes swallowed, reads empty, -closeFile quiet - the whole contract of the door.
+		 * The library reaches it as the OS's own `@null` spelling (a leading `@` is /System/Devices here),
+		 * which is why this asserts BEHAVIOUR rather than a path. */
+		NSFileHandle *nullHandle = [NSFileHandle fileHandleWithNullDevice];
+		BOOL wrote = NO, closed = NO;
+		NSUInteger readLength = 0, availableLength = 0;
+
+		if (nullHandle != nil) {
+			@try {
+				[nullHandle writeData:[NSData dataWithBytes:"swallowed" length:9]];
+				wrote = YES;
+				readLength = [[nullHandle readDataToEndOfFile] length];
+				availableLength = [[nullHandle availableData] length];
+				[nullHandle closeFile];
+				closed = YES;
+			} @catch (NSException *e) {
+				(void)e;
+			}
+		}
+		check("the-null-device-swallows-writes-and-answers-nothing",
+		      nullHandle != nil && wrote && closed && readLength == 0 && availableLength == 0,
+		      [NSString stringWithFormat:@"null=%d wrote=%d closed=%d read=%lu available=%lu",
+			(int)(nullHandle != nil), (int)wrote, (int)closed,
+			(unsigned long)readLength, (unsigned long)availableLength]);
+		covers("NSFileHandle", "fileHandleWithNullDevice");
+		covers("NSFileHandle", "closeFile");
+		covers("NSFileHandle", "availableData");
+		printf("FOUNDATION-FILEHANDLE DIAG leg=null-device-done\n");
+	}
+
+	printf("FOUNDATION-FILEHANDLE DIAG leg=url-factories\n");
+	{
+		/* THE THREE URL FACTORIES AND THE READING DOORS THEY SHARE WITH THE PATH FAMILY. THE FIXTURE IS MADE
+		 * HERE AND ITS OUTCOME IS IN THE DETAIL: the probe's earlier checks remove what they write, so a check
+		 * that trusted their leftovers answered nil - and a fixture that cannot be made must LOOK like a
+		 * fixture failure rather than like a door returning nil. The path is a LOCAL built from the nullable
+		 * -stringWithUTF8String: because -createDirectoryAtPath: declares its path non-null. */
+		NSString *urlPath = [NSString stringWithUTF8String:PROBE_FILE];
+		NSString *urlRoot = [NSString stringWithUTF8String:PROBE_ROOT];
+		NSString *fallbackRoot = [NSString stringWithUTF8String:"/System/Temporary Files"];
+		NSError *mkdirError = nil;
+		NSURL *fileURL;
+		NSFileHandle *writer = nil;
+		NSFileHandle *reader = nil;
+		NSData *back = nil;
+		BOOL madeRoot = NO, madeFile = NO;
+		unsigned long long end = 0;
+
+		madeRoot = [[NSFileManager defaultManager] createDirectoryAtPath:urlRoot
+						     withIntermediateDirectories:YES attributes:@{}
+									  error:&mkdirError];
+		if (!madeRoot && ![[NSFileManager defaultManager] fileExistsAtPath:urlRoot]) {
+			urlRoot = fallbackRoot;
+			urlPath = [fallbackRoot stringByAppendingPathComponent:@"nsfilehandle-url-door.bin"];
+			madeRoot = [[NSFileManager defaultManager] createDirectoryAtPath:urlRoot
+							     withIntermediateDirectories:YES
+										      attributes:@{}
+										   error:NULL];
+		}
+		fileURL = [NSURL fileURLWithPath:urlPath];
+		[[NSFileManager defaultManager] removeItemAtPath:urlPath error:NULL];
+		/* THE FILE IS MADE FIRST, because +fileHandleForWritingToURL:error: DOES NOT CREATE ONE - the library's
+		 * own comment records that as a deliberate reading of Apple's page ("a class that created files as a
+		 * side effect of asking to write would be a surprise"), so this writes the fixture through NSData and
+		 * then asserts the door's contract on an EXISTING file. Its refusal of an absent one is asserted
+		 * beside it, so the deviation is measured rather than assumed. */
+		madeFile = [[NSData dataWithBytes:"url-door" length:8] writeToURL:fileURL atomically:YES];
+		writer = [NSFileHandle fileHandleForWritingToURL:fileURL error:NULL];
+		if (writer != nil) {
+			[writer writeData:[NSData dataWithBytes:"url-door" length:8]];
+			[writer closeFile];
+		}
+		reader = [NSFileHandle fileHandleForReadingFromURL:fileURL error:NULL];
+		if (reader != nil) {
+			back = [reader availableData];
+			end = [reader seekToEndOfFile];
+			[reader closeFile];
+		}
+		check("the-url-factories-mirror-the-path-factories",
+		      madeRoot && madeFile && writer != nil && reader != nil && back != nil &&
+		      [back length] == 8 && memcmp([back bytes], "url-door", 8) == 0 && end == 8 &&
+		      [NSFileHandle fileHandleForUpdatingURL:fileURL error:NULL] != nil,
+		      [NSString stringWithFormat:@"root=%d file=%d(%@) path=%@ writer=%d reader=%d back=%lu end=%llu mkerr=%@",
+			(int)madeRoot, (int)madeFile, urlRoot, urlPath, (int)(writer != nil), (int)(reader != nil),
+			(unsigned long)(back != nil ? [back length] : 0), end,
+			mkdirError != nil ? [mkdirError description] : @"(none)"]);
+		covers("NSFileHandle", "fileHandleForWritingToURL:error:");
+		covers("NSFileHandle", "fileHandleForReadingFromURL:error:");
+		covers("NSFileHandle", "fileHandleForUpdatingURL:error:");
+		covers("NSFileHandle", "offsetInFile");
+		covers("NSFileHandle", "seekToEndOfFile");
+		printf("FOUNDATION-FILEHANDLE DIAG leg=url-factories-done\n");
+	}
+
+	printf("FOUNDATION-FILEHANDLE DIAG leg=descriptor-and-error-doors\n");
+	{
+		/* THE DESCRIPTOR CONSTRUCTOR WITH ITS closeOnDealloc FLAG - asserted by what the flag does NOT do: with
+		 * NO the handle does not own the descriptor, so the caller's fd is still usable when the handle is
+		 * released - AND THE FIVE ERROR-CARRYING DOORS on their happy paths. */
+		NSString *otherPath = [NSString stringWithUTF8String:PROBE_OTHER];
+		NSString *otherRoot = [NSString stringWithUTF8String:PROBE_ROOT];
+		NSString *otherFallback = [NSString stringWithUTF8String:"/System/Temporary Files"];
+		NSError *otherMkError = nil;
+		int fd = -1;
+		NSFileHandle *handle = nil;
+		NSFileHandle *creator = nil;
+		unsigned long long offset = 0, endOffset = 0;
+		NSError *getError = nil, *upToError = nil;
+		NSData *upTo = nil;
+		BOOL synced = NO, seeked = NO, truncated = NO, created = NO, offsetRead = NO;
+
+		if (![[NSFileManager defaultManager] createDirectoryAtPath:otherRoot
+						  withIntermediateDirectories:YES attributes:@{}
+									       error:&otherMkError] &&
+		    ![[NSFileManager defaultManager] fileExistsAtPath:otherRoot]) {
+			otherPath = [otherFallback stringByAppendingPathComponent:@"nsfilehandle-descriptor.bin"];
+		}
+		/* WRITTEN FIRST - see the URL check: this class does not create files when asked to write one. */
+		[[NSData dataWithBytes:"0123456789" length:10] writeToFile:otherPath atomically:YES];
+		creator = [NSFileHandle fileHandleForWritingAtPath:otherPath];
+		created = creator != nil;
+		if (created) {
+			[creator closeFile];
+			fd = open([otherPath UTF8String], O_RDWR);
+		}
+		if (fd >= 0) {
+			handle = [[NSFileHandle alloc] initWithFileDescriptor:fd closeOnDealloc:NO];
+		}
+		if (handle != nil) {
+			synced = [handle synchronizeAndReturnError:NULL];
+			seeked = [handle seekToEndReturningOffset:&endOffset error:NULL];
+			offsetRead = [handle getOffset:&offset error:&getError];
+			truncated = [handle truncateAtOffset:4 error:NULL];
+			upTo = [handle readDataUpToLength:2 error:&upToError];
+			handle = nil;	/* released BEFORE the fd is closed: the flag said the handle does not own it */
+			close(fd);
+		}
+		check("the-descriptor-constructor-and-the-error-carrying-doors",
+		      created && fd >= 0 && synced && seeked && endOffset == 10 && offsetRead && offset == 10 &&
+		      truncated && upTo != nil && upToError == nil,
+		      [NSString stringWithFormat:
+			@"path=%@ created=%d fd=%d synced=%d seeked=%d end=%llu offsetRead=%d offset=%llu truncated=%d "
+			@"upTo=%lu mkerr=%@",
+			otherPath, (int)created, fd, (int)synced, (int)seeked, endOffset, (int)offsetRead, offset,
+			(int)truncated, (unsigned long)(upTo != nil ? [upTo length] : 0),
+			otherMkError != nil ? [otherMkError description] : @"(none)"]);
+		covers("NSFileHandle", "initWithFileDescriptor:closeOnDealloc:");
+		covers("NSFileHandle", "synchronizeAndReturnError:");
+		covers("NSFileHandle", "seekToEndReturningOffset:error:");
+		covers("NSFileHandle", "truncateAtOffset:error:");
+		covers("NSFileHandle", "readDataUpToLength:error:");
+		covers("NSFileHandle", "getOffset:error:");
+		printf("FOUNDATION-FILEHANDLE DIAG leg=descriptor-and-error-doors-done\n");
+	}
+
 	printf("FOUNDATION-FILEHANDLE RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output: the console can stop serving input after a probe, so
 	 * `echo $?` may never run. This is the same value: failc ? 1 : 0 is the return below. */

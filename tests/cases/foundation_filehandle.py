@@ -29,29 +29,13 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_filehandle"
 CHECKS = (
-    "pipe-ends-are-distinct",
-    "pipe-carries-data",
-    "pipe-eof-when-writer-closes",
-    "pipe-is-one-way",
-    "file-handle-reads-a-file",
-    "file-handle-seeks",
-    "file-handle-updates-a-file",
-    "file-handle-write-is-complete",
-    "file-handle-truncates",
-    "file-handle-close-then-errors", "legacy-read-and-seek",
-    "legacy-write-truncate-and-close",
-    "file-handle-owns-what-it-opened",
-    "file-handle-adopts-what-it-did-not",
-    "standard-handles",
-    "background-read-posts-data",
-    "background-read-is-one-shot",
-    "background-read-rearms",
-    "background-wait-does-not-read",
-    "background-read-to-end",
-    "readability-handler-repeats",
-    "writeability-handler-runs",
-    "background-read-on-closed-handle-raises",
-    "file-handle-archiving-refused",
+	  "pipe-ends-are-distinct", "pipe-carries-data", "pipe-eof-when-writer-closes", "pipe-is-one-way",
+	  "file-handle-reads-a-file", "file-handle-seeks", "file-handle-updates-a-file", "file-handle-write-is-complete",
+	  "file-handle-truncates", "file-handle-close-then-errors", "legacy-read-and-seek", "legacy-write-truncate-and-close",
+	  "file-handle-owns-what-it-opened", "file-handle-adopts-what-it-did-not", "standard-handles", "background-read-posts-data",
+	  "background-read-is-one-shot", "background-read-rearms", "background-wait-does-not-read", "background-read-to-end",
+	  "readability-handler-repeats", "writeability-handler-runs", "background-read-on-closed-handle-raises", "file-handle-archiving-refused",
+	  "standard-device-handles-are-singletons-with-their-own-descriptors", "the-descriptor-constructor-and-the-error-carrying-doors", "the-null-device-swallows-writes-and-answers-nothing", "the-url-factories-mirror-the-path-factories",
 )
 
 
