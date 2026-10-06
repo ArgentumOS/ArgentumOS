@@ -9,7 +9,7 @@
  * ALWAYS ANSWERS THE SAME ID (a constant, not an allocation), and TWO CLASSES NEVER SHARE ONE (the numbers
  * are distinct and assigned once, here).
  *
- * WHAT IS DUPLICATED AND WHAT IS NOT: the CONTRACT is Apple's — a `CFTypeID` for Core Graphics objects, which
+ * WHAT IS DUPLICATED AND WHAT IS NOT: the CONTRACT is Apple's — a type identity for Core Graphics objects, which
  * is what `CFGetTypeID` would compare against — and the VALUES are not, because Apple's are assigned by its
  * runtime at load time and appear in no header or documentation. A caller can therefore compare ids (ours
  * against ours) exactly as Apple's documentation describes, and cannot port a constant, which no caller

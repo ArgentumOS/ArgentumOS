@@ -113,13 +113,19 @@ typedef double CGFloat;
 #define CG_EXTERN extern
 #endif
 
-/* THE CORE FOUNDATION TYPE IDENTITY, DECLARED HERE BECAUSE THIS TREE HAS NO COREFOUNDATION. Apple puts
- * `CFTypeID` in `<CoreFoundation/CFBase.h>` and every `CG*GetTypeID` door returns one; this library's
- * spelling of it is Apple's (`unsigned long`) and it means what Apple's means: AN OPAQUE IDENTITY, THE SAME
- * FOR EVERY OBJECT OF ONE CLASS AND DIFFERENT FOR TWO. WHAT CANNOT BE COPIED IS THE VALUE: Apple's ids are
- * assigned by its runtime at load and published nowhere, so ours are this library's own — stable across
- * runs, unique per class — and IDENTITY IS THE WHOLE OF WHAT THE CONTRACT PROMISES. See
- * CGTypeID_internal.h for the registry and CGTypeID.c for the doors. */
-typedef unsigned long CFTypeID;
+/* THE TYPE IDENTITY, AND IT IS COREGRAPHICS-NATIVE HERE. Apple's is `CFTypeID`, declared in
+ * `<CoreFoundation/CFBase.h>`, and every `CG*GetTypeID` door returns one. THIS TREE HAS NO COREFOUNDATION to
+ * assign ids, so the type is this library's own and named for the framework that mints it: `CGTypeID` IS THE
+ * TYPE and Apple's spelling is `typedef CGTypeID CFTypeID` — ONE LINE, AND IT STAYS, because the acceptance
+ * this duplication is held to is that source written against Apple's headers compiles unmodified, and
+ * `CFTypeID t = CGImageGetTypeID();` is ordinary Apple source. The two are THE SAME TYPE, exactly as they are
+ * in Apple's own headers, where `CFTypeID` is CoreFoundation's name for an identity Core Graphics minted.
+ *
+ * WHAT IT MEANS IS APPLE'S: AN OPAQUE IDENTITY, THE SAME FOR EVERY OBJECT OF ONE CLASS AND DIFFERENT FOR
+ * TWO. WHAT CANNOT BE COPIED IS THE VALUE: Apple's ids are assigned by its runtime at load and published
+ * nowhere, so ours are this library's own — stable across runs, unique per class — and IDENTITY IS THE WHOLE
+ * OF WHAT THE CONTRACT PROMISES. See CGTypeID_internal.h for the registry and CGTypeID.c for the doors. */
+typedef unsigned long CGTypeID;
+typedef CGTypeID CFTypeID;
 
 #endif /* CORE_GRAPHICS_CGBASE_H */

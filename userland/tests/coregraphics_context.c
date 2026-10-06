@@ -705,7 +705,7 @@ int main(void)
 	 * and pairwise distinct. THE TWO MISSING DOORS ARE NAMED WHERE THEY ARE OWED: `CGDataConsumerGetTypeID`
 	 * and `CGLayerGetTypeID` have no class in this library to identify. */
 	{
-		CFTypeID ids[11];
+		CGTypeID ids[11];
 		int i, j, nonzero = 1, distinct = 1;
 
 		ids[0] = CGColorGetTypeID();
@@ -734,6 +734,17 @@ int main(void)
 		check("...and no two classes share one, which is the whole point of a type id", distinct);
 		check("...and asking twice gives the same answer: a constant, not an allocation",
 		      ids[0] == CGColorGetTypeID() && ids[6] == CGGradientGetTypeID());
+		/* AND APPLE'S SPELLING IS THE SAME TYPE, which is a compile-level fact this demonstrates by
+		 * USING it: a `CFTypeID` holding this library's answer passes straight into a `CGTypeID`.
+		 * (Without the alias, source written against Apple's headers would not compile — which is the
+		 * whole reason the native name keeps it.) */
+		{
+			CFTypeID apple_spelling = CGImageGetTypeID();
+			CGTypeID native = apple_spelling;
+
+			check("...and Apple's spelling of the type carries the same value, unchanged",
+			      native == ids[7] && native == CGImageGetTypeID());
+		}
 	}
 
 	printf("CG-PROBE: %s\n", failures == 0 ? "all checks passed" : "FAILURES");

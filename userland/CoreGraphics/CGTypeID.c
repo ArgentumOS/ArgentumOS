@@ -4,7 +4,8 @@
  * Copyright © 2026 Kyle J. Cardoza. MIT licensed — see LICENSE.
  * SPDX-License-Identifier: MIT
  *
- * WHY ONE FILE: the answer is a CONSTANT, and the two properties the API promises — the same class always
+ * THE TYPE IS `CGTypeID`, THIS LIBRARY'S OWN NAME (CGBase.h says why, and keeps Apple's spelling as an
+ * alias), and THE ANSWER IS A CONSTANT, and the two properties the API promises — the same class always
  * answers the same id, and two classes never share one — are properties of the TABLE, not of any call site.
  * A door defined beside its class would put the numbers in eleven places and make them agree by review.
  *
@@ -14,58 +15,58 @@
  */
 #include <CoreGraphics/CGTypeID_internal.h>
 
-CFTypeID CGColorGetTypeID(void)
+CGTypeID CGColorGetTypeID(void)
 {
-	return (CFTypeID)CG_TYPE_ID_CGCOLOR;
+	return (CGTypeID)CG_TYPE_ID_CGCOLOR;
 }
 
-CFTypeID CGColorSpaceGetTypeID(void)
+CGTypeID CGColorSpaceGetTypeID(void)
 {
-	return (CFTypeID)CG_TYPE_ID_CGCOLORSPACE;
+	return (CGTypeID)CG_TYPE_ID_CGCOLORSPACE;
 }
 
-CFTypeID CGContextGetTypeID(void)
+CGTypeID CGContextGetTypeID(void)
 {
-	return (CFTypeID)CG_TYPE_ID_CGCONTEXT;
+	return (CGTypeID)CG_TYPE_ID_CGCONTEXT;
 }
 
-CFTypeID CGDataProviderGetTypeID(void)
+CGTypeID CGDataProviderGetTypeID(void)
 {
-	return (CFTypeID)CG_TYPE_ID_CGDATAPROVIDER;
+	return (CGTypeID)CG_TYPE_ID_CGDATAPROVIDER;
 }
 
-CFTypeID CGFontGetTypeID(void)
+CGTypeID CGFontGetTypeID(void)
 {
-	return (CFTypeID)CG_TYPE_ID_CGFONT;
+	return (CGTypeID)CG_TYPE_ID_CGFONT;
 }
 
-CFTypeID CGFunctionGetTypeID(void)
+CGTypeID CGFunctionGetTypeID(void)
 {
-	return (CFTypeID)CG_TYPE_ID_CGFUNCTION;
+	return (CGTypeID)CG_TYPE_ID_CGFUNCTION;
 }
 
-CFTypeID CGGradientGetTypeID(void)
+CGTypeID CGGradientGetTypeID(void)
 {
-	return (CFTypeID)CG_TYPE_ID_CGGRADIENT;
+	return (CGTypeID)CG_TYPE_ID_CGGRADIENT;
 }
 
-CFTypeID CGImageGetTypeID(void)
+CGTypeID CGImageGetTypeID(void)
 {
-	return (CFTypeID)CG_TYPE_ID_CGIMAGE;
+	return (CGTypeID)CG_TYPE_ID_CGIMAGE;
 }
 
-CFTypeID CGPathGetTypeID(void)
+CGTypeID CGPathGetTypeID(void)
 {
-	return (CFTypeID)CG_TYPE_ID_CGPATH;
+	return (CGTypeID)CG_TYPE_ID_CGPATH;
 }
 
-CFTypeID CGPatternGetTypeID(void)
+CGTypeID CGPatternGetTypeID(void)
 {
-	return (CFTypeID)CG_TYPE_ID_CGPATTERN;
+	return (CGTypeID)CG_TYPE_ID_CGPATTERN;
 }
 
-CFTypeID CGShadingGetTypeID(void)
+CGTypeID CGShadingGetTypeID(void)
 {
-	return (CFTypeID)CG_TYPE_ID_CGSHADING;
+	return (CGTypeID)CG_TYPE_ID_CGSHADING;
 }
 

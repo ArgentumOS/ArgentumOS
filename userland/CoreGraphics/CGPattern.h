@@ -100,6 +100,6 @@ void CGPatternRelease(CGPatternRef pattern);
  * different from every other class's. The value is THIS LIBRARY'S (Apple's are runtime-assigned and
  * published nowhere), which is why the header says so rather than implying a constant someone could
  * port; identity is the whole of what the door promises. See CGTypeID_internal.h. */
-CFTypeID CGPatternGetTypeID(void);
+CGTypeID CGPatternGetTypeID(void);
 
 #endif /* CORE_GRAPHICS_CGPATTERN_H */
