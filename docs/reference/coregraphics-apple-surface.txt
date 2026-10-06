@@ -10,7 +10,7 @@
 #
 # kind	status	name	owner	family	why	src
 #
-# AND 36 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
+# AND 30 ROW(S) ARE APPLE-DEPRECATED API, OWED RATHER THAN STRUCK (the user's policy,
 # 2026-09-26): to support porting older Mac applications, all items removed for being
 # deprecated are un-deprecated and added to the work list. They carry `deprecated` in the
 # `why` column, which says what KIND of work a row is, and they are open/shipped like any other.
@@ -51,21 +51,44 @@
 # counted, NOT excluded: 0 distinct names Apple documents on a `swift.` page
 # but which carry the CG spelling.
 #
-# why the struck rows are struck: after-10.6 253, post-10.6 178, x11-territory 465
+# AND A STATUS THAT IS NEITHER OWED NOR GONE (user, 2026-10-05): `deferred` — the PDF half,
+# both sides, PARKED rather than struck, in the user's own words: "park the entire PDF half".
+# The question it answers came first: "why do we need the PDF API at all again?" THE MEASURED
+# GROUND IS THAT NOTHING HERE CONSUMES IT — `rg -l CGPDF userland/` outside the tests is empty,
+# and every consumer the two plans name (a Viewer app, a print spooler, an editor that saves as
+# PDF) is unwritten. The display/event half was struck because Xfb and X11R7 OWN that
+# capability; nothing owns PDF, so a strike would have been a capability decision dressed as a
+# cleanup. Parking says the true thing: in era, Apple's surface, not built yet, nothing deleted.
+#
+# THE RESUME TRIGGER, so the park is not a memory: a CONSUMER — a Viewer or browser that opens
+# PDFs, a print system, or an editor that exports one. The plans stay
+# (docs/design/pdfium-plan.md reads, pdf-generation-plan.md writes via libharu) and so does the
+# reconnaissance: the 77-row tokenizer/object model is the bulk, CGPDFDocument needs
+# CGDataProviderCreateWithURL, CGPDFContext needs the absent CGDataConsumer family, and the
+# render half waits on CPython -> GN -> PDFium P0/P1. Unparking is one line: delete the prefix
+# from PARKED_PREFIXES.
+#
+# AND IT IS NOT A LICENCE: a parked name is still ABSENT from our headers, and --check reports
+# a parked name that IS declared. Rows the era and territory grounds already struck KEEP THAT
+# REASON — the post-10.6 half of this family (PDF/X keys, accessibility tag types) is a fact
+# about the API, not a scope call. `why` reads `no-consumer` on every parked row.
+#
+#
+# why the struck rows are struck: after-10.6 253, post-10.6 178, x11-territory 475
 #
 # counts by kind:
-#   func       shipped  192   open  233   struck  310
-#   macro      shipped    7   open    8   struck   92
-#   enum       shipped   12   open    7   struck   38
-#   case       shipped   85   open   44   struck  315
-#   var        shipped   11   open   37   struck   87
-#   typealias  shipped   17   open   38   struck   45
-#   struct     shipped    7   open    4   struck    9
+#   func       shipped  192   open  135   struck  310   deferred   98
+#   macro      shipped    7   open    8   struck   92   deferred    0
+#   enum       shipped   12   open    4   struck   38   deferred    3
+#   case       shipped   85   open   17   struck  325   deferred   17
+#   var        shipped   11   open   14   struck   87   deferred   23
+#   typealias  shipped   17   open   15   struck   45   deferred   23
+#   struct     shipped    7   open    3   struck    9   deferred    1
 case	open	CGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
 case	open	CGGlyphMin	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
-case	open	CGPDFDataFormatJPEG2000	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
-case	open	CGPDFDataFormatJPEGEncoded	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
-case	open	CGPDFDataFormatRaw	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
+case	deferred	CGPDFDataFormatJPEG2000	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
+case	deferred	CGPDFDataFormatJPEGEncoded	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
+case	deferred	CGPDFDataFormatRaw	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
 case	struck	CGPDFTagTypeAnnotation	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
 case	struck	CGPDFTagTypeArt	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
 case	struck	CGPDFTagTypeArtifact	-	Reference / Enumerations / Enumeration Cases	after-10.6	objc
@@ -236,17 +259,17 @@ case	struck	kCGDockWindowLevelKey	-	Services / Data Types / Window levels / Cons
 case	struck	kCGDraggingWindowLevelKey	-	Services / Data Types / Window levels / Constants	x11-territory	objc
 case	open	kCGEncodingFontSpecific	-	Opaque Types / Constants / Constants	deprecated	objc
 case	open	kCGEncodingMacRoman	-	Opaque Types / Constants / Constants	deprecated	objc
-case	open	kCGErrorCannotComplete	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGErrorFailure	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGErrorIllegalArgument	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGErrorInvalidConnection	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGErrorInvalidContext	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGErrorInvalidOperation	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGErrorNoneAvailable	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGErrorNotImplemented	-	Reference / Enumerations / Constants	-	objc
-case	open	kCGErrorRangeCheck	-	Reference / Enumerations / Constants	-	objc
+case	struck	kCGErrorCannotComplete	-	Reference / Enumerations / Constants	x11-territory	objc
+case	struck	kCGErrorFailure	-	Reference / Enumerations / Constants	x11-territory	objc
+case	struck	kCGErrorIllegalArgument	-	Reference / Enumerations / Constants	x11-territory	objc
+case	struck	kCGErrorInvalidConnection	-	Reference / Enumerations / Constants	x11-territory	objc
+case	struck	kCGErrorInvalidContext	-	Reference / Enumerations / Constants	x11-territory	objc
+case	struck	kCGErrorInvalidOperation	-	Reference / Enumerations / Constants	x11-territory	objc
+case	struck	kCGErrorNoneAvailable	-	Reference / Enumerations / Constants	x11-territory	objc
+case	struck	kCGErrorNotImplemented	-	Reference / Enumerations / Constants	x11-territory	objc
+case	struck	kCGErrorRangeCheck	-	Reference / Enumerations / Constants	x11-territory	objc
 case	struck	kCGErrorSuccess	-	Reference / Enumerations / Constants	x11-territory	objc
-case	open	kCGErrorTypeCheck	-	Reference / Enumerations / Constants	-	objc
+case	struck	kCGErrorTypeCheck	-	Reference / Enumerations / Constants	x11-territory	objc
 case	struck	kCGEventFilterMaskPermitLocalKeyboardEvents	-	Services / Constants / Type Properties	x11-territory	objc
 case	struck	kCGEventFilterMaskPermitLocalMouseEvents	-	Services / Constants / Type Properties	x11-territory	objc
 case	struck	kCGEventFilterMaskPermitSystemDefinedEvents	-	Services / Constants / Type Properties	x11-territory	objc
@@ -383,20 +406,20 @@ case	struck	kCGPDFAllowsDocumentChanges	-	Reference / Structures / Type Properti
 case	struck	kCGPDFAllowsFormFieldEntry	-	Reference / Structures / Type Properties	post-10.6	objc
 case	struck	kCGPDFAllowsHighQualityPrinting	-	Reference / Structures / Type Properties	post-10.6	objc
 case	struck	kCGPDFAllowsLowQualityPrinting	-	Reference / Structures / Type Properties	post-10.6	objc
-case	open	kCGPDFArtBox	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
-case	open	kCGPDFBleedBox	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
-case	open	kCGPDFCropBox	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
-case	open	kCGPDFMediaBox	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
-case	open	kCGPDFObjectTypeArray	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
-case	open	kCGPDFObjectTypeBoolean	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
-case	open	kCGPDFObjectTypeDictionary	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
-case	open	kCGPDFObjectTypeInteger	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
-case	open	kCGPDFObjectTypeName	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
-case	open	kCGPDFObjectTypeNull	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
-case	open	kCGPDFObjectTypeReal	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
-case	open	kCGPDFObjectTypeStream	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
-case	open	kCGPDFObjectTypeString	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
-case	open	kCGPDFTrimBox	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
+case	deferred	kCGPDFArtBox	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
+case	deferred	kCGPDFBleedBox	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
+case	deferred	kCGPDFCropBox	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
+case	deferred	kCGPDFMediaBox	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
+case	deferred	kCGPDFObjectTypeArray	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
+case	deferred	kCGPDFObjectTypeBoolean	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
+case	deferred	kCGPDFObjectTypeDictionary	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
+case	deferred	kCGPDFObjectTypeInteger	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
+case	deferred	kCGPDFObjectTypeName	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
+case	deferred	kCGPDFObjectTypeNull	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
+case	deferred	kCGPDFObjectTypeReal	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
+case	deferred	kCGPDFObjectTypeStream	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
+case	deferred	kCGPDFObjectTypeString	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
+case	deferred	kCGPDFTrimBox	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
 case	shipped	kCGPathEOFill	-	Opaque Types / Drawing the Current Graphics Path / Constants	-	objc
 case	shipped	kCGPathEOFillStroke	-	Opaque Types / Drawing the Current Graphics Path / Constants	-	objc
 case	shipped	kCGPathElementAddCurveToPoint	-	Opaque Types / Applying a Function to the Elements of a Path / Constants	-	objc
@@ -543,9 +566,9 @@ enum	shipped	CGLineJoin	-	Opaque Types / Constants	-	objc
 enum	struck	CGMomentumScrollPhase	-	Reference / Enumerations	post-10.6	objc
 enum	struck	CGMouseButton	-	Services / Constants	x11-territory	objc
 enum	struck	CGPDFAccessPermissions	-	Reference / Structures	post-10.6	objc
-enum	open	CGPDFBox	-	Opaque Types / Abstract Types for PDF Document Content / Constants	-	objc
-enum	open	CGPDFDataFormat	-	Opaque Types / Abstract Types for PDF Document Content / Constants	-	objc
-enum	open	CGPDFObjectType	-	Opaque Types / Abstract Types for PDF Document Content / Constants	-	objc
+enum	deferred	CGPDFBox	-	Opaque Types / Abstract Types for PDF Document Content / Constants	no-consumer	objc
+enum	deferred	CGPDFDataFormat	-	Opaque Types / Abstract Types for PDF Document Content / Constants	no-consumer	objc
+enum	deferred	CGPDFObjectType	-	Opaque Types / Abstract Types for PDF Document Content / Constants	no-consumer	objc
 enum	struck	CGPDFTagType	-	Reference / Enumerations	after-10.6	objc
 enum	shipped	CGPathDrawingMode	-	Opaque Types / Drawing the Current Graphics Path	-	objc
 enum	shipped	CGPathElementType	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
@@ -1047,118 +1070,118 @@ func	open	CGLayerRetain	-	Opaque Types / Retaining and Releasing Color Objects	-
 func	struck	CGMainDisplayID	-	Services / Finding Displays	x11-territory	objc
 func	struck	CGOpenGLDisplayMaskToDisplayID	-	Services / Finding Displays	x11-territory	objc
 func	struck	CGPDFArrayApplyBlock	-	Reference / Functions	after-10.6	objc
-func	open	CGPDFArrayGetArray	-	Opaque Types / Getting Data from a PDF Array	-	objc
-func	open	CGPDFArrayGetBoolean	-	Opaque Types / Getting Data from a PDF Array	-	objc
-func	open	CGPDFArrayGetCount	-	Opaque Types / Getting Data from a PDF Array	-	objc
-func	open	CGPDFArrayGetDictionary	-	Opaque Types / Getting Data from a PDF Array	-	objc
-func	open	CGPDFArrayGetInteger	-	Opaque Types / Getting Data from a PDF Array	-	objc
-func	open	CGPDFArrayGetName	-	Opaque Types / Getting Data from a PDF Array	-	objc
-func	open	CGPDFArrayGetNull	-	Opaque Types / Getting Data from a PDF Array	-	objc
-func	open	CGPDFArrayGetNumber	-	Opaque Types / Getting Data from a PDF Array	-	objc
-func	open	CGPDFArrayGetObject	-	Opaque Types / Getting Data from a PDF Array	-	objc
-func	open	CGPDFArrayGetStream	-	Opaque Types / Getting Data from a PDF Array	-	objc
-func	open	CGPDFArrayGetString	-	Opaque Types / Getting Data from a PDF Array	-	objc
-func	open	CGPDFContentStreamCreateWithPage	-	Opaque Types / Creating a PDF Content Stream Object	-	objc
-func	open	CGPDFContentStreamCreateWithStream	-	Opaque Types / Creating a PDF Content Stream Object	-	objc
-func	open	CGPDFContentStreamGetResource	-	Opaque Types / Getting Data from a PDF Content Stream Object	-	objc
-func	open	CGPDFContentStreamGetStreams	-	Opaque Types / Getting Data from a PDF Content Stream Object	-	objc
-func	open	CGPDFContentStreamRelease	-	Opaque Types / Retaining and Releasing a PDF Content Stream Object	-	objc
-func	open	CGPDFContentStreamRetain	-	Opaque Types / Retaining and Releasing a PDF Content Stream Object	-	objc
-func	open	CGPDFContextAddDestinationAtPoint	-	Opaque Types / Managing a PDF Graphics Context	-	objc
+func	deferred	CGPDFArrayGetArray	-	Opaque Types / Getting Data from a PDF Array	no-consumer	objc
+func	deferred	CGPDFArrayGetBoolean	-	Opaque Types / Getting Data from a PDF Array	no-consumer	objc
+func	deferred	CGPDFArrayGetCount	-	Opaque Types / Getting Data from a PDF Array	no-consumer	objc
+func	deferred	CGPDFArrayGetDictionary	-	Opaque Types / Getting Data from a PDF Array	no-consumer	objc
+func	deferred	CGPDFArrayGetInteger	-	Opaque Types / Getting Data from a PDF Array	no-consumer	objc
+func	deferred	CGPDFArrayGetName	-	Opaque Types / Getting Data from a PDF Array	no-consumer	objc
+func	deferred	CGPDFArrayGetNull	-	Opaque Types / Getting Data from a PDF Array	no-consumer	objc
+func	deferred	CGPDFArrayGetNumber	-	Opaque Types / Getting Data from a PDF Array	no-consumer	objc
+func	deferred	CGPDFArrayGetObject	-	Opaque Types / Getting Data from a PDF Array	no-consumer	objc
+func	deferred	CGPDFArrayGetStream	-	Opaque Types / Getting Data from a PDF Array	no-consumer	objc
+func	deferred	CGPDFArrayGetString	-	Opaque Types / Getting Data from a PDF Array	no-consumer	objc
+func	deferred	CGPDFContentStreamCreateWithPage	-	Opaque Types / Creating a PDF Content Stream Object	no-consumer	objc
+func	deferred	CGPDFContentStreamCreateWithStream	-	Opaque Types / Creating a PDF Content Stream Object	no-consumer	objc
+func	deferred	CGPDFContentStreamGetResource	-	Opaque Types / Getting Data from a PDF Content Stream Object	no-consumer	objc
+func	deferred	CGPDFContentStreamGetStreams	-	Opaque Types / Getting Data from a PDF Content Stream Object	no-consumer	objc
+func	deferred	CGPDFContentStreamRelease	-	Opaque Types / Retaining and Releasing a PDF Content Stream Object	no-consumer	objc
+func	deferred	CGPDFContentStreamRetain	-	Opaque Types / Retaining and Releasing a PDF Content Stream Object	no-consumer	objc
+func	deferred	CGPDFContextAddDestinationAtPoint	-	Opaque Types / Managing a PDF Graphics Context	no-consumer	objc
 func	struck	CGPDFContextAddDocumentMetadata	-	Opaque Types / Managing a PDF Graphics Context	after-10.6	objc
 func	struck	CGPDFContextAddStructureTreeRootChild	-	Functions	after-10.6	objc
 func	struck	CGPDFContextBeginMarkedContentSequence	-	Functions	after-10.6	objc
 func	struck	CGPDFContextBeginNonStructuralMarkedContentSequence	-	Functions	after-10.6	objc
 func	struck	CGPDFContextBeginObjectReference	-	Functions	after-10.6	objc
-func	open	CGPDFContextBeginPage	-	Opaque Types / Managing a PDF Graphics Context	-	objc
+func	deferred	CGPDFContextBeginPage	-	Opaque Types / Managing a PDF Graphics Context	no-consumer	objc
 func	struck	CGPDFContextBeginTag	-	Reference / Functions	after-10.6	objc
-func	open	CGPDFContextClose	-	Opaque Types / Managing a PDF Graphics Context	-	objc
-func	open	CGPDFContextCreate	-	Opaque Types / Creating PDF Graphics Contexts	-	objc
-func	open	CGPDFContextCreateWithURL	-	Opaque Types / Creating PDF Graphics Contexts	-	objc
+func	deferred	CGPDFContextClose	-	Opaque Types / Managing a PDF Graphics Context	no-consumer	objc
+func	deferred	CGPDFContextCreate	-	Opaque Types / Creating PDF Graphics Contexts	no-consumer	objc
+func	deferred	CGPDFContextCreateWithURL	-	Opaque Types / Creating PDF Graphics Contexts	no-consumer	objc
 func	struck	CGPDFContextEndMarkedContentSequence	-	Functions	after-10.6	objc
 func	struck	CGPDFContextEndObjectReference	-	Functions	after-10.6	objc
-func	open	CGPDFContextEndPage	-	Opaque Types / Managing a PDF Graphics Context	-	objc
+func	deferred	CGPDFContextEndPage	-	Opaque Types / Managing a PDF Graphics Context	no-consumer	objc
 func	struck	CGPDFContextEndTag	-	Reference / Functions	after-10.6	objc
-func	open	CGPDFContextSetDestinationForRect	-	Opaque Types / Managing a PDF Graphics Context	-	objc
+func	deferred	CGPDFContextSetDestinationForRect	-	Opaque Types / Managing a PDF Graphics Context	no-consumer	objc
 func	struck	CGPDFContextSetIDTree	-	Reference / Functions	post-10.6	objc
 func	struck	CGPDFContextSetOutline	-	Reference / Functions	after-10.6	objc
 func	struck	CGPDFContextSetPageTagStructureTree	-	Reference / Functions	post-10.6	objc
 func	struck	CGPDFContextSetParentTree	-	Reference / Functions	post-10.6	objc
-func	open	CGPDFContextSetURLForRect	-	Opaque Types / Managing a PDF Graphics Context	-	objc
+func	deferred	CGPDFContextSetURLForRect	-	Opaque Types / Managing a PDF Graphics Context	no-consumer	objc
 func	struck	CGPDFDictionaryApplyBlock	-	Reference / Functions	after-10.6	objc
-func	open	CGPDFDictionaryApplyFunction	-	Opaque Types / Applying a Function to All Entries	-	objc
-func	open	CGPDFDictionaryGetArray	-	Opaque Types / Getting Data from a Dictionary	-	objc
-func	open	CGPDFDictionaryGetBoolean	-	Opaque Types / Getting Data from a Dictionary	-	objc
-func	open	CGPDFDictionaryGetCount	-	Opaque Types / Getting Data from a Dictionary	-	objc
-func	open	CGPDFDictionaryGetDictionary	-	Opaque Types / Getting Data from a Dictionary	-	objc
-func	open	CGPDFDictionaryGetInteger	-	Opaque Types / Getting Data from a Dictionary	-	objc
-func	open	CGPDFDictionaryGetName	-	Opaque Types / Getting Data from a Dictionary	-	objc
-func	open	CGPDFDictionaryGetNumber	-	Opaque Types / Getting Data from a Dictionary	-	objc
-func	open	CGPDFDictionaryGetObject	-	Opaque Types / Getting Data from a Dictionary	-	objc
-func	open	CGPDFDictionaryGetStream	-	Opaque Types / Getting Data from a Dictionary	-	objc
-func	open	CGPDFDictionaryGetString	-	Opaque Types / Getting Data from a Dictionary	-	objc
-func	open	CGPDFDocumentAllowsCopying	-	Opaque Types / Working with an Encrypted PDF Document	-	objc
-func	open	CGPDFDocumentAllowsPrinting	-	Opaque Types / Working with an Encrypted PDF Document	-	objc
-func	open	CGPDFDocumentCreateWithProvider	-	Opaque Types / Creating PDF Documents	-	objc
-func	open	CGPDFDocumentCreateWithURL	-	Opaque Types / Creating PDF Documents	-	objc
+func	deferred	CGPDFDictionaryApplyFunction	-	Opaque Types / Applying a Function to All Entries	no-consumer	objc
+func	deferred	CGPDFDictionaryGetArray	-	Opaque Types / Getting Data from a Dictionary	no-consumer	objc
+func	deferred	CGPDFDictionaryGetBoolean	-	Opaque Types / Getting Data from a Dictionary	no-consumer	objc
+func	deferred	CGPDFDictionaryGetCount	-	Opaque Types / Getting Data from a Dictionary	no-consumer	objc
+func	deferred	CGPDFDictionaryGetDictionary	-	Opaque Types / Getting Data from a Dictionary	no-consumer	objc
+func	deferred	CGPDFDictionaryGetInteger	-	Opaque Types / Getting Data from a Dictionary	no-consumer	objc
+func	deferred	CGPDFDictionaryGetName	-	Opaque Types / Getting Data from a Dictionary	no-consumer	objc
+func	deferred	CGPDFDictionaryGetNumber	-	Opaque Types / Getting Data from a Dictionary	no-consumer	objc
+func	deferred	CGPDFDictionaryGetObject	-	Opaque Types / Getting Data from a Dictionary	no-consumer	objc
+func	deferred	CGPDFDictionaryGetStream	-	Opaque Types / Getting Data from a Dictionary	no-consumer	objc
+func	deferred	CGPDFDictionaryGetString	-	Opaque Types / Getting Data from a Dictionary	no-consumer	objc
+func	deferred	CGPDFDocumentAllowsCopying	-	Opaque Types / Working with an Encrypted PDF Document	no-consumer	objc
+func	deferred	CGPDFDocumentAllowsPrinting	-	Opaque Types / Working with an Encrypted PDF Document	no-consumer	objc
+func	deferred	CGPDFDocumentCreateWithProvider	-	Opaque Types / Creating PDF Documents	no-consumer	objc
+func	deferred	CGPDFDocumentCreateWithURL	-	Opaque Types / Creating PDF Documents	no-consumer	objc
 func	struck	CGPDFDocumentGetAccessPermissions	-	Reference / Functions	after-10.6	objc
-func	open	CGPDFDocumentGetArtBox	-	Opaque Types / Getting Page Information	deprecated	objc
-func	open	CGPDFDocumentGetBleedBox	-	Opaque Types / Getting Page Information	deprecated	objc
-func	open	CGPDFDocumentGetCatalog	-	Opaque Types / Examining a PDF Document	-	objc
-func	open	CGPDFDocumentGetCropBox	-	Opaque Types / Getting Page Information	deprecated	objc
-func	open	CGPDFDocumentGetID	-	Opaque Types / Examining a PDF Document	-	objc
-func	open	CGPDFDocumentGetInfo	-	Opaque Types / Examining a PDF Document	-	objc
-func	open	CGPDFDocumentGetMediaBox	-	Opaque Types / Getting Page Information	deprecated	objc
-func	open	CGPDFDocumentGetNumberOfPages	-	Opaque Types / Examining a PDF Document	-	objc
+func	deferred	CGPDFDocumentGetArtBox	-	Opaque Types / Getting Page Information	no-consumer	objc
+func	deferred	CGPDFDocumentGetBleedBox	-	Opaque Types / Getting Page Information	no-consumer	objc
+func	deferred	CGPDFDocumentGetCatalog	-	Opaque Types / Examining a PDF Document	no-consumer	objc
+func	deferred	CGPDFDocumentGetCropBox	-	Opaque Types / Getting Page Information	no-consumer	objc
+func	deferred	CGPDFDocumentGetID	-	Opaque Types / Examining a PDF Document	no-consumer	objc
+func	deferred	CGPDFDocumentGetInfo	-	Opaque Types / Examining a PDF Document	no-consumer	objc
+func	deferred	CGPDFDocumentGetMediaBox	-	Opaque Types / Getting Page Information	no-consumer	objc
+func	deferred	CGPDFDocumentGetNumberOfPages	-	Opaque Types / Examining a PDF Document	no-consumer	objc
 func	struck	CGPDFDocumentGetOutline	-	Reference / Functions	after-10.6	objc
-func	open	CGPDFDocumentGetPage	-	Opaque Types / Examining a PDF Document	-	objc
-func	open	CGPDFDocumentGetRotationAngle	-	Opaque Types / Getting Page Information	deprecated	objc
-func	open	CGPDFDocumentGetTrimBox	-	Opaque Types / Getting Page Information	deprecated	objc
-func	open	CGPDFDocumentGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
-func	open	CGPDFDocumentGetVersion	-	Opaque Types / Examining a PDF Document	-	objc
-func	open	CGPDFDocumentIsEncrypted	-	Opaque Types / Working with an Encrypted PDF Document	-	objc
-func	open	CGPDFDocumentIsUnlocked	-	Opaque Types / Working with an Encrypted PDF Document	-	objc
-func	open	CGPDFDocumentRelease	-	Opaque Types / Retaining and Releasing PDF Documents	-	objc
-func	open	CGPDFDocumentRetain	-	Opaque Types / Retaining and Releasing PDF Documents	-	objc
-func	open	CGPDFDocumentUnlockWithPassword	-	Opaque Types / Working with an Encrypted PDF Document	-	objc
+func	deferred	CGPDFDocumentGetPage	-	Opaque Types / Examining a PDF Document	no-consumer	objc
+func	deferred	CGPDFDocumentGetRotationAngle	-	Opaque Types / Getting Page Information	no-consumer	objc
+func	deferred	CGPDFDocumentGetTrimBox	-	Opaque Types / Getting Page Information	no-consumer	objc
+func	deferred	CGPDFDocumentGetTypeID	-	Opaque Types / Working with Core Foundation Types	no-consumer	objc
+func	deferred	CGPDFDocumentGetVersion	-	Opaque Types / Examining a PDF Document	no-consumer	objc
+func	deferred	CGPDFDocumentIsEncrypted	-	Opaque Types / Working with an Encrypted PDF Document	no-consumer	objc
+func	deferred	CGPDFDocumentIsUnlocked	-	Opaque Types / Working with an Encrypted PDF Document	no-consumer	objc
+func	deferred	CGPDFDocumentRelease	-	Opaque Types / Retaining and Releasing PDF Documents	no-consumer	objc
+func	deferred	CGPDFDocumentRetain	-	Opaque Types / Retaining and Releasing PDF Documents	no-consumer	objc
+func	deferred	CGPDFDocumentUnlockWithPassword	-	Opaque Types / Working with an Encrypted PDF Document	no-consumer	objc
 func	struck	CGPDFMarkedContentItemRelease	-	Functions	after-10.6	objc
 func	struck	CGPDFMarkedContentItemRetain	-	Functions	after-10.6	objc
-func	open	CGPDFObjectGetType	-	Opaque Types / Abstract Types for PDF Document Content / Getting Object Types and Values	-	objc
-func	open	CGPDFObjectGetValue	-	Opaque Types / Abstract Types for PDF Document Content / Getting Object Types and Values	-	objc
-func	open	CGPDFOperatorTableCreate	-	Opaque Types / Abstract Types for PDF Document Content / Creating a PDF Operator Table	-	objc
-func	open	CGPDFOperatorTableRelease	-	Opaque Types / Abstract Types for PDF Document Content / Retaining and Releasing a PDF Operator Table	-	objc
-func	open	CGPDFOperatorTableRetain	-	Opaque Types / Abstract Types for PDF Document Content / Retaining and Releasing a PDF Operator Table	-	objc
-func	open	CGPDFOperatorTableSetCallback	-	Opaque Types / Abstract Types for PDF Document Content / Setting Callback Functions	-	objc
-func	open	CGPDFPageGetBoxRect	-	Opaque Types / Abstract Types for PDF Document Content / Getting Page Information	-	objc
-func	open	CGPDFPageGetDictionary	-	Opaque Types / Abstract Types for PDF Document Content / Getting Page Information	-	objc
-func	open	CGPDFPageGetDocument	-	Opaque Types / Abstract Types for PDF Document Content / Getting Page Information	-	objc
-func	open	CGPDFPageGetDrawingTransform	-	Opaque Types / Abstract Types for PDF Document Content / Getting Page Information	-	objc
-func	open	CGPDFPageGetPageNumber	-	Opaque Types / Abstract Types for PDF Document Content / Getting Page Information	-	objc
-func	open	CGPDFPageGetRotationAngle	-	Opaque Types / Abstract Types for PDF Document Content / Getting Page Information	-	objc
-func	open	CGPDFPageGetTypeID	-	Opaque Types / Abstract Types for PDF Document Content / Working with Core Foundation Types	-	objc
-func	open	CGPDFPageRelease	-	Opaque Types / Abstract Types for PDF Document Content / Retaining and Releasing a PDF Page	-	objc
-func	open	CGPDFPageRetain	-	Opaque Types / Abstract Types for PDF Document Content / Retaining and Releasing a PDF Page	-	objc
-func	open	CGPDFScannerCreate	-	Opaque Types / Abstract Types for PDF Document Content / Creating a PDF Scanner Object	-	objc
-func	open	CGPDFScannerGetContentStream	-	Opaque Types / Abstract Types for PDF Document Content / Parsing Content	-	objc
-func	open	CGPDFScannerPopArray	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF Objects from the Scanner Stack	-	objc
-func	open	CGPDFScannerPopBoolean	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF Objects from the Scanner Stack	-	objc
-func	open	CGPDFScannerPopDictionary	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF Objects from the Scanner Stack	-	objc
-func	open	CGPDFScannerPopInteger	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF Objects from the Scanner Stack	-	objc
-func	open	CGPDFScannerPopName	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF Objects from the Scanner Stack	-	objc
-func	open	CGPDFScannerPopNumber	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF Objects from the Scanner Stack	-	objc
-func	open	CGPDFScannerPopObject	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF Objects from the Scanner Stack	-	objc
-func	open	CGPDFScannerPopStream	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF Objects from the Scanner Stack	-	objc
-func	open	CGPDFScannerPopString	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF Objects from the Scanner Stack	-	objc
-func	open	CGPDFScannerRelease	-	Opaque Types / Abstract Types for PDF Document Content / Retaining and Releasing PDF Scanner Objects	-	objc
-func	open	CGPDFScannerRetain	-	Opaque Types / Abstract Types for PDF Document Content / Retaining and Releasing PDF Scanner Objects	-	objc
-func	open	CGPDFScannerScan	-	Opaque Types / Abstract Types for PDF Document Content / Parsing Content	-	objc
+func	deferred	CGPDFObjectGetType	-	Opaque Types / Abstract Types for PDF Document Content / Getting Object Types and Values	no-consumer	objc
+func	deferred	CGPDFObjectGetValue	-	Opaque Types / Abstract Types for PDF Document Content / Getting Object Types and Values	no-consumer	objc
+func	deferred	CGPDFOperatorTableCreate	-	Opaque Types / Abstract Types for PDF Document Content / Creating a PDF Operator Table	no-consumer	objc
+func	deferred	CGPDFOperatorTableRelease	-	Opaque Types / Abstract Types for PDF Document Content / Retaining and Releasing a PDF Operator Table	no-consumer	objc
+func	deferred	CGPDFOperatorTableRetain	-	Opaque Types / Abstract Types for PDF Document Content / Retaining and Releasing a PDF Operator Table	no-consumer	objc
+func	deferred	CGPDFOperatorTableSetCallback	-	Opaque Types / Abstract Types for PDF Document Content / Setting Callback Functions	no-consumer	objc
+func	deferred	CGPDFPageGetBoxRect	-	Opaque Types / Abstract Types for PDF Document Content / Getting Page Information	no-consumer	objc
+func	deferred	CGPDFPageGetDictionary	-	Opaque Types / Abstract Types for PDF Document Content / Getting Page Information	no-consumer	objc
+func	deferred	CGPDFPageGetDocument	-	Opaque Types / Abstract Types for PDF Document Content / Getting Page Information	no-consumer	objc
+func	deferred	CGPDFPageGetDrawingTransform	-	Opaque Types / Abstract Types for PDF Document Content / Getting Page Information	no-consumer	objc
+func	deferred	CGPDFPageGetPageNumber	-	Opaque Types / Abstract Types for PDF Document Content / Getting Page Information	no-consumer	objc
+func	deferred	CGPDFPageGetRotationAngle	-	Opaque Types / Abstract Types for PDF Document Content / Getting Page Information	no-consumer	objc
+func	deferred	CGPDFPageGetTypeID	-	Opaque Types / Abstract Types for PDF Document Content / Working with Core Foundation Types	no-consumer	objc
+func	deferred	CGPDFPageRelease	-	Opaque Types / Abstract Types for PDF Document Content / Retaining and Releasing a PDF Page	no-consumer	objc
+func	deferred	CGPDFPageRetain	-	Opaque Types / Abstract Types for PDF Document Content / Retaining and Releasing a PDF Page	no-consumer	objc
+func	deferred	CGPDFScannerCreate	-	Opaque Types / Abstract Types for PDF Document Content / Creating a PDF Scanner Object	no-consumer	objc
+func	deferred	CGPDFScannerGetContentStream	-	Opaque Types / Abstract Types for PDF Document Content / Parsing Content	no-consumer	objc
+func	deferred	CGPDFScannerPopArray	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF Objects from the Scanner Stack	no-consumer	objc
+func	deferred	CGPDFScannerPopBoolean	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF Objects from the Scanner Stack	no-consumer	objc
+func	deferred	CGPDFScannerPopDictionary	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF Objects from the Scanner Stack	no-consumer	objc
+func	deferred	CGPDFScannerPopInteger	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF Objects from the Scanner Stack	no-consumer	objc
+func	deferred	CGPDFScannerPopName	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF Objects from the Scanner Stack	no-consumer	objc
+func	deferred	CGPDFScannerPopNumber	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF Objects from the Scanner Stack	no-consumer	objc
+func	deferred	CGPDFScannerPopObject	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF Objects from the Scanner Stack	no-consumer	objc
+func	deferred	CGPDFScannerPopStream	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF Objects from the Scanner Stack	no-consumer	objc
+func	deferred	CGPDFScannerPopString	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF Objects from the Scanner Stack	no-consumer	objc
+func	deferred	CGPDFScannerRelease	-	Opaque Types / Abstract Types for PDF Document Content / Retaining and Releasing PDF Scanner Objects	no-consumer	objc
+func	deferred	CGPDFScannerRetain	-	Opaque Types / Abstract Types for PDF Document Content / Retaining and Releasing PDF Scanner Objects	no-consumer	objc
+func	deferred	CGPDFScannerScan	-	Opaque Types / Abstract Types for PDF Document Content / Parsing Content	no-consumer	objc
 func	struck	CGPDFScannerStop	-	Reference / Functions	post-10.6	objc
-func	open	CGPDFStreamCopyData	-	Opaque Types / Abstract Types for PDF Document Content / Getting Data from a PDF Stream	-	objc
-func	open	CGPDFStreamGetDictionary	-	Opaque Types / Abstract Types for PDF Document Content / Getting Data from a PDF Stream	-	objc
-func	open	CGPDFStringCopyDate	-	Opaque Types / Abstract Types for PDF Document Content / Converting PDF Strings	-	objc
-func	open	CGPDFStringCopyTextString	-	Opaque Types / Abstract Types for PDF Document Content / Converting PDF Strings	-	objc
-func	open	CGPDFStringGetBytePtr	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF String Data	-	objc
-func	open	CGPDFStringGetLength	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF String Data	-	objc
+func	deferred	CGPDFStreamCopyData	-	Opaque Types / Abstract Types for PDF Document Content / Getting Data from a PDF Stream	no-consumer	objc
+func	deferred	CGPDFStreamGetDictionary	-	Opaque Types / Abstract Types for PDF Document Content / Getting Data from a PDF Stream	no-consumer	objc
+func	deferred	CGPDFStringCopyDate	-	Opaque Types / Abstract Types for PDF Document Content / Converting PDF Strings	no-consumer	objc
+func	deferred	CGPDFStringCopyTextString	-	Opaque Types / Abstract Types for PDF Document Content / Converting PDF Strings	no-consumer	objc
+func	deferred	CGPDFStringGetBytePtr	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF String Data	no-consumer	objc
+func	deferred	CGPDFStringGetLength	-	Opaque Types / Abstract Types for PDF Document Content / Getting PDF String Data	no-consumer	objc
 func	struck	CGPDFStructureElementAddMarkedContentItem	-	Functions	after-10.6	objc
 func	struck	CGPDFStructureElementAddStructureElement	-	Functions	after-10.6	objc
 func	struck	CGPDFStructureElementCreate	-	Functions	after-10.6	objc
@@ -1170,11 +1193,11 @@ func	struck	CGPDFStructureElementSetExpansionText	-	Functions	after-10.6	objc
 func	struck	CGPDFStructureElementSetLanguageIdentifier	-	Functions	after-10.6	objc
 func	struck	CGPDFStructureElementSetTitle	-	Functions	after-10.6	objc
 func	struck	CGPDFTagTypeGetName	-	Reference / Enumerations / Instance Properties	after-10.6	objc
-func	open	CGPSConverterAbort	-	Opaque Types / Miscellaneous Functions	-	objc
-func	open	CGPSConverterConvert	-	Opaque Types / Miscellaneous Functions	-	objc
-func	open	CGPSConverterCreate	-	Opaque Types / Initializers	-	objc
-func	open	CGPSConverterGetTypeID	-	Opaque Types / Type Properties	-	objc
-func	open	CGPSConverterIsConverting	-	Opaque Types / Miscellaneous Functions	-	objc
+func	deferred	CGPSConverterAbort	-	Opaque Types / Miscellaneous Functions	no-consumer	objc
+func	deferred	CGPSConverterConvert	-	Opaque Types / Miscellaneous Functions	no-consumer	objc
+func	deferred	CGPSConverterCreate	-	Opaque Types / Initializers	no-consumer	objc
+func	deferred	CGPSConverterGetTypeID	-	Opaque Types / Type Properties	no-consumer	objc
+func	deferred	CGPSConverterIsConverting	-	Opaque Types / Miscellaneous Functions	no-consumer	objc
 func	shipped	CGPathApply	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
 func	struck	CGPathApplyWithBlock	-	Reference / Functions	after-10.6	objc
 func	open	CGPathContainsPoint	-	Opaque Types / Examining a Graphics Path	-	objc
@@ -1416,7 +1439,7 @@ struct	open	CGDataProviderDirectCallbacks	-	Opaque Types / Creating Direct-Acces
 struct	open	CGDataProviderSequentialCallbacks	-	Opaque Types / Creating Sequential-Access Data Providers	-	objc
 struct	struck	CGDeviceColor	-	Reference / Structures	x11-territory	objc
 struct	shipped	CGFunctionCallbacks	-	Opaque Types / Callbacks	-	objc
-struct	open	CGPSConverterCallbacks	-	Opaque Types / Callbacks	-	objc
+struct	deferred	CGPSConverterCallbacks	-	Opaque Types / Callbacks	no-consumer	objc
 struct	shipped	CGPathElement	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
 struct	shipped	CGPatternCallbacks	-	Opaque Types / Callbacks	-	objc
 struct	shipped	CGPoint	-	CoreFoundation, CG-named / Reference / Structures	-	objc
@@ -1480,33 +1503,33 @@ typealias	struck	CGKeyCode	-	Services / Data Types	x11-territory	objc
 typealias	open	CGLayerRef	-	Opaque Types	-	objc
 typealias	struck	CGOpenGLDisplayMask	-	Services / Data Types	x11-territory	objc
 typealias	struck	CGPDFArrayApplierBlock	-	Reference / Data Types	post-10.6	objc
-typealias	open	CGPDFArrayRef	-	Opaque Types / Data Types	-	objc
-typealias	open	CGPDFBoolean	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	-	objc
-typealias	open	CGPDFContentStreamRef	-	Opaque Types / Data Types	-	objc
+typealias	deferred	CGPDFArrayRef	-	Opaque Types / Data Types	no-consumer	objc
+typealias	deferred	CGPDFBoolean	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	no-consumer	objc
+typealias	deferred	CGPDFContentStreamRef	-	Opaque Types / Data Types	no-consumer	objc
 typealias	struck	CGPDFDictionaryApplierBlock	-	Reference / Data Types	post-10.6	objc
-typealias	open	CGPDFDictionaryApplierFunction	-	Opaque Types / Callbacks	-	objc
-typealias	open	CGPDFDictionaryRef	-	Opaque Types / Data Types	-	objc
-typealias	open	CGPDFDocumentRef	-	Opaque Types	-	objc
-typealias	open	CGPDFInteger	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	-	objc
+typealias	deferred	CGPDFDictionaryApplierFunction	-	Opaque Types / Callbacks	no-consumer	objc
+typealias	deferred	CGPDFDictionaryRef	-	Opaque Types / Data Types	no-consumer	objc
+typealias	deferred	CGPDFDocumentRef	-	Opaque Types	no-consumer	objc
+typealias	deferred	CGPDFInteger	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	no-consumer	objc
 typealias	struck	CGPDFMarkedContentItemRef	-	Type Aliases	after-10.6	objc
-typealias	open	CGPDFObjectRef	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	-	objc
-typealias	open	CGPDFOperatorCallback	-	Opaque Types / Abstract Types for PDF Document Content / Callbacks	-	objc
-typealias	open	CGPDFOperatorTableRef	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	-	objc
-typealias	open	CGPDFPageRef	-	Opaque Types / Abstract Types for PDF Document Content	-	objc
-typealias	open	CGPDFReal	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	-	objc
-typealias	open	CGPDFScannerRef	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	-	objc
-typealias	open	CGPDFStreamRef	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	-	objc
-typealias	open	CGPDFStringRef	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	-	objc
+typealias	deferred	CGPDFObjectRef	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	no-consumer	objc
+typealias	deferred	CGPDFOperatorCallback	-	Opaque Types / Abstract Types for PDF Document Content / Callbacks	no-consumer	objc
+typealias	deferred	CGPDFOperatorTableRef	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	no-consumer	objc
+typealias	deferred	CGPDFPageRef	-	Opaque Types / Abstract Types for PDF Document Content	no-consumer	objc
+typealias	deferred	CGPDFReal	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	no-consumer	objc
+typealias	deferred	CGPDFScannerRef	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	no-consumer	objc
+typealias	deferred	CGPDFStreamRef	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	no-consumer	objc
+typealias	deferred	CGPDFStringRef	-	Opaque Types / Abstract Types for PDF Document Content / Data Types	no-consumer	objc
 typealias	struck	CGPDFStructureElementRef	-	Type Aliases	post-10.6	objc
 typealias	struck	CGPDFTagProperty	-	Reference / Data Types	post-10.6	objc
-typealias	open	CGPSConverterBeginDocumentCallback	-	Opaque Types / Callbacks	-	objc
-typealias	open	CGPSConverterBeginPageCallback	-	Opaque Types / Callbacks	-	objc
-typealias	open	CGPSConverterEndDocumentCallback	-	Opaque Types / Callbacks	-	objc
-typealias	open	CGPSConverterEndPageCallback	-	Opaque Types / Callbacks	-	objc
-typealias	open	CGPSConverterMessageCallback	-	Opaque Types / Callbacks	-	objc
-typealias	open	CGPSConverterProgressCallback	-	Opaque Types / Callbacks	-	objc
-typealias	open	CGPSConverterRef	-	Opaque Types	-	objc
-typealias	open	CGPSConverterReleaseInfoCallback	-	Opaque Types / Callbacks	-	objc
+typealias	deferred	CGPSConverterBeginDocumentCallback	-	Opaque Types / Callbacks	no-consumer	objc
+typealias	deferred	CGPSConverterBeginPageCallback	-	Opaque Types / Callbacks	no-consumer	objc
+typealias	deferred	CGPSConverterEndDocumentCallback	-	Opaque Types / Callbacks	no-consumer	objc
+typealias	deferred	CGPSConverterEndPageCallback	-	Opaque Types / Callbacks	no-consumer	objc
+typealias	deferred	CGPSConverterMessageCallback	-	Opaque Types / Callbacks	no-consumer	objc
+typealias	deferred	CGPSConverterProgressCallback	-	Opaque Types / Callbacks	no-consumer	objc
+typealias	deferred	CGPSConverterRef	-	Opaque Types	no-consumer	objc
+typealias	deferred	CGPSConverterReleaseInfoCallback	-	Opaque Types / Callbacks	no-consumer	objc
 typealias	shipped	CGPathApplierFunction	-	Opaque Types / Applying a Function to the Elements of a Path	-	objc
 typealias	struck	CGPathApplyBlock	-	Reference / Data Types	post-10.6	objc
 typealias	shipped	CGPathRef	-	Opaque Types	-	objc
@@ -1608,25 +1631,25 @@ var	open	kCGFontVariationAxisMinValue	-	Opaque Types / Working with Variations /
 var	open	kCGFontVariationAxisName	-	Opaque Types / Working with Variations / Constants	-	objc
 var	open	kCGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	-	objc
 var	struck	kCGPDFContextAccessPermissions	-	Reference / Constants	after-10.6	objc
-var	open	kCGPDFContextAllowsCopying	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	-	objc
-var	open	kCGPDFContextAllowsPrinting	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	-	objc
-var	open	kCGPDFContextArtBox	-	Opaque Types / Creating PDF Graphics Contexts / Box Keys	-	objc
-var	open	kCGPDFContextAuthor	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	-	objc
-var	open	kCGPDFContextBleedBox	-	Opaque Types / Creating PDF Graphics Contexts / Box Keys	-	objc
+var	deferred	kCGPDFContextAllowsCopying	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	no-consumer	objc
+var	deferred	kCGPDFContextAllowsPrinting	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	no-consumer	objc
+var	deferred	kCGPDFContextArtBox	-	Opaque Types / Creating PDF Graphics Contexts / Box Keys	no-consumer	objc
+var	deferred	kCGPDFContextAuthor	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	no-consumer	objc
+var	deferred	kCGPDFContextBleedBox	-	Opaque Types / Creating PDF Graphics Contexts / Box Keys	no-consumer	objc
 var	struck	kCGPDFContextCreateLinearizedPDF	-	Reference / Constants	after-10.6	objc
 var	struck	kCGPDFContextCreatePDFA	-	Reference / Constants	after-10.6	objc
-var	open	kCGPDFContextCreator	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	-	objc
-var	open	kCGPDFContextCropBox	-	Opaque Types / Creating PDF Graphics Contexts / Box Keys	-	objc
-var	open	kCGPDFContextEncryptionKeyLength	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	-	objc
-var	open	kCGPDFContextKeywords	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	-	objc
-var	open	kCGPDFContextMediaBox	-	Opaque Types / Creating PDF Graphics Contexts / Box Keys	-	objc
-var	open	kCGPDFContextOutputIntent	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	-	objc
-var	open	kCGPDFContextOutputIntents	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	-	objc
-var	open	kCGPDFContextOwnerPassword	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	-	objc
-var	open	kCGPDFContextSubject	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	-	objc
-var	open	kCGPDFContextTitle	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	-	objc
-var	open	kCGPDFContextTrimBox	-	Opaque Types / Creating PDF Graphics Contexts / Box Keys	-	objc
-var	open	kCGPDFContextUserPassword	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	-	objc
+var	deferred	kCGPDFContextCreator	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	no-consumer	objc
+var	deferred	kCGPDFContextCropBox	-	Opaque Types / Creating PDF Graphics Contexts / Box Keys	no-consumer	objc
+var	deferred	kCGPDFContextEncryptionKeyLength	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	no-consumer	objc
+var	deferred	kCGPDFContextKeywords	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	no-consumer	objc
+var	deferred	kCGPDFContextMediaBox	-	Opaque Types / Creating PDF Graphics Contexts / Box Keys	no-consumer	objc
+var	deferred	kCGPDFContextOutputIntent	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	no-consumer	objc
+var	deferred	kCGPDFContextOutputIntents	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	no-consumer	objc
+var	deferred	kCGPDFContextOwnerPassword	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	no-consumer	objc
+var	deferred	kCGPDFContextSubject	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	no-consumer	objc
+var	deferred	kCGPDFContextTitle	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	no-consumer	objc
+var	deferred	kCGPDFContextTrimBox	-	Opaque Types / Creating PDF Graphics Contexts / Box Keys	no-consumer	objc
+var	deferred	kCGPDFContextUserPassword	-	Opaque Types / Creating PDF Graphics Contexts / Metadata Keys	no-consumer	objc
 var	struck	kCGPDFOutlineChildren	-	Reference / Constants	after-10.6	objc
 var	struck	kCGPDFOutlineDestination	-	Reference / Constants	after-10.6	objc
 var	struck	kCGPDFOutlineDestinationRect	-	Reference / Constants	after-10.6	objc
@@ -1635,12 +1658,12 @@ var	struck	kCGPDFTagPropertyActualText	-	Reference / Data Types / Type Propertie
 var	struck	kCGPDFTagPropertyAlternativeText	-	Reference / Data Types / Type Properties	after-10.6	objc
 var	struck	kCGPDFTagPropertyLanguageText	-	Reference / Data Types / Type Properties	after-10.6	objc
 var	struck	kCGPDFTagPropertyTitleText	-	Reference / Data Types / Type Properties	after-10.6	objc
-var	open	kCGPDFXDestinationOutputProfile	-	Opaque Types / Creating PDF Graphics Contexts / Output Intent Keys	-	objc
-var	open	kCGPDFXInfo	-	Opaque Types / Creating PDF Graphics Contexts / Output Intent Keys	-	objc
-var	open	kCGPDFXOutputCondition	-	Opaque Types / Creating PDF Graphics Contexts / Output Intent Keys	-	objc
-var	open	kCGPDFXOutputConditionIdentifier	-	Opaque Types / Creating PDF Graphics Contexts / Output Intent Keys	-	objc
-var	open	kCGPDFXOutputIntentSubtype	-	Opaque Types / Creating PDF Graphics Contexts / Output Intent Keys	-	objc
-var	open	kCGPDFXRegistryName	-	Opaque Types / Creating PDF Graphics Contexts / Output Intent Keys	-	objc
+var	deferred	kCGPDFXDestinationOutputProfile	-	Opaque Types / Creating PDF Graphics Contexts / Output Intent Keys	no-consumer	objc
+var	deferred	kCGPDFXInfo	-	Opaque Types / Creating PDF Graphics Contexts / Output Intent Keys	no-consumer	objc
+var	deferred	kCGPDFXOutputCondition	-	Opaque Types / Creating PDF Graphics Contexts / Output Intent Keys	no-consumer	objc
+var	deferred	kCGPDFXOutputConditionIdentifier	-	Opaque Types / Creating PDF Graphics Contexts / Output Intent Keys	no-consumer	objc
+var	deferred	kCGPDFXOutputIntentSubtype	-	Opaque Types / Creating PDF Graphics Contexts / Output Intent Keys	no-consumer	objc
+var	deferred	kCGPDFXRegistryName	-	Opaque Types / Creating PDF Graphics Contexts / Output Intent Keys	no-consumer	objc
 var	struck	kCGPreferredDynamicRange	-	Variables	after-10.6	objc
 var	struck	kCGSkipBoostToHDR	-	Reference / Constants	after-10.6	objc
 var	struck	kCGUse100nitsHLGOOTF	-	Reference / Constants	after-10.6	objc

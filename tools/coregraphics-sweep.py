@@ -108,6 +108,9 @@ DROP_KINDS = ("property", "method", "collection", "article", "module", "groupMar
 STATUS_SHIPPED = "shipped"
 STATUS_OPEN = "open"
 STATUS_STRUCK = "struck"
+# A FOURTH STATUS, AND IT IS NEITHER OWED NOR GONE (user, 2026-10-05): `deferred`. See
+# PARKED_PREFIXES for the one family it covers and the trigger recorded with it.
+STATUS_DEFERRED = "deferred"
 
 # Every strike reason, in one place (Foundation's lesson: a reason that does not
 # strike is a row that lies about where it stands).
@@ -144,6 +147,45 @@ POST_106 = "post-10.6"
 # which is the artefact SDK106_FILE carries, so nothing strikes by name-guessing.
 X11_TERRITORY = "x11-territory"
 STRIKE_REASONS = ("swift-only", "after-10.6", POST_106, X11_TERRITORY)
+
+# AND A STATUS THAT IS NEITHER WORK NOR GONE, AND THAT IS NOT A STRIKE EITHER (user, 2026-10-05):
+# "park the entire PDF half." IT IS THE ANSWER TO A QUESTION THAT CAME BEFORE IT — "why do we need
+# the PDF API at all again?" — and the measured ground is that NOTHING IN THIS TREE CONSUMES IT:
+# `rg -l CGPDF userland/` outside the tests is EMPTY, and every consumer the two plans name is
+# unwritten (a Viewer app, a print spooler, an editor that saves as PDF). The display/event half
+# was struck because somebody else OWNS that capability; nothing owns PDF, so striking would have
+# been a capability decision dressed as a cleanup. PARKING SAYS THE TRUE THING INSTEAD: the API is
+# in era, it is Apple's surface, we are not building it yet, and nothing is deleted.
+#
+# THE TRIGGER, recorded so the park is not a memory: RESUME WHEN A CONSUMER LANDS — a Viewer or
+# browser that opens PDFs, a print system, or an editor that exports one. The plans stay where they
+# are (docs/design/pdfium-plan.md reads, pdf-generation-plan.md writes via libharu) and so does the
+# reconnaissance: the 77-row tokenizer/object model is the bulk, CGDocument needs
+# CGDataProviderCreateWithURL, CGPDFContext needs the CGDataConsumer family (absent), and the
+# render half waits on CPython -> GN -> PDFium P0/P1.
+#
+# AND WHAT IT DOES NOT DO: a parked row is still ABSENT from our headers, and --check reports a
+# parked name that IS declared — parking is a statement about WORK, not a licence to leave the
+# status column lying. Rows the era and territory grounds already struck stay struck: the post-10.6
+# half of this family (PDF/X keys, accessibility tag types) keeps the reason that is a FACT.
+PARKED_PREFIXES = ("CGPDF", "kCGPDF", "CGPS", "kCGPS")
+
+# AND THE CLAUSE THE HEADER SET CANNOT EXPRESS: THE ERROR FAMILY. Measured, not assumed — the
+# artefact records the FIRST header, in sorted order, that mentions a name, and that heuristic split
+# the CGError family down the middle: `kCGErrorSuccess` landed on a display header and struck, while
+# `kCGErrorInvalidOperation` and nine siblings landed on `CGError.h` — deliberately outside the set,
+# because `CGError` the TYPE is the whole framework's in later eras — and stayed open. But in 10.6
+# every function that returns a CGError is in the half that went, so the cases belong with it, and a
+# NAMED clause is the honest fix rather than a widened header set. `--check` verifies the pattern the
+# same way it verifies the headers.
+CG_ERROR_FAMILY = re.compile(r"^(kCGError\w*|CGError|CGEventErr|k?CGDisplayNoErr|k?CGEventNoErr)$")
+PARK_REASON = "no-consumer"
+
+
+def is_parked(name):
+    """Is this name in the parked family? A PREFIX TEST, and the ledger says what it covers: every
+    CGPDF*/CGPS* name in the surface belongs to the PDF half, which is the family the user parked."""
+    return name.startswith(PARKED_PREFIXES)
 
 # THE ERA GROUND'S ARTEFACT AND ITS RULE. The file is `name<TAB>introducedAt<TAB>deprecatedAt<TAB>page`, one line
 # per ledger name, written by the fetch tool above. An ABSENT FILE IS AN EMPTY MAP AND NOTHING IS STRUCK ON THIS
@@ -374,13 +416,22 @@ def struck_reason(row):
     # SDK106_DISPLAY_HEADERS, and `--check` re-derives the membership rather than trusting this line.
     if row.get("sdk") == "present" and row.get("sdk_header") in SDK106_DISPLAY_HEADERS:
         return X11_TERRITORY
+    if CG_ERROR_FAMILY.match(row["name"]):
+        return X11_TERRITORY
     return None
 
 
 def why_of(row):
-    """The `why` column. A reason here does NOT strike unless it is in STRIKE_REASONS: `deprecated` is the
-    informational one, and it says what kind of work the row is."""
-    return struck_reason(row) or ("deprecated" if row.get("deprecated") else "-")
+    """The `why` column. A reason here does NOT strike unless it is in STRIKE_REASONS: `deprecated` and
+    PARK_REASON are the informational ones, and they say what kind of work the row is — or, for a parked
+    row, why it is not work at all. THE REASON TRAVELS WITH THE ROW so a line can be argued with, which is
+    the same rule `struck_reason` keeps."""
+    why = struck_reason(row)
+    if why is not None:
+        return why
+    if is_parked(row["name"]):
+        return PARK_REASON
+    return "deprecated" if row.get("deprecated") else "-"
 
 
 def status_of(kind, name, why, text, names=None):
@@ -405,7 +456,15 @@ def status_of(kind, name, why, text, names=None):
         return STATUS_SHIPPED
     if why in STRIKE_REASONS:
         return STATUS_STRUCK
-    return STATUS_SHIPPED if declared(kind, name, text, names) else STATUS_OPEN
+    if declared(kind, name, text, names):
+        return STATUS_SHIPPED
+    # AND THE PARKED FAMILY, LAST AND ONLY FOR WHAT WOULD OTHERWISE BE OPEN: a parked name we SHIP is
+    # SHIPPED (a fact, and --check reports it), and a parked name the era or territory grounds struck
+    # keeps that reason. What is left is exactly the owed-but-not-wanted: STATUS_DEFERRED, which
+    # `work_list()` does not carry because it filters for STATUS_OPEN.
+    if is_parked(name):
+        return STATUS_DEFERRED
+    return STATUS_OPEN
 
 
 # --------------------------------------------------------------------------
@@ -584,14 +643,39 @@ def refresh():
         "# counted, NOT excluded: %d distinct names Apple documents on a `swift.` page" % len(swift_seen),
         "# but which carry the CG spelling.",
         "#",
+        "# AND A STATUS THAT IS NEITHER OWED NOR GONE (user, 2026-10-05): `deferred` — the PDF half,",
+        "# both sides, PARKED rather than struck, in the user's own words: \"park the entire PDF half\".",
+        "# The question it answers came first: \"why do we need the PDF API at all again?\" THE MEASURED",
+        "# GROUND IS THAT NOTHING HERE CONSUMES IT — `rg -l CGPDF userland/` outside the tests is empty,",
+        "# and every consumer the two plans name (a Viewer app, a print spooler, an editor that saves as",
+        "# PDF) is unwritten. The display/event half was struck because Xfb and X11R7 OWN that",
+        "# capability; nothing owns PDF, so a strike would have been a capability decision dressed as a",
+        "# cleanup. Parking says the true thing: in era, Apple's surface, not built yet, nothing deleted.",
+        "#",
+        "# THE RESUME TRIGGER, so the park is not a memory: a CONSUMER — a Viewer or browser that opens",
+        "# PDFs, a print system, or an editor that exports one. The plans stay",
+        "# (docs/design/pdfium-plan.md reads, pdf-generation-plan.md writes via libharu) and so does the",
+        "# reconnaissance: the 77-row tokenizer/object model is the bulk, CGPDFDocument needs",
+        "# CGDataProviderCreateWithURL, CGPDFContext needs the absent CGDataConsumer family, and the",
+        "# render half waits on CPython -> GN -> PDFium P0/P1. Unparking is one line: delete the prefix",
+        "# from PARKED_PREFIXES.",
+        "#",
+        "# AND IT IS NOT A LICENCE: a parked name is still ABSENT from our headers, and --check reports",
+        "# a parked name that IS declared. Rows the era and territory grounds already struck KEEP THAT",
+        "# REASON — the post-10.6 half of this family (PDF/X keys, accessibility tag types) is a fact",
+        "# about the API, not a scope call. `why` reads `no-consumer` on every parked row.",
+        "#",
+        "#",
         "# why the struck rows are struck: " + ", ".join("%s %d" % (k, v) for k, v in sorted(reasons.items())),
         "#",
         "# counts by kind:",
     ]
     for kind in KINDS:
-        got = [counts.get((kind, s), 0) for s in (STATUS_SHIPPED, STATUS_OPEN, STATUS_STRUCK)]
+        got = [counts.get((kind, s), 0)
+               for s in (STATUS_SHIPPED, STATUS_OPEN, STATUS_STRUCK, STATUS_DEFERRED)]
         if sum(got):
-            header.append("#   %-10s shipped %4d   open %4d   struck %4d" % (kind, *got))
+            header.append("#   %-10s shipped %4d   open %4d   struck %4d   deferred %4d"
+                          % (kind, *got))
     open(SURFACE, "w", encoding="utf-8").write("\n".join(header + out) + "\n")
     print("coregraphics-sweep: wrote %s (%d symbols)" % (os.path.relpath(SURFACE, ROOT), len(out)))
     return 0
@@ -687,19 +771,40 @@ def check(strict=False):
         # The territory ground's own verification, and its own report: the artefact must say the row's
         # HOME is a display/event header, and a SHIPPED row in that territory is a fact to print rather
         # than delete — Xfb does not stop this tree having built one, it stops it OWING one.
-        if why == X11_TERRITORY and status == STATUS_STRUCK and sdk_h.get(name) not in SDK106_DISPLAY_HEADERS:
+        if (why == X11_TERRITORY and status == STATUS_STRUCK
+                and sdk_h.get(name) not in SDK106_DISPLAY_HEADERS
+                and not CG_ERROR_FAMILY.match(name)):
             bad.append("TERRITORY STRIKE WITH NO EVIDENCE %-9s %s — struck as %s and its 10.6 home is %s"
                        % (kind, name, X11_TERRITORY, sdk_h.get(name) or "nothing"))
         if why == X11_TERRITORY and status == STATUS_SHIPPED:
             out_of_era.append("%-9s %s — display/event territory (Xfb's and X11R7's), and we ship it"
                               % (kind, name))
+        # The park's own verification, in the same shape as the two grounds: deferred is a statement
+        # about WORK, so it may cover only the parked family, its reason must be the recorded one, and a
+        # parked name that we DO declare is an inconsistency rather than a deferral.
+        if status == STATUS_DEFERRED and not is_parked(name):
+            bad.append("DEFERRAL OUTSIDE THE PARKED FAMILY %-9s %s — deferred and not CGPDF*/CGPS*"
+                       % (kind, name))
+        if status == STATUS_DEFERRED and why != PARK_REASON:
+            bad.append("DEFERRED ROW WITH ANOTHER REASON %-9s %s — says %s" % (kind, name, why))
+        if status == STATUS_DEFERRED and found:
+            bad.append("PARKED NAME WE SHIP %-9s %s — parking is about work, not about the headers"
+                       % (kind, name))
     kinds = sorted({k for k, _ in counts})
     print("coregraphics-sweep: %d symbols in the ledger" % len(rows))
     for kind in kinds:
-        print("  %-10s shipped %4d   open %4d   struck %4d" % (
+        print("  %-10s shipped %4d   open %4d   struck %4d   deferred %4d" % (
             kind, counts.get((kind, STATUS_SHIPPED), 0),
             counts.get((kind, STATUS_OPEN), 0),
-            counts.get((kind, STATUS_STRUCK), 0)))
+            counts.get((kind, STATUS_STRUCK), 0),
+            counts.get((kind, STATUS_DEFERRED), 0)))
+    if counts.get((None, STATUS_DEFERRED)) is None:
+        parked_n = sum(v for (k, s), v in counts.items() if s == STATUS_DEFERRED)
+        if parked_n:
+            print("\n%d PARKED ROW(S) — not owed and not gone: the PDF half, deferred by decision\n"
+                  "(the ground and the resume trigger are in the ledger's own header). They are not on\n"
+                  "the work list, and `--check` verifies the family rather than trusting this line:"
+                  % parked_n)
     if twin:
         print("\n%d STRUCK NAME(S) WE SHIP IN THEIR LIVE FORM:\n" % len(twin))
         for line in twin:
@@ -734,8 +839,9 @@ def check(strict=False):
     if strict and policy:
         return 1
     print("coregraphics-sweep: consistent — every shipped name is declared, every open name is absent, "
-          "every era-struck row is dated after 10.6 by the artefact, and every territory-struck row "
-          "has a display/event home in the 10.6 headers")
+          "every era-struck row is dated after 10.6 by the artefact, every territory-struck row has a "
+          "display/event home in the 10.6 headers or is a CGError name, and every deferred row is in the "
+          "parked PDF family")
     return 0
 
 
@@ -821,9 +927,11 @@ def apply_era():
     head.append("#")
     head.append("# counts by kind:")
     for kind in KINDS:
-        got = [counts.get((kind, s), 0) for s in (STATUS_SHIPPED, STATUS_OPEN, STATUS_STRUCK)]
+        got = [counts.get((kind, s), 0)
+               for s in (STATUS_SHIPPED, STATUS_OPEN, STATUS_STRUCK, STATUS_DEFERRED)]
         if sum(got):
-            head.append("#   %-10s shipped %4d   open %4d   struck %4d" % (kind, *got))
+            head.append("#   %-10s shipped %4d   open %4d   struck %4d   deferred %4d"
+                        % (kind, *got))
     open(SURFACE, "w", encoding="utf-8").write("\n".join(head + out) + "\n")
     print("coregraphics-sweep: --apply-era struck %d owed row(s) as %s: %s"
           % (len(flipped), ERA_STRIKE, ", ".join("%s %d" % kv for kv in sorted(later.items()))))

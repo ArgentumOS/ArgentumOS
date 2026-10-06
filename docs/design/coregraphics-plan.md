@@ -1181,12 +1181,57 @@ without the evidence is an inconsistency the tool reports. The artefact is
     `CGDisplayStream`, `CGWindowListCreateImage` and their siblings were struck by the ERA ground before this
     decision was made. Same territory, different reason, and the reason recorded is the fact.
 
-**AND THE MISSES ARE ZERO, MEASURED BOTH WAYS:** of the 465, Apple's own index files 423 under its
-`Services` area and 42 under `Reference`/`Functions` (the window-level constants, the screen-capture
-functions, the error names, `CGDeviceColor`); and of the open rows Apple DOES file under `Services`, none has
-a 10.6 home outside the eleven. The two classifiers agree on every overlap — which is why the rule can use
-the mechanical one.
+**AND THE MISSES: ZERO BY AREA — AND TEN BY HEADER, WHICH WAS A REAL GAP AND IS CLOSED HERE.** Of the 465,
+Apple's own index files 423 under its `Services` area and 42 under `Reference`/`Functions` (the window-level
+constants, the screen-capture functions, the error names, `CGDeviceColor`); and of the open rows Apple DOES
+file under `Services`, **none** has a 10.6 home outside the eleven — so by AREA the two classifiers agree on
+every overlap, which is why the rule can use the mechanical one.
+
+**THE HEADER RULE HAD A GAP THE AREA TEST COULD NOT SEE, and it is worth recording how it hid:** the
+artefact records the FIRST header, in sorted order, that MENTIONS a name, and that heuristic split the
+CGError family down the middle — `kCGErrorSuccess` landed on a display header and struck, while
+`kCGErrorInvalidOperation` and NINE SIBLINGS landed on `CGError.h` (excluded from the set on purpose) and
+stayed open. It is the kind of gap that is invisible until you read two rows of the same family and ask why
+one is struck and the other is not. **`CGError.h` stays out of the header set — `CGError` the TYPE is the
+whole framework's in later eras — but in 10.6 every function returning a `CGError` is in the half that
+went, so the ten cases are struck by a NAMED clause in the tool (`CG_ERROR_FAMILY`), which `--check`
+verifies exactly as it verifies the headers.** The other family members were already right: `CGError`,
+`kCGErrorSuccess`, `CGDisplayNoErr`, `CGEventNoErr` and `CGEventErr` by territory, `CGErrorCallback` and
+`CGErrorSetCallback` as post-10.6.
 
 **WHAT THIS COSTS, said plainly:** nothing in the tree is deleted, because nothing in the tree implemented
 any of it (measured: of the 465, every one is OPEN — zero shipped). This is a ledger cut, and the first one
 justified by ownership rather than by era.
+
+## 14. The PDF half is PARKED (user, 2026-10-05)
+
+**THE QUESTION CAME BEFORE THE DECISION: "why do we need the PDF API at all again?"** The honest answer was
+that nothing needed it — and it is worth writing down, because the plans had been describing it as "the
+payoff" since §5. **THE MEASURED GROUND: NOTHING IN THIS TREE CONSUMES PDF.** `rg -l CGPDF userland/` outside
+the tests is empty, and every consumer the two plans name is unwritten — `pdfium-plan.md` §3 waits on "the
+Viewer app" and "print preview when printing lands"; `pdf-generation-plan.md` §3 G2 waits on "Viewer/Editor
+save-as-PDF wired; spooler output when printing lands". **THE DECISION: "park the entire PDF half."**
+
+**PARKED RATHER THAN STRUCK, AND THE DIFFERENCE IS THE POINT.** The display/event half was struck because Xfb
+and X11R7 OWN that capability — a strike there was an ownership cleanup. Nothing owns PDF: striking it would
+have decided that this OS cannot read or write PDF at all, which is a capability decision dressed as a
+cleanup. So the ledger gains a FOURTH STATUS, `deferred` — in era, Apple's surface, not built yet, nothing
+deleted — and `why` reads `no-consumer` on every such row.
+
+**WHAT IT COVERS: 165 rows**, every `CGPDF*`/`CGPS*` name that the era and territory grounds had not already
+struck. That is the whole family minus the post-10.6 half (PDF/X metadata keys and the accessibility tag
+types), which keeps its reason because that is a FACT about the API. Open 371 → 206; deferred 165.
+
+**THE TRIGGER IS RECORDED, so the park is not a memory:** resume when a CONSUMER lands — a Viewer or browser
+that opens PDFs, a print system, or an editor that exports one. The plans stay where they are
+(`pdfium-plan.md` reads, `pdf-generation-plan.md` writes via libharu) and so does the reconnaissance of §13's
+sibling work: the 77-row tokenizer/object model is the bulk, `CGPDFDocument` needs
+`CGDataProviderCreateWithURL`, `CGPDFContext` needs the absent `CGDataConsumer` family, and the render half
+waits on CPython → GN → PDFium P0/P1. **Unparking is one line** — delete the prefix from `PARKED_PREFIXES`;
+the rows return to `open` with no other edit.
+
+**AND PARKING IS NOT A LICENCE:** a parked name is still ABSENT from our headers, `--check` reports a parked
+name that IS declared, and it verifies the family rather than trusting the status column. The write-side half
+was given up knowingly: it is the drawing API's only vector output (`CGPDFContext` is a `CGContext`, and our
+own `NSGraphicsContext.h` names a PDF destination format in prose), so if printing or export ever wants a
+resolution-independent path, that is the decision to revisit first.
