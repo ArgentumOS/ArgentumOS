@@ -1834,3 +1834,40 @@ names whose meaning nothing here would read.
 `CGContextDrawPDFDocument` are `open` rows named `CGContext*`, so the PDF park's prefix list does not catch them
 — and both are unbuildable without the parked parser. Parking them is a deliberate change to the park's own
 definition, so it belongs in its own unit.
+
+## 29. The component colour doors and the spaces behind them (4 rows)
+
+**`CGContextSetFillColor`, `SetStrokeColor`, `SetFillColorSpace` and `SetStrokeColorSpace` SHIP.** Apple's
+header defines the first two precisely — "the number of elements in `components` must be one greater than the
+number of components in the current fill color space (N color components + 1 alpha component). The current fill
+color space must not be a pattern color space" — so the space is what makes a number mean something, and the
+probe asks the SAME two values `{0.5, 1.0}` under two spaces and requires the PIXELS to differ
+(`gray0.5 r=128 g=128 b=128`).
+
+**THE GRAPHICS STATE REMEMBERS THE SPACE AS ITS MODEL, NOT AS AN OBJECT, AND THAT IS THE DESIGN.** The component
+doors need exactly two facts about the current space — how many components there are and what they mean — and a
+`CGColorSpaceModel` answers both. Storing the model instead of the space keeps a retained pointer OUT of
+`cg_state`, which is why `CGContextSaveGState`/`RestoreGState` and the context's release needed no change at
+all: the field is copied and cleared like every other one.
+
+**APPLE'S DOCUMENTED SIDE EFFECT IS IMPLEMENTED, NOT SKIPPED:** "as a side-effect, set the fill color to a
+default value appropriate for the color space." The default is opaque black, and the probe measures it the only
+way it can be seen — fill RED, then set a gray space, then fill again WITHOUT touching a colour door, and the
+second fill must be black.
+
+**A SPACE THIS LIBRARY CANNOT READ IS REFUSED BY NAME RATHER THAN STORED** (CMYK: what ink values mean depends
+on the press; Lab, ICC, pattern: no colour conversion here), because a stored space no colour could ever be set
+with is a setting with no effect. The probe checks that the refusal leaves the colour IN USE untouched.
+
+**THE TWO CMYK DOORS STAY `open`, AND THEIR GROUND IS NOW SHARPER THAN "UNIMPLEMENTED":**
+`CGContextSetCMYKFillColor` is defined as setting the fill colour space to **DeviceCMYK** and then setting four
+components plus alpha — so it is not a convenience over the doors above, it is an entry point to ink values, and
+it cannot ship before an ink conversion does.
+
+**TWO INSTRUMENT LESSONS, BOTH PAID FOR IN THIS UNIT.** THE HEADER AND THE IMPLEMENTATION SPELL THE SAME
+PARAMETER DIFFERENTLY: `CGContext.h` names it `context` and `CGContext.c` names it `c`, so an anchor written
+from one file and used against the other fails — which cost two runs whose two-phase check caught them before
+any write, and the rule is the one this thread keeps relearning: **an anchor comes from the file it is used
+against.** And the probe's own first version asked for "the middle of the rectangle is left alone" under a
+4-wide stroke on a 4-wide rectangle, which leaves no middle at all: the check was wrong about its own geometry,
+so the rectangle grew and the sample points were chosen to survive the bitmap-rows question too.

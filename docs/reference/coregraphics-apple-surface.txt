@@ -777,8 +777,8 @@ func	open	CGContextSetCMYKStrokeColor	-	Opaque Types / Setting Fill, Stroke, and
 func	shipped	CGContextSetCharacterSpacing	-	Opaque Types / Drawing Text	-	objc
 func	struck	CGContextSetContentToneMappingInfo	-	Functions	after-10.6	objc
 func	struck	CGContextSetEDRTargetHeadroom	-	Reference / Functions	after-10.6	objc
-func	open	CGContextSetFillColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
-func	open	CGContextSetFillColorSpace	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
+func	shipped	CGContextSetFillColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	shipped with the component colour doors (plan §29)	objc
+func	shipped	CGContextSetFillColorSpace	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	shipped with the component colour doors (plan §29)	objc
 func	shipped	CGContextSetFillColorWithColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	shipped	CGContextSetFillPattern	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	open	CGContextSetFlatness	-	Opaque Types / Setting Path Drawing Options	-	objc
@@ -802,8 +802,8 @@ func	shipped	CGContextSetShouldAntialias	-	Opaque Types / Setting Path Drawing O
 func	shipped	CGContextSetShouldSmoothFonts	-	Opaque Types / Drawing Text	-	objc
 func	shipped	CGContextSetShouldSubpixelPositionFonts	-	Opaque Types / Drawing Text	-	objc
 func	shipped	CGContextSetShouldSubpixelQuantizeFonts	-	Opaque Types / Drawing Text	-	objc
-func	open	CGContextSetStrokeColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
-func	open	CGContextSetStrokeColorSpace	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
+func	shipped	CGContextSetStrokeColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	shipped with the component colour doors (plan §29)	objc
+func	shipped	CGContextSetStrokeColorSpace	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	shipped with the component colour doors (plan §29)	objc
 func	shipped	CGContextSetStrokeColorWithColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	shipped	CGContextSetStrokePattern	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	shipped	CGContextSetTextDrawingMode	-	Opaque Types / Drawing Text	-	objc

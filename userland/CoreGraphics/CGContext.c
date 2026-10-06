@@ -81,6 +81,14 @@ typedef struct cg_state {
 	CGAffineTransform ctm;
 	pixman_region32_t clip;   /* DEVICE space */
 	CGFloat rgba[4];          /* not premultiplied */
+	/* THE FILL AND STROKE COLOUR SPACES, AS THE SHAPE OF THEIR COMPONENTS RATHER THAN AS OBJECTS:
+	 * the component doors need exactly two facts about the current space — HOW MANY components there
+	 * are and WHAT THEY MEAN — and a `CGColorSpaceModel` answers both. STORING THE MODEL RATHER THAN
+	 * THE SPACE ITSELF is what keeps a retained object out of the graphics state, and therefore keeps
+	 * CGContextSaveGState/RestoreGState and the context's release from needing anything they do not
+	 * already do: this struct is copied and cleared like every other field. */
+	int fill_model;
+	int stroke_model;
 	CGFloat alpha;
 	CGBlendMode blend;
 	int antialias;
@@ -252,6 +260,11 @@ static void cg_state_init_full(cg_state *st, int width, int height)
 	st->rgba[2] = 0.0;
 	st->rgba[3] = 1.0;
 	st->alpha = 1.0;
+	/* DEVICE RGB IS THE DEFAULT COLOUR SPACE for both, which is what the component doors assume when
+	 * nobody has set one, and what `CGContextSetRGBFillColor` has always written. STATED HERE for the
+	 * reason the dash pattern's zero is: a default that depends on calloc is a default nobody chose. */
+	st->fill_model = kCGColorSpaceModelRGB;
+	st->stroke_model = kCGColorSpaceModelRGB;
 	st->blend = kCGBlendModeNormal;
 	st->antialias = 1;
 	/* STATED RATHER THAN LEFT TO THE calloc THAT HAPPENS TO ZERO IT, for the reason the pattern
@@ -2442,6 +2455,126 @@ static int cg_color_to_rgba(CGColorRef color, CGFloat rgba[4])
 		fprintf(stderr, "CG-REFUSE: a colour in this color space has no conversion\n");
 		return 0;
 	}
+}
+
+/* ------------------------------------------------------------------------- */
+/* the component doors, and the colour spaces behind them                      */
+/* ------------------------------------------------------------------------- */
+
+/* THE COMPONENT DOORS ARE DEFINED BY THE CURRENT COLOUR SPACE AND NOT BY RGB, and Apple's header says what
+ * that means precisely: "the number of elements in `components` must be one greater than the number of
+ * components in the current fill color space (N color components + 1 alpha component). The current fill color
+ * space must not be a pattern color space."
+ *
+ * SO THE SPACE IS WHAT MAKES A COMPONENT MEANINGFUL, AND THIS LIBRARY REMEMBERS IT AS ITS MODEL: how many
+ * components there are and what they mean is all a `CGColorSpaceModel` carries, and storing the model rather
+ * than the object means THE GRAPHICS STATE GAINS NO RETAINED POINTER — nothing to retain on save, nothing to
+ * release on restore, nothing for the context's release to know about. A space this library cannot read as
+ * light values (CMYK: what ink values mean depends on the press; Lab and ICC: no colour conversion here) is
+ * REFUSED BY NAME rather than stored, because a stored space no colour could ever be set with is a setting
+ * with no effect. */
+static const char *fn_model_name(int model)
+{
+	switch (model) {
+	case kCGColorSpaceModelMonochrome:
+		return "grayscale";
+	case kCGColorSpaceModelRGB:
+		return "RGB";
+	case kCGColorSpaceModelCMYK:
+		return "CMYK";
+	case kCGColorSpaceModelLab:
+		return "Lab";
+	case kCGColorSpaceModelIndexed:
+		return "indexed";
+	case kCGColorSpaceModelPattern:
+		return "pattern";
+	default:
+		return "an unrecognised";
+	}
+}
+
+/* APPLE'S SIDE EFFECT, WHICH IS PART OF THE DOOR AND NOT A DETAIL: "As a side-effect, set the fill color to a
+ * default value appropriate for the color space." THE DEFAULT IS BLACK AND OPAQUE — every colour component
+ * zero, alpha one — which is what this library already paints with before anybody sets a colour, so a caller
+ * who changes the space and then fills gets black rather than the colour they were using a moment ago. */
+static void fn_default_color(CGContextRef c, CGFloat *rgba, int model)
+{
+	if (model == kCGColorSpaceModelMonochrome || model == kCGColorSpaceModelRGB) {
+		rgba[0] = 0.0;
+		rgba[1] = 0.0;
+		rgba[2] = 0.0;
+		rgba[3] = 1.0;
+	}
+	(void)c;
+}
+
+void CGContextSetFillColorSpace(CGContextRef c, CGColorSpaceRef space)
+{
+	if (c == NULL || space == NULL) {
+		return;
+	}
+	if (CGColorSpaceGetModel(space) != kCGColorSpaceModelMonochrome
+	    && CGColorSpaceGetModel(space) != kCGColorSpaceModelRGB) {
+		fprintf(stderr, "CG-REFUSE: CGContextSetFillColorSpace takes a %s space, and this library reads "
+				"light values only — CMYK ink depends on the press and there is no colour "
+				"conversion here\n", fn_model_name(CGColorSpaceGetModel(space)));
+		return;
+	}
+	c->state.fill_model = CGColorSpaceGetModel(space);
+	fn_default_color(c, c->state.rgba, c->state.fill_model);
+}
+
+void CGContextSetStrokeColorSpace(CGContextRef c, CGColorSpaceRef space)
+{
+	if (c == NULL || space == NULL) {
+		return;
+	}
+	if (CGColorSpaceGetModel(space) != kCGColorSpaceModelMonochrome
+	    && CGColorSpaceGetModel(space) != kCGColorSpaceModelRGB) {
+		fprintf(stderr, "CG-REFUSE: CGContextSetStrokeColorSpace takes a %s space, and this library reads "
+				"light values only\n", fn_model_name(CGColorSpaceGetModel(space)));
+		return;
+	}
+	c->state.stroke_model = CGColorSpaceGetModel(space);
+	fn_default_color(c, c->state.stroke_rgba, c->state.stroke_model);
+}
+
+/* A MONOCHROME SPACE HAS ONE COMPONENT AND IT FEEDS ALL THREE CHANNELS, which is the same reading
+ * `CGContextSetGrayFillColor` has always used; a NULL array is refused rather than read. */
+void CGContextSetFillColor(CGContextRef c, const CGFloat *components)
+{
+	if (c == NULL || components == NULL) {
+		return;
+	}
+	if (c->state.fill_model == kCGColorSpaceModelMonochrome) {
+		c->state.rgba[0] = components[0];
+		c->state.rgba[1] = components[0];
+		c->state.rgba[2] = components[0];
+		c->state.rgba[3] = components[1];
+		return;
+	}
+	c->state.rgba[0] = components[0];
+	c->state.rgba[1] = components[1];
+	c->state.rgba[2] = components[2];
+	c->state.rgba[3] = components[3];
+}
+
+void CGContextSetStrokeColor(CGContextRef c, const CGFloat *components)
+{
+	if (c == NULL || components == NULL) {
+		return;
+	}
+	if (c->state.stroke_model == kCGColorSpaceModelMonochrome) {
+		c->state.stroke_rgba[0] = components[0];
+		c->state.stroke_rgba[1] = components[0];
+		c->state.stroke_rgba[2] = components[0];
+		c->state.stroke_rgba[3] = components[1];
+		return;
+	}
+	c->state.stroke_rgba[0] = components[0];
+	c->state.stroke_rgba[1] = components[1];
+	c->state.stroke_rgba[2] = components[2];
+	c->state.stroke_rgba[3] = components[3];
 }
 
 void CGContextSetFillColorWithColor(CGContextRef c, CGColorRef color)

@@ -392,6 +392,16 @@ void CGContextSetRGBStrokeColor(CGContextRef context, CGFloat red, CGFloat green
  * had: conversion between colour spaces is the colour engine's job (C4.2), and drawing a
  * profile's raw numbers as if they were device values paints something confident and wrong.
  * A NULL colour is the same refusal, not a reset to black. */
+/* THE COMPONENT FORMS, WHOSE MEANING COMES FROM THE CURRENT COLOUR SPACE — N colour components plus an alpha,
+ * per Apple's sentence — and the two doors that set that space. The space is remembered as its MODEL, so the
+ * graphics state gains no retained pointer (see CGContext.c); a space this library cannot read as light values
+ * is REFUSED BY NAME there rather than stored, and the space door's documented side effect — the colour becomes
+ * the default value for the space, which is opaque black — is implemented rather than omitted. */
+void CGContextSetFillColor(CGContextRef c, const CGFloat *components);
+void CGContextSetStrokeColor(CGContextRef c, const CGFloat *components);
+void CGContextSetFillColorSpace(CGContextRef c, CGColorSpaceRef space);
+void CGContextSetStrokeColorSpace(CGContextRef c, CGColorSpaceRef space);
+
 void CGContextSetFillColorWithColor(CGContextRef context, CGColorRef color);
 void CGContextSetStrokeColorWithColor(CGContextRef context, CGColorRef color);
 
