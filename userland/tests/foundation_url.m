@@ -778,6 +778,52 @@ int main(void)
 	covers("NSURL", "parameterString");
 	}
 
+	printf("FOUNDATION-URL DIAG leg=file-constructor-family\n");
+	{
+		/* NEW ASSERTIONS: THE FILE-URL CONSTRUCTOR FAMILY, SIX DOORS, ALL AS RELATIONS. Two of these are exact
+		 * by construction and the check says so: -initFileURLWithFileSystemRepresentation:... DELEGATES to
+		 * -initFileURLWithPath:isDirectory:relativeToURL:, so the law between them is not a coincidence but the
+		 * implementation's own shape, and a future rewrite that broke the delegation would have to break the
+		 * check first. The rest compare the -init family against the +doors the surface already had, which keeps
+		 * every assertion free of constants. */
+		NSString *p = @"/System/Temporary Files/nsurl-probe/constructor.txt";
+		NSURL *byClass = [NSURL fileURLWithPath:p];
+		NSURL *byInit = [[NSURL alloc] initFileURLWithPath:p];
+		NSURL *byInitDir = [[NSURL alloc] initFileURLWithPath:p isDirectory:YES];
+		NSURL *byInitPlain = [[NSURL alloc] initFileURLWithPath:p isDirectory:NO];
+		NSURL *byClassDir = [NSURL fileURLWithPath:p isDirectory:YES relativeToURL:nil];
+		NSURL *byClassPlain = [NSURL fileURLWithPath:p isDirectory:NO relativeToURL:nil];
+		NSURL *byFSRep = [[NSURL alloc] initFileURLWithFileSystemRepresentation:[p fileSystemRepresentation]
+		                                                              isDirectory:YES
+		                                                            relativeToURL:nil];
+		NSURL *viaString = [[NSURL alloc] initWithString:@"https://example.invalid/a/b" encodingInvalidCharacters:NO];
+		NSURL *stringDoor = [NSURL URLWithString:@"https://example.invalid/a/b"];
+
+		check("url-file-constructor-family-agrees-with-the-class-doors",
+		      byInit != nil && byClass != nil &&
+		      [[byInit absoluteString] isEqual:[byClass absoluteString]] &&
+		      [[byInit path] isEqual:[byClass path]] &&
+		      byInitDir != nil && byInitPlain != nil && byClassDir != nil && byClassPlain != nil &&
+		      [[byInitDir absoluteString] isEqual:[byClassDir absoluteString]] &&
+		      [[byInitPlain absoluteString] isEqual:[byClassPlain absoluteString]] &&
+		      byFSRep != nil &&
+		      [[byFSRep absoluteString] isEqual:[byInitDir absoluteString]] &&
+		      [[byFSRep path] isEqual:[byInitDir path]] &&
+		      viaString != nil && stringDoor != nil &&
+		      [[viaString absoluteString] isEqual:[stringDoor absoluteString]] &&
+		      [[viaString scheme] isEqual:[stringDoor scheme]],
+		      [[NSString stringWithFormat:@"init=%@ class=%@ dir=%@ plain=%@ fsrep=%@ string=%@",
+			[byInit absoluteString], [byClass absoluteString],
+			[byInitDir absoluteString], [byInitPlain absoluteString],
+			[byFSRep absoluteString], [viaString absoluteString]] UTF8String]);
+		covers("NSURL", "initFileURLWithPath:");
+		covers("NSURL", "initFileURLWithPath:isDirectory:");
+		covers("NSURL", "initFileURLWithFileSystemRepresentation:isDirectory:relativeToURL:");
+		covers("NSURL", "initWithString:encodingInvalidCharacters:");
+		covers("NSURL", "fileURLWithPath:isDirectory:relativeToURL:");
+		printf("FOUNDATION-URL DIAG leg=file-constructor-family-done\n");
+	}
+
 	printf("FOUNDATION-URL RESULT ok=%d fail=%d\n", okc, failc);
 	/* The exit status, in the probe's OWN output. After a probe the console can stop
 	 * serving INPUT for a while (the tier residual), so an `echo $?` that the harness

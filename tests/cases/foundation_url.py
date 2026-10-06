@@ -29,37 +29,19 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_url"
 CHECKS = (
-    "url-load-resource-data-notifies-the-client-of-failure",
-    "url-resource-data-using-cache-answers-nil-for-an-unreachable-url",
-    "url-set-resource-data-answers-no-for-a-url-that-cannot-hold-data",
-    "url-security-scoped-stop-balances-nothing",
-    "url-security-scoped-pair-answers-no",
-    "url-promised-item-bulk-read-answers-a-dictionary",
-    "url-promised-item-reachability-delegates",
-    "url-promised-item-content-tied-key-answers-yes-with-nil",
-    "url-promised-item-value-agrees-with-the-ordinary-door",
-    "url-bookmark-init-by-resolving-refuses",
-    "url-bookmark-creation-refuses",
-    "url-bookmark-write-refuses",
-    "url-bookmark-resource-values-refuses",
-    "url-bookmark-data-with-contents-refuses",
-    "url-bookmark-resolution-refuses",
-    "url-bookmark-alias-resolution-refuses","url-parse", "url-refusals", "url-request-values-shipped",
-          "urlprotocol-seam-shipped", "url-shipped",
-          "rfc3986-normal-examples", "rfc3986-abnormal-examples",
-          "url-file", "url-file-refusals",
-          "url-append-path", "url-delete-path", "url-equality", "url-identity",
-          "urlconnection-shipped",
-          "cross-tu",
-          # THE REST OF THE VALUE SURFACE (2026-09-30): the "Accessing the Parts", "Creating",
-          # "Converting", "Querying" and pure "Deprecated" doors whose substrate this tree already had.
-          "url-parts-extra", "url-standardized", "url-file-system-representation",
-          "url-create-relative", "url-data-representation", "url-file-create", "url-file-fs-rep",
-          "url-convert", "url-append-component-dir", "url-resolve-symlinks", "url-init-with-parts",
-          # THE NSURLHandle-BACKED DEPRECATED DOORS AND THE PARAMETER STRING (2026-10-01): the three handle
-          # doors are DELEGATIONS that ask for no fetch (a handle is constructed without one, a set property
-          # reads back before any load), and the parameter string is a pure parse of the path's ';' tail.
-          "url-handle-deprecated", "url-parameter-string")
+	  "url-load-resource-data-notifies-the-client-of-failure", "url-resource-data-using-cache-answers-nil-for-an-unreachable-url", "url-set-resource-data-answers-no-for-a-url-that-cannot-hold-data", "url-security-scoped-stop-balances-nothing",
+	  "url-security-scoped-pair-answers-no", "url-promised-item-bulk-read-answers-a-dictionary", "url-promised-item-reachability-delegates", "url-promised-item-content-tied-key-answers-yes-with-nil",
+	  "url-promised-item-value-agrees-with-the-ordinary-door", "url-bookmark-init-by-resolving-refuses", "url-bookmark-creation-refuses", "url-bookmark-write-refuses",
+	  "url-bookmark-resource-values-refuses", "url-bookmark-data-with-contents-refuses", "url-bookmark-resolution-refuses", "url-bookmark-alias-resolution-refuses",
+	  "url-parse", "url-refusals", "url-request-values-shipped", "urlprotocol-seam-shipped",
+	  "url-shipped", "rfc3986-normal-examples", "rfc3986-abnormal-examples", "url-file",
+	  "url-file-refusals", "url-append-path", "url-delete-path", "url-equality",
+	  "url-identity", "urlconnection-shipped", "cross-tu", "url-parts-extra",
+	  "url-standardized", "url-file-system-representation", "url-create-relative", "url-data-representation",
+	  "url-file-create", "url-file-fs-rep", "url-convert", "url-append-component-dir",
+	  "url-resolve-symlinks", "url-init-with-parts", "url-handle-deprecated", "url-parameter-string",
+	  "url-file-constructor-family-agrees-with-the-class-doors",
+)
 
 
 class Case(BaseCase):
