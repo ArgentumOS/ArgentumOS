@@ -1046,3 +1046,62 @@ damage paths the same way.
 drawing through it as the acceptance → **the AppKit is built in this tree on both**
 (its language settled first), carrying the parked toolkit's measurements forward
 and leaving its recoverable C++ code parked unless that is revisited.
+
+## 12. The era removal — what went, what it cost, and what is left
+
+**DECISION 7 EXECUTED, IN THREE COMMITS SO FAR** (2026-10-05): `02dd1f67` the colour
+spaces, the predicates and the ICC-data doors; `4e2342e9` the five path factories;
+`5e9e2a9f` the conic gradient. Twenty-two of the twenty-three out-of-era items the era
+ground measured are GONE, and the last one is named below.
+
+**THE RULE EACH REMOVAL FOLLOWED, and the reason some code stayed:** the *surface* is
+what a public header declares, so an Apple name that no public header declares is not
+part of it — but a piece of MACHINERY a 10.0-era verb is built on is not a name and may
+not be deleted with one. `CGPathCreateCopyByStrokingPath` is 10.7 and went; the STROKER
+stayed, because `CGContextStrokePath` (10.0) IS it. So the three path operations are
+now `cg_path_create_*` in a new `CGPath_internal.h`, and the five translation units and
+three probes that use them carry a RENAME TABLE at the top so the call site and the
+definition read as one thing. **THE COMPILED NAME IS THE CHECK AND IT IS CHECKED**:
+`nm -D --defined-only .build/host/lib/libcoregraphics.so | grep -E 'CGPathCreateCopyBy|CGContextDrawConic'`
+returns nothing while the `cg_path_create_*` symbols are exported.
+
+**WHAT A CALLER OF THE ERA LOSES AND KEEPS, item by item:**
+
+| Removed | Era | What it cost a caller |
+|---|---|---|
+| 9 named spaces | 10.11–12.0 | P3, DCI-P3, 2020, ProPhoto, XYZ and the linear forms are unreachable BY NAME. Lab and XYZ are still reachable through `CGColorSpaceCreateLab` (10.0) and an ICC profile; the rest are simply not there |
+| 6 predicates | 10.12–12.0 | the gamut/extended-range questions have no answer now, and nothing in the drawing path asked them |
+| both ICC-data doors | 10.12 | a caller cannot ask a space for its profile bytes; `CGColorSpaceCopyICCProfile` (10.5, owed) is the in-era counterpart |
+| 2 path factories | 10.7/10.9 | none: they were four lines over the `Add…` forms |
+| 3 path operations | 10.7/13.0 | none: `CGContextStrokePath`, `CGContextSetLineDash`, `CGContextClip` and `CGPathGetPathBoundingBox` are the era's doors to the same machinery |
+| conic gradient | 14.0 | an angular ramp is a rotated `CGContextDrawLinearGradient` |
+
+**THE PROBES PAID THE SAME PRICE AS THE API, AND THAT IS THE HONEST COST OF THIS
+DECISION.** Four blocks of `coregraphics_color.c` (the predicates, Display P3's toe,
+XYZ's PCS white point, DCI-P3 against Display P3, BT.2020's linear segment), the ICC
+round trip in its Objective-C half, and the gradient probe's four conic checks are
+GONE. Every one of them is replaced by a comment that names WHAT IT MEASURED and WHY
+THAT MEASUREMENT STILL MATTERS — the BT.2020 ratio that had to be corrected twice, the
+conic ramp's wrap, the sRGB curve's toe — so that an era decision in the other
+direction finds the numbers rather than re-deriving them. What survived, the named
+spaces still get: the model, the component count and the CACHE IDENTITY, with the
+name round trip in the Objective-C half.
+
+**AND THE REMOVAL FOUND A BUG IN THE INSTRUMENT ITSELF.** `tools/coregraphics-sweep.py`'s
+prototype form ended `\)\s*[;{]`, so a declaration wearing a trailing annotation —
+`... CG_RETURNS_RETAINED;` — was INVISIBLE: `CGColorSpaceCopyName`,
+`CGColorSpaceCopyICCData` and `CGDataProviderCopyData` were read as undeclared while the
+library declared and defined them. One row's strike and another's `open` were lies about
+this tree. The form now allows the optional macro, and two rows flipped to shipped on the
+next check.
+
+**WHAT IS LEFT: `CGColorCreateCopyByMatchingToColorSpace` (10.11) AND THE CONVERSION
+BEHIND IT.** It is the entangled one, and its removal is a *behaviour* change rather
+than a name: three shipped consumers read a colour's value in another space through it —
+`CGPaint.c` (a fill in a foreign space), `CGContext.c` (the setters that CONVERT a Lab or
+ICC colour instead of refusing it) and `NSColor.m` (the component getters). Removing it
+means the context's colour setters and the AppKit's getters REFUSE a colour whose space
+they cannot sample, and the probes that read a converted value back (18 call sites in
+`coregraphics_color.c` and its Objective-C half) go with them. THE IN-ERA SURFACE HAS NO
+CONVERSION API AT ALL — that is what macOS 10.11 added — so the refusal is the faithful
+answer, and the work item is a named one rather than a surprise.
