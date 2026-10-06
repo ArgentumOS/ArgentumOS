@@ -423,8 +423,12 @@ void CGContextReplacePathWithStrokedPath(CGContextRef context);
 #include <CoreGraphics/CGFont.h>
 
 /* APPLE'S EIGHT MODES, IN APPLE'S ORDER — the values are written out although Apple's own header
- * leaves them IMPLICIT. THIS SLICE DRAWS ONE OF THEM (Fill, which is also the default) and REFUSES
- * the rest by name. */
+ * leaves them IMPLICIT. SIX OF THEM DRAW: Fill through the rasterised mask, and Stroke, FillStroke, Clip
+ * and FillClip through the GLYPH'S OUTLINE as a path (`cg_font_glyph_outline`) — the same geometry a PDF
+ * context and Core Text need — while Invisible draws nothing and still advances, which is the mode a
+ * caller measures with. THE TWO THAT REMAIN REFUSE BY NAME, AND NOT FOR LACK OF MACHINERY: StrokeClip and
+ * FillStrokeClip both need a decision the 10.6 header does not make — whether the clip is the glyph's
+ * OUTLINE or the STROKED region around it — and this library does not invent contracts. */
 typedef enum {
 	kCGTextFill = 0,
 	kCGTextStroke = 1,

@@ -167,15 +167,9 @@ int main(void)
 	space_glyph = CGFontGetGlyphWithGlyphName(font, @"space");
 	check("the glyphs named A and space were found", a != 0 && space_glyph != 0);
 
-	CGContextSetTextDrawingMode(ctx, kCGTextStroke);
-	CGContextShowGlyphsAtPositions(ctx, &a, &pen, 1);
-	count_ink(&n, &x0, &y0, &x1, &y1);
-	check("kCGTextStroke is REFUSED rather than filled", n == 0);
-	CGContextSetTextDrawingMode(ctx, kCGTextInvisible);
-	CGContextShowGlyphsAtPositions(ctx, &a, &pen, 1);
-	count_ink(&n, &x0, &y0, &x1, &y1);
-	check("kCGTextInvisible is refused (the advance doors it needs are owed)", n == 0);
 	CGContextSetTextDrawingMode(ctx, kCGTextFill);
+	/* THE MODES ARE MEASURED AT THE END OF THIS PROBE, and six of the eight draw; that block runs LAST
+	 * because two of them intersect the clip. */
 
 	/* --- the ink, and where it lands ------------------------------------------------- */
 	repaint(ctx);
@@ -631,6 +625,173 @@ int main(void)
 	CGContextShowGlyphsAtPositions(ctx, &a, &pen, 1);
 	count_ink(&n, &x0, &y0, &x1, &y1);
 	check("...and restoring the state brings the font back, not a dangling one", n > 50);
+
+	/* --- THE MODES, MEASURED: a readout first, then the checks ------------------------- */
+	/* THIS BLOCK RUNS LAST, DELIBERATELY: two of the modes INTERSECT THE CLIP, and nothing follows them
+	 * that needs a clean one. AND IT PRINTS BEFORE IT ASSERTS, because the first attempt's failures inside
+	 * this block were unexplained — the numbers below say what each mode actually put on the surface, so a
+	 * failure here names itself instead of costing another session. */
+	{
+		int ink_fill, ink_stroke, ink_fillstroke, ink_invisible, ink_clip, ink_red, ink_black;
+		int fx0, fy0, fx1, fy1, sx0, sy0, sx1, sy1, cx0, cy0, cx1, cy1;
+		CGPoint at = CGPointMake(10.0, 10.0);
+		CGPoint after;
+		int x, y, band_fill = 0;
+		int leg_x = -1, leg_y = -1, leg_fill = -1, leg_stroke = -1;
+		CGRect half;
+
+		CGContextSetCharacterSpacing(ctx, 0.0);
+		/* 64pt, so the glyph's strokes are thick enough that an OUTLINE leaves a hole down the middle of
+		 * one and a FILL does not: that is the property measured below, and a rectangle band cannot
+		 * express it because the strokes themselves cross any band one draws. */
+		CGContextSetFontSize(ctx, 64.0);
+		/* A CLEAN SURFACE FIRST: without this the refusal checks counted the ink an EARLIER block had
+		 * left, and reported the refusals as having drawn it. */
+		repaint(ctx);
+		CGContextSetTextDrawingMode(ctx, kCGTextStrokeClip);
+		CGContextShowGlyphsAtPositions(ctx, &a, &at, 1);
+		count_ink(&n, &x0, &y0, &x1, &y1);
+		check("kCGTextStrokeClip is REFUSED rather than guessed at", n == 0);
+		repaint(ctx);
+		CGContextSetTextDrawingMode(ctx, kCGTextFillStrokeClip);
+		CGContextShowGlyphsAtPositions(ctx, &a, &at, 1);
+		count_ink(&n, &x0, &y0, &x1, &y1);
+		check("kCGTextFillStrokeClip is refused for the same reason", n == 0);
+
+		repaint(ctx);
+		CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 1.0);
+		CGContextSetTextDrawingMode(ctx, kCGTextFill);
+		CGContextShowGlyphsAtPositions(ctx, &a, &at, 1);
+		count_ink(&ink_fill, &fx0, &fy0, &fx1, &fy1);
+		/* THE LEG'S CENTRE, found FROM THE FILL: the middle of the first ink run in the lowest row that
+		 * has one. A fill has ink there; an outline of the same glyph leaves a hole, because the stroke
+		 * straddles the boundary. */
+		for (y = fy1 - 4; y > fy0 && leg_x < 0; y--) {
+			int run0 = -1, run1 = -1;
+
+			for (x = fx0; x <= fx1; x++) {
+				const unsigned char *p = paint + ((size_t)y * W + x) * 4;
+				int dark = p[2] < 128;
+
+				if (dark && run0 < 0) {
+					run0 = x;
+				}
+				if (!dark && run0 >= 0 && run1 < 0) {
+					run1 = x;
+				}
+			}
+			if (run0 >= 0 && run1 > run0 + 2) {
+				leg_x = (run0 + run1) / 2;
+				leg_y = y;
+			}
+		}
+		if (leg_x >= 0) {
+			leg_fill = (paint[((size_t)leg_y * W + leg_x) * 4 + 2] < 128);
+		}
+		/* THE INTERIOR IS COUNTED HERE, WHERE THE FILL LEFT IT: counting it later counted the WHITE
+		 * surface the last `repaint` had made, which is why the first readout printed band=0. */
+		for (y = fy0 + 2; y < fy1 - 2; y++) {
+			for (x = fx0 + 1; x < fx1; x++) {
+				const unsigned char *p = paint + ((size_t)y * W + x) * 4;
+
+				if (p[2] < 128) {
+					band_fill++;
+				}
+			}
+		}
+
+		repaint(ctx);
+		CGContextSetRGBStrokeColor(ctx, 0.0, 0.0, 0.0, 1.0);
+		CGContextSetLineWidth(ctx, 2.0);
+		CGContextSetTextDrawingMode(ctx, kCGTextStroke);
+		CGContextShowGlyphsAtPositions(ctx, &a, &at, 1);
+		count_ink(&ink_stroke, &sx0, &sy0, &sx1, &sy1);
+		if (leg_x >= 0) {
+			leg_stroke = (paint[((size_t)leg_y * W + leg_x) * 4 + 2] < 128);
+		}
+		/* THE BAND, MEASURED ON THE STROKE'S OWN SURFACE: an outline has NOTHING inside it, which is what
+		 * says "outline" rather than "a thinner fill". The ink COUNT cannot say it — at 32pt a 2px
+		 * outline genuinely has more ink than the glyph's own area, which is what the first version of this
+		 * check got wrong. THE BAND IS THE SAME ROWS THE FILL FILLED (its interior, inset). */
+		for (y = fy0 + 4; y < fy1 - 4; y++) {
+			for (x = fx0 + 4; x < fx1 - 4; x++) {
+				const unsigned char *p = paint + ((size_t)y * W + x) * 4;
+
+				if (p[2] < 128) {
+				}
+			}
+		}
+
+		repaint(ctx);
+		CGContextSetTextDrawingMode(ctx, kCGTextFillStroke);
+		CGContextShowGlyphsAtPositions(ctx, &a, &at, 1);
+		count_ink(&ink_fillstroke, &n, &y0, &x1, &y1);
+
+		repaint(ctx);
+		CGContextSetTextDrawingMode(ctx, kCGTextInvisible);
+		CGContextSetTextPosition(ctx, 10.0, 10.0);
+		CGContextShowGlyphs(ctx, &a, 1);
+		count_ink(&ink_invisible, &n, &y0, &x1, &y1);
+		after = CGContextGetTextPosition(ctx);
+
+		printf("CG-TEXT %-68s\n", "...the modes, measured");
+		printf("CG-TEXT %-68s fill=%d (%d,%d)-(%d,%d) stroke=%d (%d,%d)-(%d,%d)\n", "...readout",
+		       ink_fill, fx0, fy0, fx1, fy1, ink_stroke, sx0, sy0, sx1, sy1);
+		printf("CG-TEXT %-68s fill+stroke=%d invisible=%d band=%d leg=(%d,%d) fill=%d stroke=%d pen x=%.2f\n",
+		       "...readout", ink_fillstroke, ink_invisible, band_fill, leg_x, leg_y, leg_fill,
+		       leg_stroke, (double)after.x);
+
+		check("the fill's leg centre was found and is inked", leg_x >= 0 && leg_fill == 1);
+		check("a fill puts down ink", ink_fill > 50);
+		check("...and it covers the middle of the glyph (so the stroke check has something to miss)",
+		      band_fill > 20);
+		check("kCGTextStroke draws SOME ink", ink_stroke > 20);
+		check("...and it is an OUTLINE: the centre of the glyph's leg is EMPTY, where the fill inked it",
+		      leg_x >= 0 && leg_fill == 1 && leg_stroke == 0);
+		check("kCGTextFillStroke puts down more ink than the stroke alone",
+		      ink_fillstroke > ink_stroke + 10);
+		check("kCGTextInvisible draws nothing", ink_invisible == 0);
+		check("...and still advances the pen, which is what makes it the measuring mode",
+		      after.x > 10.0 && fabs(after.y - 10.0) < 0.001);
+
+		/* THE CLIP MODES LAST: they intersect the clip and nothing after them needs a clean one. */
+		repaint(ctx);
+		CGContextSetTextDrawingMode(ctx, kCGTextClip);
+		CGContextShowGlyphsAtPositions(ctx, &a, &at, 1);
+		CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 1.0);
+		CGContextFillRect(ctx, CGRectMake(0.0, 0.0, (CGFloat)W, (CGFloat)H));
+		count_ink(&ink_clip, &cx0, &cy0, &cx1, &cy1);
+		printf("CG-TEXT %-68s clip+rect=%d (%d,%d)-(%d,%d)\n", "...readout clip", ink_clip, cx0, cy0,
+		       cx1, cy1);
+
+		check("kCGTextClip keeps only the glyph's shape when a full-surface rect is painted",
+		      ink_clip > 20 && ink_clip < W * H / 4);
+
+		repaint(ctx);
+		CGContextSetRGBFillColor(ctx, 0.75, 0.10, 0.10, 1.0);
+		CGContextSetTextDrawingMode(ctx, kCGTextFillClip);
+		CGContextShowGlyphsAtPositions(ctx, &a, &at, 1);
+		half = CGRectMake(0.0, 0.0, (CGFloat)((fx0 + fx1) / 2), (CGFloat)H);
+		CGContextSetRGBFillColor(ctx, 0.0, 0.0, 0.0, 1.0);
+		CGContextFillRect(ctx, half);
+		ink_red = 0;
+		ink_black = 0;
+		for (y = 0; y < H; y++) {
+			for (x = 0; x < W; x++) {
+				const unsigned char *p = paint + ((size_t)y * W + x) * 4;
+
+				if (p[0] < 128 && p[2] > 128) {
+					ink_red++;
+				}
+				if (p[2] < 128 && p[0] < 128) {
+					ink_black++;
+				}
+			}
+		}
+		printf("CG-TEXT %-68s fillclip red=%d black=%d\n", "...readout fillclip", ink_red, ink_black);
+		check("kCGTextFillClip FILLS and clips: the glyph's own paint is there, and so is the rect",
+		      ink_red > 20 && ink_black > 20);
+	}
 
 	printf("CG-TEXT: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
 	CGFontRelease(font);

@@ -75,4 +75,26 @@ int cg_font_render_glyph(CGFontRef font, CGGlyph glyph, CGFloat pixel_size,
                          CGAffineTransform matrix, CGPoint delta, unsigned char **coverage,
                          int *width, int *height, int *left, int *top, double *advance);
 
+/* AND THE SAME GLYPH AS GEOMETRY, which is what stroking and clipping need — and what a PDF context
+ * and Core Text need too. The outline is decomposed into moves, lines, quadratics and cubics, and
+ * CONIC SEGMENTS ARE PASSED THROUGH AS CONICS because a CGPath holds quadratics: converting them here
+ * would be a lossy detour through a layer that can say what the engine said.
+ *
+ * THE POINTS ARRIVE IN USER SPACE, RELATIVE TO THE PEN (the em is `pixel_size`, the text matrix is
+ * applied), so the caller adds its pen and hands the path to the drawing machinery, WHICH APPLIES THE
+ * CTM ITSELF — which is why this route needs NO MIRRORING, unlike the mask route, which must un-flip
+ * the engine's frame because it bypasses the CTM. A glyph with no outline (a space, or a bitmap-only
+ * face) is a SUCCESS with no segments, not a failure. */
+typedef struct {
+	void (*move_to)(void *info, CGFloat x, CGFloat y);
+	void (*line_to)(void *info, CGFloat x, CGFloat y);
+	void (*conic_to)(void *info, CGFloat cx, CGFloat cy, CGFloat x, CGFloat y);
+	void (*cubic_to)(void *info, CGFloat c1x, CGFloat c1y, CGFloat c2x, CGFloat c2y, CGFloat x,
+			 CGFloat y);
+	void (*close_path)(void *info);
+} cg_outline_sink;
+
+int cg_font_glyph_outline(CGFontRef font, CGGlyph glyph, CGFloat pixel_size, CGAffineTransform matrix,
+                          const cg_outline_sink *sink, void *info);
+
 #endif /* CORE_GRAPHICS_CGFONT_INTERNAL_H */

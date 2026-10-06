@@ -843,3 +843,116 @@ CGFontRef cg_font_create_with_name(const char *name)
 	}
 	return NULL;
 }
+
+/* ------------------------------------------------------------------------- */
+/* The outline: the same glyph as geometry                                    */
+/* ------------------------------------------------------------------------- */
+#include FT_OUTLINE_H
+
+struct fn_outline_ctx {
+	const cg_outline_sink *sink;
+	void *info;
+	CGAffineTransform m;
+};
+
+/* FONT UNITS FROM THE ENGINE, THE EM, THEN THE TEXT MATRIX — AND NO Y FLIP, because these points end up in
+ * a CGPath that the drawing machinery transforms with the CTM itself. That is the whole difference from the
+ * mask route, which must un-flip the engine's frame because it bypasses the CTM. */
+static void fn_outline_point(struct fn_outline_ctx *o, const FT_Vector *v, CGFloat *x, CGFloat *y)
+{
+	/* NO DIVISION: `FT_LOAD_NO_SCALE` means these points are ALREADY in font units. (The 26.6 convention
+	 * belongs to a SCALED outline — the mask route's, which asks the engine to size the glyph. Dividing
+	 * here as well shrinks the glyph by that factor and then the em shrinks it again, leaving a
+	 * half-pixel path: the first run of this measured a 32pt `A` stroked to FIVE pixels at the pen's own
+	 * bottom edge, and a clip with no area at all.) */
+	CGPoint p = CGPointApplyAffineTransform(CGPointMake((CGFloat)v->x, (CGFloat)v->y), o->m);
+
+	*x = p.x;
+	*y = p.y;
+}
+
+static int fn_decompose_move(const FT_Vector *to, void *user)
+{
+	struct fn_outline_ctx *o = user;
+	CGFloat x, y;
+
+	fn_outline_point(o, to, &x, &y);
+	o->sink->move_to(o->info, x, y);
+	return 0;
+}
+
+static int fn_decompose_line(const FT_Vector *to, void *user)
+{
+	struct fn_outline_ctx *o = user;
+	CGFloat x, y;
+
+	fn_outline_point(o, to, &x, &y);
+	o->sink->line_to(o->info, x, y);
+	return 0;
+}
+
+static int fn_decompose_conic(const FT_Vector *control, const FT_Vector *to, void *user)
+{
+	struct fn_outline_ctx *o = user;
+	CGFloat cx, cy, x, y;
+
+	fn_outline_point(o, control, &cx, &cy);
+	fn_outline_point(o, to, &x, &y);
+	if (o->sink->conic_to != NULL) {
+		o->sink->conic_to(o->info, cx, cy, x, y);
+	}
+	return 0;
+}
+
+static int fn_decompose_cubic(const FT_Vector *c1, const FT_Vector *c2, const FT_Vector *to, void *user)
+{
+	struct fn_outline_ctx *o = user;
+	CGFloat c1x, c1y, c2x, c2y, x, y;
+
+	fn_outline_point(o, c1, &c1x, &c1y);
+	fn_outline_point(o, c2, &c2x, &c2y);
+	fn_outline_point(o, to, &x, &y);
+	if (o->sink->cubic_to != NULL) {
+		o->sink->cubic_to(o->info, c1x, c1y, c2x, c2y, x, y);
+	}
+	return 0;
+}
+
+int cg_font_glyph_outline(CGFontRef font, CGGlyph glyph, CGFloat pixel_size, CGAffineTransform matrix,
+			  const cg_outline_sink *sink, void *info)
+{
+	static const FT_Outline_Funcs funcs = {
+		fn_decompose_move, fn_decompose_line, fn_decompose_conic, fn_decompose_cubic, 0, 0
+	};
+	struct fn_outline_ctx ctx;
+	FT_GlyphSlot slot;
+	CGFloat em;
+
+	if (font == NULL || font->face == NULL || sink == NULL || pixel_size <= 0.0) {
+		return 0;
+	}
+	/* NO SIZE IS SET: `FT_LOAD_NO_SCALE` below asks for the outline in FONT UNITS, which is the design
+	 * outline — a hinted or grid-fitted one is a rasterisation choice, right for a mask and wrong for
+	 * geometry. The em is applied to the points here instead. */
+	if (FT_Load_Glyph(font->face, (FT_UInt)glyph, FT_LOAD_NO_SCALE) != 0) {
+		fprintf(stderr, "CG-REFUSE: the engine would not load glyph %u for its outline\n",
+			(unsigned)glyph);
+		return 0;
+	}
+	slot = font->face->glyph;
+	if (slot->outline.n_points == 0) {
+		/* NO OUTLINE IS SUCCESS: a space has none, and so does a bitmap-only face. */
+		return 1;
+	}
+	em = pixel_size / (CGFloat)font->face->units_per_EM;
+	ctx.sink = sink;
+	ctx.info = info;
+	ctx.m = CGAffineTransformConcat(CGAffineTransformMakeScale(em, em), matrix);
+	if (FT_Outline_Decompose(&slot->outline, &funcs, &ctx) != 0) {
+		return 0;
+	}
+	if (sink->close_path != NULL) {
+		sink->close_path(info);
+	}
+	return 1;
+}

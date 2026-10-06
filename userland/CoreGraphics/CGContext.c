@@ -1613,7 +1613,7 @@ static int cg_ceil_fixed(pixman_fixed_t v)
 
 /* THE PATH CLIP. See CGContext.h for the boundary this draws: a rectilinear path is exact and
  * anything else is refused, because a clip is a REGION here and a mask is the other half. */
-static void cg_clip_to_current_path(CGContextRef c, int even_odd)
+static void cg_clip_to_path(CGContextRef c, CGPathRef path, int even_odd)
 {
 	cg_traps tr;
 	pixman_region32_t path_region;
@@ -1631,7 +1631,7 @@ static void cg_clip_to_current_path(CGContextRef c, int even_odd)
 				"device-space region of rectangles, and a rotated path is not one)\n");
 		return;
 	}
-	cg_traps_for_path(c, (CGPathRef)c->path, even_odd, &tr);
+	cg_traps_for_path(c, path, even_odd, &tr);
 	pixman_region32_init(&path_region);
 	for (i = 0; i < tr.count; i++) {
 		const pixman_trapezoid_t *t = &tr.traps[i];
@@ -1687,6 +1687,13 @@ static void cg_clip_to_current_path(CGContextRef c, int even_odd)
 	pixman_region32_fini(&path_region);
 	/* A CLIP CONSUMES THE CURRENT PATH, as Apple's does — the same rule the fills follow. */
 	CGContextBeginPath(c);
+}
+
+/* AND THE CURRENT-PATH FORM, which is what the public doors call. Text needs the PATH form: a glyph
+ * clipped out of a text run must not disturb whatever path the caller was building. */
+static void cg_clip_to_current_path(CGContextRef c, int even_odd)
+{
+	cg_clip_to_path(c, c == NULL ? NULL : (CGPathRef)c->path, even_odd);
 }
 
 void CGContextClip(CGContextRef c)
@@ -3031,7 +3038,7 @@ static int cg_subpixel_positioning(CGContextRef c)
 	       && c->allows_antialiasing && c->state.antialias;
 }
 
-static void cg_show_one_glyph(CGContextRef c, CGGlyph glyph, CGPoint pen, pixman_op_t op)
+static void cg_show_one_glyph_fill(CGContextRef c, CGGlyph glyph, CGPoint pen, pixman_op_t op)
 {
 	unsigned char *coverage = NULL;
 	pixman_image_t *src, *cover;
@@ -3132,11 +3139,6 @@ static int cg_text_can_draw(CGContextRef c)
 		fprintf(stderr, "CG-REFUSE: the font size is not positive (CGContextSetFontSize)\n");
 		return 0;
 	}
-	if (c->state.text_mode != kCGTextFill) {
-		fprintf(stderr, "CG-REFUSE: text drawing mode %d is not implemented; kCGTextFill only\n",
-			(int)c->state.text_mode);
-		return 0;
-	}
 	return 1;
 }
 
@@ -3154,6 +3156,135 @@ static double cg_glyph_advance(CGContextRef c, CGGlyph glyph)
 	return (double)advance * c->state.font_size / (double)units;
 }
 
+/* ------------------------------------------------------------------------- */
+/* Text as GEOMETRY: the modes a mask cannot draw                              */
+/* ------------------------------------------------------------------------- */
+
+/* THE SINK'S CALLBACKS APPEND TO A PATH, and they are the only place the pen is added: the seam hands out
+ * points in user space RELATIVE TO THE PEN, already scaled by the em and transformed by the text matrix. */
+struct cg_text_path_info {
+	CGMutablePathRef path;
+	CGPoint pen;
+};
+
+static void cg_text_move_to(void *info, CGFloat x, CGFloat y)
+{
+	struct cg_text_path_info *ti = info;
+
+	CGPathMoveToPoint(ti->path, NULL, ti->pen.x + x, ti->pen.y + y);
+}
+
+static void cg_text_line_to(void *info, CGFloat x, CGFloat y)
+{
+	struct cg_text_path_info *ti = info;
+
+	CGPathAddLineToPoint(ti->path, NULL, ti->pen.x + x, ti->pen.y + y);
+}
+
+static void cg_text_conic_to(void *info, CGFloat cx, CGFloat cy, CGFloat x, CGFloat y)
+{
+	struct cg_text_path_info *ti = info;
+
+	CGPathAddQuadCurveToPoint(ti->path, NULL, ti->pen.x + cx, ti->pen.y + cy, ti->pen.x + x,
+				  ti->pen.y + y);
+}
+
+static void cg_text_cubic_to(void *info, CGFloat c1x, CGFloat c1y, CGFloat c2x, CGFloat c2y, CGFloat x,
+			     CGFloat y)
+{
+	struct cg_text_path_info *ti = info;
+
+	CGPathAddCurveToPoint(ti->path, NULL, ti->pen.x + c1x, ti->pen.y + c1y, ti->pen.x + c2x,
+			      ti->pen.y + c2y, ti->pen.x + x, ti->pen.y + y);
+}
+
+static void cg_text_close(void *info)
+{
+	struct cg_text_path_info *ti = info;
+
+	CGPathCloseSubpath(ti->path);
+}
+
+/* THE GLYPH AS A PATH, IN USER SPACE AT THE PEN. NULL means the font refused; an EMPTY path means the glyph
+ * has no outline (a space), which the modes below treat as nothing to draw rather than a failure. */
+static CGMutablePathRef cg_text_path(CGContextRef c, CGGlyph glyph, CGPoint pen)
+{
+	static const cg_outline_sink sink = {
+		cg_text_move_to, cg_text_line_to, cg_text_conic_to, cg_text_cubic_to, cg_text_close
+	};
+	CGMutablePathRef path = CGPathCreateMutable();
+	struct cg_text_path_info info;
+
+	if (path == NULL) {
+		return NULL;
+	}
+	info.path = path;
+	info.pen = pen;
+	if (!cg_font_glyph_outline(c->state.font, glyph, c->state.font_size, c->state.text_matrix,
+				   &sink, &info)) {
+		CGPathRelease((CGPathRef)path);
+		return NULL;
+	}
+	return path;
+}
+
+/* A TEXT FILL WITH THE CURRENT PAINT — the same two branches `cg_fill_current_path` takes, because a text
+ * fill is a fill and a pattern fill of glyphs has to be the same thing as a pattern fill of anything else. */
+static void cg_text_paint(CGContextRef c, CGPathRef path, pixman_op_t op)
+{
+	if (c->state.fill_pattern != NULL) {
+		cg_paint_path(c, path, 0, op, NULL, c->state.fill_pattern,
+			      c->state.alpha * c->state.fill_pattern_alpha);
+	} else {
+		cg_paint_path(c, path, 0, op, c->state.rgba, NULL, c->state.alpha);
+	}
+}
+
+/* ONE GLYPH, IN WHICHEVER MODE THE CALLER ASKED FOR. The mask route is kept for `kCGTextFill` — it is the
+ * one the rasteriser and the subpixel delta were built for — and every other mode is GEOMETRY through the
+ * path, which is also what makes clipping a glyph expressible at all. */
+static void cg_show_glyph_mode(CGContextRef c, CGGlyph glyph, CGPoint pen, pixman_op_t op)
+{
+	CGMutablePathRef path;
+	int mode = (int)c->state.text_mode;
+
+	if (mode == kCGTextFill) {
+		cg_show_one_glyph_fill(c, glyph, pen, op);
+		return;
+	}
+	if (mode == kCGTextInvisible) {
+		/* NO INK AND NO REFUSAL: the mode a caller MEASURES with, and the pen still advances. */
+		return;
+	}
+	if (mode != kCGTextStroke && mode != kCGTextFillStroke && mode != kCGTextClip
+	    && mode != kCGTextFillClip) {
+		/* THE TWO REFUSED MODES, BY NAME: `kCGTextStrokeClip` and `kCGTextFillStrokeClip` both need a
+		 * decision the 10.6 header does not make — whether the clip is the glyph's OUTLINE or the STROKED
+		 * region around it — and inventing one would be this library writing a contract rather than
+		 * duplicating one. (The STROKER exists, `cg_path_create_stroked_copy`, so the work is small; the
+		 * missing part is the SEMANTICS.) */
+		fprintf(stderr, "CG-REFUSE: text drawing mode %d is not implemented: whether its clip is the "
+				"glyph's outline or the stroked region is a decision the header does not make\n",
+			mode);
+		return;
+	}
+	path = cg_text_path(c, glyph, pen);
+	if (path == NULL) {
+		return;
+	}
+	if (mode == kCGTextFill || mode == kCGTextFillStroke || mode == kCGTextFillClip) {
+		cg_text_paint(c, (CGPathRef)path, op);
+	}
+	if (mode == kCGTextStroke || mode == kCGTextFillStroke) {
+		/* FILL FIRST, THEN STROKE, which is what the mode's name says. */
+		cg_stroke_path_with_width(c, (CGPathRef)path, c->state.line_width);
+	}
+	if (mode == kCGTextClip || mode == kCGTextFillClip) {
+		cg_clip_to_path(c, (CGPathRef)path, 0);
+	}
+	CGPathRelease((CGPathRef)path);
+}
+
 void CGContextShowGlyphsAtPositions(CGContextRef c, const CGGlyph glyphs[], const CGPoint positions[],
 				    size_t count)
 {
@@ -3166,7 +3297,7 @@ void CGContextShowGlyphsAtPositions(CGContextRef c, const CGGlyph glyphs[], cons
 	op = cg_op(c->state.blend);
 	pixman_image_set_clip_region32(c->image, &c->state.clip);
 	for (i = 0; i < count; i++) {
-		cg_show_one_glyph(c, glyphs[i], positions[i], op);
+		cg_show_glyph_mode(c, glyphs[i], positions[i], op);
 	}
 }
 
@@ -3183,7 +3314,7 @@ void CGContextShowGlyphs(CGContextRef c, const CGGlyph glyphs[], size_t count)
 	pen = c->state.text_position;
 	pixman_image_set_clip_region32(c->image, &c->state.clip);
 	for (i = 0; i < count; i++) {
-		cg_show_one_glyph(c, glyphs[i], pen, op);
+		cg_show_glyph_mode(c, glyphs[i], pen, op);
 		pen.x += (CGFloat)(cg_glyph_advance(c, glyphs[i]) + (double)c->state.character_spacing);
 	}
 	/* THE PEN IS THE TEXT POSITION'S, SO IT MOVES: that is what makes the position state worth having,
@@ -3222,7 +3353,7 @@ void CGContextShowText(CGContextRef c, const char *string, size_t length)
 		if (g == (CGGlyph)kCGFontIndexInvalid) {
 			continue;
 		}
-		cg_show_one_glyph(c, g, pen, op);
+		cg_show_glyph_mode(c, g, pen, op);
 		pen.x += (CGFloat)(cg_glyph_advance(c, g) + (double)c->state.character_spacing);
 	}
 	c->state.text_position = pen;
@@ -3251,7 +3382,7 @@ void CGContextShowGlyphsWithAdvances(CGContextRef c, const CGGlyph glyphs[], con
 	pen = c->state.text_position;
 	pixman_image_set_clip_region32(c->image, &c->state.clip);
 	for (i = 0; i < count; i++) {
-		cg_show_one_glyph(c, glyphs[i], pen, op);
+		cg_show_glyph_mode(c, glyphs[i], pen, op);
 		pen.x += advances[i].width + c->state.character_spacing;
 		pen.y += advances[i].height;
 	}

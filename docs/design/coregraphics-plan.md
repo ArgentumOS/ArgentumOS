@@ -1435,3 +1435,24 @@ ink, a fill that covered nothing) are **unexplained**, and the next attempt must
 and bounding box rather than compare them with expectations, which is how the subpixel work found its own
 answer (the centroid readout). The library-side code is small and known: `cg_font_glyph_outline` (conics
 passed through as conics), a path-taking clip, and the dispatch.
+
+### §16's reverted unit LANDED — and the "unexplained" failures were ONE DIVISION BY 64
+
+**The six-mode dispatch is in the tree and measured.** The cause of the failures this section called
+unexplained: with `FT_LOAD_NO_SCALE` the engine hands back the outline in **font units**, and the seam
+divided the points by 64 — the **26.6 convention of a SCALED outline**, which belongs to the mask route — and
+then applied the em, shrinking the glyph twice. The result was a half-pixel path: a 32pt `A` stroked to FIVE
+pixels at the pen's own bottom edge, and a clip with no area at all. **ONE LINE.** The lesson is this file's
+own, again: the failures were *read* rather than reasoned about (the readout printed below is what named it),
+and a numeric readout beats another theory every time.
+
+Measured at 64pt, which is the size the mode checks use:
+
+    fill=666 (11,23)-(52,69)  stroke=463 (9,22)-(54,70)  fill+stroke=905  invisible=0  band=611
+    leg=(15,65) fill=1 stroke=0     clip+rect=675 (11,23)-(52,69)     fillclip red=351 black=320
+
+**THE DECISIVE CHECK IS THE LEG'S CENTRE**: inked by the fill, EMPTY in the outline — and no ink *count* can
+say that (at 64pt a 2px outline has less ink than the fill, but at 32pt it had MORE, which is why the first
+version of that check was wrong). The clip modes are checked by their consequence: a full-surface rect after
+`kCGTextClip` lands on exactly the glyph's ink area (675 against the fill's 666), and `kCGTextFillClip` leaves
+both the glyph's OWN paint and the rect (red 351, black 320).
