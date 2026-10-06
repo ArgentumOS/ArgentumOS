@@ -148,6 +148,11 @@ typedef struct cg_state {
 struct CGContext {
 	int refcount;
 	int is_bitmap;
+	/* THE CALLER'S RELEASE CALLBACK AND ITS info FIELD, or NULL. Apple's header says the callback is
+	 * called when the context is freed, with releaseInfo and data as arguments -- and THE DATA IS STILL
+	 * THE CONTEXT'S TO FREE IF IT ALLOCATED IT, because the callback and the free are two promises. */
+	CGBitmapContextReleaseDataCallback release_data;
+	void *release_info;
 
 	pixman_image_t *image;
 	unsigned char *data;
@@ -302,9 +307,18 @@ static void cg_state_init_full(cg_state *st, int width, int height)
 	st->pattern_phase = CGSizeMake(0.0, 0.0);
 }
 
-CGContextRef CGBitmapContextCreate(void *data, size_t width, size_t height,
+/* THE OLD DOOR, WHICH IS NOW THE NEW ONE WITH NO CALLBACK: one road, one set of validations. */
+CGContextRef CGBitmapContextCreate(void *data, size_t width, size_t height, size_t bits_per_component,
+				   size_t bytes_per_row, CGColorSpaceRef space, uint32_t bitmap_info)
+{
+	return CGBitmapContextCreateWithData(data, width, height, bits_per_component, bytes_per_row, space,
+					     bitmap_info, NULL, NULL);
+}
+
+CGContextRef CGBitmapContextCreateWithData(void *data, size_t width, size_t height,
 				   size_t bits_per_component, size_t bytes_per_row,
-				   CGColorSpaceRef space, uint32_t bitmap_info)
+				   CGColorSpaceRef space, uint32_t bitmap_info,
+				   CGBitmapContextReleaseDataCallback releaseCallback, void *releaseInfo)
 {
 	CGContextRef c;
 	size_t stride;
@@ -357,6 +371,8 @@ CGContextRef CGBitmapContextCreate(void *data, size_t width, size_t height,
 	c->width = (int)width;
 	c->height = (int)height;
 	c->is_bitmap = 1;
+	c->release_data = releaseCallback;
+	c->release_info = releaseInfo;
 	c->space = CGColorSpaceRetain(space);
 	c->bitmap_info = bitmap_info;
 	c->allows_antialiasing = 1;
@@ -375,6 +391,47 @@ CGContextRef CGBitmapContextCreate(void *data, size_t width, size_t height,
 		return NULL;
 	}
 	return c;
+}
+
+static void fn_release_snapshot(void *info, const void *data, size_t size);
+
+CGImageRef CGBitmapContextCreateImage(CGContextRef c)
+{
+	CGDataProviderRef provider;
+	CGImageRef image;
+	void *snapshot;
+	size_t size;
+
+	if (c == NULL || !c->is_bitmap || c->data == NULL || c->width <= 0 || c->height <= 0) {
+		return NULL;
+	}
+	size = (size_t)c->stride * (size_t)c->height;
+	/* A COPY, BECAUSE THAT IS WHAT THE DOOR PROMISES: "subsequent changes to context will not affect the
+	 * contents of the returned image". The provider owns the copy and frees it. */
+	snapshot = malloc(size);
+	if (snapshot == NULL) {
+		return NULL;
+	}
+	memcpy(snapshot, c->data, size);
+	provider = CGDataProviderCreateWithData(snapshot, snapshot, size, fn_release_snapshot);
+	if (provider == NULL) {
+		free(snapshot);
+		return NULL;
+	}
+	/* THE CONTEXT'S OWN CHART AND SPACE, because the image is a picture of THIS surface: the chart is the
+	 * one `CGImageCreate` reads, which is why the context's `bitmap_info` is what it is. */
+	image = CGImageCreate((size_t)c->width, (size_t)c->height, 8, 32, (size_t)c->stride, c->space,
+			      c->bitmap_info, provider, NULL, false, kCGRenderingIntentDefault);
+	CGDataProviderRelease(provider);
+	return image;
+}
+
+/* THE SNAPSHOT'S OWNER: the provider hands the copy back to nobody, so this frees it. */
+static void fn_release_snapshot(void *info, const void *data, size_t size)
+{
+	(void)info;
+	(void)size;
+	free((void *)data);
 }
 
 void *CGBitmapContextGetData(CGContextRef c)
@@ -473,6 +530,11 @@ void CGContextRelease(CGContextRef c)
 		CGPathRelease((CGPathRef)c->path);
 	}
 	CGColorSpaceRelease(c->space);
+	/* THE CALLER'S CALLBACK, LAST OF ALL AND WITH THE DATA STILL VALID: a block freed before the callback
+	 * that was told about it would be a callback nobody could use. */
+	if (c->release_data != NULL) {
+		c->release_data(c->release_info, c->data);
+	}
 	if (c->owns_data) {
 		free(c->data);
 	}

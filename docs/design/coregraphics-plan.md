@@ -1871,3 +1871,47 @@ any write, and the rule is the one this thread keeps relearning: **an anchor com
 against.** And the probe's own first version asked for "the middle of the rectangle is left alone" under a
 4-wide stroke on a 4-wide rectangle, which leaves no middle at all: the check was wrong about its own geometry,
 so the rectangle grew and the sample points were chosen to survive the bitmap-rows question too.
+
+## 30. The bitmap context's data, its release callback, and its snapshot (3 rows) — the family closed
+
+**`CGBitmapContextCreateWithData`, `CGBitmapContextReleaseDataCallback` and `CGBitmapContextCreateImage` SHIP,
+which closes the bitmap-context family.** `CGBitmapContextCreate` is now A CALL TO THE NEW DOOR WITH NO
+CALLBACK rather than a second copy of the same validation — the two paragraphs describing them in Apple's header
+are the same paragraph, one with a callback in it, and in this library they are one door too.
+
+**THE CALLBACK'S ARGUMENT ORDER IS TRANSCRIBED, NOT REMEMBERED:** `releaseInfo` first and `data` second, which a
+caller's own function will be written against. A swap of those two compiles and is wrong, so the probe checks
+both values rather than only the count of calls.
+
+**TWO PROMISES, AND THE SECOND IS THE HARDER TO CHECK:** data the CONTEXT allocated is freed by the context, AND
+the callback is told about the block either way — so a caller who passed their own buffer learns when it is no
+longer needed, and one who passed NULL still learns which block the context had allocated. The probe checks the
+second half on a context that allocated its own data, because a check over a caller-supplied buffer cannot see
+it at all.
+
+**THE SNAPSHOT IS A COPY, IN APPLE'S OWN WORDS:** "Return an image containing a snapshot of the bitmap
+context… This is a copy operation — subsequent changes to context will not affect the contents of the returned
+image." The copy-on-write note in the same paragraph is an implementation permission rather than something a
+caller can observe, so the observable half is what is implemented and what is measured: the probe fills red,
+takes the snapshot, fills blue over the source, and reads the snapshot back **through a context of its own** —
+`snapshot r=255 b=0 (context is blue)` — because reading the image's bytes is the only honest way to see what the
+image holds.
+
+**THREE INSTRUMENT LESSONS, ALL IN THE ANCHOR FAMILY.**
+1. **AN EDIT MAY NOT ANCHOR ON TEXT ANOTHER EDIT WRITES.** The phase-1 check reads the file, not the pending
+   result, so a helper defined by one edit and referenced by the next cannot be found — those two became one
+   edit.
+2. **AN ANCHOR MUST BE A COMPLETE CONSTRUCT, NOT A LINE THAT HAPPENS TO MATCH.** The header's declaration spans
+   three lines, and anchoring on its first spliced a `typedef` into the middle of a function declarator. The fix
+   computes the declaration's whole span by scanning to the line that ends it — the same mechanical trick the
+   unused-variable removal used.
+3. **A `static` HELPER REFERENCED ABOVE ITS DEFINITION NEEDS A DECLARATION** — the compiler said so, and it is
+   the one of the three that the phase-1 check cannot see.
+
+The split is worth keeping: the phase-1 check catches structural mistakes before any write, and the compiler
+catches the rest. Neither catches everything, which is why both run.
+
+**AND A FOURTH, FROM THE FLIP ITSELF:** the flip script was run twice by a `||` chain and its second run exited
+non-zero on "nothing to flip", which aborted the commit that followed it. **A one-shot script must not be
+re-run in the same chain as the commit it protects** — the ledger was already correct, and the commit had to be
+redone by hand.

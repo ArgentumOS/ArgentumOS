@@ -50,6 +50,33 @@ CGContextRef CGBitmapContextCreate(void *data, size_t width, size_t height,
 				   size_t bitsPerComponent, size_t bytesPerRow,
 				   CGColorSpaceRef space, uint32_t bitmapInfo);
 
+/* THE RELEASE CALLBACK, TRANSCRIBED WITH ITS ARGUMENT ORDER -- `releaseInfo` FIRST, THEN `data`, which is the
+ * order Apple gives and the order a caller's own function will be written in. */
+typedef void (*CGBitmapContextReleaseDataCallback)(void *releaseInfo, void *data);
+
+/* THE SAME DOOR AS `CGBitmapContextCreate` WITH TWO MORE ARGUMENTS, and Apple's header says so itself: the two
+ * paragraphs describe it are the same paragraph, one with a callback in it. The callback, in Apple's words, is
+ * called when the context is freed with `releaseInfo` and `data` as arguments.
+ *
+ * TWO PROMISES, BOTH KEPT: data the CONTEXT allocated is freed by the context, and the callback is told about
+ * the block either way -- so a caller who passed their own buffer learns when it is no longer needed, and one
+ * who passed NULL still learns which block the context had allocated.
+ *
+ * `CGBitmapContextCreate` below is a CALL TO THIS with no callback rather than a second copy of the same
+ * validation, because in Apple design they are one door and here they are one door too. */
+CGContextRef CGBitmapContextCreateWithData(void *data, size_t width, size_t height,
+					   size_t bitsPerComponent, size_t bytesPerRow,
+					   CGColorSpaceRef space, CGBitmapInfo bitmapInfo,
+					   CGBitmapContextReleaseDataCallback releaseCallback,
+					   void *releaseInfo);
+
+/* APPLE WORD FOR WORD: "Return an image containing a snapshot of the bitmap context. ... This is a copy
+ * operation -- subsequent changes to context will not affect the contents of the returned image." SO THE BYTES
+ * ARE COPIED: the copy-on-write note in the same paragraph is an implementation permission rather than
+ * something a caller can observe, and the observable half is the one implemented. NULL, as the header says,
+ * when the context is not a bitmap context or the image cannot be made. */
+CGImageRef CGBitmapContextCreateImage(CGContextRef context);
+
 /* The surface accessors. `GetData` is the pointer the drawing has already landed in
  * — a bitmap context needs no flush for its bytes to be current. */
 void *CGBitmapContextGetData(CGContextRef context);

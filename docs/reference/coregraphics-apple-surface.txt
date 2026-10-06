@@ -603,8 +603,8 @@ func	struck	CGAssociateMouseAndMouseCursorPosition	-	Services / Controlling the 
 func	struck	CGBeginDisplayConfiguration	-	Services / Configuring Displays	x11-territory	objc
 func	shipped	CGBitmapContextCreate	-	Functions	-	objc
 func	struck	CGBitmapContextCreateAdaptive	-	Functions	after-10.6	objc
-func	open	CGBitmapContextCreateImage	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
-func	open	CGBitmapContextCreateWithData	-	Functions	-	objc
+func	shipped	CGBitmapContextCreateImage	-	Opaque Types / Managing a Bitmap Graphics Context	shipped with the component colour doors (plan §29)	objc
+func	shipped	CGBitmapContextCreateWithData	-	Functions	shipped with the component colour doors (plan §29)	objc
 func	shipped	CGBitmapContextGetAlphaInfo	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
 func	shipped	CGBitmapContextGetBitmapInfo	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
 func	shipped	CGBitmapContextGetBitsPerComponent	-	Opaque Types / Managing a Bitmap Graphics Context	-	objc
@@ -1447,7 +1447,7 @@ struct	shipped	CGRect	-	CoreFoundation, CG-named / Reference / Structures	-	objc
 struct	struck	CGScreenUpdateMoveDelta	-	Services / Data Types	x11-territory	objc
 struct	shipped	CGSize	-	CoreFoundation, CG-named / Reference / Structures	-	objc
 struct	struck	CGVector	-	CoreFoundation, CG-named / Reference / Structures	post-10.6	objc
-typealias	open	CGBitmapContextReleaseDataCallback	-	Opaque Types / Creating Bitmap Graphics Contexts	-	objc
+typealias	shipped	CGBitmapContextReleaseDataCallback	-	Opaque Types / Creating Bitmap Graphics Contexts	shipped with the component colour doors (plan §29)	objc
 typealias	struck	CGButtonCount	-	Services / Data Types	x11-territory	objc
 typealias	struck	CGCharCode	-	Services / Data Types	x11-territory	objc
 typealias	struck	CGColorConversionInfoRef	-	Opaque Types	post-10.6	objc
