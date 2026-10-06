@@ -195,6 +195,19 @@ CGRect CGContextConvertRectToUserSpace(CGContextRef context, CGRect rect);
  * rectangle, and clipping to its bounding box would clip away pixels the caller asked
  * to keep — a silent wrong answer, so it refuses by name instead. */
 void CGContextClipToRect(CGContextRef context, CGRect rect);
+
+/* APPLE'S OWN WORDS, AND BOTH CLAUSES MATTER: "Intersect the current clipping path with the clipping region
+ * formed by creating A PATH CONSISTING OF ALL RECTS in `rects`. Note that THIS FUNCTION RESETS THE CONTEXT'S
+ * PATH TO THE EMPTY PATH."
+ *
+ * ONE PATH AND NOT ONE CLIP PER RECTANGLE, which is the same reading `CGContextFillRects` takes and here it is
+ * FORCED BY THE RESULT: intersecting the clip with the rectangles one at a time would make an OVERLAP mean
+ * "inside both" rather than "inside either", while Apple's sentence describes the set of rectangles as one
+ * region. The probe checks the union, and a loop would fail it.
+ *
+ * THE RESET IS FREE, because the clip already consumes the current path — a clip that left the caller's path
+ * standing would be a different operation. */
+void CGContextClipToRects(CGContextRef c, const CGRect *rects, size_t count);
 /*
  * THE PATH CLIP, WHICH C2 DELIBERATELY LEFT OUT AND THIS CLOSES FOR THE CASE THAT CAN BE EXACT.
  * C2's note says the context's own clip "needs machinery that would otherwise be half-present", and

@@ -712,7 +712,7 @@ func	shipped	CGContextClearRect	-	Opaque Types / Drawing Shapes	-	objc
 func	shipped	CGContextClip	-	Opaque Types / Working with the Current Clipping Path	-	objc
 func	open	CGContextClipToMask	-	Opaque Types / Working with the Current Clipping Path	-	objc
 func	shipped	CGContextClipToRect	-	Opaque Types / Working with the Current Clipping Path	-	objc
-func	open	CGContextClipToRects	-	Opaque Types / Working with the Current Clipping Path	-	objc
+func	shipped	CGContextClipToRects	-	Opaque Types / Working with the Current Clipping Path	shipped with the clip doors (plan §35)	objc
 func	shipped	CGContextClosePath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
 func	shipped	CGContextConcatCTM	-	Opaque Types / Working with the Current Transformation Matrix	-	objc
 func	shipped	CGContextConvertPointToDeviceSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc

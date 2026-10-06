@@ -891,6 +891,35 @@ CGRect CGContextConvertRectToUserSpace(CGContextRef c, CGRect r)
 /* the clip                                                                  */
 /* ------------------------------------------------------------------------- */
 
+void CGContextClipToRects(CGContextRef c, const CGRect *rects, size_t count)
+{
+	CGMutablePathRef scratch;
+	size_t i;
+
+	if (c == NULL) {
+		return;
+	}
+	if (rects == NULL || count == 0) {
+		/* "This function resets the context's path to the empty path" — WITH NO RECTANGLES THERE IS NO
+		 * CLIP TO ADD, and the reset still happens, which is the half of Apple's sentence a caller who
+		 * passes an empty array is relying on. */
+		CGContextBeginPath(c);
+		return;
+	}
+	scratch = CGPathCreateMutable();
+	if (scratch == NULL) {
+		return;
+	}
+	for (i = 0; i < count; i++) {
+		CGPathAddRect(scratch, NULL, rects[i]);
+	}
+	/* ONE PATH, SO AN OVERLAP MEANS "INSIDE EITHER" — see CGContext.h. `cg_clip_to_path` reads the path and
+	 * does not take it (it is the same function `CGContextClip` calls with the context's own path), so the
+	 * scratch is this function's to release, and the clip resets the current path itself. */
+	cg_clip_to_path(c, (CGPathRef)scratch, 0);
+	CGPathRelease((CGPathRef)scratch);
+}
+
 void CGContextClipToRect(CGContextRef c, CGRect rect)
 {
 	CGRect dev;

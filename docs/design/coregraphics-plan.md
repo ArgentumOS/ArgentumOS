@@ -2043,3 +2043,32 @@ but "the half of the system that would call this is not in scope by the user's o
 **AND WHAT THIS DOES NOT CHANGE:** `CGFontCreateWithPlatformFont` stays `open` (it is not a printing door — it
 is a platform font reference, a separate ground), and the struck half of the PDF family stays struck, because a
 strike is a fact about the era and a park is a scope call.
+
+## 35. `CGContextClipToRects` (1 row), and the leaf that is its own unit
+
+**THE DOOR SHIPS, AND THE READING THAT DECIDES IT IS APPLE'S OWN SENTENCE:** "intersect the current clipping path
+with the clipping region formed by creating A PATH CONSISTING OF ALL RECTS in `rects`. Note that this function
+resets the context's path to the empty path." So the rectangles become **one path**, with the same reasoning
+`CGContextFillRects` took — and here it is FORCED rather than merely preferred: clipping once per rectangle would
+make an OVERLAP mean "inside both" instead of "inside either", while Apple's sentence describes the set as one
+region. The probe checks the union (`x=0,4,9,11 = 255,255,255,0`) and a loop would fail it.
+
+**THE RESET IS CHECKED BECAUSE IT IS AN EXPLICIT CLAUSE**, and the check is cheap now that the path-copy door
+exists: build a path, clip, then `CGContextCopyPath` must be EQUAL to an empty path. An empty set of rectangles
+adds no clip and still resets, which is the half of the sentence a caller passing an empty array relies on.
+
+**AND THE ASSUMPTION THIS UNIT HAD TO READ RATHER THAN GUESS IS THE CLIP'S OWNERSHIP OF ITS PATH.** The
+transparency-layer unit lost a commit to exactly that class of assumption, so `cg_clip_to_path` was read before it
+was called: it READS its argument and does not take it — it is the same function `CGContextClip` calls with the
+context's own path, and the reset at its end is what consumes that path. So the scratch is this function's to
+release, and that is now written down in the code rather than inferred.
+
+**`CGContextClipToMask` IS DELIBERATELY NOT IN THIS UNIT.** It maps the mask into a USER-SPACE rectangle, which
+means the same device-pixel-to-normalized-coordinate arithmetic the image sampler uses — and a second copy of
+that arithmetic is precisely the trap this tree keeps paying for ("two implementations of one geometry is how
+they come to disagree"). Its unit is the one that FACTORS that step out of the sampler and uses it in both
+places, and it is next.
+
+**A SMALL GENERATOR LESSON, PAID FOR ONCE:** a doubled backslash inside a quoted heredoc is a literal
+double backslash, so a `re.search(r"^HOST_CG_PROBES\\s*...")` matched nothing and the wiring assert fired. The
+same family as the anchors: the thing you write is the thing the shell and the regex engine each read once.
