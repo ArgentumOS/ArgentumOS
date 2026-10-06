@@ -1105,3 +1105,38 @@ they cannot sample, and the probes that read a converted value back (18 call sit
 `coregraphics_color.c` and its Objective-C half) go with them. THE IN-ERA SURFACE HAS NO
 CONVERSION API AT ALL — that is what macOS 10.11 added — so the refusal is the faithful
 answer, and the work item is a named one rather than a surprise.
+
+**AND THAT WORK IS DESIGNED RATHER THAN MERELY NAMED, because it was started and measured
+(2026-10-05) before being reverted to keep the tree green.** What the next attempt has,
+so it does not re-derive any of it:
+
+* **THE FOUR DOORS, AND WHAT EACH DOES INSTEAD.** `CGColor.c` loses
+  `CGColorCreateCopyByMatchingToColorSpace` (362–430) *and* the three engine helpers that
+  existed only for it — `cg_engine_intent` (280), `cg_engine_format` (300) and
+  `cg_engine_profile_for` (330) — all `static` and all dead the moment the conversion goes.
+  `CGPaint.c`'s `cg_paint_device_rgb_from_color` reads the colour's own components (RGB
+  directly, gray replicated) and REFUSES by name otherwise. `CGContext.c`'s
+  `cg_color_to_rgba` keeps its existing monochrome/RGB arms and turns its conversion arm
+  into the same refusal — which is the shape it ALREADY had for CMYK, one class wider.
+  `NSColor.m`'s `fn_components_in` answers 0, which its callers turn into an
+  `NSInternalInconsistencyException`.
+* **THE CARVE-OUT THAT IS NOT A CONVERSION AND MUST STAY:** the channel reordering inside a
+  family — one gray value into three RGB channels and back — because two 10.0-era doors
+  (`CGContextSetGrayFillColor`, `-[NSColor whiteComponent]`) are built on it and no colour
+  space is transformed by it. `fn_components_in` also has a REAL BUG to fix while it is
+  open: its direct branch tests the COMPONENT COUNT, not the model, so a Lab colour (three
+  components) has its a\* and b\* read out as green and blue — invisible only because the
+  conversion used to intercept it first.
+* **THE PROBE COST, MEASURED:** `coregraphics_color.c` has three whole blocks built on the
+  conversion, plus the conversion half of the calibrated-GRAY block, and
+  `coregraphics_color_foundation.m` has one site. They cannot be trimmed: their evidence IS
+  the converted numbers. The replacement WRITTEN AND PROVEN TO COMPILE for the first block
+  is the pattern to copy — keep the space and colour CREATION checks (a value is still a
+  value), drop the conversion checks, and assert THE REFUSAL where it is acted on: fill with
+  the Lab colour and check the surface is UNTOUCHED (`p[3] == 0` on a zeroed fresh surface).
+  Each dropped block's measurements are recorded in its replacement comment, so the next era
+  decision re-establishes them rather than re-deriving them.
+* **WHAT IT COSTS THE TREE, said plainly:** `lcms2` stays linked and still parses ICC
+  profiles, but nothing re-expresses a colour in another space — so a P3, Lab, ICC or CMYK
+  colour is DRAWN NOWHERE. That is the era's answer, and it is the same answer
+  `CGColorSpaceSupportsOutput` used to predict.
