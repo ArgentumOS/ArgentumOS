@@ -299,12 +299,11 @@ void CGContextDrawLinearGradient(CGContextRef context, CGGradientRef gradient, C
 void CGContextDrawRadialGradient(CGContextRef context, CGGradientRef gradient,
 				 CGPoint startCenter, CGFloat startRadius, CGPoint endCenter,
 				 CGFloat endRadius, CGGradientDrawingOptions options);
-/* THE ANGULAR RAMP. `angle` is where the ramp's first stop sits, measured from the positive x axis,
- * and the ramp wraps — see CGGradient.c, where that wrap is the whole difference between this and
- * the other two. It takes no drawing-options parameter, which is Apple's signature and not an
- * omission: an angular ramp has no ends to extend past. */
-void CGContextDrawConicGradient(CGContextRef context, CGGradientRef gradient, CGPoint center,
-				CGFloat angle);
+/* !! `CGContextDrawConicGradient` STOOD HERE AND WAS REMOVED (2026-10-05) — THE ANGULAR RAMP IS
+ * macOS 14.0 and this duplication is a 10.6-era surface. What it did is not lost so much as
+ * re-spelled: an angular ramp between two stops is `CGContextDrawLinearGradient` (10.5) rotated,
+ * and the only thing the conic form had of its own was that it WRAPS — which is why it took no
+ * drawing-options parameter and why nothing else needed changing when it went. */
 
 /*
  * AND THE SHADING'S DRAWN FORM, WHICH IS THE SAME CONTRACT AS THE GRADIENTS ABOVE: it paints the

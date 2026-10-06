@@ -59,7 +59,6 @@ typedef void (*cg_paint_eval_fn)(void *info, CGFloat x, CGFloat y, CGFloat rgba[
 int cg_paint_linear_parameter(CGPoint start, CGPoint end, CGFloat x, CGFloat y, CGFloat *t);
 int cg_paint_radial_parameter(CGPoint start_center, CGFloat start_radius, CGPoint end_center,
 			      CGFloat end_radius, CGFloat x, CGFloat y, CGFloat *t);
-int cg_paint_conic_parameter(CGPoint center, CGFloat angle, CGFloat x, CGFloat y, CGFloat *t);
 int cg_paint_extend(int extend_before, int extend_after, CGFloat *t);
 
 /*

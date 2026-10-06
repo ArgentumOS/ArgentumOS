@@ -51,10 +51,10 @@
 # counted, NOT excluded: 0 distinct names Apple documents on a `swift.` page
 # but which carry the CG spelling.
 #
-# why the struck rows are struck: after-10.6 251
+# why the struck rows are struck: after-10.6 252
 #
 # counts by kind:
-#   func       shipped  197   open  417   struck  121
+#   func       shipped  196   open  417   struck  122
 #   macro      shipped    7   open  100   struck    0
 #   enum       shipped   13   open   41   struck    3
 #   case       shipped   84   open  296   struck   64
@@ -699,7 +699,7 @@ func	shipped	CGContextConvertRectToUserSpace	-	Opaque Types / Converting Between
 func	shipped	CGContextConvertSizeToDeviceSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
 func	shipped	CGContextConvertSizeToUserSpace	-	Opaque Types / Converting Between Coordinate Spaces	-	objc
 func	open	CGContextCopyPath	-	Opaque Types / Constructing a Current Graphics Path	-	objc
-func	shipped	CGContextDrawConicGradient	-	Reference / Functions	after-10.6	objc
+func	struck	CGContextDrawConicGradient	-	Reference / Functions	after-10.6	objc
 func	shipped	CGContextDrawImage	-	Opaque Types / Drawing Images and PDF Content	-	objc
 func	struck	CGContextDrawImageApplyingToneMapping	-	Reference / Functions	after-10.6	objc
 func	open	CGContextDrawLayerAtPoint	-	Opaque Types / Drawing Core Graphics Layers	-	objc

@@ -207,14 +207,14 @@ int main(void)
 	check_rgb("...and half way along it is half way through the ramp", c, 8, 7, 128, 0, 128);
 	CGContextRelease(c);
 
-	/* --- the conic ramp, and its wrap ------------------------------------------------ */
-	c = fresh();
-	CGContextDrawConicGradient(c, g, CGPointMake(7.5, 8.5), 0.0);
-	check_rgb("conic: angle zero (to the right of the centre) is the first stop", c, 8, 7, 255, 0, 0);
-	check_rgb("...a quarter turn is a quarter through the ramp", c, 7, 6, 191, 0, 64);
-	check_rgb("...half a turn is half way", c, 6, 7, 128, 0, 128);
-	check_rgb("...and three quarters of a turn WRAPS rather than clamping", c, 7, 8, 64, 0, 191);
-	CGContextRelease(c);
+	/* --- THE CONIC RAMP STOOD HERE AND WAS REMOVED (2026-10-05) ----------------------- */
+	/* Four checks — angle zero is the first stop, a quarter turn is a quarter through the ramp,
+	 * half is half, and three quarters WRAPS rather than clamping — built on
+	 * `CGContextDrawConicGradient`, which is macOS 14.0 against a 10.6-era surface. THE WRAP WAS
+	 * THE MEASUREMENT WORTH KEEPING and it is recorded here rather than re-derived: at the three
+	 * quarter point the ramp returned to its own start instead of clamping to the last stop, which
+	 * is what `t - floor(t)` in the removed `cg_paint_conic_parameter` did. A caller of this era
+	 * draws an angular ramp as a rotated `CGContextDrawLinearGradient`. */
 
 	/* --- the context's alpha reaches the paint --------------------------------------- */
 	c = fresh();

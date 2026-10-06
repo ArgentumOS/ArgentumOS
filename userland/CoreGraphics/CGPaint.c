@@ -190,17 +190,10 @@ int cg_paint_radial_parameter(CGPoint start_center, CGFloat start_radius, CGPoin
 	}
 }
 
-/* THE ANGULAR PARAMETER, which is the one that WRAPS: an angular ramp has no ends to extend past,
- * because going round the circle returns to where it started. `t - floor(t)` is that wrap, written
- * this way rather than with a comparison so that a NEGATIVE angle wraps too. */
-int cg_paint_conic_parameter(CGPoint center, CGFloat angle, CGFloat x, CGFloat y, CGFloat *t)
-{
-	const double turn = 6.283185307179586476925286766559;
-	double u = (atan2((double)(y - center.y), (double)(x - center.x)) - (double)angle) / turn;
-
-	*t = (CGFloat)(u - floor(u));
-	return 1;
-}
+/* !! THE ANGULAR PARAMETER STOOD HERE AND WAS REMOVED (2026-10-05), with the verb that computed it:
+ * an angular ramp is macOS 14.0 and this duplication is a 10.6-era surface. It was the one geometry
+ * that WRAPS — `t - floor(t)`, written that way rather than with a comparison so a negative angle
+ * wraps too — and a caller who wants one today draws a rotated linear gradient. */
 
 /* THE EXTENSION RULE, WRITTEN ONCE FOR EVERY GEOMETRY. A parameter outside 0…1 is clamped to the
  * near end only when that end is extended; otherwise the point is not painted at all, which is the

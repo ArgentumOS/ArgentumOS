@@ -2648,17 +2648,17 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 /* ------------------------------------------------------------------------- */
 
 /* THE VERBS DIFFER ONLY IN WHICH SAMPLER THEY HAND THE PAINT BUILDER, which is why there is one
- * struct, one draw function and three one-line evaluators rather than three copies of the same
- * twenty lines. The geometry the draw call carries — two points, two circles, or a centre and an
- * angle — is what the samplers (CGGradient.c) know how to read; the DRAWING is here, where the CTM,
- * the clip and the alpha are. */
+ * struct, one draw function and TWO one-line evaluators rather than two copies of the same twenty
+ * lines. The geometry the draw call carries — two points, or two circles — is what the samplers
+ * (CGGradient.c) know how to read; the DRAWING is here, where the CTM, the clip and the alpha are.
+ * A THIRD FIELD SET WENT WITH THE CONIC VERB (2026-10-05) and so did its `angle`, which nothing
+ * else read. */
 typedef struct {
 	CGGradientRef gradient;
 	CGPoint start;
 	CGPoint end;
 	CGFloat r0;
 	CGFloat r1;
-	CGFloat angle;
 	CGGradientDrawingOptions options;
 } cg_gradient_draw;
 
@@ -2677,12 +2677,11 @@ static void cg_radial_paint(void *info, CGFloat x, CGFloat y, CGFloat rgba[4])
 				  rgba);
 }
 
-static void cg_conic_paint(void *info, CGFloat x, CGFloat y, CGFloat rgba[4])
-{
-	const cg_gradient_draw *gd = info;
-
-	cg_gradient_conic_sample(gd->gradient, gd->start, gd->angle, x, y, rgba);
-}
+/* !! `cg_conic_paint` STOOD HERE, AND ITS CALLER IS GONE (2026-10-05): `CGContextDrawConicGradient`
+ * is macOS 14.0 — out of era by eight years — so the verb, this sampler, the parameter it computes
+ * and the gradient sample behind it were all removed together. The other two verbs are untouched,
+ * which is why `cg_draw_gradient` below still takes a sampler: LINEAR AND RADIAL ARE 10.5 AND THIS
+ * ONE WAS THE ODD ONE OUT, not the shape the others are built on. */
 
 /* THE ONE ROAD ONTO THE SURFACE, so the three verbs cannot differ in anything but the sampler. The
  * paint image is built over exactly the rectangle the composite will cover — `cg_paint_extents` is
@@ -2752,25 +2751,13 @@ void CGContextDrawRadialGradient(CGContextRef c, CGGradientRef gradient, CGPoint
 	cg_draw_gradient(c, &gd, cg_radial_paint);
 }
 
-void CGContextDrawConicGradient(CGContextRef c, CGGradientRef gradient, CGPoint center, CGFloat angle)
-{
-	cg_gradient_draw gd;
-
-	if (c == NULL) {
-		return;
-	}
-	if (gradient == NULL) {
-		fprintf(stderr, "CG-REFUSE: CGContextDrawConicGradient needs a gradient\n");
-		return;
-	}
-	memset(&gd, 0, sizeof(gd));
-	gd.gradient = gradient;
-	gd.start = center;
-	gd.angle = angle;
-	/* NO OPTIONS ARE SET, AND THAT IS THE CONIC RAMP'S CONTRACT RATHER THAN AN OVERSIGHT: it wraps,
-	 * so there is no beyond-the-ends for the two extension flags to describe. */
-	cg_draw_gradient(c, &gd, cg_conic_paint);
-}
+/* !! `CGContextDrawConicGradient` STOOD HERE AND WAS REMOVED (2026-10-05): it is macOS 14.0, and
+ * this duplication is a 10.6-era surface. WHAT THAT COSTS A CALLER IS A VERB AND NOT A COLOUR: the
+ * conic ramp's only unique property was that it WRAPS, so no extension flag had anything to
+ * describe — an angular ramp between two stops is `CGContextDrawLinearGradient` rotated, which is
+ * how a caller of this era draws one. THE PARAMETER CODE WENT WITH IT (`cg_paint_conic_parameter`
+ * in CGPaint.c and `cg_gradient_conic_sample` in CGGradient.c), because this verb was their only
+ * caller. */
 
 /* THE SHADING'S SAMPLER, AND IT NEEDS NO GEOMETRY FROM HERE: a shading was built axial or radial and
  * carries its own two points, so the context hands over a user-space point and nothing else. That is

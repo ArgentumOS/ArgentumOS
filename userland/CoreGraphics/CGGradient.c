@@ -291,18 +291,7 @@ void cg_gradient_radial_sample(CGGradientRef gradient, CGPoint start_center, CGF
 	cg_ramp_sample(gradient, t, rgba);
 }
 
-/* NO EXTENSION IS APPLIED HERE, AND THAT IS THE CONIC RAMP'S CONTRACT RATHER THAN AN OVERSIGHT: it
- * wraps, so the parameter has already been put inside 0…1 by `cg_paint_conic_parameter` and the two
- * end flags would have nothing to describe. Apple's conic draw takes no options parameter for exactly
- * that reason. */
-void cg_gradient_conic_sample(CGGradientRef gradient, CGPoint center, CGFloat angle, CGFloat x,
-			      CGFloat y, CGFloat rgba[4])
-{
-	CGFloat t;
-
-	if (gradient == NULL || !cg_paint_conic_parameter(center, angle, x, y, &t)) {
-		cg_unpainted(rgba);
-		return;
-	}
-	cg_ramp_sample(gradient, t, rgba);
-}
+/* !! THE CONIC SAMPLE STOOD HERE AND WAS REMOVED (2026-10-05), with the verb it served: an angular
+ * ramp is macOS 14.0 and this duplication is a 10.6-era surface. It was the one sampler that
+ * applied NO EXTENSION, because a wrapping parameter is already inside 0…1 — which is exactly why
+ * the conic verb took no options parameter, and why nothing else in this file changed. */
