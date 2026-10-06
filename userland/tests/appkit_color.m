@@ -121,20 +121,26 @@ int main(void)
 			  1e-9);
 	}
 
-	/* --- DEVIATION ONE: THE GETTERS CONVERT THROUGH THE ENGINE ---------------------- */
+	/* --- DEVIATION ONE: THE GETTERS ANSWER ACROSS SPACES, AND GRAY->RGB IS NOT A
+	 * CONVERSION (the engine's colour conversion went in the 2026-10-05 era removal; what is
+	 * left is the carve-out §12 records, one gray value REPLICATED into three channels) --- */
 	{
 		/* A GRAY COLOUR HAS A RED COMPONENT HERE. Apple's documentation raises for this. */
 		NSColor *w = [NSColor colorWithDeviceWhite:0.5 alpha:1.0];
 
 		check("a gray colour has TWO components (gray and alpha)",
 		      [w numberOfComponents] == 2);
-		/* THE TOLERANCE IS A COLOUR-TRANSFORM TOLERANCE AND NOT AN EXACT ONE, which is the first
-		 * thing this probe taught: 0.5 gray comes back as 0.5039, because the engine is converting
-		 * between gamma-2.2 gray against D50 and sRGB. An exact expectation here is the mistake this
-		 * file made on its first run — four times. */
-		check_num("...and asking it for RED converts through the engine rather than raising "
-			  "(a gamma difference, so not the same number)",
-			  (double)[w redComponent], 0.5039, 0.01);
+		/* !! THE EXPECTATION IS EXACT NOW, AND THE TOLERANCE THAT STOOD HERE WAS HIDING A CHANGE
+		 * (2026-10-05). It used to be 0.5039 ± 0.01 — a colour-transform tolerance — because the
+		 * engine CONVERTED device gray into sRGB, where 0.5 gray really is 0.5039. The conversion is
+		 * gone with the era removal, and what answers now is the carve-out that is not a conversion
+		 * (§12): a gray value is REPLICATED into the three channels, exactly, which is what makes
+		 * `-whiteComponent` and `CGContextSetGrayFillColor` possible at all. SO A DEVICE-GRAY 0.5
+		 * ASKED FOR RED GETS 0.5 — by construction rather than by arithmetic. An inexact expectation
+		 * accepts EITHER behaviour, which is this file's own first-run mistake (an exact expectation
+		 * where the engine did something else, four times) seen from the other side. */
+		check_num("...and asking it for RED replicates the gray — it neither raises NOR converts",
+			  (double)[w redComponent], 0.5, 1e-9);
 		check_num("...and its white component is what it was made with",
 			  (double)[w whiteComponent], 0.5, 1e-9);
 
@@ -153,6 +159,34 @@ int main(void)
 	/* --- DEVIATION TWO: THE RAISE THAT REMAINS -------------------------------------- */
 	check("a colour the engine CANNOT convert still raises rather than answering wrongly",
 	      raised());
+
+	/* AND THE CASE THE CHECK ABOVE COULD NOT SEE, WHICH IS WHY THE FIX NEEDED ITS OWN: THREE
+	 * COMPONENTS. `raised()` uses a device-CMYK colour, which has FIVE components counting alpha,
+	 * so the OLD test — the component COUNT, not the model — refused it BY LUCK. A Lab colour is
+	 * three components and no light value among them, and it passed that count test: `-greenComponent`
+	 * answered a* and `-blueComponent` answered b*, which is a wrong colour rather than a refusal.
+	 * The model test in NSColor.m's `fn_components_in` is what fixes it (2026-10-05), and IT IS
+	 * ONLY VISIBLE TO A COLOUR THAT IS NOT RGB AND HAS EXACTLY THREE COMPONENTS — so the colour
+	 * below is built with a* = 0.9 and b* = 0.5, the two numbers the old code would have answered
+	 * as green and blue. BOTH HALVES ARE ASSERTED, the discipline this file's header states: a
+	 * library that refused to hold the colour at all fails the first check. */
+	{
+		CGColorSpaceRef lab_space = CGColorSpaceCreateLab(NULL, NULL, NULL);
+		CGFloat lab_comp[4] = { 0.5, 0.9, 0.5, 1.0 };   /* L*, a*, b*, alpha */
+		NSColor *lab = [NSColor colorWithCGColor:CGColorCreate(lab_space, lab_comp)];
+		int got = 0;
+
+		CGColorSpaceRelease(lab_space);
+		check("a three-component colour that is NOT RGB is held (four components counting alpha)",
+		      [lab numberOfComponents] == 4);
+		@try {
+			(void)[lab redComponent];
+		} @catch (NSException *e) {
+			(void)e;
+			got = 1;
+		}
+		check("...and its RED component is a RAISE, not a* read out as a light value", got);
+	}
 
 	/* --- the named spaces really are the named spaces ------------------------------- */
 	{

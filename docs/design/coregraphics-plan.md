@@ -1123,10 +1123,20 @@ so it does not re-derive any of it:
 * **THE CARVE-OUT THAT IS NOT A CONVERSION AND MUST STAY:** the channel reordering inside a
   family — one gray value into three RGB channels and back — because two 10.0-era doors
   (`CGContextSetGrayFillColor`, `-[NSColor whiteComponent]`) are built on it and no colour
-  space is transformed by it. `fn_components_in` also has a REAL BUG to fix while it is
-  open: its direct branch tests the COMPONENT COUNT, not the model, so a Lab colour (three
-  components) has its a\* and b\* read out as green and blue — invisible only because the
-  conversion used to intercept it first.
+  space is transformed by it. **THE REAL BUG THIS PARAGRAPH USED TO LEAVE OPEN IS CLOSED
+  (2026-10-05, `9bb8343d` + the measurement below):** `fn_components_in`'s direct branch
+  tested the COMPONENT COUNT rather than the model, so a Lab colour — three components, and
+  nothing about them a light value — passed the RGB test and had its a\* and b\* read out as
+  green and blue. It was invisible only because the conversion intercepted the case first, and
+  the fix is the model test the same removal forced. **AND THE MEASUREMENT WAS WHAT THE FIX
+  STILL LACKED, because the refusal check that existed used a device-CMYK colour: five
+  components counting alpha, so the old count test refused it BY LUCK.**
+  `userland/tests/appkit_color.m` now builds a Lab colour with a\* = 0.9 and b\* = 0.5 — the
+  two numbers the old code would have answered as green and blue — and asserts BOTH halves:
+  the colour is HELD (four components), and asking it for RED is a raise. The same edit
+  corrected this file's sibling tolerance, which was hiding the change: device gray asked for
+  red is 0.5 EXACTLY now (the replication), where 0.5039 ± 0.01 was the CONVERTED answer and
+  accepted either behaviour.
 * **THE PROBE COST, MEASURED:** `coregraphics_color.c` has three whole blocks built on the
   conversion, plus the conversion half of the calibrated-GRAY block, and
   `coregraphics_color_foundation.m` has one site. They cannot be trimmed: their evidence IS
