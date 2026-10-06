@@ -570,6 +570,112 @@ int main(void)
 	}
 
 
+	printf("FOUNDATION-BUNDLE DIAG leg=init-with-path\n");
+	{
+		/* NEW ASSERTIONS. The -init and the +door take the same path and must agree about what they built, so the
+		 * law is a RELATION between them rather than a literal, and a third case - a directory that is NOT a
+		 * bundle - must answer nil through the -init. A message to a NULLABLE receiver yields a nullable result,
+		 * so each value is normalised through stringWithFormat: (whose varargs are not nullability-checked) AND
+		 * its length is asserted, which is what keeps a pair of nils from comparing equal to each other. */
+		NSBundle *byClass = [NSBundle bundleWithPath:@FIXTURES "BundleFixture.app"];
+		NSBundle *byInit = [[NSBundle alloc] initWithPath:@FIXTURES "BundleFixture.app"];
+		NSBundle *notABundle = [[NSBundle alloc] initWithPath:@FIXTURES "NotABundle"];
+		NSString *initPath = [NSString stringWithFormat:@"%@", [byInit bundlePath]];
+		NSString *classPath = [NSString stringWithFormat:@"%@", [byClass bundlePath]];
+		NSString *initExe = [NSString stringWithFormat:@"%@", [byInit executablePath]];
+		NSString *classExe = [NSString stringWithFormat:@"%@", [byClass executablePath]];
+		NSString *initID = [NSString stringWithFormat:@"%@", [byInit bundleIdentifier]];
+		NSString *classID = [NSString stringWithFormat:@"%@", [byClass bundleIdentifier]];
+
+		check("bundle-init-with-path-matches-the-class-door",
+		      byClass != nil && byInit != nil &&
+		      [[byInit bundlePath] length] > 0 && [[byClass bundlePath] length] > 0 &&
+		      [initPath isEqualToString:classPath] &&
+		      [initExe isEqualToString:classExe] && [initID isEqualToString:classID] &&
+		      notABundle == nil,
+		      [[NSString stringWithFormat:@"init=%@ class=%@ id=%@ notABundle=%d",
+			initPath, classPath, initID, (int)(notABundle != nil)] UTF8String]);
+		covers("NSBundle", "initWithPath:");
+		printf("FOUNDATION-BUNDLE DIAG leg=init-with-path-done\n");
+	}
+
+	printf("FOUNDATION-BUNDLE DIAG leg=registry-and-identifiers\n");
+	{
+		/* THE REGISTRY AND THE TWO IDENTIFIER DOORS, again as RELATIONS: the identifier the bundle ANSWERS is the
+		 * one its OWN manifest carries, and the registries answer arrays holding what was loaded. Same nil-safe
+		 * normalisation as above. */
+		NSBundle *fixture = [NSBundle bundleWithPath:@FIXTURES "BundleFixture.app"];
+		NSDictionary *info = [fixture infoDictionary];
+		NSArray *bundles = [NSBundle allBundles];
+		NSArray *frameworks = [NSBundle allFrameworks];
+		NSString *plistID = [NSString stringWithFormat:@"%@", [info objectForKey:@"CFBundleIdentifier"]];
+		NSString *doorID = [NSString stringWithFormat:@"%@", [fixture bundleIdentifier]];
+
+		check("the-bundle-registry-and-the-identifiers-agree-with-the-manifest",
+		      fixture != nil && info != nil && [info isKindOfClass:[NSDictionary class]] &&
+		      [info count] > 0 && [[fixture bundleIdentifier] length] > 0 &&
+		      [plistID isEqualToString:doorID] && [doorID length] > 0 &&
+		      bundles != nil && [bundles isKindOfClass:[NSArray class]] && [bundles count] >= 1 &&
+		      [bundles containsObject:[NSBundle mainBundle]] &&
+		      frameworks != nil && [frameworks isKindOfClass:[NSArray class]] &&
+		      ![frameworks containsObject:fixture],
+		      [[NSString stringWithFormat:@"id=%@ plist=%@ bundles=%lu frameworks=%lu hasMain=%d",
+			doorID, plistID, (unsigned long)[bundles count], (unsigned long)[frameworks count],
+			(int)[bundles containsObject:[NSBundle mainBundle]]] UTF8String]);
+		covers("NSBundle", "bundleIdentifier");
+		covers("NSBundle", "infoDictionary");
+		covers("NSBundle", "allBundles");
+		covers("NSBundle", "allFrameworks");
+		printf("FOUNDATION-BUNDLE DIAG leg=registry-and-identifiers-done\n");
+	}
+
+	printf("FOUNDATION-BUNDLE DIAG leg=shared-locations\n");
+	{
+		/* THE SHARED-LOCATION DOORS. MEASURED FIRST: with neither directory present BOTH doors answer nil, which
+		 * is Apple's semantics for a bundle that has no such directory - so the checks below CREATE the
+		 * directories, and then demand the answer. A nil-forever door would fail here (non-nil is required), and
+		 * a door that answered nil even when the directory exists cannot pass either. The law itself is still a
+		 * RELATION: the URL's path IS the path door's answer. */
+		NSString *fixturePath = @FIXTURES "BundleFixture.app";
+		NSString *sharedPath = nil;
+		NSString *sharedViaURL = nil;
+		NSURL *sharedURL = nil;
+		NSURL *supportURL = nil;
+		NSURL *receipt = nil;
+		NSBundle *fixture;
+
+		(void)mkdir(FIXTURES "BundleFixture.app/Contents/SharedFrameworks", 0755);
+		(void)mkdir(FIXTURES "BundleFixture.app/Contents/SharedSupport", 0755);
+
+		fixture = [NSBundle bundleWithPath:fixturePath];
+		sharedPath = [NSString stringWithFormat:@"%@", [fixture sharedFrameworksPath]];
+		sharedURL = [fixture sharedFrameworksURL];
+		sharedViaURL = [NSString stringWithFormat:@"%@", [sharedURL path]];
+		supportURL = [fixture sharedSupportURL];
+		receipt = [fixture appStoreReceiptURL];
+
+		printf("FOUNDATION-BUNDLE DIAG leg=shared-locations-read path=%s url=%s support=%s\n",
+		       [sharedPath UTF8String], [sharedViaURL UTF8String],
+		       supportURL != nil ? "set" : "nil");
+
+		check("the-shared-location-doors-agree-between-path-and-url",
+		      [[fixture sharedFrameworksPath] length] > 0 &&
+		      [sharedPath hasSuffix:@"SharedFrameworks"] &&
+		      sharedURL != nil && [sharedURL isFileURL] && [sharedViaURL length] > 0 &&
+		      [sharedPath isEqualToString:sharedViaURL] &&
+		      supportURL != nil && [supportURL isKindOfClass:[NSURL class]] &&
+		      [[supportURL path] length] > 0 &&
+		      (receipt == nil || [receipt isKindOfClass:[NSURL class]]),
+		      [[NSString stringWithFormat:@"path=%@ urlPath=%@ support=%@ receipt=%@",
+			sharedPath, sharedViaURL, supportURL != nil ? [supportURL path] : @"(nil)",
+			receipt != nil ? [receipt absoluteString] : @"(nil)"] UTF8String]);
+		covers("NSBundle", "sharedFrameworksPath");
+		covers("NSBundle", "sharedFrameworksURL");
+		covers("NSBundle", "sharedSupportURL");
+		covers("NSBundle", "appStoreReceiptURL");
+		printf("FOUNDATION-BUNDLE DIAG leg=shared-locations-done\n");
+	}
+
 	printf("FOUNDATION-BUNDLE RESULT ok=%d fail=%d\n", okc, failc);
 	printf("FOUNDATION-BUNDLE-STATUS=%d\n", failc ? 1 : 0);
 	printf("FOUNDATION-BUNDLE DONE\n");

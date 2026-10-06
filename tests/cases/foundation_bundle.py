@@ -38,21 +38,17 @@ import re
 from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_bundle"
-CHECKS = ("bundle-rejects-a-directory-with-no-manifest", "bundle-accepts-both-layouts",
-          "bundle-reads-its-plist-manifest", "bundle-finds-its-executable", "bundle-resource-lookup",
-          "bundle-localizations-come-from-lproj-directories", "main-bundle-exists-even-for-a-plain-tool",
-          "bundle-by-identifier-searches-the-opened-ones", "bundle-urls-follow-their-paths",
-          "resource-urls-mirror-the-path-lookups", "resource-url-in-bundle-with-url",
-          "bundle-from-url-and-init-with-url", "standard-bundle-directories-are-existence-gated",
-          "auxiliary-executable-path-and-url", "class-resource-door-searches-the-main-bundle",
-          "localization-aware-resource-lookup", "localized-string-over-explicit-localizations",
-          "preferred-localizations-match-preferences", "development-localization-and-localized-info",
-          "appkits-resource-doors-are-not-on-foundation-s-nsbundle",
-          "bundle-executable-architectures-from-the-elf-header",
-          "bundle-load-refuses-a-payload-that-is-not-code", "bundle-load-brings-in-real-code",
-          "bundle-principal-class-comes-from-the-manifest", "bundle-loaded-class-is-usable",
-          "class-lookup-and-bundle-for-class", "bundle-load-posts-its-notification-with-the-classes",
-          "loading-doors-report-their-error", "bundle-unload-answers-no-when-nothing-was-loaded", "plist-legacy-data-door-round-trips", "plist-legacy-error-description-is-a-string", "plist-binary-write-is-refused-with-a-description")
+CHECKS = (
+	  "bundle-rejects-a-directory-with-no-manifest", "bundle-accepts-both-layouts", "bundle-reads-its-plist-manifest", "bundle-finds-its-executable",
+	  "bundle-resource-lookup", "bundle-localizations-come-from-lproj-directories", "main-bundle-exists-even-for-a-plain-tool", "bundle-by-identifier-searches-the-opened-ones",
+	  "bundle-urls-follow-their-paths", "resource-urls-mirror-the-path-lookups", "resource-url-in-bundle-with-url", "bundle-from-url-and-init-with-url",
+	  "standard-bundle-directories-are-existence-gated", "auxiliary-executable-path-and-url", "class-resource-door-searches-the-main-bundle", "localization-aware-resource-lookup",
+	  "localized-string-over-explicit-localizations", "preferred-localizations-match-preferences", "development-localization-and-localized-info", "appkits-resource-doors-are-not-on-foundation-s-nsbundle",
+	  "bundle-executable-architectures-from-the-elf-header", "bundle-load-refuses-a-payload-that-is-not-code", "bundle-load-brings-in-real-code", "bundle-principal-class-comes-from-the-manifest",
+	  "bundle-loaded-class-is-usable", "class-lookup-and-bundle-for-class", "bundle-load-posts-its-notification-with-the-classes", "loading-doors-report-their-error",
+	  "bundle-unload-answers-no-when-nothing-was-loaded", "plist-legacy-data-door-round-trips", "plist-legacy-error-description-is-a-string", "plist-binary-write-is-refused-with-a-description",
+	  "bundle-init-with-path-matches-the-class-door", "the-bundle-registry-and-the-identifiers-agree-with-the-manifest", "the-shared-location-doors-agree-between-path-and-url",
+)
 
 
 class Case(BaseCase):
