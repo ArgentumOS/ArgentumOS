@@ -34,7 +34,7 @@
 
 #import <Foundation/NSObject.h>
 /* THE GEOMETRY TYPES ARE THIS HEADER'S OWN, because the keyed geometry doors below NAME them: NSGeometry.h
- * brings NSPoint/NSSize/NSRect AND the CG value types (CGPoint/CGSize/CGRect/CGVector), and the transform
+ * brings NSPoint/NSSize/NSRect AND the CG value types (CGPoint/CGSize/CGRect), and the transform
  * has its own CoreGraphics header. Imported ABOVE the nullability region, which is where every other
  * `#import` in this tree lives — a `#import` inside `NS_ASSUME_NONNULL_BEGIN` is refused by the compiler. */
 #import <Foundation/NSGeometry.h>

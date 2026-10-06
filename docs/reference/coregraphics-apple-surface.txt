@@ -51,16 +51,16 @@
 # counted, NOT excluded: 0 distinct names Apple documents on a `swift.` page
 # but which carry the CG spelling.
 #
-# why the struck rows are struck: after-10.6 253, post-10.6 176
+# why the struck rows are struck: after-10.6 253, post-10.6 178
 #
 # counts by kind:
-#   func       shipped  193   open  399   struck  143
+#   func       shipped  192   open  399   struck  144
 #   macro      shipped    7   open   76   struck   24
 #   enum       shipped   12   open   29   struck   16
 #   case       shipped   85   open  207   struck  152
 #   var        shipped   11   open   50   struck   74
 #   typealias  shipped   17   open   69   struck   14
-#   struct     shipped    8   open    6   struck    6
+#   struct     shipped    7   open    6   struck    7
 case	open	CGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
 case	open	CGGlyphMin	-	Opaque Types / Working with Font Tables / Constants	deprecated	objc
 case	open	CGPDFDataFormatJPEG2000	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	-	objc
@@ -1285,7 +1285,7 @@ func	shipped	CGSizeEqualToSize	-	Reference / Functions	deprecated	objc
 func	shipped	CGSizeMake	-	Reference / Creating a Geometric Primitive from Values	-	objc
 func	open	CGSizeMakeWithDictionaryRepresentation	-	Reference / Creating a Geometric Primitive from a Dictionary Representation	-	objc
 func	open	CGUnregisterScreenRefreshCallback	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
-func	shipped	CGVectorMake	-	Reference / Creating a Geometric Primitive from Values	post-10.6	objc
+func	struck	CGVectorMake	-	Reference / Creating a Geometric Primitive from Values	post-10.6	objc
 func	open	CGWaitForScreenRefreshRects	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
 func	open	CGWaitForScreenUpdateRects	-	Services / Getting Information About Refresh and Move Operations	deprecated	objc
 func	open	CGWarpMouseCursorPosition	-	Services / Controlling the Mouse Cursor	-	objc
@@ -1423,7 +1423,7 @@ struct	shipped	CGPoint	-	CoreFoundation, CG-named / Reference / Structures	-	obj
 struct	shipped	CGRect	-	CoreFoundation, CG-named / Reference / Structures	-	objc
 struct	open	CGScreenUpdateMoveDelta	-	Services / Data Types	-	objc
 struct	shipped	CGSize	-	CoreFoundation, CG-named / Reference / Structures	-	objc
-struct	shipped	CGVector	-	CoreFoundation, CG-named / Reference / Structures	post-10.6	objc
+struct	struck	CGVector	-	CoreFoundation, CG-named / Reference / Structures	post-10.6	objc
 typealias	open	CGBitmapContextReleaseDataCallback	-	Opaque Types / Creating Bitmap Graphics Contexts	-	objc
 typealias	open	CGButtonCount	-	Services / Data Types	-	objc
 typealias	open	CGCharCode	-	Services / Data Types	-	objc

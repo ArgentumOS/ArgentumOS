@@ -34,11 +34,6 @@
 	return [self valueWithBytes:&rect objCType:@encode(CGRect)];
 }
 
-+ (NSValue *)valueWithCGVector:(CGVector)vector
-{
-	return [self valueWithBytes:&vector objCType:@encode(CGVector)];
-}
-
 + (NSValue *)valueWithCGAffineTransform:(CGAffineTransform)transform
 {
 	return [self valueWithBytes:&transform objCType:@encode(CGAffineTransform)];
@@ -68,13 +63,8 @@
 	return value;
 }
 
-- (CGVector)CGVectorValue
-{
-	CGVector value = { 0.0, 0.0 };
-
-	[self getValue:&value];
-	return value;
-}
+/* `+valueWithCGVector:` AND `-CGVectorValue` STOOD HERE AND WENT WITH `CGVector` (2026-10-05): the
+ * type is macOS 10.7, so there is no encoding to box and no reader to spell. */
 
 - (CGAffineTransform)CGAffineTransformValue
 {

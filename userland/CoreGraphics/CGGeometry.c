@@ -69,14 +69,8 @@ CGSize CGSizeMake(CGFloat width, CGFloat height)
 	return s;
 }
 
-CGVector CGVectorMake(CGFloat dx, CGFloat dy)
-{
-	CGVector v;
-
-	v.dx = dx;
-	v.dy = dy;
-	return v;
-}
+/* !! `CGVectorMake` STOOD HERE AND IS REMOVED WITH `CGVector` (2026-10-05): macOS 10.7, so this
+ * surface has no such type and nothing to make. */
 
 CGRect CGRectMake(CGFloat x, CGFloat y, CGFloat width, CGFloat height)
 {

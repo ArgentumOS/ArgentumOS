@@ -923,17 +923,17 @@ int main(void)
 		 * FUNCTIONS in libcoregraphics, and a probe links only -lfoundation, so calling one is an undefined
 		 * reference at link time (the CG TYPES come from the headers and need no link, but the MAKERS do not).
 		 * These are Apple's own field-for-field spellings, in declaration order, so the values are identical:
-		 * CGPoint{x,y}, CGSize{width,height}, CGRect{origin,size}, CGVector{dx,dy}, CGAffineTransform{a,b,c,d,tx,ty}. */
+		 * CGPoint{x,y}, CGSize{width,height}, CGRect{origin,size}, CGAffineTransform{a,b,c,d,tx,ty}. (There were
+		 * five pairs here while `CGVector` existed; the type is macOS 10.7 and went in the 2026-10-05 era
+		 * removal, so the vector pair went with it.) */
 		CGPoint p = { 3.5, -2.25 };
 		CGSize  s = { 10.0, 4.0 };
 		CGRect  r = { { 1.0, 2.0 }, { 3.0, 4.0 } };
-		CGVector v = { 0.5, -0.5 };
 		CGAffineTransform tr = { 1.0, 0.0, 0.0, 1.0, 5.0, 6.0 };
 
 		[writer encodeCGPoint:p forKey:@"cgp"];
 		[writer encodeCGSize:s forKey:@"cgs"];
 		[writer encodeCGRect:r forKey:@"cgr"];
-		[writer encodeCGVector:v forKey:@"cgv"];
 		[writer encodeCGAffineTransform:tr forKey:@"cgt"];
 		[writer encodePoint:NSMakePoint(7.0, 8.0) forKey:@"np"];
 		[writer encodeSize:NSMakeSize(9.0, 10.0) forKey:@"ns"];
@@ -946,7 +946,6 @@ int main(void)
 			CGPoint cgp = [reader decodeCGPointForKey:@"cgp"];
 			CGSize cgs = [reader decodeCGSizeForKey:@"cgs"];
 			CGRect cgr = [reader decodeCGRectForKey:@"cgr"];
-			CGVector cgv = [reader decodeCGVectorForKey:@"cgv"];
 			CGAffineTransform cgt = [reader decodeCGAffineTransformForKey:@"cgt"];
 			NSPoint np = [reader decodePointForKey:@"np"];
 			NSSize ns = [reader decodeSizeForKey:@"ns"];
@@ -957,7 +956,6 @@ int main(void)
 			      cgs.width == 10.0 && cgs.height == 4.0 &&
 			      cgr.origin.x == 1.0 && cgr.origin.y == 2.0 &&
 			      cgr.size.width == 3.0 && cgr.size.height == 4.0 &&
-			      cgv.dx == 0.5 && cgv.dy == -0.5 &&
 			      cgt.a == 1.0 && cgt.d == 1.0 && cgt.tx == 5.0 && cgt.ty == 6.0 &&
 			      np.x == 7.0 && np.y == 8.0 &&
 			      ns.width == 9.0 && ns.height == 10.0 &&

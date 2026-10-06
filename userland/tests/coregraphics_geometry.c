@@ -56,7 +56,6 @@ int main(void)
 	CGRect r = CGRectMake(10.0, 20.0, 30.0, 40.0);
 	CGPoint p = CGPointMake(3.0, 4.0);
 	CGSize s = CGSizeMake(5.0, 6.0);
-	CGVector v = CGVectorMake(7.0, 8.0);
 	CGAffineTransform t;
 	CGRect slice;
 	CGRect remainder;
@@ -64,7 +63,6 @@ int main(void)
 	/* --- creating and reading ------------------------------------------------ */
 	check_num("point make/read", p.x + p.y, 7.0);
 	check_num("size make/read", s.width * s.height, 30.0);
-	check_num("vector make/read", v.dx - v.dy, -1.0);
 	check_num("rect minX", CGRectGetMinX(r), 10.0);
 	check_num("rect minY", CGRectGetMinY(r), 20.0);
 	check_num("rect midX", CGRectGetMidX(r), 25.0);

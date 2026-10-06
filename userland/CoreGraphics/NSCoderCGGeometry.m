@@ -70,21 +70,9 @@
 	return rect;
 }
 
-- (void)encodeCGVector:(CGVector)vector forKey:(NSString *)key
-{
-	[self encodeObject:[NSValue valueWithBytes:&vector objCType:@encode(CGVector)] forKey:key];
-}
-
-- (CGVector)decodeCGVectorForKey:(NSString *)key
-{
-	NSValue *value = [self decodeObjectForKey:key];
-	CGVector vector = { 0.0, 0.0 };
-
-	if (value != nil) {
-		[value getValue:&vector];
-	}
-	return vector;
-}
+/* THE TWO VECTOR DOORS STOOD HERE AND WENT WITH `CGVector` (2026-10-05): macOS 10.7, and a keyed
+ * door names the type it writes — which is also why the archived-geometry probe's round trip
+ * measures four pairs instead of five now. */
 
 - (void)encodeCGAffineTransform:(CGAffineTransform)transform forKey:(NSString *)key
 {

@@ -42,8 +42,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (CGSize)decodeCGSizeForKey:(NSString *)key;
 - (void)encodeCGRect:(CGRect)rect forKey:(NSString *)key;
 - (CGRect)decodeCGRectForKey:(NSString *)key;
-- (void)encodeCGVector:(CGVector)vector forKey:(NSString *)key;
-- (CGVector)decodeCGVectorForKey:(NSString *)key;
+/* THE TWO VECTOR DOORS WENT WITH `CGVector` (2026-10-05) — macOS 10.7, and a keyed door names the
+ * type it writes. The pairs that remain are CGPoint, CGSize, CGRect and CGAffineTransform. */
 - (void)encodeCGAffineTransform:(CGAffineTransform)transform forKey:(NSString *)key;
 - (CGAffineTransform)decodeCGAffineTransformForKey:(NSString *)key;
 

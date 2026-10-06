@@ -38,13 +38,15 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSValue *)valueWithCGPoint:(CGPoint)point;
 + (NSValue *)valueWithCGSize:(CGSize)size;
 + (NSValue *)valueWithCGRect:(CGRect)rect;
-+ (NSValue *)valueWithCGVector:(CGVector)vector;
 + (NSValue *)valueWithCGAffineTransform:(CGAffineTransform)transform;
 
 - (CGPoint)CGPointValue;
 - (CGSize)CGSizeValue;
 - (CGRect)CGRectValue;
-- (CGVector)CGVectorValue;
+/* `+valueWithCGVector:` AND `-CGVectorValue` WENT WITH `CGVector` (2026-10-05): the type is macOS
+ * 10.7 and this category cannot box a type this surface does not have. The four that remain are
+ * the era's own — CGPoint, CGSize, CGRect and CGAffineTransform — which is why the header's note
+ * above counts the doors it has rather than the ones Apple's index lists. */
 - (CGAffineTransform)CGAffineTransformValue;
 
 @end

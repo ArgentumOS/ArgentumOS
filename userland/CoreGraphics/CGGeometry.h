@@ -45,12 +45,10 @@ typedef struct CGRect {
 	CGSize size;
 } CGRect;
 
-/* A vector: a direction and magnitude with no position, which is why the
- * translation part of an affine transform does not move one (CGAffineTransform.h). */
-typedef struct CGVector {
-	CGFloat dx;
-	CGFloat dy;
-} CGVector;
+/* !! `CGVector` AND `CGVectorMake` STOOD HERE AND ARE REMOVED (2026-10-05): the type is macOS
+ * 10.7 and the 10.6 headers have no such struct, so a caller of this era cannot name it (nor the
+ * makers and readers below, which are spelled after it). What a vector WAS is a direction with no
+ * position — `CGVectorMake(dx, dy)` — and the era spells that as the two numbers it always was. */
 
 typedef enum {
 	CGRectMinXEdge = 0,
@@ -71,7 +69,7 @@ extern const CGRect CGRectInfinite;
 /* Creating. */
 CGPoint CGPointMake(CGFloat x, CGFloat y);
 CGSize CGSizeMake(CGFloat width, CGFloat height);
-CGVector CGVectorMake(CGFloat dx, CGFloat dy);
+/* `CGVectorMake` went with the type it made — see the note above the `CGRectEdge` enum. */
 CGRect CGRectMake(CGFloat x, CGFloat y, CGFloat width, CGFloat height);
 
 /* Comparing. THESE TWO ARE MACROS, WHICH IS APPLE'S LIVE FORM FOR THEM, and the C0

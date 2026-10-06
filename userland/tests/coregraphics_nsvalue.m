@@ -40,17 +40,14 @@ int main(void)
 	CGPoint point = { 1.5, -2.5 };
 	CGSize size = { 6.0, 7.5 };
 	CGRect rect = { { 1.0, 2.0 }, { 3.0, 4.0 } };
-	CGVector vector = { -1.0, 0.5 };
 	CGAffineTransform transform = { 1.0, 2.0, 3.0, 4.0, 5.0, 6.0 };
 	NSValue *boxedPoint = [NSValue valueWithCGPoint:point];
 	NSValue *boxedSize = [NSValue valueWithCGSize:size];
 	NSValue *boxedRect = [NSValue valueWithCGRect:rect];
-	NSValue *boxedVector = [NSValue valueWithCGVector:vector];
 	NSValue *boxedTransform = [NSValue valueWithCGAffineTransform:transform];
 	CGPoint backPoint = [boxedPoint CGPointValue];
 	CGSize backSize = [boxedSize CGSizeValue];
 	CGRect backRect = [boxedRect CGRectValue];
-	CGVector backVector = [boxedVector CGVectorValue];
 	CGAffineTransform backTransform = [boxedTransform CGAffineTransformValue];
 
 	/* EACH IS CHECKED ON ITS OWN so a failure names the struct, and each reader's answer is compared with the
@@ -62,8 +59,6 @@ int main(void)
 	check("cg-value-with-rect", backRect.origin.x == 1.0 && backRect.origin.y == 2.0 &&
 				    backRect.size.width == 3.0 && backRect.size.height == 4.0 &&
 				    strcmp([boxedRect objCType], @encode(CGRect)) == 0);
-	check("cg-value-with-vector", backVector.dx == -1.0 && backVector.dy == 0.5 &&
-				      strcmp([boxedVector objCType], @encode(CGVector)) == 0);
 	check("cg-value-with-affine-transform", backTransform.a == 1.0 && backTransform.b == 2.0 &&
 						backTransform.c == 3.0 && backTransform.d == 4.0 &&
 						backTransform.tx == 5.0 && backTransform.ty == 6.0 &&

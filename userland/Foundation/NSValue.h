@@ -53,7 +53,7 @@
  * +valueWith…: doors and their three readers declarable at all — the types they name are NSGeometry.h's, and
  * (NSGeometry.h:44) those ARE the CG value types. */
 #import <Foundation/NSGeometry.h>
-/* FOR THE COREGRAPHICS-GEOMETRY DOORS (CGPoint/CGSize/CGRect/CGVector and CGAffineTransform), also ABOVE the
+/* FOR THE COREGRAPHICS-GEOMETRY DOORS (CGPoint/CGSize/CGRect and CGAffineTransform), also ABOVE the
  * region. CGGeometry.h is reached through NSGeometry.h already, but it is named here for the same reason the
  * implementation names its imports: a reader should not have to follow a typedef to learn why a name is in
  * scope. */
