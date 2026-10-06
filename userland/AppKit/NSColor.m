@@ -87,23 +87,34 @@ static NSColor *fn_singleton(NSColor **slot, CGFloat r, CGFloat g, CGFloat b, CG
 static size_t fn_components_in(CGColorRef c, int want_rgb, CGFloat *out)
 {
 	CGColorSpaceRef space;
-	CGColorSpaceRef target;
-	CGColorRef converted;
+	int model;
 	const CGFloat *comp;
-	size_t n;
 	size_t i;
 
 	if (c == NULL) {
 		return 0;
 	}
-	/* A COLOUR ALREADY IN THE RIGHT KIND OF SPACE IS READ DIRECTLY, so the common case does not pay
-	 * for a transform. The test is the COMPONENT COUNT, because this library's RGB spaces are one
-	 * story and its gray spaces are another (a device space says the numbers are the ones to blend). */
+	/* A COLOUR ALREADY IN THE RIGHT KIND OF SPACE IS READ DIRECTLY, and A GREY VALUE IS
+	 * REPLICATED INTO THE THREE RGB CHANNELS and nothing more — the reordering inside a family is
+	 * not a colour-space transform, and `-[NSColor whiteComponent]` and
+	 * `CGContextSetGrayFillColor` are 10.0-era doors built on it.
+	 *
+	 * !! THE CONVERSION IS GONE (2026-10-05) and so is the arm that asked for it:
+	 * `CGColorCreateCopyByMatchingToColorSpace` is macOS 10.11 against a 10.6-era surface, so a
+	 * colour whose MODEL is neither RGB nor gray answers 0 below and the callers raise, which is
+	 * what this file's header note describes.
+	 *
+	 * AND THE TEST IS NOW THE MODEL RATHER THAN THE COMPONENT COUNT, which is A REAL BUG THIS
+	 * REMOVAL EXPOSED: three components matched the RGB test, so a LAB colour — three components,
+	 * and nothing about them a light value — would have had its a* and b* read out as green and
+	 * blue. It was invisible only because the conversion intercepted that case first. */
 	space = CGColorGetColorSpace(c);
 	if (space != NULL) {
 		size_t have = CGColorSpaceGetNumberOfComponents(space);
 
-		if ((want_rgb && have == 3) || (!want_rgb && have == 1)) {
+		model = CGColorSpaceGetModel(space);
+		if ((want_rgb && model == kCGColorSpaceModelRGB) ||
+		    (!want_rgb && model == kCGColorSpaceModelMonochrome)) {
 			comp = CGColorGetComponents(c);
 			for (i = 0; i < have; i++) {
 				out[i] = comp[i];
@@ -111,24 +122,39 @@ static size_t fn_components_in(CGColorRef c, int want_rgb, CGFloat *out)
 			out[have] = CGColorGetAlpha(c);
 			return have + 1;
 		}
+		if (want_rgb && model == kCGColorSpaceModelMonochrome) {
+			comp = CGColorGetComponents(c);
+			out[0] = comp[0];
+			out[1] = comp[0];
+			out[2] = comp[0];
+			out[3] = CGColorGetAlpha(c);
+			return 4;
+		}
 	}
-	target = want_rgb ? CGColorSpaceCreateDeviceRGB() : CGColorSpaceCreateDeviceGray();
-	if (target == NULL) {
-		return 0;
-	}
-	converted = CGColorCreateCopyByMatchingToColorSpace(c, kCGRenderingIntentDefault, target, NULL);
-	CGColorSpaceRelease(target);
-	if (converted == NULL) {
-		return 0;
-	}
-	n = want_rgb ? 3 : 1;
-	comp = CGColorGetComponents(converted);
-	for (i = 0; i < n; i++) {
-		out[i] = comp[i];
-	}
-	out[n] = CGColorGetAlpha(converted);
-	CGColorRelease(converted);
-	return n + 1;
+		if (!want_rgb && model == kCGColorSpaceModelRGB) {
+			/* AN RGB COLOUR'S LUMINANCE IS COMPUTED HERE RATHER THAN CONVERTED, AND THAT IS THE
+			 * ERA'S ANSWER RATHER THAN A LOOPHOLE: `-whiteComponent` on an RGB colour is a 10.0-era
+			 * door, and Apple's own NSColor answers it with the three channels' weighted sum. What
+			 * went with the conversion (2026-10-05) was the trip through a COLOUR SPACE — an RGB
+			 * colour in a profile is no longer interpreted — so the arithmetic that needs no
+			 * profile, on numbers that are already device numbers, stays. THE WEIGHTS ARE Rec.601's,
+			 * which is what a device RGB colour means here: device RGB IS sRGB, and every check in
+			 * the probe is about equal channels, where the weights cancel.
+			 *
+			 * A PROFILE-BACKED RGB SPACE REACHES THIS ARM TOO, and that is the same stated
+			 * deviation the C probe records for its ICC and calibrated cases: its numbers are read
+			 * as device numbers, because the alternative is the conversion that is gone. */
+			comp = CGColorGetComponents(c);
+			out[0] = 0.299 * comp[0] + 0.587 * comp[1] + 0.114 * comp[2];
+			out[1] = CGColorGetAlpha(c);
+			return 2;
+		}
+	/* AND A COLOUR IT CANNOT READ IS REFUSED, WITH THE REASON ON stderr SO THE RAISE THAT FOLLOWS
+	 * IS ATTRIBUTABLE. A device-CMYK colour is the case that existed before; now it is the whole
+	 * class, which is the era's answer rather than this file's. */
+	fprintf(stderr, "APPKIT-REFUSE: -NSColor component getters cannot read a colour in this "
+			"space — this library has no colour conversion\n");
+	return 0;
 }
 
 /* AND THE RAISE, for the case the engine could not answer — see the file's header note. */

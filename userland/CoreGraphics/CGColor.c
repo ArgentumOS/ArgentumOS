@@ -272,159 +272,36 @@ bool CGColorEqualToColor(CGColorRef color1, CGColorRef color2)
  * are interpreted.
  * ------------------------------------------------------------------------------------- */
 
-/* THE INTENTS DO NOT LINE UP, WHICH IS WHY THIS FUNCTION EXISTS. Apple documents Default,
- * AbsoluteColorimetric, RelativeColorimetric, Perceptual, Saturation. The engine numbers
- * Perceptual 0, RelativeColorimetric 1, Saturation 2, AbsoluteColorimetric 3 - so passing an
- * intent through as it stands would ask for a different one, silently, and only in the output.
- * Default is PERCEPTUAL, which is what Apple's documentation calls the usual default. */
-static int cg_engine_intent(CGColorRenderingIntent intent)
-{
-	switch (intent) {
-	case kCGRenderingIntentAbsoluteColorimetric:
-		return INTENT_ABSOLUTE_COLORIMETRIC;
-	case kCGRenderingIntentRelativeColorimetric:
-		return INTENT_RELATIVE_COLORIMETRIC;
-	case kCGRenderingIntentPerceptual:
-		return INTENT_PERCEPTUAL;
-	case kCGRenderingIntentSaturation:
-		return INTENT_SATURATION;
-	default:
-		return INTENT_PERCEPTUAL;
-	}
-}
-
-/* THE ENGINE'S TYPE CODE DESCRIBES THE MEMORY LAYOUT, NOT THE SPACE: three doubles for RGB,
- * one for gray, three for Lab in the ICC convention (L* 0..100, a* and b* around 0), which is
- * also what a Lab colour's components mean here. A model with no code cannot be converted, and
- * that refusal is the honest answer rather than a guess at a layout. */
-static int cg_engine_format(CGColorSpaceModel model, int *ncomp)
-{
-	switch (model) {
-	case kCGColorSpaceModelMonochrome:
-		*ncomp = 1;
-		return TYPE_GRAY_DBL;
-	case kCGColorSpaceModelRGB:
-		*ncomp = 3;
-		return TYPE_RGB_DBL;
-	case kCGColorSpaceModelLab:
-		*ncomp = 3;
-		return TYPE_Lab_DBL;
-	case kCGColorSpaceModelXYZ:
-		/* THE ENGINE HAS A DOUBLE FORMAT FOR XYZ, which is why this is one arm rather than a
-		 * conversion of its own — and why the first run of the probe's XYZ check failed: this
-		 * table had no XYZ row, so the conversion refused and the check dereferenced NULL. */
-		*ncomp = 3;
-		return TYPE_XYZ_DBL;
-	default:
-		*ncomp = 0;
-		return 0;
-	}
-}
-
-/* THE PROFILE TO CONVERT WITH — and for a DEVICE space there is none to ask for, because being
- * a device space is precisely not having one. Converting INTO one therefore has to NAME what
- * Apple's device spaces mean: device RGB is treated as sRGB, and device gray as gamma-2.2 gray
- * against D50, which is what Apple's own colour management does with them and the assumption
- * this library has drawn under since C2. `*own` says whether the caller has to close the
- * result, because these two are built here and do not belong to the space. */
-static cmsHPROFILE cg_engine_profile_for(CGColorSpaceRef space, int *own)
-{
-	cmsHPROFILE p = (cmsHPROFILE)cg_colorspace_engine_profile(space);
-	cmsToneCurve *gamma;
-
-	*own = 0;
-	if (p != NULL) {
-		return p;
-	}
-	switch (CGColorSpaceGetModel(space)) {
-	case kCGColorSpaceModelRGB:
-		*own = 1;
-		return cmsCreate_sRGBProfile();
-	case kCGColorSpaceModelMonochrome:
-		*own = 1;
-		gamma = cmsBuildGamma(NULL, 2.2);
-		if (gamma == NULL) {
-			return NULL;
-		}
-		/* `cmsD50_xyY` IS A FUNCTION AND NOT AN OBJECT, which is the one detail of the engine's
-		 * API a compiler had to point out: the identifier alone names the function, so passing
-		 * it without the call puts a pointer-to-function where a white point belongs. */
-		p = cmsCreateGrayProfile(cmsD50_xyY(), gamma);
-		cmsFreeToneCurve(gamma);
-		return p;
-	default:
-		/* DEVICE CMYK, TODAY. There is no profile to invent either: what a set of ink values
-		 * means depends on the press, so a made-up conversion would be a made-up press. */
-		return NULL;
-	}
-}
-
-CGColorRef CGColorCreateCopyByMatchingToColorSpace(CGColorRef color, CGColorRenderingIntent intent,
-						   CGColorSpaceRef space, void *options)
-{
-	cmsHPROFILE src;
-	cmsHPROFILE dst;
-	cmsHTRANSFORM tr;
-	CGFloat in[CG_COLOR_MAX_COMPONENTS];
-	CGFloat out[CG_COLOR_MAX_COMPONENTS];
-	CGColorRef result;
-	const CGFloat *comp;
-	int src_own;
-	int dst_own;
-	int src_ncomp;
-	int dst_ncomp;
-	int src_fmt;
-	int dst_fmt;
-	int i;
-
-	if (color == NULL) {
-		return NULL;
-	}
-	if (options != NULL) {
-		fprintf(stderr, "CG-REFUSE: CGColorCreateCopyByMatchingToColorSpace has no options "
-				"yet, and dropping one a caller asked for would change the output\n");
-		return NULL;
-	}
-	src_fmt = cg_engine_format(CGColorSpaceGetModel(color->space), &src_ncomp);
-	dst_fmt = cg_engine_format(CGColorSpaceGetModel(space), &dst_ncomp);
-	if (src_fmt == 0 || dst_fmt == 0) {
-		fprintf(stderr, "CG-REFUSE: no conversion from or to this color space's model\n");
-		return NULL;
-	}
-	src = cg_engine_profile_for(color->space, &src_own);
-	dst = cg_engine_profile_for(space, &dst_own);
-	if (src == NULL || dst == NULL) {
-		if (src_own && src != NULL) {
-			cmsCloseProfile(src);
-		}
-		if (dst_own && dst != NULL) {
-			cmsCloseProfile(dst);
-		}
-		fprintf(stderr, "CG-REFUSE: this color space has no profile to convert through — a "
-				"device CMYK colour is the case that exists today\n");
-		return NULL;
-	}
-	tr = cmsCreateTransform(src, (cmsUInt32Number)src_fmt, dst, (cmsUInt32Number)dst_fmt,
-				cg_engine_intent(intent), 0);
-	if (src_own) {
-		cmsCloseProfile(src);
-	}
-	if (dst_own) {
-		cmsCloseProfile(dst);
-	}
-	if (tr == NULL) {
-		fprintf(stderr, "CG-REFUSE: the color engine could not build this conversion\n");
-		return NULL;
-	}
-	comp = CGColorGetComponents(color);
-	for (i = 0; i < src_ncomp; i++) {
-		in[i] = comp[i];
-	}
-	cmsDoTransform(tr, in, out, 1);
-	cmsDeleteTransform(tr);
-	/* THE ALPHA IS NOT CONVERTED — it is not a colour, and the engine has no opinion about
-	 * it — so it is carried across and placed last, where the component array keeps it. */
-	out[dst_ncomp] = comp[src_ncomp];
-	result = CGColorCreate(space, out);
-	return result;
-}
+/* !! THE COLOUR CONVERSION STOOD HERE AND WAS REMOVED (2026-10-05): the function
+ * `CGColorCreateCopyByMatchingToColorSpace` and the THREE ENGINE HELPERS that existed for it and
+ * nothing else — `cg_engine_intent`, `cg_engine_format` and `cg_engine_profile_for`, which mapped
+ * this library's rendering intents and space models onto the engine's and built the profile a
+ * transform needs. All three were `static`, so `nm` cannot be asked about them; what is asked
+ * about is the function, and it is gone from the built library.
+ *
+ * IT IS macOS 10.11 — THE VERSION THAT ADDED COLOUR CONVERSION TO THIS API — AGAINST A 10.6-ERA
+ * SURFACE, WHICH HAS NONE. So this is not a name dropped for a name's sake: after this, NOTHING
+ * in this library or the AppKit re-expresses a colour in another space. The engine (lcms2) stays
+ * linked and still parses ICC profiles, and that is the whole of its remaining job.
+ *
+ * WHAT HAPPENS AT EACH DOOR THAT USED TO CONVERT, all of them refusing BY NAME rather than
+ * approximating, so that one colour is either paintable everywhere or refused everywhere:
+ *
+ *   * `cg_color_to_rgba` (CGContext.c) — the context's colour setters. It already refused a colour
+ *     it could not read; now the refusal is every model that is not RGB or gray.
+ *   * `cg_paint_device_rgb_from_color` (CGPaint.c) — the paints, so a Lab or ICC fill, gradient
+ *     stop or pattern colour paints nothing rather than painting the wrong thing.
+ *   * `fn_components_in` (NSColor.m) — the AppKit's component getters, which answer 0 and let
+ *     their callers raise NSInternalInconsistencyException.
+ *
+ * THE CHANNEL REORDERING INSIDE A FAMILY STAYS — one gray value into the three RGB channels and
+ * back — because that is not a colour-space transform and because `CGContextSetGrayFillColor` and
+ * `-[NSColor whiteComponent]` are 10.0-era doors built on it.
+ *
+ * THE MEASUREMENTS THE CONVERSION ESTABLISHED ARE RECORDED IN HISTORY WITH IT, and they are the
+ * reason this is a real loss rather than a tidy-up: the ICC PCS white point landing EXACTLY white
+ * in device RGB; BT.2020's linear segment decoding 0.02 to 0.02/4.5; DCI-P3 and Display P3
+ * converting one grey differently; a neutral Lab colour staying neutral to within two percent
+ * across D50→D65 (the first version of that check demanded exact equality and could only ever
+ * have passed by luck); and the sRGB curve's toe, which told a piecewise space from a power one.
+ */

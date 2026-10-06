@@ -2225,8 +2225,6 @@ void CGContextSetRGBStrokeColor(CGContextRef c, CGFloat red, CGFloat green, CGFl
  * ------------------------------------------------------------------------------------- */
 static int cg_color_to_rgba(CGColorRef color, CGFloat rgba[4])
 {
-	CGColorSpaceRef dev;
-	CGColorRef converted;
 	const CGFloat *comp;
 	int model;
 
@@ -2235,30 +2233,19 @@ static int cg_color_to_rgba(CGColorRef color, CGFloat rgba[4])
 	}
 	model = CGColorSpaceGetModel(CGColorGetColorSpace(color));
 	if (model != kCGColorSpaceModelMonochrome && model != kCGColorSpaceModelRGB) {
-		/* A SPACE WHOSE NUMBERS HAVE TO BE INTERPRETED IS CONVERTED RATHER THAN REFUSED, and
-		 * the conversion used is the LIBRARY'S OWN — `CGColorCreateCopyByMatchingToColorSpace`
-		 * — rather than a private path: if the engine cannot express the conversion, that
-		 * function refuses and says why, and this one inherits both. ONE RULE, IN ONE PLACE.
-		 *
-		 * THE TARGET IS DEVICE RGB because that is what the rasterizer blends: the state holds
-		 * four numbers and the context's surface is a 32-bit RGB bitmap. THE DEVICE SPACE IS
-		 * NOT ADDED TO THE CONTEXT for this — the colour takes its own reference to it and
-		 * gives it back here, so nothing outlives the conversion, and a context's colour space
-		 * stays what the caller set. */
-		dev = CGColorSpaceCreateDeviceRGB();
-		converted = CGColorCreateCopyByMatchingToColorSpace(color, kCGRenderingIntentDefault,
-								    dev, NULL);
-		CGColorSpaceRelease(dev);
-		if (converted == NULL) {
-			return 0;   /* the conversion has already said why */
-		}
-		comp = CGColorGetComponents(converted);
-		rgba[0] = comp[0];
-		rgba[1] = comp[1];
-		rgba[2] = comp[2];
-		rgba[3] = comp[3];
-		CGColorRelease(converted);
-		return 1;
+		/* !! A SPACE WHOSE NUMBERS HAVE TO BE INTERPRETED IS NOW REFUSED (2026-10-05), WHERE IT
+		 * USED TO BE CONVERTED. The conversion was the library's own
+		 * `CGColorCreateCopyByMatchingToColorSpace`, which is macOS 10.11 — the version that added
+		 * colour conversion to this API — against a 10.6-era surface that has none. So a Lab, an
+		 * ICC profile's RGB or a CMYK colour CANNOT BE DRAWN here any more, and the honest answer
+		 * is this refusal rather than the raw numbers: drawing four ink values as if they were
+		 * light is the "confident and wrong" this function's own comment warns about. REFUSING
+		 * MEANS THE CONTEXT KEEPS THE COLOUR IT HAD — it does not become black and it does not
+		 * keep the previous one silently — which is the same rule for one case as for the class. */
+		fprintf(stderr, "CG-REFUSE: this colour's space cannot be read as light values — this "
+				"library has no colour conversion, so a Lab, ICC or CMYK colour is "
+				"refused rather than approximated\n");
+		return 0;
 	}
 	comp = CGColorGetComponents(color);
 	switch (model) {

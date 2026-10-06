@@ -19,6 +19,7 @@
 #include <CoreGraphics/CGPaint_internal.h>
 
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 /* THE ONE CLAMP IN THE LIBRARY, and it moved here from CGContext.c with the packer it serves. */
@@ -220,29 +221,40 @@ int cg_paint_extend(int extend_before, int extend_after, CGFloat *t)
 
 int cg_paint_device_rgb_from_color(CGColorRef color, CGFloat rgba[4])
 {
-	CGColorSpaceRef device;
-	CGColorRef converted;
 	const CGFloat *comp;
+	int model;
 
 	if (color == NULL) {
 		return 0;
 	}
-	device = CGColorSpaceCreateDeviceRGB();
-	if (device == NULL) {
+	/* NO CONVERSION ANY MORE (2026-10-05). This used to build a device-RGB space and ask
+	 * `CGColorCreateCopyByMatchingToColorSpace` to convert the colour into it, which meant a fill,
+	 * gradient stop or pattern colour in ANY space could be painted. That function is macOS 10.11
+	 * and this duplication is a 10.6-era surface, so the era's rule applies here and it is SIMPLER
+	 * THAN THE CONVERSION WAS: a colour's own numbers are the ones a paint blends when its model is
+	 * one the rasterizer blends — RGB directly, gray replicated into the three channels — and
+	 * anything else is REFUSED BY NAME rather than approximated. THE REFUSAL HAS THE SAME SHAPE AS
+	 * THE CONTEXT'S AND THE APPKIT'S, so one colour is either paintable everywhere or refused
+	 * everywhere, which is the property a caller can reason about. */
+	model = CGColorSpaceGetModel(CGColorGetColorSpace(color));
+	comp = CGColorGetComponents(color);
+	if (model == kCGColorSpaceModelMonochrome) {
+		rgba[0] = comp[0];
+		rgba[1] = comp[0];
+		rgba[2] = comp[0];
+		rgba[3] = comp[1];
+		return 1;
+	}
+	if (model != kCGColorSpaceModelRGB) {
+		fprintf(stderr, "CG-REFUSE: a paint cannot blend a colour in this colour space — this "
+				"library has no colour conversion, so a Lab, ICC or CMYK fill is refused "
+				"rather than approximated\n");
 		return 0;
 	}
-	converted = CGColorCreateCopyByMatchingToColorSpace(color, kCGRenderingIntentDefault, device,
-							    NULL);
-	CGColorSpaceRelease(device);
-	if (converted == NULL) {
-		return 0;
-	}
-	comp = CGColorGetComponents(converted);
 	rgba[0] = comp[0];
 	rgba[1] = comp[1];
 	rgba[2] = comp[2];
 	rgba[3] = comp[3];
-	CGColorRelease(converted);
 	return 1;
 }
 

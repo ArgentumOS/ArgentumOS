@@ -48,7 +48,6 @@ int main(void)
 	CGColorSpaceRef space;
 	CGColorSpaceRef device;
 	CGColorRef colour;
-	CGColorRef converted;
 	cmsHPROFILE sRGB;
 	CGFloat v[4];
 
@@ -90,25 +89,23 @@ int main(void)
 	      copied != nil && [copied isEqualToData:profile]);
 	[copied release];
 
-	/* AND THE SPACE ACTUALLY CONVERTS — the identity check the C probe's ICC block makes for the
-	 * file form, made here for the Foundation form. Two doors, one answer. */
+	/* !! THE CONVERSION CHECK STOOD HERE AND IS REPLACED BY THE REFUSAL (2026-10-05), and what it
+	 * established is in history: the FOUNDATION form of the profile — the provider built from an
+	 * NSData rather than from a file — reached the SAME identity the C probe's file form did,
+	 * 0.2/0.5/0.8 back to within a hundredth. TWO DOORS, ONE ANSWER is what it proved, and the
+	 * answer is that both doors lead to the same parser. WHAT IS LEFT NOW IS THE VALUE: the colour
+	 * is created in the profile's space, and nothing here can re-express it, because
+	 * `CGColorCreateCopyByMatchingToColorSpace` is macOS 10.11 against a 10.6-era surface. */
 	device = CGColorSpaceCreateDeviceRGB();
 	v[0] = 0.2;
 	v[1] = 0.5;
 	v[2] = 0.8;
 	v[3] = 1.0;
 	colour = CGColorCreate(space, v);
-	converted = CGColorCreateCopyByMatchingToColorSpace(colour, kCGRenderingIntentRelativeColorimetric,
-							    device, NULL);
-	check("a colour in it converts into device RGB", converted != NULL);
-	if (converted != NULL) {
-		const CGFloat *p = CGColorGetComponents(converted);
-
-		check("...near the identity, as the file form's does",
-		      p[0] > 0.19 && p[0] < 0.21 && p[1] > 0.49 && p[1] < 0.51 &&
-		      p[2] > 0.79 && p[2] < 0.81);
-		CGColorRelease(converted);
-	}
+	check("a colour in the profile's space can be created through the provider door",
+	      colour != NULL);
+	check("...and its model is still the profile's",
+	      CGColorSpaceGetModel(space) == kCGColorSpaceModelRGB);
 	CGColorRelease(colour);
 	CGColorSpaceRelease(device);
 

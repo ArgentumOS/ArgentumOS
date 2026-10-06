@@ -290,24 +290,18 @@ int main(void)
 		CGColorRelease(k);
 	}
 
-	/* --- A SPACE WITH A PROFILE IS CONVERTED, NOT REFUSED -------------------- */
-	/* BOTH SIDES OF THE LINE THE DESIGN DRAWS, IN ONE PLACE: a Lab colour is DRAWN, by
-	 * conversion; a device CMYK colour is REFUSED, because there is no profile to convert it
-	 * through. Lab is what makes the first half testable at all, which is why it arrived with
-	 * the engine.
-	 *
-	 * THE CHECKS ARE PROPERTIES, NOT MAGIC NUMBERS, AND DELIBERATELY. Lab(50, 0, 0) is a mid
-	 * gray with a value nobody remembers; a literal here would be a number the engine's next
-	 * version could legitimately change. That a neutral Lab colour stays neutral in RGB, and
-	 * that lightness ORDERS, are statements about Lab itself — and each of them fails if the
-	 * conversion is wrong in a way that matters. */
+	/* --- A SPACE WITH A PROFILE IS CREATED AND REFUSED, NOT CONVERTED --------- */
+	/* THIS BLOCK USED TO CHECK THE CONVERSION IN BOTH DIRECTIONS — a Lab colour drawn by converting
+	 * it, a device-CMYK one refused for want of a profile — AND THE CONVERSION IS GONE
+	 * (2026-10-05): `CGColorCreateCopyByMatchingToColorSpace` is macOS 10.11 against a 10.6-era
+	 * surface, so nothing here re-expresses a colour in another space. WHAT REPLACES IT IS THE
+	 * REFUSAL, CHECKED WHERE IT IS ACTED ON: the colour is still CREATED — that is a value, and
+	 * creating one is 10.0-era API — and the CONTEXT refuses to draw it, leaving the surface
+	 * untouched. */
 	{
 		CGColorSpaceRef lab = CGColorSpaceCreateLab(NULL, NULL, NULL);
-		CGColorSpaceRef rgbspace = CGColorSpaceCreateDeviceRGB();
 		CGFloat v[4];
 		CGColorRef cm;
-		CGColorRef cd;
-		CGColorRef cl;
 
 		check("CGColorSpaceCreateLab gives a space",
 		      lab != NULL && CGColorSpaceGetModel(lab) == kCGColorSpaceModelLab);
@@ -319,113 +313,40 @@ int main(void)
 		v[2] = 0.0;
 		v[3] = 1.0;
 		cm = CGColorCreate(lab, v);
-		v[0] = 20.0;
-		cd = CGColorCreate(lab, v);
-		v[0] = 80.0;
-		cl = CGColorCreate(lab, v);
 		check("Lab colours can be created (three components plus alpha)", cm != NULL);
 		check_num("...and the count includes the alpha",
 			  (double)CGColorGetNumberOfComponents(cm), 4.0, 0);
 
-		{
-			CGColorRef rm = CGColorCreateCopyByMatchingToColorSpace(
-				cm, kCGRenderingIntentDefault, rgbspace, NULL);
-			CGColorRef rd = CGColorCreateCopyByMatchingToColorSpace(
-				cd, kCGRenderingIntentDefault, rgbspace, NULL);
-			CGColorRef rl = CGColorCreateCopyByMatchingToColorSpace(
-				cl, kCGRenderingIntentDefault, rgbspace, NULL);
+		/* !! THE CONVERSION CHECKS STOOD HERE AND WERE REPLACED BY THE REFUSAL (2026-10-05), AND
+		 * THE PROPERTIES THEY ESTABLISHED ARE RECORDED HERE RATHER THAN LOST, because they are
+		 * what a future era decision should re-establish rather than re-derive: a neutral Lab
+		 * colour stayed neutral out to within two percent (the first version demanded EXACT
+		 * equality and failed, because D50 to D65 is a matrix product and exactness could only
+		 * ever have passed by luck); L* 20 < 50 < 80 survived the trip; a device-GRAY target
+		 * worked as well as an RGB one; and in eight bits the rounding landed exactly on
+		 * r == g == b. The device-CMYK refusal and the non-NULL-options refusal were this block's
+		 * other two checks, and BOTH CASES ARE NOW THE WHOLE CLASS rather than one instance. */
 
-			check("a Lab colour CONVERTS into device RGB",
-			      rm != NULL && rd != NULL && rl != NULL);
-			if (rm != NULL && rd != NULL && rl != NULL) {
-				const CGFloat *crm = CGColorGetComponents(rm);
-				const CGFloat *crd = CGColorGetComponents(rd);
-				const CGFloat *crl = CGColorGetComponents(rl);
-
-				/* NEUTRAL IN, NEUTRAL OUT — AS A TOLERANCE, AND THE TOLERANCE IS THE FINDING.
-				 * The first version of this check demanded EXACT equality and failed: the
-				 * conversion carries Lab under D50 to sRGB under D65, and a chromatic
-				 * adaptation between two white points is a matrix product, so agreement holds
-				 * to within rounding rather than to the last bit. Exact equality was a check
-				 * that could only ever pass by luck. Note what the DEVICE check further down
-				 * does with the same conversion: in EIGHT BITS it lands exactly on r == g == b,
-				 * because the rounding is absorbed on the way out. Two percent is still far
-				 * tighter than a wrong conversion, which shows up as a cast of tens. */
-				check_num("a neutral Lab colour stays neutral: r - g",
-					  (double)(crm[0] - crm[1]), 0.0, 0.02);
-				check_num("...and g - b", (double)(crm[1] - crm[2]), 0.0, 0.02);
-				check("...and lands in the middle, not at an end",
-				      crm[0] > 0.05 && crm[0] < 0.95);
-				/* THE ORDER OF THREE LIGHTNESSES MUST SURVIVE THE CONVERSION. */
-				check("L* 20 < 50 < 80 after conversion",
-				      crd[0] < crm[0] && crm[0] < crl[0]);
-				/* THE TARGET IS NOT HARD-WIRED: device gray converts too. */
-				{
-					CGColorSpaceRef gray = CGColorSpaceCreateDeviceGray();
-					CGColorRef g2 = CGColorCreateCopyByMatchingToColorSpace(
-						cm, kCGRenderingIntentDefault, gray, NULL);
-
-					check("...and a device GRAY target works as well", g2 != NULL);
-					CGColorRelease(g2);
-					CGColorSpaceRelease(gray);
-				}
-				/* THE REFUSAL IS STILL THERE FOR THE SPACE WITH NO PROFILE. */
-				{
-					CGColorSpaceRef cmyk = CGColorSpaceCreateDeviceCMYK();
-					CGFloat ink[5] = { 0.1, 0.2, 0.3, 0.4, 1.0 };
-					CGColorRef k = CGColorCreate(cmyk, ink);
-
-					check("a device CMYK colour still has NO conversion",
-					      CGColorCreateCopyByMatchingToColorSpace(
-						      k, kCGRenderingIntentDefault, rgbspace, NULL) == NULL);
-					CGColorRelease(k);
-					CGColorSpaceRelease(cmyk);
-				}
-				/* AND AN OPTION THIS LIBRARY DOES NOT HAVE IS REFUSED, NOT IGNORED. */
-				check("a non-NULL options is refused rather than dropped",
-				      CGColorCreateCopyByMatchingToColorSpace(
-					      cm, kCGRenderingIntentDefault, rgbspace, v) == NULL);
-			}
-			CGColorRelease(rm);
-			CGColorRelease(rd);
-			CGColorRelease(rl);
-		}
-
-		/* AND THE CONTEXT DRAWS ONE: the setter converts through the same function, so a Lab
-		 * fill lands as the gray it means. This is the check that would have caught C4.1's
-		 * model-based guard, which would have copied Lab's three numbers into r, g and b. */
+		/* AND THE CONTEXT REFUSES IT. `CGContextSetFillColorWithColor` goes through
+		 * `cg_color_to_rgba`, which now refuses any model that is not RGB or gray, so the state
+		 * keeps the colour it had and this fill paints nothing. THE CHECK IS THE ALPHA BYTE: a
+		 * fresh surface is zeroed, so an untouched pixel is 0 there, where a Lab colour that had
+		 * been CONVERTED would have written 255 — which is exactly the mistake this check exists
+		 * to catch, since reading Lab's three numbers as r, g and b is the "confident and wrong"
+		 * answer the old code was written to avoid. */
 		ctx = fresh();
-		{
-			CGFloat lv[4];
-			CGColorRef lab_colour;
-
-			lv[0] = 50.0;
-			lv[1] = 0.0;
-			lv[2] = 0.0;
-			lv[3] = 1.0;
-			lab_colour = CGColorCreate(lab, lv);
-			CGContextSetFillColorWithColor(ctx, lab_colour);
-			CGContextFillRect(ctx, CGRectMake(0.0, 0.0, 16.0, 16.0));
-			pixel(ctx, 8, 8, p);
-			check("the context DRAWS a Lab colour by converting it", p[3] == 255);
-			/* A ONE-UNIT TOLERANCE, WHICH IS NOT A CONTRADICTION OF THE CHECK ABOVE: on THIS
-			 * engine the doubles came out a hair apart and the eight-bit write rounds them to
-			 * the same byte, so demanding exactness would pass here and could break on a
-			 * different rounding for a reason that is not a bug. One unit says the same thing
-			 * about neutrality without betting on which way a half rounds. */
-			check("...as a neutral gray, to within one unit",
-			      (p[0] > p[1] ? p[0] - p[1] : p[1] - p[0]) <= 1 &&
-			      (p[1] > p[2] ? p[1] - p[2] : p[2] - p[1]) <= 1);
-			check("...and a middle one, not black or white", p[0] > 12 && p[0] < 243);
-			CGColorRelease(lab_colour);
-		}
+		CGContextSetFillColorWithColor(ctx, cm);
+		CGContextFillRect(ctx, CGRectMake(0.0, 0.0, 16.0, 16.0));
+		pixel(ctx, 8, 8, p);
+		/* THE STATE KEEPS THE COLOUR IT HAD, which is the rule this library states for a refused
+		 * colour — so the fill lands as the OPAQUE BLACK the context starts with, and NOT as the
+		 * mid-gray a converted Lab would have written. The distinction is the check. */
+		check("the context REFUSES a Lab fill — the colour it already had is what lands",
+		      p[0] == 0 && p[1] == 0 && p[2] == 0 && p[3] == 255);
 		CGContextRelease(ctx);
 
 		CGColorRelease(cm);
-		CGColorRelease(cd);
-		CGColorRelease(cl);
 		CGColorSpaceRelease(lab);
-		CGColorSpaceRelease(rgbspace);
 	}
 
 	/* --- AN ICC PROFILE, THROUGH THE DOOR THAT HAS NO COREFOUNDATION IN IT ----- */
@@ -493,35 +414,46 @@ int main(void)
 			CGDataProviderRelease(bad);
 		}
 
-		/* AND THE CONVERSION GOES THROUGH THE PROFILE: sRGB into DEVICE RGB, which this library
-		 * treats as sRGB, must land very close to the identity — CLOSE AND NOT EXACT, because
-		 * these are two different profiles describing the same space and the transform between
-		 * them is a matrix product. That is the same lesson the Lab check above already paid
-		 * for, and the bound is tighter here because the two spaces really are the same one. */
+		/* !! THE CONVERSION CHECKS STOOD HERE AND ARE REPLACED BY THE REFUSAL (2026-10-05). What
+		 * they established is in history with the conversion: a colour in the profile's space
+		 * converted into device RGB NEAR THE IDENTITY — 0.2/0.5/0.8 to within 0.01 — CLOSE AND NOT
+		 * EXACT, because two profiles describing the same space still cross a matrix product. That
+		 * is the same lesson the Lab block above paid for, and a future era decision should
+		 * re-establish it rather than re-derive it. WHAT IS LEFT HERE IS WHAT A COLOUR IS: it can
+		 * be created in the profile's space, and the CONTEXT refuses to draw it. */
 		v[0] = 0.2;
 		v[1] = 0.5;
 		v[2] = 0.8;
 		v[3] = 1.0;
 		c1 = CGColorCreate(space, v);
 		check("a colour in the PROFILE's space can be created", c1 != NULL);
-		c2 = CGColorCreateCopyByMatchingToColorSpace(c1, kCGRenderingIntentRelativeColorimetric,
-							     rgbspace2, NULL);
-		check("...and it converts into device RGB", c2 != NULL);
-		if (c2 != NULL) {
-			const CGFloat *r = CGColorGetComponents(c2);
-
-			check_num("...near the identity, since both describe sRGB: r", (double)r[0], 0.2,
-				  0.01);
-			check_num("...g", (double)r[1], 0.5, 0.01);
-			check_num("...b", (double)r[2], 0.8, 0.01);
-			CGColorRelease(c2);
-		}
+		ctx = fresh();
+		CGContextSetFillColorWithColor(ctx, c1);
+		CGContextFillRect(ctx, CGRectMake(0.0, 0.0, 16.0, 16.0));
+		pixel(ctx, 8, 8, p);
+		/* AND AN ICC **RGB** COLOUR IS NOT REFUSED, WHICH IS A DEVIATION THIS REMOVAL LEAVES AND
+		 * SAYS SO. The refusal keys on the colour space's MODEL, so a profile-backed RGB space
+		 * — this fixture, and any P3 or Adobe RGB profile — takes the RGB arm and its numbers are
+		 * drawn AS DEVICE NUMBERS. For this fixture that is right by luck (the profile IS sRGB,
+		 * and device RGB here is sRGB); for a wide-gamut profile it is wrong, and the rule that
+		 * would close it is "a space with a profile needs a conversion, so REFUSE it", which is
+		 * recorded in the plan as owed rather than smuggled in here. The numbers below are the
+		 * evidence that the raw path is what ran. */
+		check("an ICC RGB colour is DRAWN by its own numbers (stated deviation: no conversion)",
+		      /* THE ARRAY IS IN MEMORY ORDER — B, G, R, A — which is what this library's
+		       * premultiplied-first little-endian format means, so the colour that went in as
+		       * (0.2, 0.5, 0.8) comes back as 204 BLUE, 128 green, 51 red. MEASURED, after the
+		       * first form of this check asserted the right numbers in the wrong slots. */
+		      p[0] > 203 && p[0] < 205 && p[1] > 127 && p[1] < 129 && p[2] > 50 && p[2] < 53 &&
+		      p[3] == 255);
+		CGContextRelease(ctx);
 		/* AND THE SPACE KEEPS THE PROFILE IT PARSED RATHER THAN THE PROVIDER'S BYTES, so
-		 * releasing the provider first must leave the space working. */
+		 * releasing the provider first must leave the space working — CHECKED WITHOUT A
+		 * CONVERSION, by asking the space for its model and building a colour from it again. */
 		CGDataProviderRelease(provider);
-		c2 = CGColorCreateCopyByMatchingToColorSpace(c1, kCGRenderingIntentDefault, rgbspace2,
-							     NULL);
-		check("the space outlives the provider it was made from", c2 != NULL);
+		c2 = CGColorCreate(space, v);
+		check("the space outlives the provider it was made from",
+		      c2 != NULL && CGColorSpaceGetModel(space) == kCGColorSpaceModelRGB);
 		CGColorRelease(c2);
 		CGColorRelease(c1);
 		CGColorSpaceRelease(space);
@@ -569,64 +501,54 @@ int main(void)
 		      calrgb != NULL && CGColorSpaceGetModel(calrgb) == kCGColorSpaceModelRGB);
 		check_num("...with three components",
 			  (double)CGColorSpaceGetNumberOfComponents(calrgb), 3.0, 0);
-		/* THE SAME COLOUR IN TWO SPELLINGS: (0.2, 0.5, 0.8) against the R,G,B columns, and
-		 * (0.5, 0.8, 0.2) against the same columns rotated left. The components move with their
-		 * primaries, so the device colour must not move at all. */
+		/* !! THE MATRIX-AS-PRIMARIES CHECKS STOOD HERE AND ARE REPLACED BY THE REFUSAL
+		 * (2026-10-05), because every one of them was made THROUGH the conversion. WHAT THEY
+		 * ESTABLISHED IS IN HISTORY: the matrix's COLUMNS ARE THE PRIMARIES IN ORDER — the same
+		 * colour spelt against the R,G,B columns and against the same columns rotated LEFT
+		 * converted to the same device values to within 0.002 — and a neutral colour stayed
+		 * neutral to within 0.01, which is exactly what a matrix read wrongly would break. The
+		 * third check in that group mattered as much as the numbers: the result was NOT just the
+		 * input, so a space that did nothing at all could not pass the first two.
+		 *
+		 * WHAT THE ERA KEEPS IS THE SPACE ITSELF: `CGColorSpaceCreateCalibratedRGB` still builds
+		 * one from Apple's matrix, a colour can still be created in it, and the CONTEXT refuses to
+		 * draw it rather than converting it. */
 		v[0] = 0.2;
 		v[1] = 0.5;
 		v[2] = 0.8;
 		v[3] = 1.0;
 		c = CGColorCreate(calrgb, v);
-		r = CGColorCreateCopyByMatchingToColorSpace(c, kCGRenderingIntentRelativeColorimetric,
-							    rgb3, NULL);
-		check("...a colour in it converts to device RGB", r != NULL);
+		check("a colour in a calibrated space can be created", c != NULL);
+		ctx = fresh();
+		CGContextSetFillColorWithColor(ctx, c);
+		CGContextFillRect(ctx, CGRectMake(0.0, 0.0, 16.0, 16.0));
+		pixel(ctx, 8, 8, p);
+		/* THE SAME DEVIATION, AND HERE IT IS NOT HARMLESS: a calibrated RGB whose matrix is
+		 * NOT sRGB's is drawn by its own numbers, so this colour is the wrong colour by the
+		 * amount its primaries differ. It is the same owed rule as above. */
+		check("a calibrated RGB colour is DRAWN by its own numbers (stated deviation)",
+		      /* THE ARRAY IS IN MEMORY ORDER — B, G, R, A — which is what this library's
+		       * premultiplied-first little-endian format means, so the colour that went in as
+		       * (0.2, 0.5, 0.8) comes back as 204 BLUE, 128 green, 51 red. MEASURED, after the
+		       * first form of this check asserted the right numbers in the wrong slots. */
+		      p[0] > 203 && p[0] < 205 && p[1] > 127 && p[1] < 129 && p[2] > 50 && p[2] < 53 &&
+		      p[3] == 255);
+		CGContextRelease(ctx);
+		check("the device-RGB space it would have converted into is a space of its own",
+		      rgb3 != NULL);
 		calrot = CGColorSpaceCreateCalibratedRGB(d65, NULL, g3, srgb_rotated);
 		v[0] = 0.5;
 		v[1] = 0.8;
 		v[2] = 0.2;
 		c2 = CGColorCreate(calrot, v);
-		r2 = CGColorCreateCopyByMatchingToColorSpace(c2, kCGRenderingIntentRelativeColorimetric,
-							     rgb3, NULL);
-		check("...and the rotated spelling converts too", r2 != NULL);
-		if (r != NULL && r2 != NULL) {
-			const CGFloat *q = CGColorGetComponents(r);
-			const CGFloat *q2 = CGColorGetComponents(r2);
-
-			check_num("the matrix's columns ARE the primaries, in order: r", (double)q[0],
-				  (double)q2[0], 0.002);
-			check_num("...g", (double)q[1], (double)q2[1], 0.002);
-			check_num("...b", (double)q[2], (double)q2[2], 0.002);
-			/* AND THE CONVERSION IS NOT A COPY, which is what would make the three checks
-			 * above pass for a space that did nothing at all. */
-			check("...and the result is not just the input", q[0] != 0.2 || q[1] != 0.5);
-		}
-		/* A NEUTRAL COLOUR STAYS NEUTRAL: equal components point at the white point — D65 here,
-		 * the same one this library's device RGB uses — so a gray must not pick up a tint. A
-		 * matrix read wrongly would give it one. */
-		v[0] = 0.5;
-		v[1] = 0.5;
-		v[2] = 0.5;
-		v[3] = 1.0;
-		{
-			CGColorRef cn = CGColorCreate(calrgb, v);
-			CGColorRef rn = CGColorCreateCopyByMatchingToColorSpace(
-				cn, kCGRenderingIntentRelativeColorimetric, rgb3, NULL);
-
-			if (rn != NULL) {
-				const CGFloat *qn = CGColorGetComponents(rn);
-
-				check_num("a neutral colour stays neutral: r - g",
-					  (double)(qn[0] - qn[1]), 0.0, 0.01);
-				check_num("...and g - b", (double)(qn[1] - qn[2]), 0.0, 0.01);
-			} else {
-				check("a neutral colour converts", 0);
-			}
-			CGColorRelease(rn);
-			CGColorRelease(cn);
-		}
+		r = CGColorCreate(calrgb, v);
+		r2 = CGColorCreate(calrot, v);
+		check("...and the ROTATED spelling of the same matrix gives a space and colours too",
+		      calrot != NULL && CGColorSpaceGetModel(calrot) == kCGColorSpaceModelRGB &&
+		      c2 != NULL && r != NULL && r2 != NULL);
 		CGColorRelease(r2);
-		CGColorRelease(c2);
 		CGColorRelease(r);
+		CGColorRelease(c2);
 		CGColorRelease(c);
 		CGColorSpaceRelease(calrot);
 		/* AND A MATRIX WITH A CHANNEL THAT HAS NO PRIMARY AT ALL IS REFUSED. */
@@ -664,19 +586,32 @@ int main(void)
 		g[1] = 1.0;
 		c1 = CGColorCreate(lin, g);
 		c2 = CGColorCreate(gam, g);
-		r1 = CGColorCreateCopyByMatchingToColorSpace(c1, kCGRenderingIntentRelativeColorimetric,
-							     rgb4, NULL);
-		r2 = CGColorCreateCopyByMatchingToColorSpace(c2, kCGRenderingIntentRelativeColorimetric,
-							     rgb4, NULL);
-		check("both convert", r1 != NULL && r2 != NULL);
-		if (r1 != NULL && r2 != NULL) {
-			double light = CGColorGetComponents(r1)[0];
-			double dark = CGColorGetComponents(r2)[0];
-
-			check("linear gray 0.5 is LIGHTER than gamma-2.2 gray 0.5 in sRGB", light > dark);
-			check("...and the 2.2 one lands near the 0.5 that was asked for",
-			      dark > 0.4 && dark < 0.6);
-		}
+		/* !! THE CONVERSION CHECKS STOOD HERE AND ARE REPLACED BY THE REFUSAL (2026-10-05), and
+		 * what they established is in history: a LINEAR calibrated gray and a gamma-2.2 one, the
+		 * same white point and the same 0.5, converted to DIFFERENT device values AND IN A KNOWN
+		 * DIRECTION — the linear one lighter once encoded into sRGB, with the 2.2 one landing near
+		 * the 0.5 that was asked for. That is a statement about the transfer functions rather than
+		 * about the engine, and it is what a future era decision should re-establish.
+		 *
+		 * WHAT THE ERA KEEPS IS THE SPACE AND THE VALUE: both spaces are still built from a white
+		 * point and a gamma, and a colour can still be created in each — and the CONTEXT refuses to
+		 * draw either, because a calibrated gray is not a model the rasterizer can blend. */
+		check("colours can be created in both calibrated grays (and they are values)",
+		      c1 != NULL && c2 != NULL);
+		ctx = fresh();
+		CGContextSetFillColorWithColor(ctx, c1);
+		CGContextFillRect(ctx, CGRectMake(0.0, 0.0, 16.0, 16.0));
+		pixel(ctx, 8, 8, p);
+		/* AND A CALIBRATED **GRAY** IS DRAWN BY ITS OWN NUMBER, replicated into the three
+		 * channels — the carve-out that is not a conversion (see fn_components_in in NSColor.m).
+		 * Its 0.5 is 128 in every channel. */
+		check("...and a calibrated gray is DRAWN by its own number, in all three channels",
+		      p[0] == p[1] && p[1] == p[2] && p[0] > 127 && p[0] < 129 && p[3] == 255);
+		CGContextRelease(ctx);
+		r1 = CGColorCreate(rgb4, g);
+		r2 = CGColorCreate(rgb4, g);
+		check("...while a device-RGB colour with the same numbers IS drawable",
+		      r1 != NULL && r2 != NULL);
 		CGColorRelease(r1);
 		CGColorRelease(r2);
 		CGColorRelease(c1);

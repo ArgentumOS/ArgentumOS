@@ -28,8 +28,10 @@
  *     binding open). They arrive with that binding, not before it.
  *   * `CGColorCreateSRGB` wants a NAMED sRGB space rather than the device one, and
  *     `CGColorCreateGenericCMYK` wants a device-CMYK space that does not exist yet.
- *   * `CGColorCreateCopyByMatchingToColorSpace`, `CGColorConversionInfo` and the whole
- *     conversion family ARE the colour engine (lcms2, C4.2).
+ *   * `CGColorConversionInfo` and its family are macOS 10.11 API and ARE OUT OF ERA, so they are
+ *     struck rather than owed — and the one member of that family this tree HAD,
+ *     `CGColorCreateCopyByMatchingToColorSpace`, was REMOVED on 2026-10-05 (see the note further
+ *     down, where its declaration stood).
  */
 #ifndef CORE_GRAPHICS_CGCOLOR_H
 #define CORE_GRAPHICS_CGCOLOR_H
@@ -71,17 +73,18 @@ typedef enum {
 	kCGRenderingIntentSaturation
 } CGColorRenderingIntent;
 
-/* THE SAME COLOUR, EXPRESSED IN ANOTHER SPACE. Components are converted through the engine
- * (lcms2); a colour whose components CANNOT be interpreted in its own space cannot be converted
- * either, so this returns NULL and says why rather than handing back the numbers unchanged —
- * a device CMYK colour is the case that exists today, because there is no device-CMYK profile.
+/* !! `CGColorCreateCopyByMatchingToColorSpace` STOOD HERE AND WAS REMOVED (2026-10-05): it is
+ * macOS 10.11 — the version that ADDED colour conversion to this API — against a 10.6-era surface,
+ * which has none. The engine (lcms2) stays linked and still parses ICC profiles, but nothing in
+ * this library re-expresses a colour in another space now. THE FOUR DOORS THAT USED TO CONVERT
+ * REFUSE BY NAME INSTEAD, each saying so where it acts: the context's colour setters
+ * (`cg_color_to_rgba` in CGContext.c), the paints (`cg_paint_device_rgb_from_color` in CGPaint.c),
+ * the AppKit's component getters (`fn_components_in` in NSColor.m) and this one.
  *
- * `options` IS `void *` HERE AND A `CFDictionaryRef` IN APPLE'S SIGNATURE, which is this
- * tree's CoreFoundation decision rather than an oversight: there are no conversion options yet,
- * and A NON-NULL ONE IS REFUSED rather than ignored, because silently dropping an option a
- * caller asked for is the kind of thing that only shows up in the output. */
-CGColorRef CGColorCreateCopyByMatchingToColorSpace(CGColorRef color, CGColorRenderingIntent intent,
-						   CGColorSpaceRef space, void *options);
+ * THE CHANNEL REORDERING INSIDE A FAMILY STAYS — one gray value into three RGB channels and back —
+ * because that is not a colour-space transform, and because `CGContextSetGrayFillColor` and
+ * `-[NSColor whiteComponent]` are 10.0-era doors built on it. `CGColorRenderingIntent` also stays:
+ * two other rows of Apple's API use the type, even though nothing here converts any more. */
 
 CGColorRef CGColorRetain(CGColorRef color);
 void CGColorRelease(CGColorRef color);

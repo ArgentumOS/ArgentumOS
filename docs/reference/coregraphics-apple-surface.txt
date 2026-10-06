@@ -51,10 +51,10 @@
 # counted, NOT excluded: 0 distinct names Apple documents on a `swift.` page
 # but which carry the CG spelling.
 #
-# why the struck rows are struck: after-10.6 252
+# why the struck rows are struck: after-10.6 253
 #
 # counts by kind:
-#   func       shipped  196   open  417   struck  122
+#   func       shipped  195   open  417   struck  123
 #   macro      shipped    7   open  100   struck    0
 #   enum       shipped   13   open   41   struck    3
 #   case       shipped   84   open  296   struck   64
@@ -604,7 +604,7 @@ func	struck	CGColorConversionInfoCreateWithOptions	-	Opaque Types / Creating a C
 func	open	CGColorConversionInfoGetTypeID	-	Opaque Types / Working with Core Foundation Types	-	objc
 func	shipped	CGColorCreate	-	Opaque Types / Creating Colors	-	objc
 func	shipped	CGColorCreateCopy	-	Opaque Types / Creating Colors	-	objc
-func	shipped	CGColorCreateCopyByMatchingToColorSpace	-	Opaque Types / Converting Between Color Spaces	after-10.6	objc
+func	struck	CGColorCreateCopyByMatchingToColorSpace	-	Opaque Types / Converting Between Color Spaces	after-10.6	objc
 func	shipped	CGColorCreateCopyWithAlpha	-	Opaque Types / Creating Colors	-	objc
 func	open	CGColorCreateGenericCMYK	-	Opaque Types / Creating Colors	-	objc
 func	shipped	CGColorCreateGenericGray	-	Opaque Types / Creating Colors	-	objc
