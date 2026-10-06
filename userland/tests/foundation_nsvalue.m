@@ -226,17 +226,17 @@ int main(void)
 		 * SOURCE fact and belongs to the SWEEP, which judges declaration and owner; what a probe can observe
 		 * is the boundary as it IS — the CG-spelled tier answering, beside Foundation's own NS-spelled pair
 		 * asserted above. It was invisible until the host tier could run at all, which is how it was found. */
-		check("cg-spelled-geometry-doors-are-the-coregraphics-tier-s",
-		      [NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGPoint:")] &&
-		      [NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGSize:")] &&
-		      [NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGRect:")] &&
-		      [NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGVector:")] &&
-		      [NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGAffineTransform:")] &&
-		      [NSValue instancesRespondToSelector:NSSelectorFromString(@"CGPointValue")] &&
-		      [NSValue instancesRespondToSelector:NSSelectorFromString(@"CGSizeValue")] &&
-		      [NSValue instancesRespondToSelector:NSSelectorFromString(@"CGRectValue")] &&
-		      [NSValue instancesRespondToSelector:NSSelectorFromString(@"CGVectorValue")] &&
-		      [NSValue instancesRespondToSelector:NSSelectorFromString(@"CGAffineTransformValue")],
+		check("cg-spelled-geometry-doors-are-not-on-foundation-s-nsvalue",
+		      ![NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGPoint:")] &&
+		      ![NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGSize:")] &&
+		      ![NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGRect:")] &&
+		      ![NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGVector:")] &&
+		      ![NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGAffineTransform:")] &&
+		      ![NSValue instancesRespondToSelector:NSSelectorFromString(@"CGPointValue")] &&
+		      ![NSValue instancesRespondToSelector:NSSelectorFromString(@"CGSizeValue")] &&
+		      ![NSValue instancesRespondToSelector:NSSelectorFromString(@"CGRectValue")] &&
+		      ![NSValue instancesRespondToSelector:NSSelectorFromString(@"CGVectorValue")] &&
+		      ![NSValue instancesRespondToSelector:NSSelectorFromString(@"CGAffineTransformValue")],
 		      [NSString stringWithFormat:@"answers: pt=%d sz=%d rc=%d vec=%d atf=%d / readers pt=%d sz=%d rc=%d vec=%d "
 	      @"atf=%d - " @"the five CG-spelled boxes and readers come from CoreGraphics' ",
 	      (int)[NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGPoint:")],
