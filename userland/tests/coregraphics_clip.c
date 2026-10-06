@@ -80,14 +80,25 @@ int main(void)
 		CGPathRelease((CGPathRef)empty);
 	}
 
-	/* --- and no rectangles adds no clip, but still resets ------------------------------------------- */
+	/* --- and no rectangles adds no clip, on a context that has nothing to intersect with ------------ */
 	{
-		memset(canvas, 0, sizeof canvas);
-		CGContextClipToRects(c, NULL, 0);
-		CGContextSetRGBFillColor(c, 0, 0, 1, 1);
-		CGContextFillRect(c, CGRectMake(0, 0, W, H));
-		check("an empty set of rectangles adds no clip and the whole surface still fills",
-		      alpha_at(canvas, 0) == 0xFF && alpha_at(canvas, 11) == 0xFF);
+		/* A CLIP IS CUMULATIVE, SO THIS NEEDS A CONTEXT OF ITS OWN: the sections above have already
+		 * intersected this one, and "adds no clip" can only be seen where there was none to begin with.
+		 * The first version of this check reused the context and failed, correctly. */
+		unsigned char fresh[STRIDE * H];
+		CGContextRef c2 = CGBitmapContextCreate(fresh, W, H, 8, STRIDE, rgb,
+							kCGImageAlphaPremultipliedFirst
+							| kCGBitmapByteOrder32Little);
+
+		memset(fresh, 0, sizeof fresh);
+		CGContextClipToRects(c2, NULL, 0);
+		CGContextSetRGBFillColor(c2, 0, 0, 1, 1);
+		CGContextFillRect(c2, CGRectMake(0, 0, W, H));
+		check("an empty set of rectangles adds no clip, so a fresh context still fills everywhere",
+		      alpha_at(fresh, 0) == 0xFF && alpha_at(fresh, 11) == 0xFF);
+		check("...and the clip it did not add is checked AND the context above is still bounded by ITS clip",
+		      alpha_at(canvas, 11) == 0x00);
+		CGContextRelease(c2);
 	}
 	check("a NULL context is a no-op rather than a crash", (CGContextClipToRects(NULL, two, 2), 1));
 

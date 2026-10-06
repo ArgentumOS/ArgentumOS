@@ -891,6 +891,8 @@ CGRect CGContextConvertRectToUserSpace(CGContextRef c, CGRect r)
 /* the clip                                                                  */
 /* ------------------------------------------------------------------------- */
 
+static void cg_clip_to_path(CGContextRef c, CGPathRef path, int even_odd);
+
 void CGContextClipToRects(CGContextRef c, const CGRect *rects, size_t count)
 {
 	CGMutablePathRef scratch;

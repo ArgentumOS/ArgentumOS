@@ -2072,3 +2072,31 @@ places, and it is next.
 **A SMALL GENERATOR LESSON, PAID FOR ONCE:** a doubled backslash inside a quoted heredoc is a literal
 double backslash, so a `re.search(r"^HOST_CG_PROBES\\s*...")` matched nothing and the wiring assert fired. The
 same family as the anchors: the thing you write is the thing the shell and the regex engine each read once.
+
+## 35b. The guard counted the wrong failure, and a commit went out on a build that did not compile
+
+**THE UNIT'S COMMIT `8165d865` WENT OUT WITH TWO COMPILE ERRORS IN IT, AND THE GUARD REPORTED ZERO FAILURES
+BECAUSE ZERO PROBES RAN.** The defect is now named and it generalises:
+
+  * **The guard counted CHECK failures** — `grep -acE ': FAIL|FAILURES' log` — and a BUILD failure produces no
+    such line, because the probe never runs. Zero is the honest count of *that* question and the wrong answer
+    to the one being asked.
+  * **And the chain threw the build's status away**: `timeout 900 make … > log 2>&1;` ends with a SEMICOLON, so
+    `make`'s non-zero exit was discarded by the very command that produced it.
+
+**WHAT THE GUARD MUST TEST IS THE COMMAND'S STATUS FIRST AND THE LOG SECOND** — `if make … > log; then` — because
+a gate has two failure modes and only one of them writes a line. It also retro-explains the transparency-layer
+unit, where a commit went out with three failing checks: the same guard, the same semicolon, the same
+"the number I printed was not the number I needed".
+
+**THE FIX ITSELF WAS THE HELPER-ORDER MISTAKE CGLayer WROTE DOWN ONE UNIT EARLIER:** `cg_clip_to_path` is defined
+below the door that calls it, and a `static` function needs a declaration before its first use. That lesson is in
+the plan twice now; the third time it appears it should be a forward declaration written at the same moment as
+the call.
+
+**AND THE PROBE'S ONE FAILING CHECK WAS ITS OWN, FOR THE THIRD TIME IN THIS THREAD AND IN THE SAME WAY:** it asked
+"an empty set of rectangles adds no clip" on a context whose clip the sections above had ALREADY intersected — a
+clip is cumulative, so "adds no clip" can only be seen where there was none. The check now creates a context of
+its own, and a second check asserts the opposite half on the first context (that ITS clip still bounds it), so the
+pair says both things at once. The pattern is worth naming because it keeps recurring: **a check that reuses a
+context is a check on everything the earlier checks did.**
