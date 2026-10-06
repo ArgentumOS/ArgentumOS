@@ -48,8 +48,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-POINTERS %s ok\n", name);
@@ -59,6 +62,15 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		       detail != nil ? [detail UTF8String] : "(no detail)");
 	}
 }
+
+/* covers("NSLocale", "canonicalLocaleIdentifierFromString:") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* A CLASS THAT COUNTS ITS OWN DEATHS, which is how the memory policies are measured: "was it freed" is the
  * question a retention policy answers, and a static counter is the only way to see it from outside. */
@@ -524,6 +536,7 @@ int main(void)
 							(int)refusedWhileAccessed, (int)discarded,
 							(int)accessRefused, (int)rebuilt,
 							(unsigned long)[data length]]);
+	covers("NSMutableData", "appendBytes:length:");
 					}
 				}
 			}

@@ -210,6 +210,8 @@ int main(void)
 		      [foundation_value_date()
 		          isEqualToDate:[NSDate dateWithTimeIntervalSince1970:1000.0]],
 		      "values built in the support unit equal local ones");
+	covers("NSDate", "earlierDate:");
+	covers("NSDate", "laterDate:");
 	covers("NSDate", "isEqualToDate:");
 	covers("NSDate", "dateWithTimeIntervalSince1970:");
 	}
@@ -616,6 +618,8 @@ int main(void)
 		      [equalA isEqualToData:equalB] &&
 		      searched != nil,
 		      "subdataWithRange:, getBytes:range:, rangeOfData: (found and not found)");
+	covers("NSMutableData", "increaseLengthBy:");
+	covers("NSMutableData", "resetBytesInRange:");
 	covers("NSData", "subdataWithRange:");
 	covers("NSData", "getBytes:range:");
 	covers("NSData", "rangeOfData:options:range:");

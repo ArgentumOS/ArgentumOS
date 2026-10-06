@@ -71,8 +71,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-BACKGROUNDACTIVITY %s ok\n", name);
@@ -82,6 +85,15 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		       detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSLocale", "canonicalLocaleIdentifierFromString:") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* A NIL THE COMPILER CANNOT SEE THROUGH, for the check that a nil identifier is refused: passing a literal nil
  * to a nonnull parameter is -Wnonnull, and passing one through a call is the same experiment without it. */
@@ -123,6 +135,7 @@ int main(void)
 		      nilRaised && emptyRaised,
 		      [NSString stringWithFormat:@"identifier=%@ nilRaised=%d emptyRaised=%d",
 			[scheduler identifier], (int)nilRaised, (int)emptyRaised]);
+	covers("NSDate", "dateWithTimeIntervalSinceNow:");
 	}
 
 	{

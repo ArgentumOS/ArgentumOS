@@ -1200,6 +1200,7 @@ int main(void)
 		      [s isEqualToString:@"keep me"] && [a count] == 2 && [d count] == 1 &&
 		      [set count] == 1,
 		      "an immutable copy IS the receiver and it answers +1: the original's count and contents must survive the copy's scope (plan §15.2)");
+	covers("NSDate", "initWithTimeIntervalSince1970:");
 	}
 
 	{

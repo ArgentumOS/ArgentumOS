@@ -1099,6 +1099,7 @@ NULL
 		      [turkish copy] == turkish &&
 		      [[turkish description] isEqualToString:@"<NSLocale: tr_TR>"],
 		      "canonicalisation, subtag access, components, equality/hash, the POSIX name and the nil data key");
+	covers("NSLocale", "componentsFromLocaleIdentifier:");
 	}
 
 	{
@@ -1132,6 +1133,9 @@ NULL
 		      [upper_istanbul byteAtIndex:1] == 0xB0 &&
 		      [upper_istanbul byteAtIndex:2] == 'S' && [upper_istanbul byteAtIndex:8] == 'L',
 		      "upper(i) must be ONE UNIT and two bytes c4 b0 (İ), upper(ı) is I, and ASCII still upper-cases");
+	covers("NSLocale", "canonicalLanguageIdentifierFromString:");
+	covers("NSLocale", "canonicalLocaleIdentifierFromString:");
+	covers("NSLocale", "localeIdentifierFromComponents:");
 
 		check("locale-turkic-lower",
 		      [lower_I length] == 1 &&
@@ -1608,6 +1612,8 @@ NULL
 			      line == NSLocaleLanguageDirectionTopToBottom,
 			      [[NSString stringWithFormat:@"ar=%d en=%d line=%d (RTL=2 LTR=1 TTB=3)",
 				(int)rtl, (int)ltr, (int)line] UTF8String]);
+	covers("NSLocale", "characterDirectionForLanguage:");
+	covers("NSLocale", "lineDirectionForLanguage:");
 		}
 		{
 			uint32_t lcidUs = [NSLocale windowsLocaleCodeFromLocaleIdentifier:@"en_US"];
@@ -1618,6 +1624,8 @@ NULL
 			      lcidUs == 1033 && lcidFr == 1036 && [back isEqualToString:@"en_US"],
 			      [[NSString stringWithFormat:@"en_US=%u fr_FR=%u 1033=%@", (unsigned)lcidUs,
 				(unsigned)lcidFr, back] UTF8String]);
+	covers("NSLocale", "localeIdentifierFromWindowsLocaleCode:");
+	covers("NSLocale", "windowsLocaleCodeFromLocaleIdentifier:");
 		}
 		check("locale-localized-string-names-a-language",
 		      [[gb localizedStringForLanguageCode:@"fr"] isEqualToString:@"French"] &&
@@ -1631,6 +1639,7 @@ NULL
 		      [[NSString stringWithFormat:@"en_GB=%@ fr_FR=%@",
 			[gb localizedStringForCountryCode:@"GB"],
 			[fr localizedStringForCountryCode:@"GB"]] UTF8String]);
+	covers("NSLocale", "localizedStringForLanguageCode:");
 	covers("NSLocale", "localizedStringForCountryCode:");
 		check("locale-localized-string-names-a-currency",
 		      [[us localizedStringForCurrencyCode:@"EUR"] isEqualToString:@"Euro"],

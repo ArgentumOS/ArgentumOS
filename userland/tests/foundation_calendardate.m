@@ -330,6 +330,8 @@ int main(void)
 		      now != nil && [now timeIntervalSinceNow] < 5.0 && [now timeIntervalSinceNow] > -5.0,
 		      [NSString stringWithFormat:@"later=%g now-off=%g", [later srAbsoluteTime],
 			[now timeIntervalSinceNow]]);
+	covers("NSDate", "addTimeInterval:");
+	covers("NSDate", "dateWithTimeIntervalSinceReferenceDate:");
 	covers("NSDate", "dateByAddingTimeInterval:");
 	covers("NSDate", "timeIntervalSinceNow");
 	}

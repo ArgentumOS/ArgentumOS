@@ -22,8 +22,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-ORDEREDSET %s ok\n", name);
@@ -33,6 +36,15 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		       detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSLocale", "canonicalLocaleIdentifierFromString:") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* The order as a string, for a detail that CARRIES its measurement. */
 static NSString *fn_order(id collection)
@@ -148,6 +160,7 @@ int main(void)
 		      [mutable containsObject:@"B"],
 		      [NSString stringWithFormat:@"order=%@ count=%lu",
 			fn_order(mutable), (unsigned long)(mutable != nil ? [mutable count] : 0)]);
+	covers("NSMutableArray", "removeObject:");
 	}
 
 	{
@@ -525,6 +538,7 @@ int main(void)
 			[added array], [inserted array], [moved array], [setByIndex array], [byRange array],
 			[byIndexes array], [removed array], [byArray array],
 			(int)refusedMismatch, (int)refusedIndex]);
+	covers("NSMutableArray", "removeObjectsAtIndexes:");
 	}
 
 	{

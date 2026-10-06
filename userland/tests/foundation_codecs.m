@@ -279,6 +279,7 @@ int main(void)
 		      [mutable isEqualToData:original] &&
 		      refused && [mutable isEqualToData:kept],
 		      fn_why(mutable));
+	covers("NSMutableData", "setData:");
 	}
 
 	{

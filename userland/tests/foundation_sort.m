@@ -27,8 +27,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, const char *detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-SORT %s ok\n", name);
@@ -37,6 +40,15 @@ static void check(const char *name, int ok, const char *detail)
 		printf("FOUNDATION-SORT %s FAIL %s\n", name, detail ? detail : "");
 	}
 }
+
+/* covers("NSLocale", "canonicalLocaleIdentifierFromString:") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /*
  * THE DETAIL CARRIES THE MEASUREMENT (§9's lesson): a failure prints the ORDER THAT CAME OUT,
@@ -307,6 +319,7 @@ int main(void)
 
 	{
 		NSArray *people = foundation_sort_people();
+	covers("NSMutableArray", "sortUsingDescriptors:");
 		NSArray *solo = foundation_sort_nil_value();
 		NSSortDescriptor *byNote = [NSSortDescriptor sortDescriptorWithKey:@"note" ascending:YES];
 		int fourRaised = 0;

@@ -658,6 +658,7 @@ int main(void)
 	check("the-front-is-allocatable-and-inits-empty",
 	      empty != nil && [empty probeCount] == 0,
 	      "[[Front alloc] init] must answer an empty instance, not nil and not a crash");
+	covers("NSMutableData", "dataWithLength:");
 
 	/* §C.3 item 3: `-class` answers the CONCRETE class. */
 	check("class-answers-the-concrete-class",

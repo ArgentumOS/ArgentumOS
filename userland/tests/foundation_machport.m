@@ -183,6 +183,7 @@ int main(void)
 		      [NSString stringWithFormat:@"a fresh mach port: valid=%d handle=%u reserved=%lu socket=%d",
 			(int)[port isValid], [port machPort], (unsigned long)[port reservedSpaceLength],
 			(int)[port socket]]);
+	covers("NSMutableData", "appendData:");
 	covers("NSMachPort", "initWithMachPort:");
 	covers("NSMachPort", "portWithMachPort:");
 

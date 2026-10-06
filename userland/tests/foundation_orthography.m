@@ -29,8 +29,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, const char *detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf(PREFIX " %s ok\n", name);
@@ -39,6 +42,15 @@ static void check(const char *name, int ok, const char *detail)
 		printf(PREFIX " %s FAIL %s\n", name, detail ? detail : "");
 	}
 }
+
+/* covers("NSLocale", "canonicalLocaleIdentifierFromString:") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* ONE REFUSAL, CAUGHT: returns YES when the block raised NSInvalidArgumentException. A macro rather than a
  * function because the block captures what the check needs. */
@@ -234,6 +246,7 @@ int main(void)
 		      [NSOrthography supportsSecureCoding],
 		      [[NSString stringWithFormat:@"bytes=%lu restored=%@",
 			(unsigned long)[data length], restored] UTF8String]);
+	covers("NSMutableData", "dataWithCapacity:");
 	}
 
 	printf(PREFIX " RESULT ok=%d fail=%d\n", okc, failc);

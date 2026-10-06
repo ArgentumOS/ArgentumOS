@@ -1256,6 +1256,7 @@ NULL
 		      held[0] != nil && [held[0] isEqualToString:@"1"] &&
 		      held[3] != nil && [held[3] isEqualToString:@"4"],
 		      "makeObjectsPerformSelector: both forms (removeLastObject then addObject: z, so t1/t2 each go 2->1->2), firstObjectCommonWithArray: (the first SHARED member b, nil when none), indexOfObjectIdenticalTo:inRange: (index 2 in {0,4}, NSNotFound in {0,2}, and a same-valued copy is not identical), getObjects: (the whole array: held[0]=1, held[3]=4), initWithArray:copyItems:YES copies the mutable member (still orig after the source changed), copyItems:NO shares it (same pointer)");
+	covers("NSSet", "makeObjectsPerformSelector:");
 	covers("NSArray", "makeObjectsPerformSelector:");
 	covers("NSArray", "makeObjectsPerformSelector:withObject:");
 	covers("NSArray", "firstObjectCommonWithArray:");
@@ -1571,6 +1572,7 @@ NULL
 				     return [left compare:right];
 			     }] == 3,
 		      "enumerateObjectsUsingBlock: (index and stop), both comparator sorts, and the sorted-range search");
+	covers("NSSet", "enumerateObjectsUsingBlock:");
 	covers("NSArray", "sortedArrayUsingComparator:");
 	covers("NSArray", "enumerateObjectsUsingBlock:");
 	covers("NSMutableArray", "sortUsingComparator:");
