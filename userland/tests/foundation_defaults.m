@@ -62,8 +62,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-DEFAULTS %s ok\n", name);
@@ -73,6 +76,15 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		       detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSUserDefaults", "stringForKey:") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 static NSString *scratch_path(NSString *relative)
 {
@@ -182,6 +194,7 @@ int main(void)
 		check("defaults-registration",
 		      [[defaults stringForKey:@"RegisteredOnly"] isEqualToString:@"registered"],
 		      [NSString stringWithFormat:@"registered answer was %@", [defaults stringForKey:@"RegisteredOnly"]]);
+	covers("NSUserDefaults", "registerDefaults:");
 		check("defaults-registration-volatile",
 		      ![manager fileExistsAtPath:appScope],
 		      [NSString stringWithFormat:@"registerDefaults: created %@", appScope]);
@@ -199,6 +212,7 @@ int main(void)
 		      [[defaults stringForKey:@"OrderedKey"] isEqualToString:@"from-app"],
 		      [NSString stringWithFormat:@"app domain lost to the registration domain: %@",
 				[defaults stringForKey:@"OrderedKey"]]);
+	covers("NSUserDefaults", "stringForKey:");
 
 		/* The argument domain is the ONE domain ahead of the app domain, and it is checked by writing
 		 * the same key into a volatile domain we control. */
@@ -264,6 +278,13 @@ int main(void)
 				[reader objectForKey:@"TDate"], [reader dataForKey:@"TData"],
 				[reader arrayForKey:@"TArray"], [reader dictionaryForKey:@"TDictionary"],
 				[reader stringArrayForKey:@"TStringArray"], [reader URLForKey:@"TURL"]]);
+	covers("NSUserDefaults", "integerForKey:");
+	covers("NSUserDefaults", "doubleForKey:");
+	covers("NSUserDefaults", "boolForKey:");
+	covers("NSUserDefaults", "arrayForKey:");
+	covers("NSUserDefaults", "dictionaryForKey:");
+	covers("NSUserDefaults", "dataForKey:");
+	covers("NSUserDefaults", "URLForKey:");
 	}
 
 	/* ---- the absent answers, each one its documented zero ---------------- */
@@ -293,6 +314,7 @@ int main(void)
 		      [defaults stringArrayForKey:@"NotAllStrings"] == nil &&
 		      [[defaults arrayForKey:@"NotAllStrings"] count] == 2,
 		      @"-stringArrayForKey: answered for an array holding a non-string");
+	covers("NSUserDefaults", "stringArrayForKey:");
 	}
 
 	/* ---- Apple's documented coercions ------------------------------------ */
@@ -389,6 +411,7 @@ int main(void)
 		      ![view objectIsForcedForKey:@"NotManaged"] &&
 		      [view objectIsForcedForKey:@"Forced" inDomain:domain],
 		      @"-objectIsForcedForKey: did not answer from the SYSTEM scope");
+	covers("NSUserDefaults", "objectIsForcedForKey:");
 	}
 
 	/* ---- suites: readable, never the write target ------------------------ */
@@ -406,6 +429,8 @@ int main(void)
 		      [[defaults stringForKey:@"SuiteOnly"] isEqualToString:@"from-suite"],
 		      [NSString stringWithFormat:@"the suite was not searched: %@",
 			[defaults stringForKey:@"SuiteOnly"]]);
+	covers("NSUserDefaults", "addSuiteNamed:");
+	covers("NSUserDefaults", "initWithSuiteName:");
 
 		[defaults setObject:@"written-to-app" forKey:@"AppOnly"];
 		suiteFile = [NSDictionary dictionaryWithContentsOfFile:scope_file_path(@"Users", suite)];
@@ -422,6 +447,7 @@ int main(void)
 			      [after stringForKey:@"SuiteOnly"] == nil,
 			      [NSString stringWithFormat:@"the suite was still searched: %@",
 				[after stringForKey:@"SuiteOnly"]]);
+	covers("NSUserDefaults", "removeSuiteNamed:");
 		}
 	}
 
@@ -435,6 +461,7 @@ int main(void)
 		      [names containsObject:NSArgumentDomain] &&
 		      [names containsObject:NSRegistrationDomain],
 		      [NSString stringWithFormat:@"built-in volatile names were %@", names]);
+	covers("NSUserDefaults", "volatileDomainForName:");
 
 		[defaults setVolatileDomain:[NSDictionary dictionaryWithObject:@"volatile"
 								       forKey:@"VolKey"]
@@ -451,6 +478,7 @@ int main(void)
 		      ![[defaults volatileDomainNames] containsObject:@"FNVolatileName"] &&
 		      [defaults stringForKey:@"VolKey"] == nil,
 		      @"a removed volatile domain was still searched");
+	covers("NSUserDefaults", "removeVolatileDomainForName:");
 	}
 
 	/* ---- the argument domain, which is a fact about THIS process -------- */
@@ -497,6 +525,7 @@ int main(void)
 			      [[[shared persistentDomainForName:@"com.example.sharedonly"]
 				objectForKey:@"Shipped"] isEqualToString:@"shipped"],
 			      @"a domain that lives only in the SHARED scope did not answer");
+	covers("NSUserDefaults", "persistentDomainForName:");
 		}
 
 		defaults = [[NSUserDefaults alloc] initWithSuiteName:domain];
@@ -520,6 +549,7 @@ int main(void)
 		      [[[NSUserDefaults alloc] initWithSuiteName:domain] persistentDomainForName:domain] == nil &&
 		      ![manager fileExistsAtPath:scope_file_path(@"Users", domain)],
 		      @"the domain or its file survived -removePersistentDomainForName:");
+	covers("NSUserDefaults", "removePersistentDomainForName:");
 	}
 
 	/* ---- the change notification, and the non-change ------------------- */
