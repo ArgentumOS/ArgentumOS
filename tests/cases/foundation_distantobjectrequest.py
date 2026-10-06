@@ -30,16 +30,9 @@ from harness import BaseCase
 
 PROBE = "/System/Shared/tests/foundation_distantobjectrequest"
 CHECKS = (
-    "the-class-and-the-protocol-are-declared",
-    "a-connection-starts-with-no-delegate-and-keeps-the-one-it-is-given",
-    "the-three-doors-this-library-does-not-consult-are-absent",
-    "an-exception-now-round-trips-the-wire",
-    "a-delegate-that-intercepts-owns-the-reply",
-    "the-request-carries-its-connection-its-invocation-and-its-conversation",
-    "a-request-has-one-reply-and-a-second-one-raises",
-    "a-delegate-that-declines-leaves-the-ordinary-path-alone",
-    "an-exception-crosses-the-wire-and-is-raised-at-the-client",
-    "a-connection-without-a-delegate-serves-as-it-always-did",
+	  "the-class-and-the-protocol-are-declared", "a-connection-starts-with-no-delegate-and-keeps-the-one-it-is-given", "the-three-doors-the-delegate-contract-completed-are-declared-optional", "an-exception-now-round-trips-the-wire",
+	  "a-delegate-that-intercepts-owns-the-reply", "the-request-carries-its-connection-its-invocation-and-its-conversation", "a-request-has-one-reply-and-a-second-one-raises", "a-delegate-that-declines-leaves-the-ordinary-path-alone",
+	  "an-exception-crosses-the-wire-and-is-raised-at-the-client", "a-connection-without-a-delegate-serves-as-it-always-did",
 )
 
 

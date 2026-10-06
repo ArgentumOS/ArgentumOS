@@ -47,14 +47,15 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-/* THE CONNECTION'S DELEGATE — AND **TWO OF APPLE'S DOORS ARE DECLARED, THREE ARE ABSENT WITH THEIR GROUNDS**,
- * which is the same discipline this header already applies to `NSFailedAuthenticationException`:
- *   * `-connection:shouldMakeNewConnection:` is NOT declared: there are no PARENT AND CHILD connections here.
- *     A child connection exists when a named service is contacted and forms one; this library's connections are
- *     socket pairs the process already holds (§62.56), so there is no child to allow or refuse.
- *   * the two AUTHENTICATION doors are NOT declared: `NSFailedAuthenticationException` "EXISTS AND IS NEVER
- *     RAISED" for the same reason — nothing in this library authenticates.
- * The two that ARE here are the two this library consults. */
+/* THE CONNECTION'S DELEGATE - AND **ALL FOUR OF APPLE'S DOORS ARE DECLARED**, which SUPERSEDES the note this
+ * header used to carry: it read "two are declared, THREE ARE ABSENT WITH THEIR GROUNDS" (no parent/child
+ * connections here, and nothing authenticates). SS63.211 completed the contract below and declared the other
+ * three as OPTIONAL, so THE OLD NOTE WAS TRUE WHEN WRITTEN AND IS NOW STALE - and the probe's matching
+ * "these doors are absent" check went red the moment they landed, which is what an ABSENCE check does when the
+ * absence is filled. What remains true is that nothing HERE consults them: this library's connections are socket
+ * pairs the process already holds, so there is no child connection to allow or refuse, and nothing authenticates
+ * - hence OPTIONAL rather than required.
+ */
 @protocol NSConnectionDelegate <NSObject>
 @optional
 

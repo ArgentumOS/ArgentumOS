@@ -237,7 +237,19 @@ int main(void)
 		      [NSValue instancesRespondToSelector:NSSelectorFromString(@"CGRectValue")] &&
 		      [NSValue instancesRespondToSelector:NSSelectorFromString(@"CGVectorValue")] &&
 		      [NSValue instancesRespondToSelector:NSSelectorFromString(@"CGAffineTransformValue")],
-		      [NSString stringWithFormat:@"the five CG-spelled boxes and readers come from CoreGraphics' "
+		      [NSString stringWithFormat:@"answers: pt=%d sz=%d rc=%d vec=%d atf=%d / readers pt=%d sz=%d rc=%d vec=%d "
+	      @"atf=%d - " @"the five CG-spelled boxes and readers come from CoreGraphics' ",
+	      (int)[NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGPoint:")],
+	      (int)[NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGSize:")],
+	      (int)[NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGRect:")],
+	      (int)[NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGVector:")],
+	      (int)[NSValue respondsToSelector:NSSelectorFromString(@"valueWithCGAffineTransform:")],
+	      (int)[NSValue instancesRespondToSelector:NSSelectorFromString(@"CGPointValue")],
+	      (int)[NSValue instancesRespondToSelector:NSSelectorFromString(@"CGSizeValue")],
+	      (int)[NSValue instancesRespondToSelector:NSSelectorFromString(@"CGRectValue")],
+	      (int)[NSValue instancesRespondToSelector:NSSelectorFromString(@"CGVectorValue")],
+	      (int)[NSValue instancesRespondToSelector:NSSelectorFromString(@"CGAffineTransformValue")],
+
 						@"NSValue category, so they answer here; Foundation's NS-spelled pair is asserted "
 						@"above and its headers declare none of these (the sweep holds that half)"]);
 	}

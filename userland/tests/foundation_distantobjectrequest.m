@@ -192,12 +192,13 @@ int main(void)
 		      [plain delegate] == nil && ([plain setDelegate:(id <NSConnectionDelegate>)plain],
 						  [plain delegate] == (id)plain),
 		      @"the accessor pair round-trips and a fresh connection has none");
-		check("the-three-doors-this-library-does-not-consult-are-absent",
-		      !fn_protocol_has_optional(p, NSSelectorFromString(@"connection:shouldMakeNewConnection:")) &&
-		      !fn_protocol_has_optional(p, NSSelectorFromString(@"authenticationDataForComponents:")) &&
-		      !fn_protocol_has_optional(p, NSSelectorFromString(@"authenticateComponents:withData:")),
-		      @"no parent/child connections exist here, and nothing authenticates — so the doors are ABSENT "
-		      @"with their grounds rather than declared and never called");
+		check("the-three-doors-the-delegate-contract-completed-are-declared-optional",
+		      fn_protocol_has_optional(p, NSSelectorFromString(@"connection:shouldMakeNewConnection:")) &&
+		      fn_protocol_has_optional(p, NSSelectorFromString(@"authenticationDataForComponents:")) &&
+		      fn_protocol_has_optional(p, NSSelectorFromString(@"authenticateComponents:withData:")),
+		      @"SS63.211 COMPLETED THE DELEGATE CONTRACT and declared all three as OPTIONAL - this check used to"
+		      @" assert the OPPOSITE, and it went red the moment they landed, which is what an ABSENCE check does."
+		      @" Nothing here consults them: no parent/child connections and no authentication.");
 	}
 
 	/* --- 2. THE PREREQUISITE, MEASURED ON ITS OWN ------------------------------------------------------ */
