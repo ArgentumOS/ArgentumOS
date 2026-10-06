@@ -1026,13 +1026,13 @@ func	struck	CGImageCalculateContentAverageLightLevel	-	Opaque Types / Adopting h
 func	struck	CGImageCalculateContentHeadroom	-	Opaque Types / Adopting high dynamic range (HDR)	after-10.6	objc
 func	struck	CGImageContainsImageSpecificToneMappingMetadata	-	Reference / Functions	after-10.6	objc
 func	shipped	CGImageCreate	-	Opaque Types / Creating images	-	objc
-func	open	CGImageCreateCopy	-	Opaque Types / Copying an image	-	objc
+func	shipped	CGImageCreateCopy	-	Opaque Types / Copying an image	shipped with the derivation doors (plan §21)	objc
 func	struck	CGImageCreateCopyWithCalculatedHDRStats	-	Opaque Types / Adopting high dynamic range (HDR)	after-10.6	objc
-func	open	CGImageCreateCopyWithColorSpace	-	Opaque Types / Copying an image	-	objc
+func	shipped	CGImageCreateCopyWithColorSpace	-	Opaque Types / Copying an image	shipped with the derivation doors (plan §21)	objc
 func	struck	CGImageCreateCopyWithContentAverageLightLevel	-	Opaque Types / Adopting high dynamic range (HDR)	after-10.6	objc
 func	struck	CGImageCreateCopyWithContentHeadroom	-	Reference / Functions	after-10.6	objc
 func	struck	CGImageCreateWithContentHeadroom	-	Opaque Types / Creating images	after-10.6	objc
-func	open	CGImageCreateWithImageInRect	-	Opaque Types / Creating images by modifying an image	-	objc
+func	shipped	CGImageCreateWithImageInRect	-	Opaque Types / Creating images by modifying an image	shipped with the derivation doors (plan §21)	objc
 func	shipped	CGImageCreateWithJPEGDataProvider	-	Opaque Types / Creating images	-	objc
 func	open	CGImageCreateWithMask	-	Opaque Types / Creating images by modifying an image	-	objc
 func	open	CGImageCreateWithMaskingColors	-	Opaque Types / Creating image masks	-	objc
@@ -1055,8 +1055,8 @@ func	shipped	CGImageGetShouldInterpolate	-	Opaque Types / Examining an image	-	o
 func	shipped	CGImageGetTypeID	-	Opaque Types / Working with Core Foundation types	-	objc
 func	struck	CGImageGetUTType	-	Opaque Types / Examining an image	after-10.6	objc
 func	shipped	CGImageGetWidth	-	Opaque Types / Examining an image	-	objc
-func	open	CGImageIsMask	-	Opaque Types / Examining an image	-	objc
-func	open	CGImageMaskCreate	-	Opaque Types / Creating image masks	-	objc
+func	shipped	CGImageIsMask	-	Opaque Types / Examining an image	shipped with the derivation doors (plan §21)	objc
+func	shipped	CGImageMaskCreate	-	Opaque Types / Creating image masks	shipped with the derivation doors (plan §21)	objc
 func	shipped	CGImageRelease	-	Opaque Types / Retaining and releasing images	-	objc
 func	shipped	CGImageRetain	-	Opaque Types / Retaining and releasing images	-	objc
 func	struck	CGImageShouldToneMap	-	Reference / Functions	after-10.6	objc

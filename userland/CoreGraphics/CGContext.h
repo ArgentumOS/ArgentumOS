@@ -77,11 +77,17 @@ typedef struct CGContext *CGContextRef;
  * definitions, so `kCGBlendModeMultiply` IS `PIXMAN_OP_MULTIPLY` and the probe can
  * assert the arithmetic rather than the label.
  *
- * `kCGBlendModePlusDarker` IS ABSENT, deliberately: pixman has no operator that is
- * the same function, so the choice would be between something close and something
- * right. `PIXMAN_OP_SATURATE` and `PIXMAN_OP_ADD` are the two near misses and neither
- * is it. That row stays `open` in the ledger, which is where an unimplemented name
- * belongs.
+ * `kCGBlendModePlusDarker` IS ABSENT AND THAT ROW STAYS `open`. THE FIRST REASON GIVEN FOR IT HERE
+ * WAS TRUE BUT INCOMPLETE, and the second half is the one that decides it: pixman has no operator
+ * that IS this function — `PIXMAN_OP_SATURATE` and `PIXMAN_OP_ADD` are the two near misses — BUT
+ * THE FUNCTION IS REACHABLE AS A SEQUENCE. Plus-darker is `max(0, S + D - 1)`, which is
+ * `~(min(1, ~D + ~S))`: invert the destination, add the inverted source with `PIXMAN_OP_ADD`, invert
+ * back. THE SEQUENCE IS EXACT ONLY WHEN BOTH THE SOURCE AND THE DESTINATION ARE OPAQUE, and a fill in
+ * this library is antialiased, so `alpha_s < 1` along every edge of every shape. The general case is
+ * the PDF composite with the blend applied to UNPREMULTIPLIED components, which needs a per-pixel path
+ * this library's substrate does not expose. SO THE CHOICE WOULD STILL BE between something close and
+ * something right, and it is made the same way: the name is not declared, the row is owed, and the
+ * reason is written here rather than rediscovered.
  */
 typedef enum {
 	kCGBlendModeNormal = 0,

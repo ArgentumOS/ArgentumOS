@@ -189,4 +189,41 @@ CGColorRenderingIntent CGImageGetRenderingIntent(CGImageRef image);
  * port; identity is the whole of what the door promises. See CGTypeID_internal.h. */
 CGTypeID CGImageGetTypeID(void);
 
+/* ------------------------------------------------------------------------- */
+/* Masks, and the three ways an image is derived from another                  */
+/* ------------------------------------------------------------------------- */
+
+/* A MASK IS AN IMAGE WITH NO COLOR SPACE WHOSE SAMPLES ARE THE MASK ITSELF, and drawing one directly is an
+ * error: it is made to be CLIPPED WITH or to mask another image. This library therefore marks it as not
+ * drawable, which `cg_image_is_drawable` already refuses in one place rather than in every drawing door.
+ *
+ * ITS ALPHA LAYOUT IS `kCGImageAlphaOnly` — "no color data, alpha data only" — which is this library's own
+ * existing reading of a mask (see CGImage.c's format note). `CGImageGetColorSpace` answers NULL for one,
+ * as Apple's does, because a mask has no colors to be in a space.
+ *
+ * `decode` IS REFUSED HERE FOR THE SAME REASON `CGImageCreate` REFUSES IT: it maps input ranges onto output
+ * ones, and ignoring it would draw something the caller did not describe. */
+CGImageRef CGImageMaskCreate(size_t width, size_t height, size_t bitsPerComponent, size_t bitsPerPixel,
+			     size_t bytesPerRow, CGDataProviderRef provider, const CGFloat *decode,
+			     bool shouldInterpolate);
+
+/* True for an image made by `CGImageMaskCreate`, false for every other image, and false for NULL. */
+bool CGImageIsMask(CGImageRef image);
+
+/* THE STRUCTURE AND NOT THE BYTES: Apple's own comment says so — "Only the image structure itself is copied;
+ * the underlying data is not." The copy shares the provider and the color space with the original and holds
+ * a reference to each, which is what keeps the bytes alive for as long as either image needs them. */
+CGImageRef CGImageCreateCopy(CGImageRef image);
+
+/* A copy with a different color space, and THE SPACE MUST HOLD THE SAME NUMBER OF COMPONENTS or this returns
+ * NULL (Apple's rule, and the one that keeps a caller from reinterpreting the same bytes as a different
+ * shape). A MASK HAS NO SPACE TO REPLACE, so a mask returns NULL too. */
+CGImageRef CGImageCreateCopyWithColorSpace(CGImageRef image, CGColorSpaceRef space);
+
+/* THE SUBRECTANGLE, IN APPLE'S OWN THREE STEPS, which the header documents in that order: the rectangle is
+ * made integral, intersected with the image's bounds, and the pixels inside the result are referenced —
+ * THE BYTES ARE NOT COPIED. The new image retains the original, so a caller may release the original the
+ * moment this returns. A null or empty result returns NULL. */
+CGImageRef CGImageCreateWithImageInRect(CGImageRef image, CGRect rect);
+
 #endif /* CORE_GRAPHICS_CGIMAGE_H */

@@ -1582,3 +1582,36 @@ and "shipped" are true of one row at once, and the ledger has no way to say "the
 names does not". The file now says it instead, and the owed half is written down as the PROFILE each generic
 name should reach (`kCGColorSpaceGenericCMYK`'s cannot be invented at all: what ink values mean depends on the
 press).
+
+## 21. The masks, the copies and the subrectangle (5 rows), and the plus-darker ground corrected
+
+**FIVE DERIVATION DOORS SHIP:** `CGImageMaskCreate` + `CGImageIsMask`, `CGImageCreateCopy`,
+`CGImageCreateCopyWithColorSpace`, `CGImageCreateWithImageInRect`. The probe (`coregraphics_imagederive`) is
+about SHARING AND OWNERSHIP rather than sizes, because that is what these doors' claims are: "the underlying
+data is not copied", "the new image retains a reference to the original", "a mask has no color space".
+
+**A MASK IS NOT A PICTURE, AND THAT IS EXPRESSED IN THE ONE PLACE THAT ALREADY DECIDES.** It has no color
+space (`CGImageGetColorSpace` answers NULL), its alpha layout is `kCGImageAlphaOnly` — this library's own
+existing reading of a mask, written in CGImage.c's format note before masks existed — and `drawable` is 0, so
+`cg_image_is_drawable` refuses to draw it in every drawing door at once. Creating one at a depth this library
+cannot sample, or with a decode array, is REFUSED BY NAME like `CGImageCreate`'s equivalents.
+
+**THE SUBRECTANGLE FOLLOWS APPLE'S THREE STEPS IN APPLE'S ORDER** — integral first, then the intersection with
+the image's bounds, then the pixels — and the probe checks the *first* step by its visible effect: a
+fractional `(0.5, 0.5, 2, 2)` becomes `(0, 0, 3, 3)`, because making a rectangle integral GROWS it. Its bytes
+are compared against the ORIGINAL's at the offset and stride the arithmetic implies, which no channel-order
+mistake can satisfy by accident, and THE ORIGINAL IS RELEASED BEFORE THE SUBRECTANGLE IS READ: that read is
+the use-after-free Apple's sentence exists to prevent, so the window provider that hands out the subrect's
+bytes carries a release callback that releases the original image.
+
+**`CGImageCreateCopyWithColorSpace`'s REFUSAL IS THE COMPONENT COUNT**, not a warning: the bytes are the same
+bytes, so a space of a different shape would reinterpret them.
+
+**THE PLUS-DARKER GROUND IN CGContext.h IS CORRECTED IN PLACE, AND THE CORRECTION IS THE POINT.** It said
+pixman has no operator that is the same function — true — and stopped there. The function IS reachable as a
+SEQUENCE: plus-darker is `max(0, S + D - 1)`, which is `~(min(1, ~D + ~S))`, i.e. invert the destination, add
+the inverted source with `PIXMAN_OP_ADD`, invert back. THAT SEQUENCE IS EXACT ONLY WHEN SOURCE AND DESTINATION
+ARE BOTH OPAQUE, and a fill here is antialiased, so `alpha_s < 1` along every edge of every shape; the general
+case needs the PDF composite applied to UNPREMULTIPLIED components per pixel, which this substrate does not
+expose. So the choice is still between something close and something right, the row stays `open`, and the
+reason now includes the half that was missing rather than only the half that was obvious.

@@ -29,6 +29,10 @@ struct CGImage {
 	bool should_interpolate;
 	CGColorRenderingIntent intent;
 	int drawable;
+	/* A MASK IS NOT A PICTURE: its samples ARE the mask, it has no color space, and it is not drawable
+	 * on its own — it is for clipping with or for masking another image. The flag is what
+	 * `CGImageIsMask` answers and what the drawing path refuses on. */
+	int is_mask;
 };
 
 int cg_image_is_drawable(CGImageRef image)
@@ -273,4 +277,204 @@ bool CGImageGetShouldInterpolate(CGImageRef image)
 CGColorRenderingIntent CGImageGetRenderingIntent(CGImageRef image)
 {
 	return image == NULL ? kCGRenderingIntentDefault : image->intent;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Masks, and the three ways an image is derived from another                  */
+/* ------------------------------------------------------------------------- */
+
+/* THE STRUCTURE COPY, SHARED BY ALL THREE DERIVATION DOORS: every field is carried over, the provider and
+ * the color space are retained because the new image now holds them too, and the reference count starts at
+ * one. THE BYTES ARE NEVER COPIED — every derived image refers to the original's, which is why each of
+ * these retains what its bytes come from. */
+static CGImageRef fn_copy_structure(CGImageRef image)
+{
+	CGImageRef copy;
+
+	if (image == NULL) {
+		return NULL;
+	}
+	copy = calloc(1, sizeof(struct CGImage));
+	if (copy == NULL) {
+		return NULL;
+	}
+	*copy = *image;
+	copy->refcount = 1;
+	CGColorSpaceRetain(copy->space);
+	CGDataProviderRetain(copy->provider);
+	return copy;
+}
+
+CGImageRef CGImageMaskCreate(size_t width, size_t height, size_t bitsPerComponent, size_t bitsPerPixel,
+			     size_t bytesPerRow, CGDataProviderRef provider, const CGFloat *decode,
+			     bool shouldInterpolate)
+{
+	CGImageRef image;
+
+	if (decode != NULL) {
+		fprintf(stderr, "CG-REFUSE: CGImageMaskCreate does not implement the decode array yet, and "
+				"ignoring it would mask with something the caller did not describe\n");
+		return NULL;
+	}
+	if (width == 0 || height == 0 || provider == NULL) {
+		fprintf(stderr, "CG-REFUSE: CGImageMaskCreate needs a size and a data provider\n");
+		return NULL;
+	}
+	/* THE SAME DEPTH RULE AS `CGImageCreate`, for the same reason: this library samples 8 bits per
+	 * component, and a mask at another depth would have to be scaled. */
+	if (bitsPerComponent != 8 || bitsPerPixel != 8) {
+		fprintf(stderr, "CG-REFUSE: CGImageMaskCreate supports 8 bits per component and per pixel "
+				"only; %lu/%lu would have to be scaled\n",
+			(unsigned long)bitsPerComponent, (unsigned long)bitsPerPixel);
+		return NULL;
+	}
+	if (bytesPerRow < width) {
+		fprintf(stderr, "CG-REFUSE: CGImageMaskCreate needs a row at least as long as the mask is "
+				"wide (%lu < %lu)\n", (unsigned long)bytesPerRow, (unsigned long)width);
+		return NULL;
+	}
+	image = calloc(1, sizeof(struct CGImage));
+	if (image == NULL) {
+		return NULL;
+	}
+	image->refcount = 1;
+	image->width = width;
+	image->height = height;
+	image->bits_per_component = bitsPerComponent;
+	image->bits_per_pixel = bitsPerPixel;
+	image->bytes_per_row = bytesPerRow;
+	/* NO COLOR SPACE: a mask has no colors, which is what makes `CGImageGetColorSpace` answer NULL for it
+	 * rather than a gray space invented to have something to say. */
+	image->space = NULL;
+	image->provider = CGDataProviderRetain(provider);
+	image->alpha = kCGImageAlphaOnly;
+	image->bitmap_info = (uint32_t)kCGImageAlphaOnly;
+	image->should_interpolate = shouldInterpolate;
+	image->intent = kCGRenderingIntentDefault;
+	image->is_mask = 1;
+	/* NOT DRAWABLE, AND THAT IS THE MASK'S WHOLE NATURE: it is for clipping with or for masking another
+	 * image. `cg_image_is_drawable` is the one place that decides, so every drawing door agrees. */
+	image->drawable = 0;
+	return image;
+}
+
+bool CGImageIsMask(CGImageRef image)
+{
+	return image != NULL && image->is_mask;
+}
+
+CGImageRef CGImageCreateCopy(CGImageRef image)
+{
+	return fn_copy_structure(image);
+}
+
+CGImageRef CGImageCreateCopyWithColorSpace(CGImageRef image, CGColorSpaceRef space)
+{
+	CGImageRef copy;
+
+	if (image == NULL || space == NULL) {
+		return NULL;
+	}
+	if (image->is_mask) {
+		fprintf(stderr, "CG-REFUSE: CGImageCreateCopyWithColorSpace takes a picture, and a mask has no "
+				"color space to replace\n");
+		return NULL;
+	}
+	/* THE COMPONENT COUNT IS THE CONTRACT: the bytes are the same bytes, so a space of a different shape
+	 * would reinterpret them. Apple's own rule, and the reason this is a check rather than a warning. */
+	if (image->space != NULL
+	    && CGColorSpaceGetNumberOfComponents(image->space) != CGColorSpaceGetNumberOfComponents(space)) {
+		fprintf(stderr, "CG-REFUSE: CGImageCreateCopyWithColorSpace needs a space with the same "
+				"number of components as the image's, or the bytes would be read as another "
+				"shape\n");
+		return NULL;
+	}
+	copy = fn_copy_structure(image);
+	if (copy == NULL) {
+		return NULL;
+	}
+	CGColorSpaceRelease(copy->space);
+	copy->space = CGColorSpaceRetain(space);
+	return copy;
+}
+
+/* THE PROVIDER'S RELEASE CALLBACK FOR A SUBRECTANGLE, and it is what makes "the new image retains a reference
+ * to the original" true: the bytes the subrect's provider hands out belong to the ORIGINAL's provider, which
+ * the original image owns, so the original must outlive them. The window carries it. */
+static void fn_release_subrect_window(void *info, const void *data, size_t size)
+{
+	(void)data;
+	(void)size;
+	CGImageRelease((CGImageRef)info);
+}
+
+CGImageRef CGImageCreateWithImageInRect(CGImageRef image, CGRect rect)
+{
+	CGImageRef copy;
+	CGRect bounds;
+	CGRect clipped;
+	CGRect whole;
+	size_t x, y;
+	size_t w, h;
+	const void *bytes;
+	size_t size = 0;
+	CGDataProviderRef provider;
+
+	if (image == NULL) {
+		return NULL;
+	}
+	if (image->bits_per_pixel % 8 != 0) {
+		fprintf(stderr, "CG-REFUSE: CGImageCreateWithImageInRect needs a BYTE-ALIGNED pixel; this "
+				"image's pixels are %lu bits, so a subrectangle's rows would not start on a byte\n",
+			(unsigned long)image->bits_per_pixel);
+		return NULL;
+	}
+	/* APPLE'S THREE STEPS, IN APPLE'S ORDER: integral bounds first, then the intersection with the image's
+	 * own rectangle, then the pixels. THE INTEGRAL STEP COMES FIRST because it can grow the rectangle, and
+	 * the intersection is what makes the result lie inside the image. */
+	bounds = CGRectMake(0, 0, (CGFloat)image->width, (CGFloat)image->height);
+	clipped = CGRectIntegral(rect);
+	whole = CGRectIntersection(clipped, bounds);
+	if (CGRectIsNull(whole) || CGRectIsEmpty(whole)) {
+		return NULL;
+	}
+	x = (size_t)whole.origin.x;
+	y = (size_t)whole.origin.y;
+	w = (size_t)whole.size.width;
+	h = (size_t)whole.size.height;
+	if (w == 0 || h == 0 || x + w > image->width || y + h > image->height) {
+		return NULL;
+	}
+	bytes = cg_dataprovider_bytes(image->provider, &size);
+	if (bytes == NULL) {
+		return NULL;
+	}
+	{
+		size_t offset = y * image->bytes_per_row + x * (image->bits_per_pixel / 8);
+		size_t need = (h - 1) * image->bytes_per_row + w * (image->bits_per_pixel / 8);
+
+		if (offset + need > size) {
+			return NULL;
+		}
+		/* THE WINDOW RETAINS THE ORIGINAL and hands out the subrect's first byte: the same buffer, read
+		 * from a later offset, with the SAME stride — a subrectangle's rows still skip the pixels outside
+		 * it, because the data underneath still has them. */
+		provider = CGDataProviderCreateWithData((void *)CGImageRetain(image),
+						       (const char *)bytes + offset, need,
+						       fn_release_subrect_window);
+	}
+	if (provider == NULL) {
+		CGImageRelease(image);
+		return NULL;
+	}
+	copy = fn_copy_structure(image);
+	if (copy == NULL) {
+		CGDataProviderRelease(provider);
+		return NULL;
+	}
+	CGDataProviderRelease(copy->provider);
+	copy->provider = provider;
+	copy->width = w;
+	copy->height = h;
+	return copy;
 }
