@@ -1047,7 +1047,7 @@ func	shipped	CGImageGetColorSpace	-	Opaque Types / Examining an image	-	objc
 func	struck	CGImageGetContentAverageLightLevel	-	Opaque Types / Adopting high dynamic range (HDR)	after-10.6	objc
 func	struck	CGImageGetContentHeadroom	-	Opaque Types / Adopting high dynamic range (HDR)	after-10.6	objc
 func	shipped	CGImageGetDataProvider	-	Opaque Types / Examining an image	-	objc
-func	open	CGImageGetDecode	-	Opaque Types / Examining an image	-	objc
+func	shipped	CGImageGetDecode	-	Opaque Types / Examining an image	shipped with the decode array (plan §24)	objc
 func	shipped	CGImageGetHeight	-	Opaque Types / Examining an image	-	objc
 func	struck	CGImageGetPixelFormatInfo	-	Reference / Functions	after-10.6	objc
 func	shipped	CGImageGetRenderingIntent	-	Opaque Types / Examining an image	-	objc

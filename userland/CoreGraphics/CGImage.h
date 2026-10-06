@@ -193,6 +193,23 @@ CGTypeID CGImageGetTypeID(void);
 /* Masks, and the three ways an image is derived from another                  */
 /* ------------------------------------------------------------------------- */
 
+/* THE DECODE ARRAY, WHICH MAPS THE IMAGE'S SAMPLES INTO THE RANGES ITS COLOR SPACE EXPECTS. Apple's rule,
+ * read from its documentation rather than recalled: THE ARRAY HOLDS 2N VALUES, {min[1], max[1], ... min[N],
+ * max[N]}, WHERE N IS THE NUMBER OF COMPONENTS OF THE IMAGE'S COLOR SPACE (one for gray, three for RGB — the
+ * same N, and the same wording, as CGImageCreateWithMaskingColors uses above), each value being a VALID IMAGE
+ * SAMPLE VALUE (0 to 255 for this library's 8-bit images), and the mapping is LINEAR: a sample s of component
+ * i becomes `min[i] + (s / 255) * (max[i] - min[i])`.
+ *
+ * THE ALPHA COMPONENT IS NOT DECODED, because N counts the COLOR SPACE's components and a color space has no
+ * alpha: the modern documentation's parenthetical "(including the alpha component)" contradicts its own
+ * worked example, which gives six entries for RGB. THE SPECIFICATION CLAUSE WINS HERE and the divergence is
+ * stated rather than guessed at.
+ *
+ * `CGImageGetDecode` returns the array the image was made with, or NULL when it has none — "if remapping of
+ * the image's color values is not allowed, the returned value will be NULL", which for this library means
+ * exactly "no decode array was given". */
+const CGFloat *CGImageGetDecode(CGImageRef image);
+
 /* A MASK IS AN IMAGE WITH NO COLOR SPACE WHOSE SAMPLES ARE THE MASK ITSELF, and drawing one directly is an
  * error: it is made to be CLIPPED WITH or to mask another image. This library therefore marks it as not
  * drawable, which `cg_image_is_drawable` already refuses in one place rather than in every drawing door.

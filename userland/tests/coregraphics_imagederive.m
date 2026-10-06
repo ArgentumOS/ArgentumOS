@@ -120,8 +120,20 @@ int main(void)
 			      CGImageGetAlphaInfo(mask) == kCGImageAlphaOnly);
 			check("...and a mask is NOT drawable, so every drawing door refuses it",
 			      mask != NULL);
-			check("a mask with a decode array is refused rather than ignored",
-			      CGImageMaskCreate(W, H, 8, 8, W, mp, decode_two, false) == NULL);
+			{
+				CGImageRef decoded_mask = CGImageMaskCreate(W, H, 8, 8, W, mp, decode_two, false);
+
+				/* A MASK HAS ONE COMPONENT, SO ITS ARRAY IS ONE PAIR — and it is STORED and applied to
+				 * the sample before the inversion, which is what makes this a decode rather than a
+				 * declaration. */
+				check("a mask takes a decode array, and it is stored rather than ignored",
+				      decoded_mask != NULL && CGImageGetDecode(decoded_mask) != NULL
+				      && CGImageGetDecode(decoded_mask)[0] == decode_two[0]);
+				CGImageRelease(decoded_mask);
+				check("...and a mask decode value outside 0..255 is refused rather than clamped",
+				      CGImageMaskCreate(W, H, 8, 8, W, mp, (const CGFloat[]){ 0, 300 }, false)
+				      == NULL);
+			}
 			check("a mask at one bit per sample is refused by name",
 			      CGImageMaskCreate(W, 1, 1, 1, 1, mp, NULL, false) == NULL);
 			check("CGImageIsMask(NULL) is false", !CGImageIsMask(NULL));
@@ -296,6 +308,69 @@ int main(void)
 		CGDataProviderRelease(mp);
 		CGDataProviderRelease(pp);
 		CGColorSpaceRelease(gray);
+	}
+
+	/* --- THE DECODE ARRAY: STORED, RETURNED, AND APPLIED ---------------------------------- */
+	{
+		CGColorSpaceRef gray2 = CGColorSpaceCreateDeviceGray();
+		CGColorSpaceRef rgb2 = CGColorSpaceCreateDeviceRGB();
+		unsigned char white[2 * 2];
+		unsigned char canvas[2 * 2 * 4];
+		CGDataProviderRef dp = CGDataProviderCreateWithData(NULL, white, sizeof white, NULL);
+		const CGFloat identity[2] = { 0, 255 };	/* the sample units Apple's clause implies */
+		const CGFloat invert[2] = { 255, 0 };
+		const CGFloat out_of_range[2] = { 0, 300 };
+		CGImageRef plain;
+		CGImageRef ident;
+		CGImageRef flipped;
+		CGContextRef ctx;
+
+		memset(white, 0xFF, sizeof white);
+		plain = CGImageCreate(2, 2, 8, 8, 2, gray2, kCGImageAlphaNone, dp, NULL, false,
+				      kCGRenderingIntentDefault);
+		ident = CGImageCreate(2, 2, 8, 8, 2, gray2, kCGImageAlphaNone, dp, identity, false,
+				      kCGRenderingIntentDefault);
+		flipped = CGImageCreate(2, 2, 8, 8, 2, gray2, kCGImageAlphaNone, dp, invert, false,
+					kCGRenderingIntentDefault);
+
+		check("an image made with a decode array is made", ident != NULL && flipped != NULL);
+		check("...and CGImageGetDecode RETURNS those values, while an image without one answers NULL",
+		      CGImageGetDecode(ident) != NULL && CGImageGetDecode(ident)[0] == identity[0]
+		      && CGImageGetDecode(ident)[1] == identity[1] && CGImageGetDecode(plain) == NULL);
+		check("...and a decode value outside 0..255 is refused rather than clamped",
+		      CGImageCreate(2, 2, 8, 8, 2, gray2, kCGImageAlphaNone, dp, out_of_range, false,
+				    kCGRenderingIntentDefault) == NULL);
+
+		memset(canvas, 0, sizeof canvas);
+		ctx = CGBitmapContextCreate(canvas, 2, 2, 8, 2 * 4, rgb2,
+					    kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
+		check("a canvas is made for the decode draws", ctx != NULL);
+		if (ctx != NULL) {
+			memset(canvas, 0, sizeof canvas);
+			CGContextDrawImage(ctx, CGRectMake(0, 0, 2, 2), plain);
+			printf("CG-IMAGEDERIVE %-58s plain=%02x,%02x,%02x,%02x\n", "...readout",
+			       canvas[0], canvas[1], canvas[2], canvas[3]);
+			check("the undecoded white picture paints opaque white", canvas[3] == 0xFF && canvas[0] == 0xFF);
+			memset(canvas, 0, sizeof canvas);
+			CGContextDrawImage(ctx, CGRectMake(0, 0, 2, 2), ident);
+			/* THE IDENTITY DECODE IS THE INVARIANT THAT PINS THE UNITS: {0, 255} in SAMPLE units maps
+			 * every sample to itself, so this draw must be indistinguishable from the one above. If the
+			 * array were read in 0..1 units instead, 255 would be nonsensical and the draw would differ. */
+			check("...and an IDENTITY decode draws exactly the same", canvas[3] == 0xFF && canvas[0] == 0xFF);
+			memset(canvas, 0, sizeof canvas);
+			CGContextDrawImage(ctx, CGRectMake(0, 0, 2, 2), flipped);
+			printf("CG-IMAGEDERIVE %-58s flipped=%02x,%02x,%02x,%02x\n", "...readout",
+			       canvas[0], canvas[1], canvas[2], canvas[3]);
+			check("...and an INVERTING decode paints opaque BLACK", canvas[3] == 0xFF
+			      && canvas[0] == 0x00 && canvas[1] == 0x00 && canvas[2] == 0x00);
+			CGContextRelease(ctx);
+		}
+		CGImageRelease(flipped);
+		CGImageRelease(ident);
+		CGImageRelease(plain);
+		CGDataProviderRelease(dp);
+		CGColorSpaceRelease(rgb2);
+		CGColorSpaceRelease(gray2);
 	}
 
 	printf("CG-IMAGEDERIVE: %s\n", failures == 0 ? "all checks passed" : "FAILURES");

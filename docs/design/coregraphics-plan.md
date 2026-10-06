@@ -1666,3 +1666,34 @@ inside `if (ctx != NULL && ...)`: a guarded section turns a broken setup into SK
 read as passes in every log that counts failures only. What made it legible was the second check beside the
 first — "...and the mask section below RUNS rather than being skipped" — because it fails on the same NULL the
 setup check does. THAT PAIRING IS THE PATTERN TO KEEP: when a section is guarded, assert that it ran.
+
+## 24. The decode array landed (1 row), and the probe caught a real bug: a decoded GRAY tinted the image
+
+**`CGImageGetDecode` SHIPS AND THE ARRAY IS APPLIED, WHICH IS THE ONLY WAY STORING IT IS HONEST.** The refusal
+in `CGImageCreate` and `CGImageMaskCreate` is gone because the behaviour behind it exists: the array is
+validated where N is known, stored, returned by the getter, and applied in BOTH samplers of the drawing path
+before the straight-alpha premultiply — where the caller's samples stop being data and become colour.
+
+**THE CONTRACT CAME FROM APPLE'S DOCUMENTATION, BECAUSE THE 10.6 HEADER SAYS ONLY "Create an image."** The
+clause: `2N` values `{min[1], max[1], ... min[N], max[N]}` where **N is the number of components of the
+IMAGE'S COLOR SPACE** — the same wording and the same N that `CGImageCreateWithMaskingColors` uses — each
+value a VALID IMAGE SAMPLE VALUE (0..255 here), and the mapping LINEAR: `min + (s / 255) * (max - min)`. **THE
+ALPHA COMPONENT IS NOT DECODED** because N counts the color space's components, and there is a divergence
+stated rather than resolved: the modern page's parenthetical "(including the alpha component)" contradicts its
+own worked example (six entries for RGB), and the specification clause wins here.
+
+**THE INVARIANT THAT PINS THE UNITS IS THE IDENTITY DECODE.** `{0, 255}` in sample units maps every sample to
+itself, so a draw with it must be indistinguishable from a draw with no array at all — which is checked by
+comparing the two canvases. Read in 0..1 units instead, 255 would be nonsensical and the two draws would
+differ. The inverting array `{255, 0}` is the second check, and its readout is `flipped=ff,ff,00,ff` on the run
+that FAILED — red inverted, green and blue not.
+
+**AND THAT READOUT IS THE BUG THE PROBE CAUGHT, WHICH NO SIZE OR POINTER CHECK COULD HAVE.** A one-component
+space has ONE decoded number and it must become ALL THREE CHANNELS: a gray chart reads one byte three times, so
+writing the result back to red alone TINTS the image. The fix is in both samplers and says so.
+
+**TWO PROBES HAD CLAIMS THIS CHANGE FALSIFIED, AND BOTH WERE UPDATED RATHER THAN SILENCED:** `coregraphics_image`
+asserted that a decode array is REFUSED (the behaviour changed on purpose), and this unit's own predecessor
+asserted the same for a mask. A probe's assertion about the tree is a claim the tree may contradict — the same
+trap as a stale `excluded` array — and the honest repair is to assert the NEW behaviour, not to delete the
+check.

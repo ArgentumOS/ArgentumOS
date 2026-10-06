@@ -41,6 +41,11 @@ struct CGImage {
 	CGImageRef mask;
 	CGFloat *mask_colors;
 	int mask_color_count;
+	/* THE DECODE ARRAY, OWNED, or NULL: 2N sample ranges for the N components of the color space.
+	 * Applied where the image is sampled, which is what makes storing it honest rather than a
+	 * declaration — `CGImageGetDecode` hands back what the sampler actually uses. */
+	CGFloat *decode;
+	int decode_count;
 };
 
 int cg_image_is_drawable(CGImageRef image)
@@ -51,6 +56,11 @@ int cg_image_is_drawable(CGImageRef image)
 /* WHAT A PICTURE MAY BE PAINTED THROUGH, for the drawing path. The mask is the image's own reference and the
  * path must not release it; the masking colours are the image's array and the count says how many components
  * they describe — zero meaning "this picture has neither". */
+const CGFloat *CGImageGetDecode(CGImageRef image)
+{
+	return image == NULL ? NULL : image->decode;
+}
+
 CGImageRef cg_image_mask(CGImageRef image)
 {
 	return image == NULL ? NULL : image->mask;
@@ -147,13 +157,9 @@ CGImageRef CGImageCreate(size_t width, size_t height, size_t bitsPerComponent, s
 	size_t needed;
 	size_t row;
 
-	/* `decode` MAPS INPUT RANGES ONTO OUTPUT ONES, and doing nothing with it would draw an image
-	 * nobody asked for. Refused rather than ignored, like the colour-space constructors' ranges. */
-	if (decode != NULL) {
-		fprintf(stderr, "CG-REFUSE: CGImageCreate does not implement the decode array yet, and "
-				"ignoring it would draw an image the caller did not ask for\n");
-		return NULL;
-	}
+	/* `decode` IS STORED AND APPLIED — see CGImageGetDecode — so it is neither refused nor ignored.
+	 * ITS VALUES ARE CHECKED WHERE N IS KNOWN, further down, because the length of the array follows
+	 * from the color space and this function has not read the space yet. */
 	if (width == 0 || height == 0 || provider == NULL) {
 		fprintf(stderr, "CG-REFUSE: CGImageCreate needs a size and a data provider\n");
 		return NULL;
@@ -224,6 +230,35 @@ CGImageRef CGImageCreate(size_t width, size_t height, size_t bitsPerComponent, s
 	image->bitmap_info = bitmapInfo;
 	image->should_interpolate = shouldInterpolate;
 	image->intent = intent;
+	/* THE DECODE ARRAY, VALIDATED NOW THAT THE SPACE IS KNOWN: 2N values for its N components, each a
+	 * valid sample value for an 8-bit image. A caller whose array holds something else wrote something
+	 * this door cannot express, so it is refused rather than clamped — the same rule the color space
+	 * constructors and CGImageCreateWithMaskingColors apply to their ranges. */
+	if (decode != NULL) {
+		int ncomp = image->space == NULL ? 1 : CGColorSpaceGetNumberOfComponents(image->space);
+		int i;
+
+		if (ncomp < 1 || ncomp > 3) {
+			fprintf(stderr, "CG-REFUSE: CGImageCreate decodes gray and RGB images\n");
+			CGImageRelease(image);
+			return NULL;
+		}
+		for (i = 0; i < ncomp * 2; i++) {
+			if (!(decode[i] >= 0.0 && decode[i] <= 255.0)) {
+				fprintf(stderr, "CG-REFUSE: CGImageCreate needs decode values in 0..255 for "
+						"this 8-bit image, and value %d is %g\n", i, (double)decode[i]);
+				CGImageRelease(image);
+				return NULL;
+			}
+		}
+		image->decode = malloc(sizeof(CGFloat) * (size_t)ncomp * 2u);
+		if (image->decode == NULL) {
+			CGImageRelease(image);
+			return NULL;
+		}
+		memcpy(image->decode, decode, sizeof(CGFloat) * (size_t)ncomp * 2u);
+		image->decode_count = ncomp;
+	}
 	image->drawable = 1;
 	(void)row;
 	return image;
@@ -250,6 +285,7 @@ void CGImageRelease(CGImageRef image)
 	CGColorSpaceRelease(image->space);
 	CGImageRelease(image->mask);
 	free(image->mask_colors);
+	free(image->decode);
 	free(image);
 }
 
@@ -338,6 +374,14 @@ static CGImageRef fn_copy_structure(CGImageRef image)
 	 * are a SECOND array, because the copy and the original are both going to free what they hold and
 	 * one buffer cannot belong to two images. */
 	CGImageRetain(copy->mask);
+	if (copy->decode != NULL && copy->decode_count > 0) {
+		copy->decode = malloc(sizeof(CGFloat) * (size_t)copy->decode_count * 2u);
+		if (copy->decode == NULL) {
+			CGImageRelease(copy);
+			return NULL;
+		}
+		memcpy(copy->decode, image->decode, sizeof(CGFloat) * (size_t)copy->decode_count * 2u);
+	}
 	if (copy->mask_colors != NULL && copy->mask_color_count > 0) {
 		copy->mask_colors = malloc(sizeof(CGFloat) * (size_t)copy->mask_color_count * 2u);
 		if (copy->mask_colors == NULL) {
@@ -356,9 +400,12 @@ CGImageRef CGImageMaskCreate(size_t width, size_t height, size_t bitsPerComponen
 {
 	CGImageRef image;
 
-	if (decode != NULL) {
-		fprintf(stderr, "CG-REFUSE: CGImageMaskCreate does not implement the decode array yet, and "
-				"ignoring it would mask with something the caller did not describe\n");
+	/* A MASK HAS ONE COMPONENT — ITSELF — SO ITS DECODE ARRAY IS ONE PAIR, and it is applied to the mask's
+	 * samples before the inversion: decode the sample, then treat it as an inverse alpha. */
+	if (decode != NULL
+	    && !(decode[0] >= 0.0 && decode[0] <= 255.0 && decode[1] >= 0.0 && decode[1] <= 255.0)) {
+		fprintf(stderr, "CG-REFUSE: CGImageMaskCreate needs decode values in 0..255 for this "
+				"8-bit mask\n");
 		return NULL;
 	}
 	if (width == 0 || height == 0 || provider == NULL) {
@@ -396,6 +443,16 @@ CGImageRef CGImageMaskCreate(size_t width, size_t height, size_t bitsPerComponen
 	image->bitmap_info = (uint32_t)kCGImageAlphaOnly;
 	image->should_interpolate = shouldInterpolate;
 	image->intent = kCGRenderingIntentDefault;
+	if (decode != NULL) {
+		image->decode = malloc(sizeof(CGFloat) * 2u);
+		if (image->decode == NULL) {
+			CGImageRelease(image);
+			return NULL;
+		}
+		image->decode[0] = decode[0];
+		image->decode[1] = decode[1];
+		image->decode_count = 1;
+	}
 	image->is_mask = 1;
 	/* NOT DRAWABLE, AND THAT IS THE MASK'S WHOLE NATURE: it is for clipping with or for masking another
 	 * image. `cg_image_is_drawable` is the one place that decides, so every drawing door agrees. */

@@ -2452,7 +2452,7 @@ void CGContextSetPatternPhase(CGContextRef c, CGSize phase)
  * never says the two are the same size: a mask is stretched over the rectangle the picture is drawn into.
  * Outside 0..1 there is no mask to apply, and NO EFFECT is the honest answer rather than a refuse — the
  * picture's own bounds already ended the loop for those pixels. */
-static double cg_image_mask_coverage(CGImageRef mask, double u, double v)
+static double cg_image_mask_coverage(CGImageRef mask, const CGFloat *decode, double u, double v)
 {
 	const unsigned char *m;
 	size_t size = 0;
@@ -2481,7 +2481,29 @@ static double cg_image_mask_coverage(CGImageRef mask, double u, double v)
 		return 1.0;
 	}
 	s = (double)m[(size_t)sy * row + (size_t)sx];
+	/* THE MASK'S OWN DECODE ARRAY RUNS BEFORE THE MASK RULE, because it remaps the SAMPLE and the rule
+	 * then says what that sample means. A mask has one component, so its array is one pair. */
+	if (decode != NULL) {
+		s = decode[0] + (s / 255.0) * (decode[1] - decode[0]);
+	}
 	return CGImageIsMask(mask) ? (1.0 - s / 255.0) : (s / 255.0);
+}
+
+/* THE DECODE ARRAY, APPLIED TO ONE PIXEL'S COLOR COMPONENTS. `comp` is in the COLOR SPACE's order (red,
+ * green, blue) and the array holds 2N sample ranges for its N components, so the pair for component i is
+ * elements 2i and 2i+1 — THE SAME SHAPE AND THE SAME ORDER as the masking colors above. A sample is remapped
+ * LINEARLY: `min + (sample / 255) * (max - min)`, in place, and the ALPHA COMPONENT IS UNTOUCHED because N
+ * counts the color space's components and a color space has no alpha. */
+static void cg_image_apply_decode(const CGFloat *decode, int n, double comp[3])
+{
+	int i;
+
+	for (i = 0; i < n; i++) {
+		if (decode[2 * i] == 0.0 && decode[2 * i + 1] == 255.0) {
+			continue;	/* the identity: leave the sample exactly as it was read */
+		}
+		comp[i] = decode[2 * i] + (comp[i] / 255.0) * (decode[2 * i + 1] - decode[2 * i]);
+	}
 }
 
 /* IS THIS PIXEL MASKED OUT BY MASKING COLORS? Apple's rule: a sample whose components ALL fall inside their
@@ -2548,6 +2570,9 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 	CGImageRef mask_image;
 	const CGFloat *mask_colors;
 	int mask_count = 0;
+	const CGFloat *decode;
+	int decode_count = 0;
+	const CGFloat *mask_decode;
 
 	if (c == NULL || image == NULL || c->data == NULL) {
 		return;
@@ -2572,6 +2597,12 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 	 * CGImageCreateWithMask refuses a picture that is already masked. */
 	mask_image = cg_image_mask(image);
 	mask_colors = cg_image_masking_colors(image, &mask_count);
+	/* THE DECODE ARRAY IS READ ONCE TOO, for the picture and for its mask: both are applied per pixel
+	 * and neither is looked up again inside the loop. */
+	decode = CGImageGetDecode(image);
+	decode_count = decode != NULL
+		       ? CGColorSpaceGetNumberOfComponents(CGImageGetColorSpace(image)) : 0;
+	mask_decode = mask_image != NULL ? CGImageGetDecode(mask_image) : NULL;
 	if (c->state.blend != kCGBlendModeNormal) {
 		fprintf(stderr, "CG-REFUSE: CGContextDrawImage composites source-over and does not "
 				"apply a blend mode yet\n");
@@ -2689,6 +2720,20 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 					       + c01[k] * (1.0 - tx) * ty
 					       + c11[k] * tx * ty;
 				}
+				/* THE SAME DECODE, OVER THIS PATH'S OWN VARIABLES: `mix` is in 0..1 and the array is in
+				 * sample units, so it converts in and back out — and the ORDER is the sampler's (blue,
+				 * green, red, alpha) while the array is the color space's (red, green, blue). */
+				if (decode_count > 0) {
+					double comp[3];
+
+					comp[0] = mix[2] * 255.0;
+					comp[1] = mix[1] * 255.0;
+					comp[2] = mix[0] * 255.0;
+					cg_image_apply_decode(decode, decode_count, comp);
+					mix[2] = comp[0] / 255.0;
+					mix[1] = (decode_count > 1 ? comp[1] : comp[0]) / 255.0;
+					mix[0] = (decode_count > 1 ? comp[2] : comp[0]) / 255.0;
+				}
 				d = c->data + (size_t)y * (size_t)c->stride + (size_t)x * 4u;
 				sa = mix[3] * alpha;
 				/* THIS BLIT COMPOSITES BY HAND RATHER THAN THROUGH pixman, so it has to consult the
@@ -2711,7 +2756,7 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 					}
 				}
 				if (mask_image != NULL) {
-					sa = sa * cg_image_mask_coverage(mask_image, u, v);
+					sa = sa * cg_image_mask_coverage(mask_image, mask_decode, u, v);
 				}
 				d[0] = (unsigned char)(mix[0] * 255.0 * sa + (double)d[0] * (1.0 - sa));
 				d[1] = (unsigned char)(mix[1] * 255.0 * sa + (double)d[1] * (1.0 - sa));
@@ -2741,6 +2786,23 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 			sg = (double)s[channels[1]];
 			sr = (double)s[channels[2]];
 			sv = channels[3] < 0 ? 255.0 : (double)s[channels[3]];
+			/* THE DECODE ARRAY RUNS HERE: before the premultiply below, because the array remaps THE
+			 * CALLER'S SAMPLES and the premultiply is the first thing that treats them as colours. */
+			if (decode_count > 0) {
+				double comp[3];
+
+				comp[0] = sr;
+				comp[1] = sg;
+				comp[2] = sb;
+				cg_image_apply_decode(decode, decode_count, comp);
+				/* A ONE-COMPONENT SPACE HAS ONE NUMBER, AND IT BECOMES ALL THREE CHANNELS. A gray chart
+				 * reads one byte three times, so a decoded gray must be written three times too —
+				 * writing back only red would TINT the image, which is exactly what the probe caught:
+				 * blue and green stayed at the raw sample. */
+				sr = comp[0];
+				sg = decode_count > 1 ? comp[1] : comp[0];
+				sb = decode_count > 1 ? comp[2] : comp[0];
+			}
 			if (straight && channels[3] >= 0) {
 				sb = sb * sv / 255.0;
 				sg = sg * sv / 255.0;
@@ -2764,7 +2826,7 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 				}
 			}
 			if (mask_image != NULL) {
-				sa = sa * cg_image_mask_coverage(mask_image, u, v);
+				sa = sa * cg_image_mask_coverage(mask_image, mask_decode, u, v);
 			}
 			d[0] = (unsigned char)(sb * sa + (double)d[0] * (1.0 - sa));
 			d[1] = (unsigned char)(sg * sa + (double)d[1] * (1.0 - sa));

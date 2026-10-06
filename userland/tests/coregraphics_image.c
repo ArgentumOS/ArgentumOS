@@ -158,10 +158,19 @@ int main(void)
 	      CGImageCreate(4, 4, 8, 32, 16, CGColorSpaceCreateDeviceCMYK(),
 			    kCGImageAlphaNone | kCGBitmapByteOrder32Big, provider, NULL, false,
 			    kCGRenderingIntentDefault) == NULL);
-	check("...and a DECODE array, rather than ignoring it",
-	      CGImageCreate(4, 4, 8, 32, 16, CGColorSpaceCreateDeviceRGB(),
-			    kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little, provider, decode,
-			    false, kCGRenderingIntentDefault) == NULL);
+		/* THE REFUSAL THAT STOOD HERE IS GONE BY DESIGN, and this check changed with it: a decode array is
+	 * now STORED AND APPLIED, so what has to hold is that the image is made and the array comes back. */
+	{
+		const CGFloat six[6] = { 0, 255, 0, 255, 0, 255 };	/* RGB: one pair per component */
+		CGImageRef decoded = CGImageCreate(4, 4, 8, 32, 16, CGColorSpaceCreateDeviceRGB(),
+						   kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little,
+						   provider, six, false, kCGRenderingIntentDefault);
+
+		check("...and a DECODE array is STORED and returned, rather than ignored",
+		      decoded != NULL && CGImageGetDecode(decoded) != NULL
+		      && CGImageGetDecode(decoded)[0] == six[0]);
+		CGImageRelease(decoded);
+	}
 	check("...and a NULL provider", CGImageCreate(4, 4, 8, 32, 16, CGColorSpaceCreateDeviceRGB(),
 						      kCGImageAlphaPremultipliedFirst |
 						      kCGBitmapByteOrder32Little, NULL, NULL, false,
