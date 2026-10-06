@@ -253,6 +253,7 @@ int main(void)
 		      [NSString stringWithFormat:@"handle=%d first=%lu rest=%lu of %lu",
 			(int)(handle != nil), (unsigned long)[first length], (unsigned long)[rest length],
 			(unsigned long)[content length]]);
+	covers("NSFileHandle", "readDataToEndOfFileAndReturnError:");
 	}
 
 	{
@@ -273,6 +274,7 @@ int main(void)
 		check("file-handle-seeks",
 		      handle != nil && size == 10 && where == 10,
 		      [NSString stringWithFormat:@"size=%llu offset=%llu", size, where]);
+	covers("NSFileHandle", "fileHandleForUpdatingAtPath:");
 
 		/* WRITE, SEEK BACK, READ: the change has to be visible to a READ, not merely to the size. */
 		[handle seekToOffset:2 error:&error];
@@ -378,6 +380,7 @@ int main(void)
 		check("file-handle-owns-what-it-opened", openedClosed,
 		      [NSString stringWithFormat:@"descriptor %d was still open after the handle went away",
 			openedFd]);
+	covers("NSFileHandle", "initWithFileDescriptor:");
 		check("file-handle-adopts-what-it-did-not", adoptedSurvived,
 		      [NSString stringWithFormat:@"descriptor %d was closed by a handle that did not own it",
 			adoptedFd]);
@@ -458,6 +461,9 @@ int main(void)
 				(unsigned long)[legacyChunk length], (unsigned long)[legacyRest length],
 				whereAfterSeek, (unsigned long)[available length], endOffset,
 				(unsigned long)[atEnd length]]);
+	covers("NSFileHandle", "readDataOfLength:");
+	covers("NSFileHandle", "readDataToEndOfFile");
+	covers("NSFileHandle", "seekToFileOffset:");
 	}
 
 	{
@@ -493,6 +499,7 @@ int main(void)
 			[[NSString alloc] initWithData:afterWrite encoding:NSUTF8StringEncoding],
 			[[NSString alloc] initWithData:afterTruncate encoding:NSUTF8StringEncoding],
 			whereAfterTruncate, afterClose]);
+	covers("NSFileHandle", "truncateFileAtOffset:");
 	covers("NSData", "initWithData:");
 	}
 
@@ -576,6 +583,7 @@ int main(void)
 		      [NSString stringWithFormat:@"notifications=%lu bytes=%lu",
 			(unsigned long)[observer countOf:NSFileHandleReadToEndOfFileCompletionNotification],
 			(unsigned long)[seen length]]);
+	covers("NSFileHandle", "writeData:");
 		[[NSNotificationCenter defaultCenter] removeObserver:observer];
 	}
 
@@ -630,6 +638,8 @@ int main(void)
 		}
 		check("background-read-on-closed-handle-raises", raised,
 		      @"a background operation on a closed handle was accepted instead of raising");
+	covers("NSFileHandle", "closeAndReturnError:");
+	covers("NSFileHandle", "fileHandleForReadingAtPath:");
 	}
 
 	{

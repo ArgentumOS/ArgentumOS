@@ -2349,6 +2349,7 @@ NULL
 		      [copied isEqualToSet:bag] && [[NSSet alloc] initWithObjects:nil] != nil &&
 		      [[[NSSet alloc] initWithObjects:nil] count] == 0,
 		      "the variadic initializer dedups, and copyItems: decides identity both ways");
+	covers("NSSet", "initWithSet:");
 	}
 
 	{
@@ -2420,6 +2421,7 @@ NULL
 		      [described rangeOfString:@"beta"].location != NSNotFound &&
 		      [described rangeOfString:@"    alpha"].location != NSNotFound,
 		      "the collected sets, the stop, and the array family's multi-line locale shape");
+	covers("NSSet", "objectsPassingTest:");
 	}
 
 	{

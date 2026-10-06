@@ -215,6 +215,7 @@ int main(void)
 		      [[back objectAtIndex:4] isEqual:[NSNull null]] &&
 		      [[[back objectAtIndex:7] objectForKey:@"big"] longLongValue] == 9000000000LL,
 		      @"strings, ints, doubles, booleans, NSNull and a dictionary all come back");
+	covers("NSKeyedUnarchiver", "unarchiveObjectWithData:");
 		check("identity-survives-the-round-trip",
 		      [back objectAtIndex:5] == [back objectAtIndex:6] &&
 		      [[[back objectAtIndex:5] objectAtIndex:0] isEqualToString:@"inner"],
@@ -739,6 +740,7 @@ int main(void)
 			raise != nil ? raise : @"none", plain == nil,
 			plainError != nil ? [plainError localizedDescription] : @"none", refused == nil,
 			refusedError != nil ? [refusedError localizedDescription] : @"none"]);
+	covers("NSKeyedUnarchiver", "classForClassName:");
 	}
 
 

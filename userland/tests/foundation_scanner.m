@@ -32,8 +32,11 @@
 
 static int okc, failc;
 
+static int lastcheck;
+
 static void check(const char *name, int ok, const char *detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf(PREFIX " %s ok\n", name);
@@ -42,6 +45,15 @@ static void check(const char *name, int ok, const char *detail)
 		printf(PREFIX " %s FAIL %s\n", name, detail ? detail : "");
 	}
 }
+
+/* covers("NSScanner", "scanInt:") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 /* A FRESH SCANNER ON A C STRING, which is what most of these checks want. */
 static NSScanner *fn_scanner(const char *text)
@@ -87,6 +99,7 @@ int main(void)
 		      [[NSString stringWithFormat:@"string=%@ location=%lu caseSensitive=%d atEnd=%d emptyAtEnd=%d",
 			[made string], (unsigned long)[made scanLocation], (int)[made caseSensitive],
 			(int)[made isAtEnd], (int)[empty isAtEnd]] UTF8String]);
+	covers("NSScanner", "scannerWithString:");
 	}
 	{
 		NSScanner *scanner = fn_scanner("  42 and more");
@@ -109,6 +122,7 @@ int main(void)
 		      !ok && [scanner scanLocation] == 0 && value == -1,
 		      [[NSString stringWithFormat:@"ok=%d location=%lu value=%d",
 			(int)ok, (unsigned long)[scanner scanLocation], value] UTF8String]);
+	covers("NSScanner", "scanInt:");
 	}
 	{
 		NSScanner *scanner = fn_scanner("one two");
@@ -291,6 +305,7 @@ int main(void)
 		      ok && [scanner scanLocation] == 30 && value != 0,
 		      [[NSString stringWithFormat:@"ok=%d value=%lld location=%lu",
 			(int)ok, value, (unsigned long)[scanner scanLocation]] UTF8String]);
+	covers("NSScanner", "scanLongLong:");
 	}
 	{
 		NSScanner *minus = fn_scanner("-5");
@@ -304,6 +319,7 @@ int main(void)
 		      [plus scanLocation] == 2,
 		      [[NSString stringWithFormat:@"minus=%d plus=%d value=%llu",
 			(int)refused, (int)taken, value] UTF8String]);
+	covers("NSScanner", "scanUnsignedLongLong:");
 	}
 	{
 		NSScanner *scanner = fn_scanner("-12.5e2 tail");
@@ -337,6 +353,7 @@ int main(void)
 		      [prefixOnly scanLocation] == 0,
 		      [[NSString stringWithFormat:@"0xFF=%llu at=%lu FF=%llu prefixOnly=%d",
 			a, (unsigned long)[scanner scanLocation], b, (int)third] UTF8String]);
+	covers("NSScanner", "scanHexLongLong:");
 	}
 	{
 		NSScanner *scanner = fn_scanner("0x1.8p1 tail");
@@ -351,6 +368,7 @@ int main(void)
 		      [bare scanLocation] == 0,
 		      [[NSString stringWithFormat:@"0x1.8p1=%g at=%lu 1.8p1=%d",
 			value, (unsigned long)[scanner scanLocation], (int)unprefixed] UTF8String]);
+	covers("NSScanner", "scanHexDouble:");
 	}
 	{
 		NSScanner *scanner = fn_scanner("12.75 tail");
@@ -398,6 +416,7 @@ int main(void)
 		      [[NSString stringWithFormat:@"whole=%@ expected=%@ fraction=%@",
 			NSDecimalString(&big, nil), expectedWhole,
 			NSDecimalString(&fraction, nil)] UTF8String]);
+	covers("NSScanner", "scanDecimal:");
 	}
 	{
 		/* THE LOCALE, CHECKED AGAINST THE CLASS THAT ALREADY READS ICU FOR IT. The scanner must use the SAME
@@ -460,6 +479,8 @@ int main(void)
 	/* ---- THE OBJECT PROTOCOL, AND THE NULL RESULT --------------------------------------------------- */
 	{
 		NSScanner *scanner = fn_scanner("one two three");
+	covers("NSScanner", "scanDouble:");
+	covers("NSScanner", "localizedScannerWithString:");
 		NSScanner *copy = [scanner copy];
 
 		[scanner scanUpToString:@" " intoString:NULL];

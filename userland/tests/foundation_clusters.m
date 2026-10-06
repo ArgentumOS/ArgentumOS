@@ -990,6 +990,9 @@ int main(void)
 		      [[[oneSet mutableCopy] class] isSubclassOfClass:[NSMutableSet class]] &&
 		      [[oneSet mutableCopy] isEqualToSet:[NSSet setWithObject:@"one"]],
 		      "-copy answers the receiver (immutable) and -mutableCopy a MUTABLE concrete class");
+	covers("NSSet", "intersectsSet:");
+	covers("NSSet", "isEqualToSet:");
+	covers("NSSet", "isSubsetOfSet:");
 	}
 	{
 		/* THE PRIMITIVES ARE THE CONTRACT (§C.3 item 5): a class over the three primitives alone must be
@@ -1006,6 +1009,7 @@ int main(void)
 		      [handmadeSet member:@"p"] != nil && [handmadeSet containsObject:@"q"] &&
 		      [handmadeSet anyObject] != nil,
 		      "allObjects, count, member:, containsObject: and anyObject must be over the primitives");
+	covers("NSSet", "setWithObject:");
 		check("nsset-primitives-drive-equality-subset-and-intersection",
 		      [handmadeSet isEqualToSet:expectedSet] && [expectedSet isEqualToSet:handmadeSet] &&
 		      [handmadeSet isSubsetOfSet:expectedSet] && [handmadeSet intersectsSet:expectedSet],

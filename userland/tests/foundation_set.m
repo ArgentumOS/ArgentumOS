@@ -32,8 +32,11 @@
 static int okc, failc;
 
 /* The detail is NULLABLE: every answer under test comes back through a nullable door. */
+static int lastcheck;
+
 static void check(const char *name, int ok, NSString * _Nullable detail)
 {
+	lastcheck = ok;	/* read by covers() */
 	if (ok) {
 		okc++;
 		printf("FOUNDATION-SET %s ok\n", name);
@@ -43,6 +46,15 @@ static void check(const char *name, int ok, NSString * _Nullable detail)
 		       detail != nil ? [detail UTF8String] : "");
 	}
 }
+
+/* covers("NSScanner", "scanInt:") - the behavioural claim, piggybacked on the check above it. */
+static void covers_(const char *cls, const char *sel)
+{
+	if (lastcheck) {
+		printf("COVERS %s %s\n", cls, sel);
+	}
+}
+#define covers(cls, sel) covers_(cls, sel)
 
 int main(void)
 {
@@ -63,6 +75,7 @@ int main(void)
 			(int)((id)one != (id)two), (int)[one isEqualToString:two],
 			(unsigned long)(built != nil ? [built count] : 0),
 			(unsigned long)(fromArray != nil ? [fromArray count] : 0)]);
+	covers("NSSet", "setWithObjects:");
 	}
 
 	{
@@ -136,6 +149,9 @@ int main(void)
 		      [NSString stringWithFormat:@"base=%lu object=%lu set=%lu array=%lu",
 			(unsigned long)[base count], (unsigned long)[addedObject count],
 			(unsigned long)[addedSet count], (unsigned long)[addedArray count]]);
+	covers("NSSet", "setByAddingObject:");
+	covers("NSSet", "setByAddingObjectsFromArray:");
+	covers("NSSet", "setByAddingObjectsFromSet:");
 	}
 
 	{

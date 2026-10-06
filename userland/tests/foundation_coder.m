@@ -905,6 +905,7 @@ int main(void)
 		      [NSString stringWithFormat:@"again=%@ unseenIsNil=%d",
 		       [again isKindOfClass:[CoderNode class]] ? [again name] : @"(nil)",
 		       (int)([reader decodeObjectForKey:@"unseen"] == nil)]);
+	covers("NSKeyedUnarchiver", "decodeObjectForKey:");
 	covers("NSCoder", "encodeConditionalObject:");
 	covers("NSCoder", "decodeObjectForKey:");
 	covers("NSCoder", "encodeConditionalObject:forKey:");
@@ -1081,6 +1082,11 @@ int main(void)
 			(int)[scalarReader containsValueForKey:@"yes"],
 			(int)[scalarReader containsValueForKey:@"double"],
 			(int)[scalarReader containsValueForKey:@"never-written"]]);
+	covers("NSKeyedUnarchiver", "containsValueForKey:");
+	covers("NSKeyedUnarchiver", "decodeBoolForKey:");
+	covers("NSKeyedUnarchiver", "decodeIntForKey:");
+	covers("NSKeyedUnarchiver", "decodeDoubleForKey:");
+	covers("NSKeyedUnarchiver", "decodeFloatForKey:");
 		covers("NSCoder", "encodeBool:forKey:");
 		covers("NSCoder", "decodeBoolForKey:");
 		covers("NSCoder", "encodeInt:forKey:");
@@ -1223,6 +1229,7 @@ int main(void)
 			      memcmp(bytesBack, payload, sizeof(payload)) == 0,
 			      [NSString stringWithFormat:@"bytes=%p count=%lu (wanted %lu)",
 				bytesBack, (unsigned long)byteCount, (unsigned long)sizeof(payload)]);
+	covers("NSKeyedUnarchiver", "decodeBytesForKey:returnedLength:");
 			covers("NSCoder", "encodeBytes:length:forKey:");
 			covers("NSCoder", "decodeBytesForKey:returnedLength:");
 		}
