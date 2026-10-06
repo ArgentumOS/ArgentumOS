@@ -886,6 +886,13 @@ NULL
 		      [walked intersectsIndexesInRange:NSMakeRange(13, 100)] &&
 		      ![walked intersectsIndexesInRange:NSMakeRange(4, 6)],
 		      "the ascending/descending scans, the range clip, the predicate's stop, and the frozen collection");
+	covers("NSIndexSet", "containsIndex:");
+	covers("NSIndexSet", "containsIndexes:");
+	covers("NSIndexSet", "containsIndexesInRange:");
+	covers("NSIndexSet", "intersectsIndexesInRange:");
+	covers("NSIndexSet", "count");
+	covers("NSIndexSet", "indexInRange:options:passingTest:");
+	covers("NSIndexSet", "indexesInRange:options:passingTest:");
 	}
 
 	{
@@ -939,6 +946,9 @@ NULL
 		      [[NSString stringWithFormat:@"-addIndexes:/-removeIndexes:, the shift's split-and-merge, "
 						 "and the one ranged error case (count=%lu, raised=%d, empty=%d)",
 						 (unsigned long)[m count], raised, emptyIsFine] UTF8String]);
+	covers("NSIndexSet", "containsIndex:");
+	covers("NSIndexSet", "containsIndexesInRange:");
+	covers("NSIndexSet", "count");
 	}
 
 	{
