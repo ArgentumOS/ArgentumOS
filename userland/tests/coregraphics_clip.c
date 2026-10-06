@@ -102,6 +102,153 @@ int main(void)
 	}
 	check("a NULL context is a no-op rather than a crash", (CGContextClipToRects(NULL, two, 2), 1));
 
+	/* --- CLIP TO A MASK: THE TWO RULES, ON ONE BYTE PATTERN ------------------------------------- */
+	{
+		/* A GRAY IMAGE AND AN IMAGE MASK OVER THE SAME BYTES, FULL HEIGHT SO THE QUESTION IS IN X
+		 * ALONE. The image keeps what is WHITE (the alpha itself), the mask keeps what is BLACK (the
+		 * inverse alpha) — so the two halves of the canvas must be painted by the two doors. */
+		static const unsigned char half_and_half[W * H];
+		unsigned char dark[W * H];
+		CGDataProviderRef dp;
+		CGImageRef gray_mask;
+		CGImageRef image_mask;
+		CGColorSpaceRef gray = CGColorSpaceCreateDeviceGray();
+		size_t i;
+
+		for (i = 0; i < sizeof dark; i++) {
+			dark[i] = 0;	/* replaced below: left half dark, right half light */
+		}
+		for (i = 0; i < sizeof dark; i++) {
+			dark[i] = ((i % W) < W / 2) ? 0 : 0xFF;
+		}
+		(void)half_and_half;
+		dp = CGDataProviderCreateWithData(NULL, dark, sizeof dark, NULL);
+		gray_mask = CGImageCreate(W, H, 8, 8, W, gray, kCGImageAlphaNone, dp, NULL, false,
+					  kCGRenderingIntentDefault);
+		image_mask = CGImageMaskCreate(W, H, 8, 8, W, dp, NULL, false);
+
+		{
+			unsigned char fresh[STRIDE * H];
+			CGContextRef c3 = CGBitmapContextCreate(fresh, W, H, 8, STRIDE, rgb,
+								kCGImageAlphaPremultipliedFirst
+								| kCGBitmapByteOrder32Little);
+
+			CGContextClipToMask(c3, CGRectMake(0, 0, W, H), gray_mask);
+			CGContextSetRGBFillColor(c3, 1, 0, 0, 1);
+			CGContextFillRect(c3, CGRectMake(0, 0, W, H));
+			printf("CG-CLIP %-66s gray mask x=1,10 = %u,%u\n", "...readout", alpha_at(fresh, 1),
+			       alpha_at(fresh, 10));
+			check("a GRAY IMAGE as a mask keeps what is WHITE: the right half paints",
+			      alpha_at(fresh, 10) == 0xFF && alpha_at(fresh, 1) == 0x00);
+
+			memset(fresh, 0, sizeof fresh);
+			c3 = CGBitmapContextCreate(fresh, W, H, 8, STRIDE, rgb,
+						   kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
+			CGContextClipToMask(c3, CGRectMake(0, 0, W, H), image_mask);
+			CGContextSetRGBFillColor(c3, 1, 0, 0, 1);
+			CGContextFillRect(c3, CGRectMake(0, 0, W, H));
+			check("...and an IMAGE MASK over the SAME BYTES keeps what is BLACK, the inverse alpha",
+			      alpha_at(fresh, 1) == 0xFF && alpha_at(fresh, 10) == 0x00);
+
+			/* AND THE MASK IS MAPPED INTO THE RECTANGLE: the same gray image asked for in the canvas's
+			 * LEFT HALF puts its white half — the second quarter of the canvas — where it belongs. */
+			memset(fresh, 0, sizeof fresh);
+			c3 = CGBitmapContextCreate(fresh, W, H, 8, STRIDE, rgb,
+						   kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
+			CGContextClipToMask(c3, CGRectMake(0, 0, W / 2, H), gray_mask);
+			CGContextSetRGBFillColor(c3, 1, 0, 0, 1);
+			CGContextFillRect(c3, CGRectMake(0, 0, W, H));
+			/* THREE REGIONS, AND THE THIRD IS THE ONE THAT SAYS WHAT "ADDED" MEANS: the mask is
+			 * INTERSECTED with the clipping area, so outside the rectangle the area is UNCHANGED —
+			 * still fully inside — and a check that expected the right of the rectangle to be empty
+			 * was reading the door as REPLACING the clip. The first version of this check failed for
+			 * exactly that reason. */
+			printf("CG-CLIP %-66s mapped x=1,4,8 = %u,%u,%u\n", "...readout", alpha_at(fresh, 1),
+			       alpha_at(fresh, W / 4 + 1), alpha_at(fresh, 8));
+			check("...and into the RECTANGLE it was given: the rect's dark half is out, its white half in",
+			      alpha_at(fresh, 1) == 0x00 && alpha_at(fresh, W / 4 + 1) == 0xFF);
+			check("...while OUTSIDE the rectangle the clipping area is unchanged, which is what "
+			      "\"added to the clip\" means", alpha_at(fresh, 8) == 0xFF);
+
+			/* THE INTERSECTION WITH WHAT IS ALREADY CLIPPED — asked of a fresh context, because a clip
+			 * is cumulative and a check that reuses one is a check on everything before it. */
+			memset(fresh, 0, sizeof fresh);
+			c3 = CGBitmapContextCreate(fresh, W, H, 8, STRIDE, rgb,
+						   kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
+			{
+				CGRect right = CGRectMake(W / 2, 0, W / 2, H);
+
+				CGContextClipToRect(c3, right);
+				CGContextClipToMask(c3, CGRectMake(0, 0, W, H), gray_mask);
+				CGContextSetRGBFillColor(c3, 1, 0, 0, 1);
+				CGContextFillRect(c3, CGRectMake(0, 0, W, H));
+				check("a mask intersects what was already clipped: the right half still paints",
+				      alpha_at(fresh, 10) == 0xFF && alpha_at(fresh, 1) == 0x00);
+				/* AND A SECOND MASK THAT KEEPS THE OTHER HALF LEAVES NOTHING */
+				CGContextClipToMask(c3, CGRectMake(0, 0, W, H), image_mask);
+				memset(fresh, 0, sizeof fresh);
+				CGContextFillRect(c3, CGRectMake(0, 0, W, H));
+				check("...and a second mask keeping the OTHER half intersects to nothing",
+				      alpha_at(fresh, 1) == 0x00 && alpha_at(fresh, 10) == 0x00);
+			}
+
+			/* AND THE PATH SURVIVES, WHICH IS WHERE THIS DOOR DIFFERS FROM ClipToRects */
+			{
+				CGMutablePathRef kept = CGPathCreateMutable();
+				CGPathRef copy;
+
+				CGPathAddRect(kept, NULL, CGRectMake(1, 1, 3, 3));
+				CGContextBeginPath(c3);
+				CGContextAddRect(c3, CGRectMake(1, 1, 3, 3));
+				CGContextClipToMask(c3, CGRectMake(0, 0, W, H), gray_mask);
+				copy = CGContextCopyPath(c3);
+				check("the context's path SURVIVES a clip to a mask, unlike a clip to rectangles",
+				      copy != NULL && CGPathEqualToPath(copy, (CGPathRef)kept));
+				CGPathRelease(copy);
+				CGPathRelease((CGPathRef)kept);
+			}
+			CGContextRelease(c3);
+		}
+
+		/* --- and what an image mask may not be -------------------------------------------------- */
+		{
+			unsigned char fresh[STRIDE * H];
+			CGContextRef c4 = CGBitmapContextCreate(fresh, W, H, 8, STRIDE, rgb,
+								kCGImageAlphaPremultipliedFirst
+								| kCGBitmapByteOrder32Little);
+			/* A COLORED IMAGE NEEDS A COLORED IMAGE'S WORTH OF BYTES: the first version of this
+			 * section handed the 8-bit mask's provider to a 32-bit chart, CGImageCreate correctly
+			 * refused it, and the check then passed VACUOUSLY against a NULL mask. A probe that
+			 * cannot tell a refusal from a success is worse than no probe. */
+			static const unsigned char rgb_bytes[W * H * 4];
+			CGDataProviderRef color_dp = CGDataProviderCreateWithData(NULL, rgb_bytes,
+									  sizeof rgb_bytes, NULL);
+			CGImageRef colored = CGImageCreate(W, H, 8, 32, W * 4, rgb,
+							   kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little,
+							   color_dp, NULL, false, kCGRenderingIntentDefault);
+
+			check("...and the colored image the refusal is about really was made", colored != NULL);
+
+			CGContextClipToMask(c4, CGRectMake(0, 0, W, H), colored);
+			memset(fresh, 0, sizeof fresh);
+			CGContextSetRGBFillColor(c4, 1, 0, 0, 1);
+			CGContextFillRect(c4, CGRectMake(0, 0, W, H));
+			check("a COLORED image is refused as a mask, and the clip is left as it was",
+			      alpha_at(fresh, 1) == 0xFF && alpha_at(fresh, 10) == 0xFF);
+			CGContextClipToMask(NULL, CGRectMake(0, 0, 1, 1), gray_mask);
+			CGContextClipToMask(c4, CGRectMake(0, 0, 1, 1), NULL);
+			check("a NULL context or a NULL mask is a no-op rather than a crash", 1);
+			CGImageRelease(colored);
+			CGDataProviderRelease(color_dp);
+			CGContextRelease(c4);
+		}
+
+		CGImageRelease(image_mask);
+		CGImageRelease(gray_mask);
+		CGDataProviderRelease(dp);
+		CGColorSpaceRelease(gray);
+	}
+
 	CGContextRelease(c);
 	CGColorSpaceRelease(rgb);
 	printf("CG-CLIP: %s\n", failures == 0 ? "all checks passed" : "FAILURES");

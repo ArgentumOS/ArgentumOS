@@ -208,6 +208,21 @@ void CGContextClipToRect(CGContextRef context, CGRect rect);
  * THE RESET IS FREE, because the clip already consumes the current path — a clip that left the caller's path
  * standing would be a different operation. */
 void CGContextClipToRects(CGContextRef c, const CGRect *rects, size_t count);
+
+/* APPLE'S OWN WORDS, AND THEY ARE THE SAME TWO RULES `CGImageCreateWithMask` ENFORCES: "Add `mask` transformed
+ * to `rect` to the clipping area of `context`. The mask, which may be either an image mask or an image, is
+ * mapped into the specified rectangle and intersected with the current clipping area." An IMAGE MASK acts as
+ * an "inverse alpha" — the point in the clipping area is "multiplied by an alpha of (1-S)" — while an IMAGE
+ * "serves as alpha mask ... multiplied by an alpha of S", and an image used this way "must be in the DeviceGray
+ * color space, may not have alpha, and may not be masked by an image mask or masking color".
+ *
+ * A ROTATED CTM IS FINE HERE, WHICH IS WHERE THIS DOOR DIFFERS FROM `CGContextClipToRect`: a clip region is a
+ * set of device-space rectangles and cannot hold a rotated shape, while a clip MASK is a bitmap and holds
+ * whatever the mask looks like after the transform. Nothing is refused for the CTM's sake.
+ *
+ * AND THE PATH SURVIVES, which is Apple's silence rather than its sentence: unlike `ClipToRects`, this door is
+ * not said to reset the context's path, so it does not. */
+void CGContextClipToMask(CGContextRef c, CGRect rect, CGImageRef mask);
 /*
  * THE PATH CLIP, WHICH C2 DELIBERATELY LEFT OUT AND THIS CLOSES FOR THE CASE THAT CAN BE EXACT.
  * C2's note says the context's own clip "needs machinery that would otherwise be half-present", and

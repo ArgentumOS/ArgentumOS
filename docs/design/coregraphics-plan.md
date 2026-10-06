@@ -2100,3 +2100,42 @@ clip is cumulative, so "adds no clip" can only be seen where there was none. The
 its own, and a second check asserts the opposite half on the first context (that ITS clip still bounds it), so the
 pair says both things at once. The pattern is worth naming because it keeps recurring: **a check that reuses a
 context is a check on everything the earlier checks did.**
+
+## 36. `CGContextClipToMask` (1 row), and the geometry that stopped being a copy
+
+**THE DOOR SHIPS, AND APPLE'S TWO RULES ARE THE ONES `CGImageCreateWithMask` ALREADY ENFORCES:** an IMAGE MASK is
+an "inverse alpha" — the clipping area is "multiplied by an alpha of (1-S)" — while an IMAGE "serves as alpha
+mask ... multiplied by an alpha of S", and an image used this way "must be in the DeviceGray color space, may not
+have alpha, and may not be masked by an image mask or masking color". The probe asks ONE BYTE PATTERN both ways:
+the same full-height halves as a gray image paint the RIGHT half, as an image mask the LEFT.
+
+**THE UNIT'S REAL WORK WAS FACTORING, NOT ADDING.** `CGContextDrawImage`'s device-bounding-box and
+device-pixel-to-normalized-coordinate steps were inline, with a comment saying the transform was done "by hand,
+because both numbers are wanted rather than a helper's result". THAT WAS TRUE WHILE THERE WAS ONE CALLER. This
+door needs the same two steps, and a second copy of one geometry is how the two come to disagree — so the reason
+for inlining is gone and the reason for a helper has taken its place. They are `cg_device_bounds` and
+`cg_device_to_rect`, the sampler calls them, and **the gate is what verifies the refactor**: the image, PNG and
+JPEG probes pass unchanged.
+
+**A ROTATED CTM IS FINE HERE, WHICH IS WHERE THIS DOOR DIFFERS FROM `CGContextClipToRect`:** a clip REGION is a
+set of device-space rectangles and cannot hold a rotated shape, while a clip MASK is a bitmap and holds whatever
+the mask looks like after the transform. Nothing is refused for the CTM's sake.
+
+**"ADDED TO THE CLIPPING AREA" MEANS INTERSECTED, AND THE PROBE'S FIRST VERSION READ IT AS REPLACED:** the mask
+buffer starts at 255 — keep everything — and only the rectangle's pixels are sampled, so OUTSIDE the rectangle
+the clipping area is unchanged and still paints. The first check expected the area to the right of the rectangle
+to be empty and failed, correctly. A second mask intersects the first with `PIXMAN_OP_IN`, the operator the path
+clip already uses for exactly that, and the path itself SURVIVES (Apple is silent on resetting it here, unlike
+`ClipToRects`).
+
+**AND ONE CHECK PASSED VACUOUSLY, WHICH IS WORSE THAN FAILING.** The refusal section handed the 8-bit mask's
+provider to a 32-bit chart: `CGImageCreate` correctly refused it, the image was NULL, `ClipToMask` was handed
+NULL and did nothing, and the check — "the clip is left as it was" — passed because nothing had happened. IT
+COULD NOT TELL A REFUSAL FROM A SUCCESS. The section now builds a provider with a colored image's worth of bytes
+and asserts the image EXISTS before asking what the door did with it. **A probe that cannot distinguish the
+failure it is testing for from the absence of a test is the most expensive kind of green.**
+
+**TWO MECHANICAL FOLLOW-UPS, BOTH LOUD:** `CGImage_internal.h` stood next to the image code and had to move to
+the top of the file, because a clip door above it now needs it; and the coverage helper needed a forward
+declaration for the fourth time in this thread — the static-order lesson CGLayer, the clip door and now this one
+have each paid for.

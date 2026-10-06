@@ -710,7 +710,7 @@ func	shipped	CGContextBeginTransparencyLayer	-	Opaque Types / Working with Trans
 func	shipped	CGContextBeginTransparencyLayerWithRect	-	Opaque Types / Working with Transparency Layers	shipped with the transparency layers (plan §33)	objc
 func	shipped	CGContextClearRect	-	Opaque Types / Drawing Shapes	-	objc
 func	shipped	CGContextClip	-	Opaque Types / Working with the Current Clipping Path	-	objc
-func	open	CGContextClipToMask	-	Opaque Types / Working with the Current Clipping Path	-	objc
+func	shipped	CGContextClipToMask	-	Opaque Types / Working with the Current Clipping Path	shipped with the mask clip (plan §36)	objc
 func	shipped	CGContextClipToRect	-	Opaque Types / Working with the Current Clipping Path	-	objc
 func	shipped	CGContextClipToRects	-	Opaque Types / Working with the Current Clipping Path	shipped with the clip doors (plan §35)	objc
 func	shipped	CGContextClosePath	-	Opaque Types / Constructing a Current Graphics Path	-	objc

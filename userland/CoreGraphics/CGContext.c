@@ -60,6 +60,8 @@
 #define CGPathCreateCopyByDashingPath cg_path_create_dashed_copy
 
 #include <math.h>
+#include <CoreGraphics/CGImage_internal.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -892,6 +894,94 @@ CGRect CGContextConvertRectToUserSpace(CGContextRef c, CGRect r)
 /* ------------------------------------------------------------------------- */
 
 static void cg_clip_to_path(CGContextRef c, CGPathRef path, int even_odd);
+
+static void cg_device_bounds(CGContextRef c, CGRect rect, int *left, int *top, int *right, int *bottom);
+static double cg_image_mask_coverage(CGImageRef mask, const CGFloat *decode, double u,
+				     double v);
+static int cg_device_to_rect(const CGAffineTransform *inverse, CGRect rect, int x, int y, double *u,
+			     double *v);
+
+void CGContextClipToMask(CGContextRef c, CGRect rect, CGImageRef mask)
+{
+	pixman_image_t *cover;
+	unsigned char *bytes;
+	CGAffineTransform inverse;
+	int left, top, right, bottom;
+	int x, y;
+
+	if (c == NULL || mask == NULL || c->data == NULL) {
+		return;
+	}
+	if (rect.size.width <= 0.0 || rect.size.height <= 0.0) {
+		return;
+	}
+	if (!CGImageIsMask(mask)) {
+		/* THE THREE RULES FOR AN IMAGE, IN APPLE'S WORDS: "it must be in the DeviceGray color space, may
+		 * not have alpha, and may not be masked by an image mask or masking color." A colored mask would
+		 * have to be reduced to one number per pixel and the header does not say how. */
+		int colors = 0;
+
+		if (CGImageGetColorSpace(mask) == NULL
+		    || CGColorSpaceGetModel(CGImageGetColorSpace(mask)) != kCGColorSpaceModelMonochrome) {
+			fprintf(stderr, "CG-REFUSE: CGContextClipToMask takes an image mask or a DeviceGray "
+					"image, and this mask is neither\n");
+			return;
+		}
+		if (CGImageGetAlphaInfo(mask) != kCGImageAlphaNone) {
+			fprintf(stderr, "CG-REFUSE: CGContextClipToMask needs a mask image with no alpha "
+					"channel: the mask's samples ARE the alpha\n");
+			return;
+		}
+		if (cg_image_mask(mask) != NULL || cg_image_masking_colors(mask, &colors) != NULL) {
+			fprintf(stderr, "CG-REFUSE: CGContextClipToMask needs a mask image that is not itself "
+					"masked\n");
+			return;
+		}
+	}
+	if (CGImageGetBitsPerPixel(mask) != 8) {
+		fprintf(stderr, "CG-REFUSE: CGContextClipToMask samples an 8-bit mask; this one has %lu bits "
+				"per pixel\n", (unsigned long)CGImageGetBitsPerPixel(mask));
+		return;
+	}
+	/* THE CLIP MASK COVERS THE WHOLE SURFACE AND STARTS AT "KEEP EVERYTHING": a pixel outside `rect` is not
+	 * in the mask, and multiplying the clipping area by 1 leaves it as it was. ONLY THE RECTANGLE'S OWN
+	 * PIXELS ARE SAMPLED, and it is the RECTANGLE that bounds them rather than the parallelogram — a
+	 * bounding box under a rotation has corners outside the shape, and those must stay at 1. */
+	bytes = calloc(1, (size_t)c->width * (size_t)c->height);
+	if (bytes == NULL) {
+		return;
+	}
+	memset(bytes, 255, (size_t)c->width * (size_t)c->height);
+	cover = pixman_image_create_bits(PIXMAN_a8, c->width, c->height, (uint32_t *)bytes, c->width);
+	if (cover == NULL) {
+		free(bytes);
+		return;
+	}
+	cg_device_bounds(c, rect, &left, &top, &right, &bottom);
+	inverse = CGAffineTransformInvert(c->state.ctm);
+	for (y = top; y < bottom; y++) {
+		for (x = left; x < right; x++) {
+			double u, v;
+
+			if (!cg_device_to_rect(&inverse, rect, x, y, &u, &v)) {
+				continue;
+			}
+			/* THE COVERAGE RULE IS `CGImageCreateWithMask`'S AND THE SAMPLER'S: an image mask is an
+			 * INVERSE alpha and an image is the alpha itself, both of them this one function. */
+			bytes[(size_t)y * (size_t)c->width + (size_t)x] =
+				(unsigned char)(0.5 + 255.0 * cg_image_mask_coverage(mask, CGImageGetDecode(mask),
+										     u, v));
+		}
+	}
+	/* "INTERSECTED WITH THE CURRENT CLIPPING AREA" — and the two masks intersect with `IN`, which is the
+	 * operator the path clip already uses for exactly this. */
+	if (c->state.clip_mask != NULL) {
+		pixman_image_composite32(PIXMAN_OP_IN, c->state.clip_mask, NULL, cover, 0, 0, 0, 0, 0, 0,
+					 c->width, c->height);
+		pixman_image_unref(c->state.clip_mask);
+	}
+	c->state.clip_mask = cover;
+}
 
 void CGContextClipToRects(CGContextRef c, const CGRect *rects, size_t count)
 {
@@ -2940,7 +3030,6 @@ void CGContextSetPatternPhase(CGContextRef c, CGSize phase)
  * ANSWERED (`CGImageCreate` refuses a chart this library cannot draw, so asking it again here would
  * be a second spelling of one rule), and the provider's bytes. */
 #include <CoreGraphics/CGDataProvider_internal.h>
-#include <CoreGraphics/CGImage_internal.h>
 
 /* ---------------------------------------------------------------------------------------
  * DRAWING AN IMAGE, AND THE TWO THINGS ABOUT IT THAT ARE SEMANTICS RATHER THAN CODE.
@@ -3074,6 +3163,78 @@ static void cg_image_texel(const unsigned char *src, size_t row_bytes, size_t st
 	}
 }
 
+/* THE USER-SPACE RECTANGLE'S DEVICE BOUNDING BOX, AND WHERE A DEVICE PIXEL LANDS INSIDE IT. THESE WERE
+ * INLINE IN THE SAMPLER BELOW, WITH A COMMENT SAYING THE TRANSFORM WAS DONE "by hand, because both numbers
+ * are wanted rather than a helper's result" — WHICH WAS TRUE WHILE THERE WAS ONE CALLER. `CGContextClipToMask`
+ * needs the same two steps, and a second copy of one geometry is how the two come to disagree, so the reason
+ * for inlining is gone and the reason for a helper has taken its place. */
+static void cg_device_bounds(CGContextRef c, CGRect rect, int *left, int *top, int *right, int *bottom)
+{
+	CGPoint corner[4];
+	double minx, maxx, miny, maxy;
+	int i;
+
+	corner[0] = CGPointMake(rect.origin.x, rect.origin.y);
+	corner[1] = CGPointMake(rect.origin.x + rect.size.width, rect.origin.y);
+	corner[2] = CGPointMake(rect.origin.x, rect.origin.y + rect.size.height);
+	corner[3] = CGPointMake(rect.origin.x + rect.size.width, rect.origin.y + rect.size.height);
+	for (i = 0; i < 4; i++) {
+		corner[i] = CGPointApplyAffineTransform(corner[i], c->state.ctm);
+	}
+	minx = maxx = corner[0].x;
+	miny = maxy = corner[0].y;
+	for (i = 1; i < 4; i++) {
+		if (corner[i].x < minx) {
+			minx = corner[i].x;
+		}
+		if (corner[i].x > maxx) {
+			maxx = corner[i].x;
+		}
+		if (corner[i].y < miny) {
+			miny = corner[i].y;
+		}
+		if (corner[i].y > maxy) {
+			maxy = corner[i].y;
+		}
+	}
+	*left = (int)minx;
+	*top = (int)miny;
+	*right = (int)maxx;
+	*bottom = (int)maxy;
+	if (*left < 0) {
+		*left = 0;
+	}
+	if (*top < 0) {
+		*top = 0;
+	}
+	if (*right > c->width) {
+		*right = c->width;
+	}
+	if (*bottom > c->height) {
+		*bottom = c->height;
+	}
+}
+
+/* THE INVERSE CTM TAKES A DEVICE PIXEL BACK TO USER SPACE, which is the direction a sampler needs: the image
+ * is a function of user coordinates, and each device pixel asks what belongs there. NORMALISED TO THE
+ * RECTANGLE, so 0..1 spans it — and a pixel that lands OUTSIDE returns 0, which is what both callers want:
+ * the sampler skips it, and the mask clip leaves the clipping area unchanged there. */
+static int cg_device_to_rect(const CGAffineTransform *inverse, CGRect rect, int x, int y, double *u, double *v)
+{
+	CGPoint p = CGPointMake((double)x + 0.5, (double)y + 0.5);
+	double uu, vv;
+
+	p = CGPointApplyAffineTransform(p, *inverse);
+	uu = (p.x - rect.origin.x) / rect.size.width;
+	vv = (p.y - rect.origin.y) / rect.size.height;
+	if (uu < 0.0 || uu >= 1.0 || vv < 0.0 || vv >= 1.0) {
+		return 0;
+	}
+	*u = uu;
+	*v = vv;
+	return 1;
+}
+
 void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 {
 	CGAffineTransform inverse;
@@ -3140,48 +3301,7 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 	img_w = CGImageGetWidth(image);
 	img_h = CGImageGetHeight(image);
 	row_bytes = CGImageGetBytesPerRow(image);
-	/* THE RECT IS IN USER SPACE AND THE SURFACE IS IN DEVICE SPACE, so the device bounding box is
-	 * where its four corners land — the same transformation the fills make through the CTM, and
-	 * the same way: by hand, because both numbers are wanted rather than a helper's result. */
-	corner[0] = CGPointMake(rect.origin.x, rect.origin.y);
-	corner[1] = CGPointMake(rect.origin.x + rect.size.width, rect.origin.y);
-	corner[2] = CGPointMake(rect.origin.x, rect.origin.y + rect.size.height);
-	corner[3] = CGPointMake(rect.origin.x + rect.size.width, rect.origin.y + rect.size.height);
-	for (i = 0; i < 4; i++) {
-		corner[i] = CGPointApplyAffineTransform(corner[i], c->state.ctm);
-	}
-	minx = maxx = corner[0].x;
-	miny = maxy = corner[0].y;
-	for (i = 1; i < 4; i++) {
-		if (corner[i].x < minx) {
-			minx = corner[i].x;
-		}
-		if (corner[i].x > maxx) {
-			maxx = corner[i].x;
-		}
-		if (corner[i].y < miny) {
-			miny = corner[i].y;
-		}
-		if (corner[i].y > maxy) {
-			maxy = corner[i].y;
-		}
-	}
-	left = (int)minx;
-	top = (int)miny;
-	right = (int)maxx;
-	bottom = (int)maxy;
-	if (left < 0) {
-		left = 0;
-	}
-	if (top < 0) {
-		top = 0;
-	}
-	if (right > c->width) {
-		right = c->width;
-	}
-	if (bottom > c->height) {
-		bottom = c->height;
-	}
+	cg_device_bounds(c, rect, &left, &top, &right, &bottom);
 	/* THE INVERSE CTM TAKES A DEVICE PIXEL BACK TO USER SPACE, which is the direction a sampler
 	 * needs: the image is a function of user coordinates, and each device pixel asks what colour
 	 * belongs there. Computed once rather than per pixel. */
@@ -3200,11 +3320,7 @@ void CGContextDrawImage(CGContextRef c, CGRect rect, CGImageRef image)
 			if (!pixman_region32_contains_point(&c->state.clip, x, y, NULL)) {
 				continue;
 			}
-			p = CGPointMake((double)x + 0.5, (double)y + 0.5);
-			p = CGPointApplyAffineTransform(p, inverse);
-			u = (p.x - rect.origin.x) / rect.size.width;
-			v = (p.y - rect.origin.y) / rect.size.height;
-			if (u < 0.0 || u >= 1.0 || v < 0.0 || v >= 1.0) {
+			if (!cg_device_to_rect(&inverse, rect, x, y, &u, &v)) {
 				continue;
 			}
 			/* THE INTERPOLATING PATH IS TAKEN FIRST, SO THAT THE NEAREST SAMPLER BELOW STAYS
