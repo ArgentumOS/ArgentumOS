@@ -45,9 +45,13 @@
  * WHAT REMAINS ABSENT FOR REASONS THAT ARE NOT THE ERA, and stays `open` in the ledger where an
  * unimplemented name belongs: the `Extended…` family and `kCGColorSpaceACESCGLinear` are outside
  * 0..1 or built on HDR curves, and `kCGColorSpaceGenericCMYK` has no profile that can be
- * invented (what ink values mean depends on the press). `kCGColorSpaceGenericRGB` (10.4),
- * `kCGColorSpaceGenericGray` (10.4) and `kCGColorSpaceGenericRGBLinear` (10.5) are IN era and
- * simply not implemented yet.
+ * invented (what ink values mean depends on the press) — BUT THE NAMES OF ALL FOUR SHIP, AND A NAME IS
+ * NOT THE THING IT NAMES: `kCGColorSpaceGenericRGB`, `kCGColorSpaceGenericGray` and
+ * `kCGColorSpaceGenericRGBLinear` are IN era, their constants are declared, and what is still owed is the
+ * PROFILE each one should reach, which is why the dispatch below returns NULL for them. THAT THE LEDGER
+ * CANNOT SAY BOTH THINGS AT ONCE IS A FACT ABOUT THE LEDGER: a `var` row records that a NAME is declared
+ * (the sweep's `--check` verifies exactly that and nothing more), so "simply not implemented yet" and
+ * "shipped" are both true of one row, and this file is where the second half lives.
  */
 #import <Foundation/Foundation.h>
 

@@ -150,6 +150,23 @@ CGTypeID CGColorGetTypeID(void);
  *
  * APPLE'S OWN COMMENT SAYS WHICH SPACE THEY ARE IN — "Colors in the `Generic' gray color space" — so white
  * and black are not device gray and the distinction matters to anyone who asks the colour what it holds. */
+/* THE DOOR THOSE THREE NAMES ARE FOR. Apple's 10.6 signature takes a `CFStringRef`, so this takes the
+ * `NSString *` that is our spelling of one, and an unrecognised name — including nil — gets NULL, which
+ * is what Apple's does.
+ *
+ * THE SAME OBJECT COMES BACK EVERY TIME, because that is what a CONSTANT is: a caller may hold one,
+ * compare it with the next call's answer, and release it without the library losing what it lent. The
+ * cache behind this holds a reference of its own for exactly that reason.
+ *
+ * THE ONE DIVERGENCE, STATED RATHER THAN HIDDEN: Apple's comment says these are "Colors in the `Generic'
+ * gray color space", and THIS LIBRARY BUILDS THEM IN ITS DEVICE GRAY, because the generic gray space is a
+ * name here with no profile behind it (see CGColorSpaceNames.m) and this door will not invent one. WHAT THE
+ * DIVERGENCE COSTS IS NOTHING A CALLER CAN SEE THROUGH THIS LIBRARY: the gray and the alpha are the same,
+ * and the space a caller would compare against — `CGColorSpaceCreateWithName` with the generic name — is
+ * refused here, so there is nothing to compare with.
+ */
+CGColorRef CGColorGetConstantColor(NSString *name);
+
 extern NSString *const kCGColorWhite;
 extern NSString *const kCGColorBlack;
 extern NSString *const kCGColorClear;

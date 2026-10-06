@@ -1556,3 +1556,29 @@ mk/60-host.mk — so a new file is compiled without being named, and "the build 
 whether the new symbols EXIST. The check is `nm -g --defined-only` over the built objects, asserting all
 eleven new constants are defined somewhere: a name declared in a header and defined in a file that is not
 compiled links fine until somebody uses it.
+
+## 20. `CGColorGetConstantColor` and its three names: the name and the profile are two facts (1 row)
+
+**THE DOOR SHIPS, AND IT IS THE LAST OF THE CGColor NAMES.** `CGColorGetConstantColor(NSString *)` answers
+`kCGColorWhite`, `kCGColorBlack` and `kCGColorClear`, returns NULL for anything else (nil included, as
+Apple's does), and **THE SAME OBJECT COMES BACK EVERY TIME** — which is what "constant" means and what the
+probe checks: identity across calls, three distinct colours, alpha 1/1/0, gray 1 and 0 with alpha last.
+
+**THE CACHE HOLDS ITS OWN REFERENCE.** A caller is free to release the colour it was handed, so an entry that
+counted only the caller's reference would be freed under its own feet — the same rule `CGColorSpaceNames.m`
+already follows for named spaces, and the reason there is no eviction: there are three names.
+
+**ONE DIVERGENCE, STATED IN THE HEADER:** Apple's comment places these in the **generic** gray space and this
+library builds them in its **device** gray, because the generic gray space is a NAME here without a profile
+behind it (this unit declares those names and does not invent that profile). What the divergence costs is
+nothing a caller can see through this library: same gray, same alpha, and the space a caller would compare
+against is refused here by name, so there is nothing to compare with.
+
+**AND A FINDING ABOUT THE LEDGER ITSELF, WHICH IS WHY THE PROSE IN `CGColorSpaceNames.m` CHANGED.** That file
+said the in-era generic names "stay `open` in the ledger where an unimplemented name belongs". Then this unit
+declared them, the sweep's own stale list named them for flipping, and BOTH WERE RIGHT: a `var` row records
+that a NAME IS DECLARED — `--check` verifies exactly that and nothing more — so "simply not implemented yet"
+and "shipped" are true of one row at once, and the ledger has no way to say "the name exists and the thing it
+names does not". The file now says it instead, and the owed half is written down as the PROFILE each generic
+name should reach (`kCGColorSpaceGenericCMYK`'s cannot be invented at all: what ink values mean depends on the
+press).

@@ -640,7 +640,7 @@ func	shipped	CGColorEqualToColor	-	Opaque Types / Examining a Color	-	objc
 func	shipped	CGColorGetAlpha	-	Opaque Types / Examining a Color	-	objc
 func	shipped	CGColorGetColorSpace	-	Opaque Types / Examining a Color	-	objc
 func	shipped	CGColorGetComponents	-	Opaque Types / Examining a Color	-	objc
-func	open	CGColorGetConstantColor	-	Opaque Types / Creating Colors	-	objc
+func	shipped	CGColorGetConstantColor	-	Opaque Types / Creating Colors	shipped with the door it is for (plan §20)	objc
 func	struck	CGColorGetContentHeadroom	-	Functions	after-10.6	objc
 func	shipped	CGColorGetNumberOfComponents	-	Opaque Types / Examining a Color	-	objc
 func	shipped	CGColorGetPattern	-	Opaque Types / Examining a Color	-	objc

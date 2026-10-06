@@ -17,6 +17,7 @@
  */
 #import <Foundation/Foundation.h>
 #include <CoreGraphics/CGDataProvider.h>
+#include <CoreGraphics/CGColor.h>
 #include <CoreGraphics/CGDataConsumer.h>
 
 #include <stdio.h>
@@ -335,6 +336,29 @@ int main(void)
 		check("the consumer's type id is its own, and not zero",
 		      CGDataConsumerGetTypeID() != (CGTypeID)0
 		      && CGDataConsumerGetTypeID() != CGDataProviderGetTypeID());
+	}
+
+	/* --- THE CONSTANT COLORS: names in, colors out, and THE SAME COLOR TWICE --------------- */
+	{
+		CGColorRef white = CGColorGetConstantColor(kCGColorWhite);
+		CGColorRef black = CGColorGetConstantColor(kCGColorBlack);
+		CGColorRef clear = CGColorGetConstantColor(kCGColorClear);
+		const CGFloat *w = white != NULL ? CGColorGetComponents(white) : NULL;
+		const CGFloat *b = black != NULL ? CGColorGetComponents(black) : NULL;
+
+		check("the three constant colors are made", white != NULL && black != NULL && clear != NULL);
+		check("...and they are three DIFFERENT colors",
+		      white != black && white != clear && black != clear);
+		check("...with the alpha Apple's names imply: white and black opaque, clear not",
+		      CGColorGetAlpha(white) == 1.0 && CGColorGetAlpha(black) == 1.0
+		      && CGColorGetAlpha(clear) == 0.0);
+		check("...and the gray components are 1 and 0, alpha last",
+		      w != NULL && b != NULL && w[0] == 1.0 && b[0] == 0.0);
+		check("...and the SAME object comes back, because a constant is not a copy",
+		      CGColorGetConstantColor(kCGColorWhite) == white
+		      && CGColorGetConstantColor(kCGColorClear) == clear);
+		check("an unknown name gets NULL rather than a made-up color",
+		      CGColorGetConstantColor(@"kCGColorPlum") == NULL && CGColorGetConstantColor(nil) == NULL);
 	}
 
 	printf("CG-DATAPROVIDER: %s\n", failures == 0 ? "all checks passed" : "FAILURES");
