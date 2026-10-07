@@ -2314,3 +2314,50 @@ one of the case's assertions before any boot, and `make test TESTS=cg_guest_shad
 WORTH WRITING DOWN: the case filter is `TESTS=`, not `T=` (mk/50-tests.mk), and the tier boots
 `.build/rootagfs-test.img`, which `make testimg` builds and `make rootagfs` does NOT — a `SKIP ... is not in
 .build/rootagfs-test.img` is the image talking, not the demo.
+
+## 40. The blur was sweeping the whole surface, and the phases that said so
+
+**THE REPORT WAS "IT FEELS SLOW FROM STARTING cg_demo TO SOMETHING ON SCREEN", SO THE FIRST THING MEASURED WAS
+WHERE THE TIME GOES** — and the answer was not startup at all. Phase timings from a throwaway instrumented copy
+(taken OUTSIDE the tree: the demo's own file gains nothing from a stopwatch) at the host's 1280x800:
+
+    card fill 5.0 | hard shadow 8.3 | BLUR 18 98.4 | coloured 5.2 | off 3.2 | text 18.7
+    gradients 7.5 | dashed ellipse 11.7 | bezier 5.3 | swatches 0 | clipped fill 5.2 | transparency layer 26.0
+
+`draw_card` is 192.5 ms of a 198 ms total — the font load, the fb open, the context creation and the ink count are
+all under 6 ms — and **THE BLURRED SHADOW ALONE IS 98.4 ms OF IT, HALF THE DRAWING, while the hard one beside it
+costs 8.3 ms.** The difference is not the blur arithmetic: it is that `cg_box_pass` swept the ENTIRE SURFACE six
+times (three passes, horizontal then vertical, and six at the guest's 1920x1080) for a 130x70 panel — 6 x 2.07M byte
+operations each carrying an integer division, for a blur whose own support is 166x106.
+
+**THE FIX IS A BOX: THE SHAPE'S OWN EXTENT GROWN BY THE RADIUS.** Outside it the coverage is zero and a blur can
+only produce zero, so there is nothing there to sweep. Four things make it exact rather than approximately right,
+and each is in the code with its reason:
+
+    * the running sum is SEEDED WITH THE WINDOW CENTRED ON THE BOX'S FIRST INDEX instead of on zero, and the run
+      then advances exactly as before — the arithmetic per pixel is untouched;
+    * THE EDGE CLAMP STAYS THE SURFACE'S AND NOT THE BOX'S: a box blur at the surface's border must read the edge
+      pixel, and clamping to the box would invent a different picture at the border;
+    * the working buffers are ZEROED, because a pass centred on the box's own edge READS `radius` pixels beyond
+      it — and what it must find there is the coverage's real value, which is zero, since the box already holds
+      every pixel the shape touches;
+    * EVERY PASS SWEEPS THE SAME BOX, WHICH IS EXACT: a pass sweeping box B reads its input over B grown by its
+      radius, and the part outside B is zero in the buffer AND zero in truth, because a pass's support is the
+      shape grown by the radii BEFORE it — which is inside B.
+
+The composite is bounded to the landing box for the same reason (`l`, the box moved by the offset), with the mask
+coordinates following the region, since outside it the mask is zero by construction.
+
+**VERIFIED BY THE PICTURE AND NOT BY THE STOPWATCH: the demo's PPM is BYTE-IDENTICAL before and after (3,072,016
+bytes compared), which is the only acceptable result for an optimisation.** Then 32 of 32 host probes, the shadow
+probe's 12 checks among them; both guest cases 24 of 24 with the SAME absolute numbers (shadow 166, blur past the
+edge 228, blurred edge 183, card 249, inked 185344); and `CGContext.c` clean under `-Wall -Wextra` on a forced
+rebuild. The measurements: **the blur 98.4 -> 7.4 ms and the drawing 194.5 -> 105.4 ms**, and on the guest
+`cg_guest_shadow` 18.8s -> 14.8s — the guest's own word for it, since a host stopwatch cannot see emulation and the
+case's fixed cost (boot, screendump) is most of what remains.
+
+**WHAT REMAINS, MEASURED AND NOT FIXED HERE:** the transparency layer is now the largest single item (28 ms of
+105), and it is bounded by the CLIP REGION — the whole surface, because the caller clipped nothing — which is the
+caller's to narrow rather than the layer's to guess. The text is 19 ms and it is EIGHT `CGContextSelectFont`
+RESOLUTIONS, each of which may re-search the font directories and re-open the face; that is the next question this
+measurement puts on the table.
