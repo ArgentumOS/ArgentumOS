@@ -92,5 +92,5 @@ class Case(BaseCase):
         card = shot.px(x0 + 40, row(y0 + 200))
         self.check("the card is painted, not left as backdrop", card != bg, "pixel %r" % (card,))
 
-        self.note("screenshot kept at %s" % self.artifact("cgtext-1.ppm"))
+        self.note("screenshot kept at %s" % ctx.artifact("cgtext-1.ppm"))
         session.stop()

@@ -116,8 +116,17 @@ static void draw_card(CGContextRef c, double x, double y, double w, double h)
 	stops[4] = 0.95; stops[5] = 0.72; stops[6] = 0.30; stops[7] = 1.0;
 	gradient = CGGradientCreateWithColorComponents(space, stops, NULL, 2);
 	if (gradient != NULL) {
+		/* THE BAND IS CLIPPED, AND THAT IS NOT DECORATION. A linear gradient's colour is constant
+		 * along the perpendicular, so between two horizontally separated endpoints it fills the
+		 * WHOLE clip at those x — its extent has to come from somewhere, and the band this demo
+		 * wants is that somewhere. WITHOUT THIS CLIP THE GRADIENT COVERS THE HEADER BAND it is drawn
+		 * under, which is exactly what `cg_guest_text`'s "the title band is dark blue with light
+		 * glyphs in it" check measured: a mean luma of 147 against a threshold of 120. */
+		CGContextSaveGState(c);
+		CGContextClipToRect(c, CGRectMake(x + 40.0, y + h - 180.0, w - 80.0, 60.0));
 		CGContextDrawLinearGradient(c, gradient, CGPointMake(x + 40.0, y + h - 150.0),
 					    CGPointMake(x + w - 40.0, y + h - 150.0), 0);
+		CGContextRestoreGState(c);
 		CGGradientRelease(gradient);
 	}
 	CGColorSpaceRelease(space);
