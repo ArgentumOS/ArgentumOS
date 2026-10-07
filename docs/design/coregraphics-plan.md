@@ -2407,3 +2407,49 @@ glyph composites, which is what the split was there to show.
 **WHAT REMAINS, MEASURED:** the block from the strokes to the transparency layer is now the largest thing in the
 drawing (~49 ms of 77.7), and the layer alone is bounded by the CLIP REGION — the whole surface, because the caller
 clipped nothing — which stays the caller's to narrow rather than the layer's to guess.
+
+## 42. The demo found a kernel bug: `msync` on a device mapping, and the dump that named the instruction
+
+**RUNNING cg_demo BY HAND ON THE GUEST — which no case did — FAULTED THE KERNEL.** The report was the panic dump,
+and reading it took three corrections to the obvious interpretation, each of which the kernel's own printer
+explains:
+
+    * `puthex32` WRITES ITS OWN `0x`, so `vector 0x0x0000000d` is vector **0x0d = #GP, error 0** (not a doubled
+      prefix to be puzzled over), and the same doubling appears on `error=`;
+    * THE REGISTERS IN THE DUMP ARE READ AT PANIC TIME — `panic()` takes them with `mov %%rax,%0` — so they are
+      the PANIC PATH's registers, which is why `rdx` and `r14` both read 0x3f8 (the serial port it was writing
+      through). Only `rip`, `rsp`, `vector`, `error` and `cr2` belong to the fault;
+    * the 16 `[sp+..]` WORDS ARE the fault's stack, but printed half-swapped (`0x0064de14ffff8000` is really
+      `0xffff80000064de14`), because the printer's halves are reversed.
+
+**WITH THOSE READ, THE DUMP NAMES THE INSTRUCTION.** `rip - img = 0x49600` and the kernel's `nm` says that offset
+is `memcpy_b+0x50` — the byte LOAD `movzbl (%rsi,%rcx,1),%edx`. A load faults with #GP(0) for exactly one reason: A
+NON-CANONICAL ADDRESS. Un-swapping the stack gave the caller: `[sp+00] = fb_write+0x38`, and further up
+`write_page+0x4d`.
+
+**THE BUG IS `sys_msync`'s FLUSH LOOP, AND IT IS A MISSING GUARD ONE CALLER OVER FROM THE ONE THAT HAS IT.**
+`write_page`'s whole contract is "write this page back through its inode"; the unmap path in mm/mmap.c refuses to
+do that for a `PAGE_NOALLOC` page and its comment says why — *"user_leaf64_in() masks the flags off, which would
+make the PAGE_NOALLOC check below dead code"*. **`sys_msync` had no such check AND read the leaf with the masker**,
+so on the guest's `/dev/fb0` mapping it indexed `page_table` with the FRAMEBUFFER's physical address, took the
+`struct page` that lives there — memory that was never allocated, so its `data` is whatever was — and handed it to
+`fb_write` as the copy source. `976f9dc9` ("fix userland mmap of /dev/fb0") fixed the unmap path; this loop is the
+caller that commit left behind. Its doc comment even still said there was no MAP_SHARED writeback to flush, which is
+how a guard nothing could test stayed invisible. THE FIX IS THE SIBLING'S: read the RAW leaf, and skip a
+`PAGE_NOALLOC` page rather than write it back — its memory belongs to the device, not to an inode.
+
+**AND THE REASON NO CASE CAUGHT IT IS THE CASE'S OWN SHAPE.** The screenshot is taken during the demo's hold, so
+everything after the blit — the `msync` and the `munmap` — had NEVER RUN in this tier; `msync` had no test coverage
+in this tree at all (only the two demos call it). So the case now lets the demo live its whole life (`cg_demo 0`)
+and then asks the guest whether it is still there — with the probe's marker SPLIT ACROSS PRINTF'S OWN FORMAT, so
+the string being waited for is only ever produced by EXECUTING the command and the shell's echo of the command text
+cannot satisfy it. THE REPRODUCTION IS THE USER'S DUMP: on the unfixed kernel the two new checks fail with
+`rip - img = 0x49600`, vector 0x0d, error 0 and the SAME stale `cr2=0x4000004cd064`; with the kernel rebuilt and
+the ESP repacked they pass, 18 of 18 checks in 40s (191s while it was faulting).
+
+**ONE DEPLOYMENT NOTE, AND IT MATTERS TO ANYONE WHO RUNS THE DEMO BY HAND: the kernel lives in the ESP, which is
+`tools/mkesp.sh` — `make run-qemu` runs it, and NOTHING ELSE DOES.** A rebuilt `.build/64/fnx.efi` is inert until
+the ESP is repacked, which is why the fix had to be verified through the guest rather than by reading it. And the
+shipped image was found carrying the TESTER's session (`desktop = shell` rather than `xfb`): `make rootagfs` writes
+the shipped value and it has been rebuilt, so the standard image boots the desktop again — but the staging tree is
+shared between `rootagfs` and `testimg`, so the two are worth checking against each other after a tier run.

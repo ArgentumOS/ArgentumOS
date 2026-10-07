@@ -149,5 +149,22 @@ class Case(BaseCase):
                        light > 0.02 and mean < 120,
                        "light fraction %.3f, mean luma %.0f" % (light, mean))
 
+        # --- and the demo is allowed to FINISH, which is where the screenshot above stops ---------
+        # THE SCREENSHOT IS TAKEN DURING THE DEMO'S HOLD, so nothing after its blit — the `msync` of
+        # the /dev/fb0 mapping and the `munmap` at exit — had ever run in this tier. A MANUAL RUN DOES
+        # REACH THEM, and one was reported from the guest as a KERNEL EXCEPTION (#GP, error 0, rip
+        # inside memcpy_b called from fb_write). So the last thing this case does is let the demo live
+        # its whole life and then ask the guest whether it is still there.
+        #
+        # THE PROBE SPLITS ITS MARKER ACROSS PRINTF'S OWN FORMAT, so the string being waited for is
+        # only ever produced by EXECUTING the command: the shell's echo of the command text cannot
+        # satisfy it.
+        session.run("/System/Shared/tests/cg_demo 0", marker=r"CG-DEMO-READY", secs=120)
+        session.run("printf 'CG-GUEST-%s\\n' ALIVE", marker=r"CG-GUEST-ALIVE", secs=60)
+        log = session.log_text()
+        self.check("the demo ran to its END - msync and munmap included - without faulting the kernel",
+                   "KERNEL EXCEPTION" not in log)
+        self.check("...and the guest still answers afterwards", "CG-GUEST-ALIVE" in log)
+
         self.note("screenshot kept at %s" % ctx.artifact("cgshadow-1.ppm"))
         session.stop()

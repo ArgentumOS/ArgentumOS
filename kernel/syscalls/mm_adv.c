@@ -128,14 +128,16 @@ long sys_mremap(addr_t old_address, __size_t old_size, __size_t new_size, unsign
 }
 
 /*
- * msync(addr, length, flags) - there is no MAP_SHARED file writeback in
- * this kernel (no fsop->mmap implementations), so nothing to flush:
- * validate the range and report success.
+ * msync(addr, length, flags) - flush a MAP_SHARED file-backed range back to
+ * its file. (The comment here used to say this kernel had no such writeback,
+ * which was true when it was written and stopped being true when the flush
+ * below was added: A COMMENT THAT DESCRIBES THE OLD CONTRACT IS HOW THE GUARD
+ * MISSING FROM THIS LOOP STAYED INVISIBLE.)
  */
 int sys_msync(addr_t addr, __size_t length, int flags)
 {
 	struct vma *vma;
-	unsigned long pml4, n, phys;
+	unsigned long pml4, n, phys, pte;
 	struct page *pg;
 	__off_t offset;
 
@@ -159,15 +161,28 @@ int sys_msync(addr_t addr, __size_t length, int flags)
 	}
 
 	extern unsigned long paging64_pml4_phys(void);
-	extern unsigned long user_leaf64_in(unsigned long, unsigned long);
+	extern unsigned long user_pte64_in(unsigned long, unsigned long);
 	pml4 = current->cr3_64 ? current->cr3_64 : paging64_pml4_phys();
 
 	length = PAGE_ALIGN(addr + length) - (addr & PAGE_MASK);
 	for(n = 0; n < length; n += PAGE_SIZE) {
-		phys = user_leaf64_in(pml4, (addr & PAGE_MASK) + n);
-		if(!phys) {
+		/* THE RAW LEAF, SO THE FLAGS SURVIVE. `user_leaf64_in()` masks them off, so a
+		 * PAGE_NOALLOC test written against it can never fire — and that is exactly how this loop
+		 * came to write a DEVICE page back through its inode. MEASURED, from the guest: cg_demo
+		 * msyncs its /dev/fb0 mapping and the kernel took a #GP inside fb_write's memcpy_b (rip =
+		 * memcpy_b+0x50, the `movzbl (%rsi,%rcx,1)` that reads the page's `data`), because
+		 * `&page_table[fb_phys >> PAGE_SHIFT]` is a struct page for FRAMEBUFFER memory that was
+		 * never allocated, so its `data` is whatever was there. THE UNMAP PATH HAS CARRIED THIS
+		 * GUARD AND THIS REASON SINCE 976f9dc9 ("fix userland mmap of /dev/fb0"); this loop is the
+		 * caller that commit left behind. */
+		pte = user_pte64_in(pml4, (addr & PAGE_MASK) + n);
+		if(!pte) {
 			continue;	/* not present: nothing to flush */
 		}
+		if(pte & PAGE_NOALLOC) {
+			continue;	/* a device page: its memory belongs to the device, not to an inode */
+		}
+		phys = pte & PAGE_MASK64;
 		pg = &page_table[phys >> PAGE_SHIFT];
 		offset = vma->offset + ((addr & PAGE_MASK) + n - vma->start);
 		if(write_page(pg, vma->inode, offset, PAGE_SIZE) < 0) {
