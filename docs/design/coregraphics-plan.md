@@ -2361,3 +2361,49 @@ case's fixed cost (boot, screendump) is most of what remains.
 caller's to narrow rather than the layer's to guess. The text is 19 ms and it is EIGHT `CGContextSelectFont`
 RESOLUTIONS, each of which may re-search the font directories and re-open the face; that is the next question this
 measurement puts on the table.
+
+## 41. The text's cost was not the resolutions: a full-surface mask per glyph
+
+**§40 LEFT "EIGHT `CGContextSelectFont` RESOLUTIONS" ON THE TABLE AS THE NEXT QUESTION, AND THE ANSWER IS THAT THEY
+WERE NOT IT.** Splitting the text phase with a throwaway instrumented copy — one timer around `CGContextSelectFont`
+and another around `CGContextShowTextAtPoint`, in the same outside-the-tree copy §40 used — gave `SelectFont` a
+total of **0.0 ms** against `ShowText`'s **31.1 ms** for the demo's six runs, 113 glyphs. So the hypothesis that
+"every text run re-searches the font directories" was looking at the right area and the wrong half: THE HALF THAT
+ACTUALLY COST SOMETHING WAS THE ONE GLYPH AT A TIME.
+
+**WHAT `cg_show_one_glyph_fill` DID, PER GLYPH:** allocated a FULL-SURFACE A8 mask (`w x h` of the CONTEXT, 2.07M
+pixels at 1080p, calloc'd by pixman), copied the glyph's 30x40 bitmap into it pixel by pixel with a bounds test per
+pixel, composited THE WHOLE SURFACE through that mask, and freed it. 113 glyphs, 113 x (2.07M calloc + 2.07M
+composite) — **the same defect class as §40's blur, and it was in the text path all along.**
+
+**THE FIX IS THE BOX THE ENGINE ALREADY RETURNS.** `cg_font_render_glyph` hands back `w`, `h`, `left` and `top`
+along with the coverage, so the mask can be exactly `w x h` and the composite exactly `dx`, `dy`, `w`, `h` — the
+glyph's own pixels. Two details make it pixel-exact: THE PLACEMENT MOVES FROM THE COPY LOOP TO THE DESTINATION
+COORDINATES (`dest_x`/`dest_y` of `dx`/`dy` with the mask at its own origin), and PIXMAN CLIPS WHAT FALLS OFF THE
+SURFACE, which is precisely what the per-pixel bounds test was doing. The clip-mask multiply follows the same rule —
+the clip's coverage is a full-surface image at the origin, so the glyph's box reads it at `dx`/`dy`.
+
+**AND THE RESOLUTION GOT ITS CACHE ANYWAY, BECAUSE IT WAS INDEED UNCACHED.** `cg_font_create_with_name` walked the
+font directories on every call and, for each face file it found, opened it and built a FreeType face only to compare
+its name. It now keeps a small NUMBER-KEYED CACHE — the font, and therefore the face and the file's bytes, so it is
+bounded at eight faces and the oldest is reused rather than the cache refusing to grow; a name too long to key is
+not cached rather than truncated. THE BOUNDARY IS STATED: entries are never revalidated, so a font installed after a
+name was resolved is not seen for it; `FN_FONT_PATH` IS watched, because it is a probe's door and a probe that flips
+it must see the directory it just asked for. MEASURED: six resolutions cost **1.1 ms without the cache and 0.0 ms
+with it** on the host — small, and the honest reason to keep it is that the guest's I/O is emulated and each
+resolution there is a directory walk plus up to two face parses, not a warm page cache. IT IS NOT CLAIMED TO BE THE
+WIN THIS SECTION IS ABOUT; the win is the glyph box.
+
+**VERIFIED THE SAME WAY, AND THE PICTURE IS STILL BYTE-IDENTICAL: 3,072,016 bytes compared after each change, not
+one pixel different.** Then 32 of 32 host probes, and both guest cases 24 of 24 with the SAME absolute
+values (inked 185344 and 119441, band means 63 and 87). THE MEASUREMENTS: `ShowText` 31.1 -> 5.4 ms, the text phase
+19.3 -> **3.6 ms**, and the demo's drawing **194.5 -> 105.4 -> 77.7 ms** across §40 and this section — a 2.5x since
+the report that started it. ON THE GUEST, WHICH IS WHERE THE REPORT CAME FROM: `cg_guest_shadow` **18.8s -> 11.0s**
+and `cg_guest_text` **13.3s -> 9.8s**, the tier 28s -> 21s, so the two fixes together took about 40% off the
+waiting. AND ONE HYPOTHESIS DIED BY MEASUREMENT RATHER THAN BY ARGUMENT: the header band's own `FillRect` was
+suspected of the remaining 14 ms of that phase and measures **0.1 ms** — the phase's unexplained part was the
+glyph composites, which is what the split was there to show.
+
+**WHAT REMAINS, MEASURED:** the block from the strokes to the transparency layer is now the largest thing in the
+drawing (~49 ms of 77.7), and the layer alone is bounded by the CLIP REGION — the whole surface, because the caller
+clipped nothing — which stays the caller's to narrow rather than the layer's to guess.

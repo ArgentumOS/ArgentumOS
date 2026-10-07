@@ -65,6 +65,88 @@ static FT_Library fn_library(void)
 	return fn_library_handle;
 }
 
+/* ------------------------------------------------------------------------- */
+/* the registry's cache: a name resolved once stays resolved                    */
+/* ------------------------------------------------------------------------- */
+
+/* RESOLVING A NAME OPENS FONTS UNTIL ONE ANSWERS TO IT, and that costs a file read and a FreeType face — per
+ * call, because nothing remembered the answer. MEASURED (2026-10-06): the demo's six text runs re-walked the
+ * font directories and re-parsed the faces SIX times, and its text phase was 18.7 ms of a 194 ms drawing —
+ * against 5 ms for the whole 900x520 card's fills. THE ARGUMENT FOR THIS IS NOT THAT MEMOISATION IS NICE: a
+ * NAME is what a caller has, a FILE is what the registry found, and the caller cannot tell them apart, so the
+ * second resolution of one name is pure repeated work.
+ *
+ * WHAT IT HOLDS IS THE FONT, AND THEREFORE THE FACE AND THE FONT FILE'S BYTES — `CGFont` retains its provider
+ * because FreeType's memory face points into them. So it is BOUNDED at a number of faces a text interface
+ * actually uses, and the OLDEST ENTRY IS REUSED rather than the cache refusing to grow: the entry being
+ * replaced is released by the cache, and any context still holding that font keeps it through its own
+ * reference.
+ *
+ * THE BOUNDARY IS STATED RATHER THAN HIDDEN: the key is the NAME, so a font INSTALLED after that name was
+ * resolved is not seen for it — entries are never revalidated, because revalidating means re-reading the
+ * directory, which is the thing this exists to stop. THE OTHER INPUT, `FN_FONT_PATH`, IS WATCHED, because it
+ * is cheap to watch and because it is a probe's door: if its value changes, the cache is emptied, so a caller
+ * that flips it between calls sees the directory it just asked for. And there are no locks: this library has
+ * none anywhere, and a registry read by two threads at once is the same question its FreeType handle already
+ * answers. */
+#define FN_NAME_CACHE	8
+
+static struct {
+	char name[64];
+	CGFontRef font;
+} fn_name_cache[FN_NAME_CACHE];
+static int fn_name_cache_next;
+static char fn_name_cache_env[1024];
+
+static void fn_name_cache_note_env(void)
+{
+	const char *env = getenv("FN_FONT_PATH");
+	const char *now = env == NULL ? "" : env;
+
+	if (strcmp(now, fn_name_cache_env) != 0) {
+		int i;
+
+		for (i = 0; i < FN_NAME_CACHE; i++) {
+			if (fn_name_cache[i].font != NULL) {
+				CGFontRelease(fn_name_cache[i].font);
+				fn_name_cache[i].font = NULL;
+			}
+		}
+		fn_name_cache_next = 0;
+		snprintf(fn_name_cache_env, sizeof fn_name_cache_env, "%s", now);
+	}
+}
+
+/* +1 FOR THE CALLER, WHICH IS WHAT A `Create` OWES — the cache's own reference is not the caller's. */
+static CGFontRef fn_name_cache_get(const char *name)
+{
+	int i;
+
+	for (i = 0; i < FN_NAME_CACHE; i++) {
+		if (fn_name_cache[i].font != NULL && strcmp(fn_name_cache[i].name, name) == 0) {
+			return CGFontRetain(fn_name_cache[i].font);
+		}
+	}
+	return NULL;
+}
+
+static void fn_name_cache_put(const char *name, CGFontRef font)
+{
+	int slot = fn_name_cache_next;
+
+	/* A NAME THIS CACHE CANNOT HOLD IS NOT CACHED, rather than truncated: a shortened key would answer for
+	 * a different name. */
+	if (strlen(name) >= sizeof fn_name_cache[0].name) {
+		return;
+	}
+	fn_name_cache_next = (fn_name_cache_next + 1) % FN_NAME_CACHE;
+	if (fn_name_cache[slot].font != NULL) {
+		CGFontRelease(fn_name_cache[slot].font);
+	}
+	snprintf(fn_name_cache[slot].name, sizeof fn_name_cache[slot].name, "%s", name);
+	fn_name_cache[slot].font = CGFontRetain(font);
+}
+
 CGFontRef CGFontCreateWithDataProvider(CGDataProviderRef provider)
 {
 	CGFontRef font;
@@ -794,6 +876,17 @@ CGFontRef cg_font_create_with_name(const char *name)
 	if (name == NULL || name[0] == '\0') {
 		return NULL;
 	}
+	/* THE CACHE FIRST, and the override is watched one line before it: a probe that changes FN_FONT_PATH
+	 * between two calls of the same name must see the directory it just asked for, and that variable is
+	 * the only thing this function reads besides the fonts themselves. */
+	fn_name_cache_note_env();
+	{
+		CGFontRef cached = fn_name_cache_get(name);
+
+		if (cached != NULL) {
+			return cached;
+		}
+	}
 	{
 		/* THE OVERRIDE IS THE PROBE'S DOOR IN, AND THE ONLY WAY TO SEARCH ELSEWHERE: this library has no
 		 * settings domain of its own — system.fonts.conf belongs to the X11 stack's fontconfig, and
@@ -836,6 +929,9 @@ CGFontRef cg_font_create_with_name(const char *name)
 			font = fn_try_file(path, name);
 			if (font != NULL) {
 				closedir(d);
+				/* THE CACHE TAKES A REFERENCE OF ITS OWN AND THE CALLER STILL GETS ITS +1: this
+				 * door Creates, and a font that came from the cache is no exception to that. */
+				fn_name_cache_put(name, font);
 				return font;
 			}
 		}
