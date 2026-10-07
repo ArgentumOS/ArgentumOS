@@ -2254,3 +2254,63 @@ property a writer like this has to have, and it is checked that way now.
 under `-Wall -Wextra` on a forced rebuild (§37b's rule), and `tools/coregraphics-sweep.py --check` exits 0 — every
 shipped name declared, every open name absent, every strike corroborated, and now the counts block in step with the
 rows.**
+
+## 39. The demo you can run (one source, two sinks), and the probe point that had to be measured
+
+**THE ASK WAS A DEMO THAT SHOWS THE SHADOWS AND THE REST OF THE STACK — something a person runs and LOOKS
+at**, which is a different thing from the probes and belongs beside them rather than instead of them. So
+`userland/tests/cg_demo.m` draws one card: four shadow panels (a hard shadow, a blurred one, a coloured one
+and one with shadowing OFF), text through the string doors, a linear and a radial gradient, a dashed stroked
+ellipse, a Bezier stroke, three swatches, a fill clipped to an ellipse and a transparency layer with a
+multiply blend.
+
+**ONE SOURCE AND TWO SINKS, WHICH IS THE POINT OF THE FILE.** In the guest it blits to
+`/System/Devices/Display/fb0` (`/dev/fb0` as the fallback, because the devfs symlink is relative) and the
+screenshot is the evidence; on the host the SAME drawing code runs and, finding no framebuffer, writes the
+surface out as a `.ppm` — because this library has no PNG ENCODER, only the decoder, and `.ppm` is what the
+harness already produces. A demo that existed twice would drift; a demo that draws once cannot. TWO WAYS IN:
+
+    make demo-coregraphics            the host build, seconds, no QEMU — writes .build/cg-demo.ppm
+    /System/Shared/tests/cg_demo 60   the guest build, on the real screen for a minute
+
+`make demo-coregraphics` is a new target in mk/60-host.mk, and the demo is built by the PROBE rule — same
+library, same compiler, same link — because the only difference between the two is how they are RUN: one
+gates, the other leaves a picture. The guest gets its copy from the same file (mk/20-userland.mk), so the
+picture on the host and the picture on the screen are one file's output.
+
+**THE MAP, AND WHY IT IS PRINTED RATHER THAN COMPUTED IN THE CASE.** The demo prints
+`CG-DEMO-MAP <role> <x> <row>` for every place a check should read, in SCREEN coordinates with the row already
+flipped — so nothing outside the demo has to know that a CG y is row (height - 1 - y). `tests/cases/
+cg_guest_shadow.py` then asserts PIXEL FACTS at those points and never asks the demo what it drew: the shadow
+is darker than the card it falls on; the card is bare immediately past where the shadow's offset says it
+stops; the blurred shadow reaches past there while the hard one does not; the blurred edge is SOFTER than the
+hard edge rather than displaced; the coloured shadow is blue-dominant; and the place the OFF panel's shadow
+would land is bare card, which is what makes the transparent-colour off state a measurement rather than a
+claim. A wrong coordinate in the map makes a check FAIL, which is what keeps the map from being testimony.
+
+**AND ONE PROBE POINT WAS MEASURED OFF THE PICTURE RATHER THAN PICKED, AFTER THE FIRST GUESS PROVED
+NOTHING.** "Past the edge" started at 10 units, and the blurred shadow read FOUR lumas darker than the card
+there — inside the noise of a ramp's far tail. The profile along that row is 210 at the edge, 228 at +4, 235 at
++6, 245 at +10, 249 at +16, so the reading was real and the PLACEMENT was wrong: a point on a ramp has to be
+asked a question the ramp can answer, and +4 reads 21 darker. The constant now carries the table and says the
+check must ask for "clearly darker" rather than for a value. The same measurement discipline is why the shadow
+probes sit in the MIDDLE of the panel row's height: they have to be inside the shadow's vertical coverage by
+more than the blur, or they measure the falloff instead of the shadow.
+
+**THE GRADIENT IS CLIPPED TO ITS BAND, AND THAT IS NOT DECORATION.** A linear gradient's colour is constant
+along the perpendicular, so between two horizontally separated endpoints it fills the whole clip at those x —
+its extent has to come from a clip, and taking it from `CGContextClipToRect` is also the demonstration of that
+door. **THE SAME FACT LEAVES A SIBLING CASE RED AT HEAD, MEASURED WHILE ADDING THIS ONE:** `cgtext_demo` draws
+its gradient over the header band without clipping it, so `cg_guest_text`'s "the title band is dark blue with
+light glyphs in it" reads a mean luma of 147 against a threshold of 120. It fails identically with
+`cgtext_demo.m` stashed back to its committed state, so it is not this unit's doing and it is not the
+uncommitted text rewrite's either — it is a demo that paints a gradient over its own header. That case also
+calls `self.artifact(...)`, which lives on the harness's `Context` and not on `BaseCase`, so it ends in an
+`AttributeError` after its checks; both are left for whoever owns that demo rather than fixed inside this unit.
+
+**VERIFICATION: `make demo-coregraphics` is clean under `-Wall -Wextra`, its picture was dry-run against every
+one of the case's assertions before any boot, and `make test TESTS=cg_guest_shadow` is 16 of 16 checks in
+18.3s on the guest — the same numbers the host picture produced.** TWO HARNESS FACTS COST A RUN EACH AND ARE
+WORTH WRITING DOWN: the case filter is `TESTS=`, not `T=` (mk/50-tests.mk), and the tier boots
+`.build/rootagfs-test.img`, which `make testimg` builds and `make rootagfs` does NOT — a `SKIP ... is not in
+.build/rootagfs-test.img` is the image talking, not the demo.

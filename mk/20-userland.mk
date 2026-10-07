@@ -553,6 +553,14 @@ userland64: toolchain-gate $(MUSL64_LIBC) $(DASH64_BIN) $(TOYBOX64_BIN) $(LLVM_C
 	$(MUSL64_OBJC) -Iuserland userland/tests/cgtext_demo.m \
 		-L$(FNXLIB) -lcoregraphics -lfoundation \
 		-o "$(ROOTFS64)/System/Shared/tests/cgtext_demo"
+	# cg_demo: THE SHADOWS AND THE REST OF THE STACK, on the guest's own screen. THE SOURCE IS SHARED
+	# WITH THE HOST BUILD (mk/60-host.mk's HOST_CG_DEMOS, which is what `make demo-coregraphics` needs
+	# no guest for): the demo looks for a framebuffer, and when there is none it writes the same
+	# surface out as a .ppm instead. So the picture on the host and the picture here are ONE file's
+	# output rather than two that drift — and this copy is the one that proves the shipping library.
+	$(MUSL64_OBJC) -Iuserland userland/tests/cg_demo.m \
+		-L$(FNXLIB) -lcoregraphics -lfoundation \
+		-o "$(ROOTFS64)/System/Shared/tests/cg_demo"
 	# sterlingc K1, the guest half (docs/design/sterling-plan.md §4). The four
 	# host legs (make sterlingc-check) prove the emitted TEXT - the golden diff,
 	# the corpus, the rejects, and that it compiles. None of them RUNS anything,

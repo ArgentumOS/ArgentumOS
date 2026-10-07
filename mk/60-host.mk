@@ -253,6 +253,16 @@ HOST_CG_MOBJS    = $(patsubst userland/CoreGraphics/%.m,$(HOST_CG_OBJDIR)/coregr
 # PIXMAN'S INCLUDE PATH NEEDS THE `pixman-1` SUBDIRECTORY NAMED: `pixman.h` includes
 # `pixman-version.h` from its own directory and is NOT self-contained.
 HOST_CG_PROBES  ?= coregraphics_context coregraphics_stroke coregraphics_stroke_context coregraphics_curve coregraphics_arc coregraphics_color coregraphics_color_foundation coregraphics_image coregraphics_image_png coregraphics_image_jpeg coregraphics_gradient coregraphics_gradient_colors coregraphics_shading coregraphics_pattern coregraphics_nsvalue coregraphics_font coregraphics_text coregraphics_textshot coregraphics_dataprovider coregraphics_imagederive coregraphics_pathquery coregraphics_layer coregraphics_geometry coregraphics_contextconv coregraphics_colorstate coregraphics_bitmapctx coregraphics_icc coregraphics_indexed coregraphics_layers coregraphics_clip coregraphics_tiled coregraphics_shadow
+# A DEMO IS NOT A PROBE, AND IT IS BUILT HERE ANYWAY. A probe ASKS and answers in its exit status; a
+# demo DRAWS and leaves a picture. What they share is everything this part of the file is about: the
+# same library, the same compiler, the same link — so ONE rule builds both and the difference is only
+# in how they are RUN (`host-coregraphics-run` gates, `demo-coregraphics` writes an image).
+#
+# AND THE SOURCE IS THE GUEST'S: `userland/tests/cg_demo.m` is also staged into the image by
+# mk/20-userland.mk, so the picture on the host and the picture on the guest's own screen come out of
+# one file rather than two that drift. IT WRITES A `.ppm` BECAUSE THIS LIBRARY HAS NO PNG ENCODER —
+# only the decoder — and `.ppm` is what the test harness already produces and anyone can open.
+HOST_CG_DEMOS   ?= cg_demo
 
 
 
@@ -299,6 +309,10 @@ $(HOST_BINDIR)/$(1): $(HOST_CG_LIB) $(wildcard userland/tests/$(1).c) $(wildcard
 		-L$(HOST_LIBDIR) -lcoregraphics $$(HOST_CG_LDFLAGS) -o $$@
 endef
 $(foreach p,$(HOST_CG_PROBES),$(eval $(call CG_HOST_PROBE_rule,$(p))))
+# THE SAME RULE AGAIN, FOR THE DEMOS — one build, two callers, and only the running differs. A demo
+# that exited non-zero would be a failure here for the same reason a probe's would: it is a program
+# that could not do its job.
+$(foreach p,$(HOST_CG_DEMOS),$(eval $(call CG_HOST_PROBE_rule,$(p))))
 
 .PHONY: host-coregraphics host-coregraphics-run
 host-coregraphics: $(HOST_CG_LIB) $(addprefix $(HOST_BINDIR)/,$(HOST_CG_PROBES))
@@ -315,6 +329,21 @@ host-coregraphics-run: host-coregraphics
 	done; \
 	if [ $$rc -ne 0 ]; then echo "host-coregraphics-run: FAILED"; exit 1; fi; \
 	echo "host-coregraphics-run: all $(words $(HOST_CG_PROBES)) probes passed"
+
+# THE DEMO, WHICH YOU RUN TO LOOK AT SOMETHING. It draws on a bitmap context and, finding no
+# framebuffer here, writes the picture out instead — so this target is seconds and needs no QEMU. THE
+# FILE IS PRINTED BY THE DEMO AND BY THIS TARGET, because a path that exists only in a variable is a
+# path nobody finds. `CG_DEMO_OUT` moves it; the demo takes the same path as its second argument.
+CG_DEMO_OUT ?= .build/cg-demo.ppm
+
+.PHONY: demo-coregraphics
+demo-coregraphics: $(HOST_CG_LIB) $(addprefix $(HOST_BINDIR)/,$(HOST_CG_DEMOS))
+	@rc=0; for d in $(HOST_CG_DEMOS); do \
+		echo "== $$d =="; \
+		$(HOST_BINDIR)/$$d 0 $(CG_DEMO_OUT) || rc=1; \
+	done; \
+	if [ $$rc -ne 0 ]; then echo "demo-coregraphics: FAILED"; exit 1; fi; \
+	echo "demo-coregraphics: the picture is in $(CG_DEMO_OUT) — open it with any image viewer"
 
 # --- THE APPKIT (docs/design/coregraphics-plan.md C8), built the way CoreGraphics is ---------
 # ONE OBJECT PREFIX (`appkit-`) AND IT IS NOBODY ELSE'S, the same rule the coregraphics one states.
