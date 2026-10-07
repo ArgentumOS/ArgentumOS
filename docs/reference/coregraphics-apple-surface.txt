@@ -74,16 +74,18 @@
 # about the API, not a scope call. `why` reads `no-consumer` on every parked row.
 #
 #
+#   (this block is recomputed from THIS FILE's own rows — by --apply-era when it strikes,
+#    by --counts on its own; --refresh regenerates the whole surface from Apple's index.)
 # why the struck rows are struck: after-10.6 253, post-10.6 178, x11-territory 475
 #
 # counts by kind:
-#   func       shipped  244   open   83   struck  310   deferred   98
-#   macro      shipped    7   open    8   struck   92   deferred    0
-#   enum       shipped   14   open    2   struck   38   deferred    3
-#   case       shipped   95   open    7   struck  325   deferred   17
-#   var        shipped   14   open   11   struck   87   deferred   23
-#   typealias  shipped   20   open   12   struck   45   deferred   23
-#   struct     shipped    7   open    3   struck    9   deferred    1
+#   func       shipped  310   open    7   struck  310   deferred  108
+#   macro      shipped   15   open    0   struck   92   deferred    0
+#   enum       shipped   16   open    0   struck   38   deferred    3
+#   case       shipped  101   open    1   struck  325   deferred   17
+#   var        shipped   25   open    0   struck   87   deferred   23
+#   typealias  shipped   32   open    0   struck   45   deferred   23
+#   struct     shipped   10   open    0   struck    9   deferred    1
 case	shipped	CGGlyphMax	-	Opaque Types / Working with Font Tables / Constants	shipped with the constants and format enums (plan §19)	objc
 case	shipped	CGGlyphMin	-	Opaque Types / Working with Font Tables / Constants	shipped with the constants and format enums (plan §19)	objc
 case	deferred	CGPDFDataFormatJPEG2000	-	Opaque Types / Abstract Types for PDF Document Content / Constants / Constants	no-consumer	objc
@@ -796,8 +798,8 @@ func	shipped	CGContextSetPatternPhase	-	Opaque Types / Setting Path Drawing Opti
 func	shipped	CGContextSetRGBFillColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	shipped	CGContextSetRGBStrokeColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
 func	open	CGContextSetRenderingIntent	-	Opaque Types / Managing a Graphics Context	-	objc
-func	open	CGContextSetShadow	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
-func	open	CGContextSetShadowWithColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	-	objc
+func	shipped	CGContextSetShadow	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	shipped with the shadow and a real blur (plan §38)	objc
+func	shipped	CGContextSetShadowWithColor	-	Opaque Types / Setting Fill, Stroke, and Shadow Colors	shipped with the shadow and a real blur (plan §38)	objc
 func	shipped	CGContextSetShouldAntialias	-	Opaque Types / Setting Path Drawing Options	-	objc
 func	shipped	CGContextSetShouldSmoothFonts	-	Opaque Types / Drawing Text	-	objc
 func	shipped	CGContextSetShouldSubpixelPositionFonts	-	Opaque Types / Drawing Text	-	objc

@@ -2180,3 +2180,77 @@ already knows in another form — a header-only change does not rebuild the obje
 about what you just changed — and the remedy is the same one: **TOUCH THE SOURCES BEFORE ASKING THE BUILD
 ANYTHING.** The gate now forces a rebuild before it counts, because a count taken over a build that did not happen
 is not a measurement.
+
+## 38. The shadow and its blur (2 rows), the padded mask that pixman refused, and the ledger's own accounting
+
+**THE TWO DOORS ARE `CGContextSetShadow` AND `CGContextSetShadowWithColor`, AND APPLE'S HEADER IS THE WHOLE
+SPECIFICATION FOR BOTH.** `offset` is a translation in base space, `blur` is non-negative, `color` may carry a
+non-opaque alpha — and "IF `color` IS NULL, IT IS EQUIVALENT TO SPECIFYING A FULLY TRANSPARENT COLOR". So **OFF IS
+A FULLY TRANSPARENT SHADOW COLOUR AND NOT A FLAG**, exactly as an empty dash array is a solid line, and the state
+carries it with no `shadow_enabled` anywhere. It is a GRAPHICS-STATE PARAMETER, which is why `Save`/`Restore` needed
+no change: they copy the state struct, so the offset, the radius and the colour are saved and restored with it.
+`CGContextSetShadow` is implemented as a LITERAL CALL to the WithColor door with black at 1/3 alpha — Apple defines
+it that way in so many words — so the equivalence cannot drift from its own definition.
+
+**THE BLUR IS REAL AND IT IS OURS, BECAUSE APPLE PUBLISHES NO PROFILE.** A separable box blur, up to three passes
+whose radii sum to the caller's `blur`, horizontal then vertical, each pass a sliding sum so the cost does not grow
+with the radius and the edges clamped to the border pixel. Three is the count that stops one box's square profile
+from showing; a blur UNDER three units gets fewer, smaller boxes rather than three clamped-up ones that would reach
+further than the caller asked for. The radius is converted from base space to device space by the CTM's scale — the
+same transformation every other coordinate takes. **THE EXACT CURVE APPLE USES IS WRITTEN DOWN NOWHERE**, so what is
+promised is a real, separable blur of the given radius rather than a claim to match a curve nobody has published.
+
+**AND THE HOOK IS `cg_paint_path` — THE ONE PLACE EVERY PATH-SHAPED PAINT PASSES THROUGH.** A stroke arrives there
+as its stroked outline, so fills, strokes, text and patterns all get shadows from one call, and a shadow is
+composited BEFORE the shape because it is behind it. IMAGES KEEP THEIR OWN SAMPLING LOOP AND ARE NOT SHADOWED YET —
+a boundary stated in `CGContext.h` rather than hidden.
+
+**THE BUG THAT COST THE UNIT WAS A STRIDE, AND IT HID BEHIND A `printf` THAT NEVER RAN.** The first version applied
+the offset by PADDING the coverage mask — `c->width + |offset|` wide — and `pixman_image_create_bits` REFUSES a row
+stride that is not a multiple of four **by returning NULL**, which the code treated as "the allocation failed" and
+answered with a silent `return`. So the shadow did not appear AT ALL, and the first probe run read canvas at every
+shadow pixel. What identified it was pixman's own complaint on stderr (`*** BUG *** In create_bits_image_internal:
+… (rowstride_bytes % sizeof (uint32_t)) == 0 was false`) plus the structural diff against `cg_composite_traps`, which
+composites the same way: a 1×1 `PIXMAN_REPEAT_NORMAL` source through an A8 mask into `c->image`, identical argument
+order. **MEASURED, AND NOT INFERRED — a five-line throwaway program answered `pixman_image_create_bits(a8, 19, 8,
+buf, 19) -> (nil)`.** The second candidate spelling was measured the same way before it was written: with a
+library-shaped mask built by `pixman_composite_trapezoids`, `mask_x = -dx` and `dest_x = +dx` put the shadow in the
+same place (band at 4..5) and `mask_x = +3` puts it off the left edge and clips it, which is what it should do. THE
+PADDING IS GONE: the coverage is composited where it is and the offset travels in the mask's own origin, which costs
+no surface and no copy.
+
+**ITS TWIN, FOUND WHILE WRITING THE BLUR: `cg_box_pass` WALKS ROWS `w` APART, AND THE COVERAGE'S STRIDE IS PIXMAN'S
+TO CHOOSE.** They happen to agree today (a coverage image over a 16-wide surface has a 16-byte stride) and they
+would NOT over a 15-wide one, where pixman's stride is 16 and every row would be read sheared. The blur now copies
+rows into and out of DENSE buffers one at a time, so a surface whose width is not a multiple of four is not a special
+case in either direction.
+
+**TWO OF THE FIVE FAILING CHECKS WERE THE PROBE'S, AND THEY FAILED FOR ONE REASON: IT ASSERTED ABOUT A STATE IT HAD
+NOT ESTABLISHED.** The blur section leaves a BLURRED shadow set, and the next two checks asked for readings that only
+hold for the HARD one — so "the shadow the save/restore protected is back afterwards" read 214 where it wanted
+140–200, and the negative-blur refusal read the previous shadow because a refusal correctly changes NOTHING. The fix
+is to put the state back to a known shadow before each, which also makes the refusal check a real test: the refused
+call asks for an offset of 1 (which would move the shadow off x=5) AND a NULL colour (which is OFF, and would leave
+bare canvas), and BOTH readings are outside the range asserted — so the check fails if either half was adopted.
+
+**AND FLIPPING THE TWO ROWS EXPOSED THAT THIS LEDGER'S HEADER ACCOUNTING HAD BEEN WRONG FOR SIX UNITS.** The counts
+block claimed `func shipped 244 / open 83 / deferred 98` while the file's own rows were `308 / 9 / 108` — **74 rows,
+because `--check` verified the ROWS and not the block**, so a unit that flipped rows by hand left the block
+reporting an older tree while it went on reading exactly like a measurement. Every one of the last six units flipped
+rows and recomputed nothing. **IT IS THE SAME DEFECT FOUNDATION'S SWEEP ALREADY CARRIES A GUARD FOR** (§W11 there,
+measured at 340 vs 360, which is why its header calls it "§27's defect class one level down"), and this sweep is that
+file's shape DELIBERATELY and had simply never got it. So the guard is ported — four statuses, not three, because
+`deferred` has to be in the pattern or the parked PDF rows would be invisible to it — and **BOTH ARMS ARE PROVEN BY
+MEASUREMENT RATHER THAN BY READING: the guard printed 7 `STALE COUNT BLOCK` findings and exited 1 before the block
+was fixed, and a deliberately deleted `func` count line produced the `MISSING COUNT LINE` finding that catches a line
+dropped entirely.** THE FIX NEEDED A MODE, because `--refresh` would regenerate the whole file from Apple's index and
+lose every decision the rows record and `--apply-era` only rewrites when it has something to strike: **`--counts`
+recomputes the header from the file's own rows and moves nothing else**, and the header-building code is now ONE
+writer called by both. Its first version WAS NOT A FIXED POINT — it kept the block's own explanatory note, which sits
+above the strike-reason line, and appended a second copy each run; measured by running it twice, which is the one
+property a writer like this has to have, and it is checked that way now.
+
+**VERIFICATION FOR THE UNIT: `make host-coregraphics-run` is 32 of 32 probes green, `CGContext.c` compiles clean
+under `-Wall -Wextra` on a forced rebuild (§37b's rule), and `tools/coregraphics-sweep.py --check` exits 0 — every
+shipped name declared, every open name absent, every strike corroborated, and now the counts block in step with the
+rows.**

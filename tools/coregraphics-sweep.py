@@ -78,6 +78,7 @@ USAGE
   tools/coregraphics-sweep.py --work-list [KIND]  print the open rows — the work list
   tools/coregraphics-sweep.py --refresh           re-read Apple's index and rewrite the file
   tools/coregraphics-sweep.py --apply-era        strike the rows docs/reference/coregraphics-era.txt dates after 10.6
+  tools/coregraphics-sweep.py --counts            recompute the header's counts block from the file's own rows
 """
 
 import json
@@ -807,6 +808,31 @@ def check(strict=False):
         if status == STATUS_DEFERRED and found:
             bad.append("PARKED NAME WE SHIP %-9s %s — parking is about work, not about the headers"
                        % (kind, name))
+    # THE COUNTS BLOCK, RE-DERIVED. The rows above are the truth; the header is a CLAIM about them, and
+    # this is the check that makes it one (see header_counts()). It is not a style rule: a block nobody
+    # re-derives reads exactly like a measurement while the thing it measures has moved, which is how
+    # this ledger's came to be 74 rows wrong.
+    claimed_all = header_counts()
+    for hkind, claimed in sorted(claimed_all.items()):
+        got = (counts.get((hkind, STATUS_SHIPPED), 0),
+               counts.get((hkind, STATUS_OPEN), 0),
+               counts.get((hkind, STATUS_STRUCK), 0),
+               counts.get((hkind, STATUS_DEFERRED), 0))
+        if claimed != got:
+            bad.append("STALE COUNT BLOCK     %-9s the header claims shipped/open/struck/deferred %s and "
+                       "the rows are %s — fix: tools/coregraphics-sweep.py --counts"
+                       % (hkind, claimed, got))
+    # AND A KIND THE BLOCK DOES NOT CARRY AT ALL IS THE SAME DEFECT ONE LEVEL DOWN: comparing only the
+    # lines the block HAS means a line that was dropped looks exactly like a line that is right, because
+    # nothing asks for it. This tree has already recorded that trap by name ("a recompute that misses a
+    # kind silently drops its line"), so the comparison is run over the writer's own list of kinds, not
+    # over the block's.
+    for kind in KINDS:
+        got = [counts.get((kind, s), 0)
+               for s in (STATUS_SHIPPED, STATUS_OPEN, STATUS_STRUCK, STATUS_DEFERRED)]
+        if sum(got) and kind not in claimed_all:
+            bad.append("MISSING COUNT LINE    %-9s the block has no line for it and the rows are %s — "
+                       "fix: tools/coregraphics-sweep.py --counts" % (kind, tuple(got)))
     kinds = sorted({k for k, _ in counts})
     print("coregraphics-sweep: %d symbols in the ledger" % len(rows))
     for kind in kinds:
@@ -876,6 +902,97 @@ def work_list(want=None):
     return 0
 
 
+# THE HEADER'S COUNTS BLOCK, AS A CLAIM. The rows are the truth; the block is what the file SAYS about
+# them, and until this existed `--check` verified only the rows — so a unit that flipped rows by hand
+# left the block reporting an older tree, reading as a measurement while the thing it measured had moved.
+# MEASURED HERE BEFORE THE GUARD EXISTED (2026-10-06): the block claimed `func shipped 244 open 83
+# deferred 98` while the rows were `308 open 9 deferred 108` — 74 rows, over the six units that flipped
+# rows and recomputed nothing. IT IS THE SAME DEFECT FOUNDATION'S SWEEP ALREADY CARRIES A GUARD FOR
+# (§W11 there, measured at 340 vs 360); this sweep is that file's shape deliberately, and simply never
+# got it. FOUR STATUSES AND NOT THREE: `deferred` — the parked PDF half — has to be in the pattern, or
+# the parked rows would be invisible to the guard.
+HEADER_COUNT_RE = re.compile(
+    r"^#\s+(\w+)\s+shipped\s+(\d+)\s+open\s+(\d+)\s+struck\s+(\d+)\s+deferred\s+(\d+)\s*$", re.M)
+
+
+def header_counts():
+    """{kind: (shipped, open, struck, deferred)} as the file's own header claims them."""
+    text = open(SURFACE, encoding="utf-8").read()
+    return {m.group(1): (int(m.group(2)), int(m.group(3)), int(m.group(4)), int(m.group(5)))
+            for m in HEADER_COUNT_RE.finditer(text)}
+
+
+def write_surface(rows):
+    """Write the surface file: the rows, then a header whose accounting is RECOMPUTED from them.
+
+    ONE WRITER AND TWO CALLERS — `--apply-era` after it strikes, and `--counts` on its own — because the
+    block and the rows must not be written by two different paths. That is exactly how a block came to
+    report a tree the rows had moved past (see header_counts()). The docstring of --apply-era claimed
+    this recomputation all along; what it did not have was a way to RUN it when it had nothing to
+    strike, which is why the block it wrote could drift for six units with nothing able to put it back.
+    """
+    counts = {}
+    reasons = {}
+    out = []
+    for kind, status, name, owner, family, why, src in rows:
+        counts[(kind, status)] = counts.get((kind, status), 0) + 1
+        if status == STATUS_STRUCK:
+            reasons[why] = reasons.get(why, 0) + 1
+        out.append("\t".join((kind, status, name, owner, family, why, src)))
+    head, tail_started = [], False
+    for line in open(SURFACE, encoding="utf-8"):
+        if not line.startswith("#"):
+            break
+        s = line.rstrip("\n")
+        # FROM THE FIRST LINE OF THE OLD BLOCK ONWARD EVERYTHING IS REPLACED — the strike-reason line, the
+        # counts rows, AND the bare `#` separators that sat between them. Filtering only the two line shapes
+        # left the separators behind and produced a header with a duplicate `# counts by kind:`, which is
+        # exactly the kind of stale accounting this block exists to prevent. THE COUNT-LINE PATTERN CARRIES
+        # `deferred` BECAUSE THIS LEDGER HAS IT: the three-status form the block was first written against
+        # matched none of these lines, and only the `# counts by kind:` line above them saved the rewrite.
+        # AND THE BLOCK'S OWN NOTE IS PART OF THE BLOCK, which it was not: the note is written ABOVE the
+        # strike-reason line, so the scan reached it while `tail_started` was still False, KEPT it, and then
+        # appended another one — MEASURED: running this writer twice changed the file, and being a fixed
+        # point is the one property it must have.
+        if ("why the struck rows are struck:" in s or s.strip() == "# counts by kind:"
+                or "(this block is recomputed" in s
+                or re.match(r"^#\s+\w+\s+shipped\s+\d+\s+open\s+\d+\s+struck\s+\d+"
+                            r"(\s+deferred\s+\d+)?\s*$", s)):
+            tail_started = True
+            continue
+        if tail_started:
+            continue
+        head.append(s)
+    head.append("#   (this block is recomputed from THIS FILE's own rows — by --apply-era when it strikes,")
+    head.append("#    by --counts on its own; --refresh regenerates the whole surface from Apple's index.)")
+    head.append("# why the struck rows are struck: " + ", ".join("%s %d" % (k, v) for k, v in sorted(reasons.items())))
+    head.append("#")
+    head.append("# counts by kind:")
+    for kind in KINDS:
+        got = [counts.get((kind, s), 0)
+               for s in (STATUS_SHIPPED, STATUS_OPEN, STATUS_STRUCK, STATUS_DEFERRED)]
+        if sum(got):
+            head.append("#   %-10s shipped %4d   open %4d   struck %4d   deferred %4d"
+                        % (kind, *got))
+    open(SURFACE, "w", encoding="utf-8").write("\n".join(head + out) + "\n")
+
+
+def rewrite_counts():
+    """`--counts`: put the header's accounting back in step with the rows. NOTHING ELSE MOVES.
+
+    THE MODE EXISTS BECAUSE THE GUARD NEEDED ONE. `--check` now fails on a block that disagrees with the
+    rows (see header_counts()), and a failure that names a fix nobody can run is a failure that gets
+    ignored: `--refresh` would regenerate the whole file from Apple's index and lose every decision the
+    rows record, and `--apply-era` only rewrites when it has something to strike. So a hand-flipped row
+    left the block wrong and no command could right it — which is how it stayed wrong for six units.
+    """
+    rows = read_surface()
+    write_surface(rows)
+    print("coregraphics-sweep: the header's accounting is rewritten from the file's own %d row(s)"
+          % len(rows))
+    return 0
+
+
 def apply_era():
     """Flip the OWED rows the era artefact dates after 10.6 from `open` to `struck`, in place.
 
@@ -909,47 +1026,16 @@ def apply_era():
     for k, n, v in flipped:
         later.setdefault("%d.%d" % v, 0)
         later["%d.%d" % v] += 1
-    out = []
-    counts = {}
-    reasons = {}
+    final = []
     for kind, status, name, owner, family, why, src in rows:
         if (kind, name) in flipped_names:
             status = STATUS_STRUCK
             why = ERA_STRIKE
-        counts[(kind, status)] = counts.get((kind, status), 0) + 1
-        if status == STATUS_STRUCK:
-            reasons[why] = reasons.get(why, 0) + 1
-        out.append("\t".join((kind, status, name, owner, family, why, src)))
-    # THE HEADER'S OWN ACCOUNTING IS RECOMPUTED FROM THE ROWS ABOVE RATHER THAN REGENERATED: the counts block
-    # and the strike-reason line are functions of the file, and a stale counts block is a lie about the work.
-    head, tail_started = [], False
-    for line in open(SURFACE, encoding="utf-8"):
-        if not line.startswith("#"):
-            break
-        s = line.rstrip("\n")
-        # FROM THE FIRST LINE OF THE OLD BLOCK ONWARD EVERYTHING IS REPLACED — the strike-reason line, the
-        # counts rows, AND the bare `#` separators that sat between them. Filtering only the two line shapes
-        # left the separators behind and produced a header with a duplicate `# counts by kind:`, which is
-        # exactly the kind of stale accounting this block exists to prevent.
-        if ("why the struck rows are struck:" in s or s.strip() == "# counts by kind:"
-                or re.match(r"^#\s+\w+\s+shipped\s+\d+\s+open\s+\d+\s+struck\s+\d+\s*$", s)):
-            tail_started = True
-            continue
-        if tail_started:
-            continue
-        head.append(s)
-    head.append("#   (this block is recomputed by --apply-era from THIS FILE's own rows and the era artefact;")
-    head.append("#    --refresh regenerates the whole surface from Apple's index instead.)")
-    head.append("# why the struck rows are struck: " + ", ".join("%s %d" % (k, v) for k, v in sorted(reasons.items())))
-    head.append("#")
-    head.append("# counts by kind:")
-    for kind in KINDS:
-        got = [counts.get((kind, s), 0)
-               for s in (STATUS_SHIPPED, STATUS_OPEN, STATUS_STRUCK, STATUS_DEFERRED)]
-        if sum(got):
-            head.append("#   %-10s shipped %4d   open %4d   struck %4d   deferred %4d"
-                        % (kind, *got))
-    open(SURFACE, "w", encoding="utf-8").write("\n".join(head + out) + "\n")
+        final.append((kind, status, name, owner, family, why, src))
+    # THE HEADER'S ACCOUNTING IS RECOMPUTED FROM THE ROWS JUST BUILT, by the one writer that does it —
+    # the block and the rows must not be written by two different paths, which is how the block came to
+    # report a tree the rows had moved past (see header_counts()).
+    write_surface(final)
     print("coregraphics-sweep: --apply-era struck %d owed row(s) as %s: %s"
           % (len(flipped), ERA_STRIKE, ", ".join("%s %d" % kv for kv in sorted(later.items()))))
     if skipped_shipped:
@@ -967,6 +1053,11 @@ def main(argv):
         return rc
     if mode == "--refresh":
         rc = refresh()
+        if rc == 0:
+            rc = check()
+        return rc
+    if mode == "--counts":
+        rc = rewrite_counts()
         if rc == 0:
             rc = check()
         return rc

@@ -262,6 +262,29 @@ CGRect CGContextGetClipBoundingBox(CGContextRef context);
  * happens when the pixel is built. */
 void CGContextSetGrayFillColor(CGContextRef context, CGFloat gray, CGFloat alpha);
 void CGContextSetRGBFillColor(CGContextRef context, CGFloat red, CGFloat green, CGFloat blue, CGFloat alpha);
+/* THE SHADOW, WHICH IS A GRAPHICS-STATE PARAMETER AND A REAL BLUR. Apple's two sentences are the whole of
+ * the contract this door keeps: "`offset` specifies a translation in base-space; `blur` is a non-negative
+ * number specifying the amount of blur; `color` specifies the color of the shadow, which may contain a
+ * non-opaque alpha value. IF `color` IS NULL, IT IS EQUIVALENT TO SPECIFYING A FULLY TRANSPARENT COLOR. The
+ * shadow is a gstate parameter. After a shadow is specified, all objects drawn subsequently will be shadowed.
+ * To turn off shadowing, set the shadow color to a fully transparent color (or pass NULL as the color), or use
+ * the standard gsave/grestore mechanism."
+ *
+ * SO "OFF" IS A FULLY TRANSPARENT SHADOW COLOUR AND NOT A FLAG, and the state's own alpha carries it — the
+ * same way an empty dash array means a solid line.
+ *
+ * THE BLUR IS A SEPARABLE BOX BLUR, UP TO THREE PASSES WHOSE RADII SUM TO THE CALLER'S `blur` — the standard
+ * approximation of a Gaussian, and three because that is the count which keeps a single box's square profile
+ * from showing. A blur under three units gets fewer, smaller boxes rather than three clamped-up ones that would
+ * reach further than the caller asked for. The radius is the caller's `blur` converted from base space to device
+ * space by the CTM's scale. THE EXACT PROFILE APPLE USES IS PUBLISHED NOWHERE, so what is promised here is a
+ * real, separable blur of the given radius rather than a claim to match a curve nobody has written down.
+ *
+ * AND THE HOOK IS THE ONE PLACE EVERY PATH-SHAPED PAINT PASSES THROUGH (`cg_paint_path`), which is what makes a
+ * shadow follow fills, strokes, text and patterns alike. IMAGES KEEP THEIR OWN SAMPLING LOOP AND ARE NOT
+ * SHADOWED YET — a boundary stated rather than hidden. */
+void CGContextSetShadow(CGContextRef c, CGSize offset, CGFloat blur);
+void CGContextSetShadowWithColor(CGContextRef c, CGSize offset, CGFloat blur, CGColorRef color);
 void CGContextSetAlpha(CGContextRef context, CGFloat alpha);
 void CGContextSetBlendMode(CGContextRef context, CGBlendMode mode);
 

@@ -109,6 +109,13 @@ typedef struct cg_state {
 	/* THE GRAPHICS-STATE HALF OF THE SUBPIXEL PAIR. See the context's `allows_` flag above for why
 	 * this one is here and that one is not. */
 	int should_subpixel_position_fonts;
+	/* THE SHADOW, WHICH IS A GRAPHICS-STATE PARAMETER — so Save/Restore carry it for free, the struct
+	 * being copied — and whose OFF STATE IS A FULLY TRANSPARENT COLOUR rather than a flag, which is
+	 * Apple's own definition: "if `color` is NULL, it's equivalent to specifying a fully transparent
+	 * color". An offset, a radius and a colour are all there is. */
+	CGSize shadow_offset;
+	CGFloat shadow_blur;
+	CGFloat shadow_rgba[4];
 	/* THE LINE STATE LIVES IN THE GRAPHICS STATE, which is why `CGContextSaveGState` and
 	 * `CGContextRestoreGState` needed NO change to carry it: they copy this struct, so
 	 * the width, the caps, the joins and the stroke colour are saved and restored with
@@ -275,6 +282,14 @@ static void cg_state_init_full(cg_state *st, int width, int height)
 	/* DEVICE RGB IS THE DEFAULT COLOUR SPACE for both, which is what the component doors assume when
 	 * nobody has set one, and what `CGContextSetRGBFillColor` has always written. STATED HERE for the
 	 * reason the dash pattern's zero is: a default that depends on calloc is a default nobody chose. */
+	/* A FULLY TRANSPARENT SHADOW: no shadow until somebody sets one, stated here rather than left to the
+	 * calloc that happens to zero it. */
+	st->shadow_offset = CGSizeMake(0.0, 0.0);
+	st->shadow_blur = 0.0;
+	st->shadow_rgba[0] = 0.0;
+	st->shadow_rgba[1] = 0.0;
+	st->shadow_rgba[2] = 0.0;
+	st->shadow_rgba[3] = 0.0;
 	st->fill_model = kCGColorSpaceModelRGB;
 	st->stroke_model = kCGColorSpaceModelRGB;
 	st->blend = kCGBlendModeNormal;
@@ -1104,6 +1119,59 @@ void CGContextSetRGBFillColor(CGContextRef c, CGFloat red, CGFloat green, CGFloa
 	c->state.rgba[1] = green;
 	c->state.rgba[2] = blue;
 	c->state.rgba[3] = alpha;
+}
+
+/* THE COLOUR CONVERSION IS DEFINED WITH THE COLOUR DOORS BELOW, and a static function cannot be used
+ * before its declaration: the same lesson CGLayer, the clip door and the mask clip each paid for, so
+ * this one is declared at the same moment the call is written. */
+static int cg_color_to_rgba(CGColorRef color, CGFloat rgba[4]);
+
+void CGContextSetShadowWithColor(CGContextRef c, CGSize offset, CGFloat blur, CGColorRef color)
+{
+	if (c == NULL) {
+		return;
+	}
+	if (blur < 0.0) {
+		fprintf(stderr, "CG-REFUSE: CGContextSetShadowWithColor takes a NON-NEGATIVE blur, and was given "
+				"%g\n", (double)blur);
+		return;
+	}
+	c->state.shadow_offset = offset;
+	c->state.shadow_blur = blur;
+	if (color == NULL) {
+		/* APPLE: "if `color` is NULL, it's equivalent to specifying a fully transparent color" — which is
+		 * this library's off state, so the two spellings of OFF are one state. */
+		c->state.shadow_rgba[0] = 0.0;
+		c->state.shadow_rgba[1] = 0.0;
+		c->state.shadow_rgba[2] = 0.0;
+		c->state.shadow_rgba[3] = 0.0;
+		return;
+	}
+	if (!cg_color_to_rgba(color, c->state.shadow_rgba)) {
+		return;	/* the conversion says why; the previous shadow state stays, as every refusal here does */
+	}}
+
+void CGContextSetShadow(CGContextRef c, CGSize offset, CGFloat blur)
+{
+	/* APPLE'S OWN DEFINITION OF THIS DOOR: "equivalent to calling CGContextSetShadowWithColor(context, offset,
+	 * blur, color) where color is black with 1/3 alpha (i.e., RGBA = {0, 0, 0, 1.0/3.0}) in the DeviceRGB color
+	 * space." IMPLEMENTED AS EXACTLY THAT CALL, so the equivalence cannot drift. */
+	CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
+	const CGFloat black[4] = { 0.0, 0.0, 0.0, 1.0 / 3.0 };
+	CGColorRef color;
+
+	if (c == NULL || space == NULL) {
+		CGColorSpaceRelease(space);
+		return;
+	}
+	color = CGColorCreate(space, black);
+	if (color == NULL) {
+		CGColorSpaceRelease(space);
+		return;
+	}
+	CGContextSetShadowWithColor(c, offset, blur, color);
+	CGColorRelease(color);
+	CGColorSpaceRelease(space);
 }
 
 void CGContextSetAlpha(CGContextRef c, CGFloat alpha)
@@ -2079,6 +2147,179 @@ static pixman_format_code_t cg_mask_format(CGContextRef c)
 /* THE COMPOSITE, AND THE ONLY ONE A PATH HAS: any source, at any offset, through this path's
  * coverage. `x_src`/`y_src` sample the source; the trapezoids are already in surface coordinates, so
  * the destination offsets are zero. */
+/* ------------------------------------------------------------------------- */
+/* the shadow: a real blur over the shape's own coverage                        */
+/* ------------------------------------------------------------------------- */
+
+/* A SEPARABLE BOX BLUR, THREE PASSES — the standard approximation of a Gaussian, and the reason it is three is
+ * that one box is a visible square and three are not. HORIZONTAL THEN VERTICAL, each pass a sliding sum so the
+ * cost does not grow with the radius, with the edge clamped to the border pixel (a shadow's coverage fades at
+ * the edge of the surface, and reading past it would wrap the far side in). */
+static void cg_box_pass(unsigned char *dst, const unsigned char *src, int w, int h, int radius, int vertical)
+{
+	int major = vertical ? h : w;
+	int minor = vertical ? w : h;
+	int step = vertical ? w : 1;
+	int outer, line, i;
+
+	for (line = 0; line < minor; line++) {
+		int sum = 0;
+		int count = 2 * radius + 1;
+		unsigned char *d = vertical ? dst + line : dst + (size_t)line * (size_t)w;
+		const unsigned char *s = vertical ? src + line : src + (size_t)line * (size_t)w;
+		/* THE RUNNING SUM, seeded with the edge pixel repeated `radius` times. */
+		for (i = -radius; i <= radius; i++) {
+			int k = i < 0 ? 0 : (i >= major ? major - 1 : i);
+
+			sum += s[(size_t)k * (size_t)step];
+		}
+		for (outer = 0; outer < major; outer++) {
+			int out = outer - radius;
+			int in = outer + radius + 1;
+			int ko = out < 0 ? 0 : (out >= major ? major - 1 : out);
+			int ki = in < 0 ? 0 : (in >= major ? major - 1 : in);
+
+			d[(size_t)outer * (size_t)step] = (unsigned char)(sum / count);
+			sum += s[(size_t)ki * (size_t)step] - s[(size_t)ko * (size_t)step];
+		}
+	}
+}
+
+/* THE COVERAGE OF A SHAPE, BLURRED. The radius arrives in DEVICE pixels, already converted by the caller, and a
+ * radius of zero means the shape's own coverage untouched — which is what a hard shadow is. */
+static pixman_image_t *cg_blurred_coverage(CGContextRef c, pixman_image_t *cover, int radius)
+{
+	unsigned char *a;
+	unsigned char *b;
+	const unsigned char *in;
+	int in_stride;
+	int w = c->width;
+	int h = c->height;
+	int y;
+	int pass;
+
+	if (cover == NULL || radius <= 0) {
+		return cover;
+	}
+	/* THE WORKING BUFFERS ARE DENSE — one row of `w` bytes after another — AND THE COVER'S OWN STRIDE IS
+	 * NOT ASSUMED TO BE THAT. `cg_box_pass` walks rows `w` apart, and the coverage comes from a pixman
+	 * image whose stride pixman chose. The rows are copied in and out one at a time for that reason,
+	 * which is also what keeps a surface whose width is not a multiple of four from being a special
+	 * case: a coverage image over a 15-wide surface has a 16-byte stride, and reading it as `w` apart
+	 * would shear every row. */
+	a = malloc((size_t)w * (size_t)h);
+	b = malloc((size_t)w * (size_t)h);
+	if (a == NULL || b == NULL) {
+		free(a);
+		free(b);
+		return cover;	/* a blur that cannot be allocated leaves the hard shadow rather than nothing */
+	}
+	in_stride = pixman_image_get_stride(cover);
+	in = (const unsigned char *)pixman_image_get_data(cover);
+	for (y = 0; y < h; y++) {
+		memcpy(a + (size_t)y * (size_t)w, in + (size_t)y * (size_t)in_stride, (size_t)w);
+	}
+	/* THE PASS RADII SUM TO THE CALLER'S `blur`, one box blur per third of it: three is the count that
+	 * keeps a single box's square profile from showing, and a blur smaller than three units gets fewer,
+	 * smaller boxes rather than three clamped-up ones that would reach further than the caller asked
+	 * for. */
+	for (pass = 0; pass < 3; pass++) {
+		int r = radius / 3 + (pass < radius % 3 ? 1 : 0);
+
+		if (r < 1) {
+			continue;
+		}
+		cg_box_pass(b, a, w, h, r, 0);
+		cg_box_pass(a, b, w, h, r, 1);
+	}
+	{
+		pixman_image_t *out;
+		unsigned char *out_data;
+		int out_stride;
+
+		out = pixman_image_create_bits(PIXMAN_a8, w, h, NULL, 0);
+		if (out == NULL) {
+			free(a);
+			free(b);
+			return cover;
+		}
+		out_stride = pixman_image_get_stride(out);
+		out_data = (unsigned char *)pixman_image_get_data(out);
+		for (y = 0; y < h; y++) {
+			memcpy(out_data + (size_t)y * (size_t)out_stride, a + (size_t)y * (size_t)w,
+			       (size_t)w);
+		}
+		free(a);
+		free(b);
+		pixman_image_unref(cover);
+		return out;
+	}
+}
+
+/* THE SHADOW ITSELF: the shape's coverage, blurred, painted in the shadow colour, offset — and composited
+ * BEFORE the shape so that it is behind it. THE OFFSET IS BASE-SPACE AND BECOMES A DEVICE OFFSET THROUGH THE
+ * CTM's LINEAR PART, which is the same transformation every other coordinate takes. */
+static void cg_paint_shadow(CGContextRef c, CGPathRef path, int even_odd)
+{
+	cg_traps tr;
+	pixman_image_t *cover;
+	pixman_image_t *src;
+	uint32_t pixel;
+	double scale;
+	int radius;
+	int dx, dy;
+
+	if (c->state.shadow_rgba[3] <= 0.0) {
+		return;	/* a fully transparent shadow colour is Apple's way of saying OFF */
+	}
+	scale = fabs((double)c->state.ctm.a * (double)c->state.ctm.d
+		     - (double)c->state.ctm.b * (double)c->state.ctm.c);
+	scale = sqrt(scale);
+	radius = (int)((double)c->state.shadow_blur * scale + 0.5);
+	dx = (int)floor((double)c->state.ctm.a * (double)c->state.shadow_offset.width
+			+ (double)c->state.ctm.c * (double)c->state.shadow_offset.height);
+	dy = (int)floor((double)c->state.ctm.b * (double)c->state.shadow_offset.width
+			+ (double)c->state.ctm.d * (double)c->state.shadow_offset.height);
+
+	cg_traps_for_path(c, path, even_odd, &tr);
+	if (tr.count == 0) {
+		free(tr.traps);
+		return;
+	}
+	cover = cg_coverage_from_traps(c, &tr);
+	free(tr.traps);
+	if (cover == NULL) {
+		return;
+	}
+	/* THE COVERAGE IS BLURRED FIRST, so the shape's own edge is inside the blur rather than at the edge
+	 * of a surface something padded around it. */
+	cover = cg_blurred_coverage(c, cover, radius);
+	pixel = cg_premultiplied_pixel(c->state.shadow_rgba[0], c->state.shadow_rgba[1],
+				       c->state.shadow_rgba[2], c->state.shadow_rgba[3]);
+	src = pixman_image_create_bits(PIXMAN_a8r8g8b8, 1, 1, &pixel, 4);
+	if (src != NULL) {
+		pixman_image_set_repeat(src, PIXMAN_REPEAT_NORMAL);
+		pixman_image_set_clip_region32(c->image, &c->state.clip);
+		/* THE OFFSET IS THE MASK'S OWN ORIGIN. pixman samples a mask at `mask_x + x` for destination
+		 * pixel x, so a `mask_x` of `-dx` covers that pixel with the shape's coverage at `x - dx` —
+		 * the shadow moved right by dx, with whatever lands past the surface's edge simply not
+		 * sampled. MEASURED, BECAUSE THE SPELLINGS ARE NOT EQUIVALENT: offsetting the DESTINATION
+		 * instead (`dest_x = dx`) puts the shadow in the same place, but it moves the composite's
+		 * region with it, and so changes which pixels pixman clips.
+		 *
+		 * A PADDED MASK WAS TRIED FIRST AND DID NOT WORK AT ALL — for two separate reasons. It cost a
+		 * whole surface of allocation and copying per fill, and its row stride was
+		 * `c->width + |offset|`, which is not generally a multiple of four: `pixman_image_create_bits`
+		 * REFUSES such a stride by returning NULL, so the shadow silently never appeared. Both are
+		 * gone, and the coverage is composited where it is, with the offset carried by the mask
+		 * coordinates instead. */
+		pixman_image_composite32(PIXMAN_OP_OVER, src, cover, c->image, 0, 0, -dx, -dy, 0, 0,
+					 c->width, c->height);
+		pixman_image_unref(src);
+	}
+	pixman_image_unref(cover);
+}
+
 static void cg_composite_traps(CGContextRef c, cg_traps *tr, pixman_op_t op, pixman_image_t *src,
 			       int x_src, int y_src)
 {
@@ -2200,6 +2441,10 @@ static void cg_paint_path(CGContextRef c, CGPathRef path, int even_odd, pixman_o
 	if (c == NULL || path == NULL) {
 		return;
 	}
+	/* THE SHADOW GOES DOWN FIRST, WHICH IS THE ONLY ORDER THAT WORKS: it is behind the shape, so drawing
+	 * it afterwards would paint over what casts it. This is the one place every path-shaped paint passes
+	 * through — fills, strokes, text and patterns — so a shadow arrives with all of them. */
+	cg_paint_shadow(c, path, even_odd);
 	if (pattern == NULL) {
 		if (rgba == NULL) {
 			return;
